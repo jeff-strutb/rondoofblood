@@ -125,8 +125,8 @@ uint8_t AttractBegin(uint8_t kept_x, uint8_t kept_y)
     jsr_push(0x871D);
     ResetGameState(wait_regs_xy_shim(kept_x, kept_y));
     jsr_pop();
-    WR8(ZP->_gap_007C[2], 0x98);
-    WR8(ZP->_gap_007C[3], 0x8F);
+    WR8(ZP->script_ptr, 0x98);
+    WR8(ZP->script_ptr_hi, 0x8F);
     WR8(ZP->wait_timer3, 0xFF);
     WR8(ZP->wait_timer4, 0xFF);
     return INC8(ZP->game_sub_mode);
@@ -169,8 +169,8 @@ void abi_ModeDoneAdd(void)
  * if its time is the counter's; each command ends by going back to ScriptAdvance, so a frame runs
  * every command that is due, and the exit is the last time test that failed.
  */
-#define SCRIPT_PTR _gap_007C[2]
-#define SCRIPT_PTR_HI _gap_007C[3]
+#define SCRIPT_PTR script_ptr
+#define SCRIPT_PTR_HI script_ptr_hi
 
 /*
  * @routine 00C2:000 ScriptAdvance

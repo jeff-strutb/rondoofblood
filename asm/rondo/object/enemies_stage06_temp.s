@@ -1519,3 +1519,670 @@ StartScriptsAndLists_at0:
     jsr VecStartListChannelKind2
     plx
     rts
+
+; @routine 025A:082 DrawTilePiece025A
+; @run 70:A882
+; @stop A8A8
+; WHAT IT DOES: DrawTilePiece072A in the overlay at sector 025A: draws the object's tile script (the item $AE9D gives by
+; OBJ_3510, plus OBJ_34B8), then looks in $AE9A at the row $AE9E gives plus OBJ_33B0 and goes on to $A8A8 or $A8ED.
+; HOW: draw_tile_piece_at with this overlay's tables.
+; WAITS: no.
+; Entry: X object. Exit: as DrawTilePiece072A.
+DrawTilePiece025A:
+    ldy a:OBJ_3510,x
+    lda a:PieceRecords025A+2,y
+    clc
+    adc a:OBJ_34B8,x
+    cly
+    jsr VecDrawTileScript
+    lda a:OBJ_33B0,x
+    sta z:zTemp00
+    ldy a:OBJ_3510,x
+    lda a:PieceRecords025A+3,y
+    asl a
+    asl a
+    asl a
+    asl a
+    clc
+    adc z:zTemp00
+    tay
+    lda a:PieceEntries025A,y
+    beq DrawTilePiece025A+$6B
+
+; @routine 051A:082 DrawTilePiece051A
+; @run 70:A882
+; @stop A8A8
+; WHAT IT DOES: DrawTilePiece072A in the overlay at sector 051A: draws the object's tile script (the item $B081 gives by
+; OBJ_3510, plus OBJ_34B8), then looks in $B0DE at the row $B082 gives plus OBJ_33B0 and goes on to $A8A8 or $A8ED.
+; HOW: draw_tile_piece_at with this overlay's tables.
+; WAITS: no.
+; Entry: X object. Exit: as DrawTilePiece072A.
+DrawTilePiece051A:
+    ldy a:OBJ_3510,x
+    lda a:PieceRecords051A+2,y
+    clc
+    adc a:OBJ_34B8,x
+    cly
+    jsr VecDrawTileScript
+    lda a:OBJ_33B0,x
+    sta z:zTemp00
+    ldy a:OBJ_3510,x
+    lda a:PieceRecords051A+3,y
+    asl a
+    asl a
+    asl a
+    asl a
+    clc
+    adc z:zTemp00
+    tay
+    lda a:PieceEntries051A,y
+    beq DrawTilePiece051A+$6B
+
+; @routine 05CA:082 DrawTilePiece05CA
+; @run 70:A882
+; @stop A8A8
+; WHAT IT DOES: DrawTilePiece072A in the overlay at sector 05CA: draws the object's tile script (the item $AE63 gives by
+; OBJ_3510, plus OBJ_34B8), then looks in $AE70 at the row $AE64 gives plus OBJ_33B0 and goes on to $A8A8 or $A8ED.
+; HOW: draw_tile_piece_at with this overlay's tables.
+; WAITS: no.
+; Entry: X object. Exit: as DrawTilePiece072A.
+DrawTilePiece05CA:
+    ldy a:OBJ_3510,x
+    lda a:PieceRecords05CA+2,y
+    clc
+    adc a:OBJ_34B8,x
+    cly
+    jsr VecDrawTileScript
+    lda a:OBJ_33B0,x
+    sta z:zTemp00
+    ldy a:OBJ_3510,x
+    lda a:PieceRecords05CA+3,y
+    asl a
+    asl a
+    asl a
+    asl a
+    clc
+    adc z:zTemp00
+    tay
+    lda a:PieceEntries05CA,y
+    beq DrawTilePiece05CA+$6B
+
+; @routine 07DA:082 DrawTilePiece07DA
+; @run 70:A882
+; @stop A8A8
+; WHAT IT DOES: DrawTilePiece072A in the overlay at sector 07DA: draws the object's tile script (the item $D39D gives by
+; OBJ_3510, plus OBJ_34B8), then looks in $D3CA at the row $D39E gives plus OBJ_33B0 and goes on to $A8A8 or $A8ED.
+; HOW: draw_tile_piece_at with this overlay's tables.
+; WAITS: no.
+; Entry: X object. Exit: as DrawTilePiece072A.
+DrawTilePiece07DA:
+    ldy a:OBJ_3510,x
+    lda a:PieceRecords07DA+2,y
+    clc
+    adc a:OBJ_34B8,x
+    cly
+    jsr VecDrawTileScript
+    lda a:OBJ_33B0,x
+    sta z:zTemp00
+    ldy a:OBJ_3510,x
+    lda a:PieceRecords07DA+3,y
+    asl a
+    asl a
+    asl a
+    asl a
+    clc
+    adc z:zTemp00
+    tay
+    lda a:PieceEntries07DA,y
+    beq DrawTilePiece07DA+$6B
+
+; @routine 088A:082 DrawTilePiece088A
+; @run 70:A882
+; @stop A8A8
+; WHAT IT DOES: DrawTilePiece072A in the overlay at sector 088A: draws the object's tile script (the item $C224 gives by
+; OBJ_3510, plus OBJ_34B8), then looks in $C231 at the row $C225 gives plus OBJ_33B0 and goes on to $A8A8 or $A8ED.
+; HOW: draw_tile_piece_at with this overlay's tables.
+; WAITS: no.
+; Entry: X object. Exit: as DrawTilePiece072A.
+DrawTilePiece088A:
+    ldy a:OBJ_3510,x
+    lda a:PieceRecords088A+2,y
+    clc
+    adc a:OBJ_34B8,x
+    cly
+    jsr VecDrawTileScript
+    lda a:OBJ_33B0,x
+    sta z:zTemp00
+    ldy a:OBJ_3510,x
+    lda a:PieceRecords088A+3,y
+    asl a
+    asl a
+    asl a
+    asl a
+    clc
+    adc z:zTemp00
+    tay
+    lda a:PieceEntries088A,y
+    beq DrawTilePiece088A+$6B
+
+; @routine 093A:082 DrawTilePiece093A
+; @run 70:A882
+; @stop A8A8
+; WHAT IT DOES: DrawTilePiece072A in the overlay at sector 093A: draws the object's tile script (the item $B3AA gives by
+; OBJ_3510, plus OBJ_34B8), then looks in $B3B7 at the row $B3AB gives plus OBJ_33B0 and goes on to $A8A8 or $A8ED.
+; HOW: draw_tile_piece_at with this overlay's tables.
+; WAITS: no.
+; Entry: X object. Exit: as DrawTilePiece072A.
+DrawTilePiece093A:
+    ldy a:OBJ_3510,x
+    lda a:PieceRecords093A+2,y
+    clc
+    adc a:OBJ_34B8,x
+    cly
+    jsr VecDrawTileScript
+    lda a:OBJ_33B0,x
+    sta z:zTemp00
+    ldy a:OBJ_3510,x
+    lda a:PieceRecords093A+3,y
+    asl a
+    asl a
+    asl a
+    asl a
+    clc
+    adc z:zTemp00
+    tay
+    lda a:PieceEntries093A,y
+    beq DrawTilePiece093A+$6B
+
+; @routine 09EA:082 DrawTilePiece09EA
+; @run 70:A882
+; @stop A8A8
+; WHAT IT DOES: DrawTilePiece072A in the overlay at sector 09EA: draws the object's tile script (the item $BCE4 gives by
+; OBJ_3510, plus OBJ_34B8), then looks in $BCF1 at the row $BCE5 gives plus OBJ_33B0 and goes on to $A8A8 or $A8ED.
+; HOW: draw_tile_piece_at with this overlay's tables.
+; WAITS: no.
+; Entry: X object. Exit: as DrawTilePiece072A.
+DrawTilePiece09EA:
+    ldy a:OBJ_3510,x
+    lda a:PieceRecords09EA+2,y
+    clc
+    adc a:OBJ_34B8,x
+    cly
+    jsr VecDrawTileScript
+    lda a:OBJ_33B0,x
+    sta z:zTemp00
+    ldy a:OBJ_3510,x
+    lda a:PieceRecords09EA+3,y
+    asl a
+    asl a
+    asl a
+    asl a
+    clc
+    adc z:zTemp00
+    tay
+    lda a:PieceEntries09EA,y
+    beq DrawTilePiece09EA+$6B
+
+; @routine 0A9A:082 DrawTilePiece0A9A
+; @run 70:A882
+; @stop A8A8
+; WHAT IT DOES: DrawTilePiece072A in the overlay at sector 0A9A: draws the object's tile script (the item $B67A gives by
+; OBJ_3510, plus OBJ_34B8), then looks in $B6C7 at the row $B67B gives plus OBJ_33B0 and goes on to $A8A8 or $A8ED.
+; HOW: draw_tile_piece_at with this overlay's tables.
+; WAITS: no.
+; Entry: X object. Exit: as DrawTilePiece072A.
+DrawTilePiece0A9A:
+    ldy a:OBJ_3510,x
+    lda a:PieceRecords0A9A+2,y
+    clc
+    adc a:OBJ_34B8,x
+    cly
+    jsr VecDrawTileScript
+    lda a:OBJ_33B0,x
+    sta z:zTemp00
+    ldy a:OBJ_3510,x
+    lda a:PieceRecords0A9A+3,y
+    asl a
+    asl a
+    asl a
+    asl a
+    clc
+    adc z:zTemp00
+    tay
+    lda a:PieceEntries0A9A,y
+    beq DrawTilePiece0A9A+$6B
+
+; @routine 0B4A:082 DrawTilePiece0B4A
+; @run 70:A882
+; @stop A8A8
+; WHAT IT DOES: DrawTilePiece072A in the overlay at sector 0B4A: draws the object's tile script (the item $B371 gives by
+; OBJ_3510, plus OBJ_34B8), then looks in $B36E at the row $B372 gives plus OBJ_33B0 and goes on to $A8A8 or $A8ED.
+; HOW: draw_tile_piece_at with this overlay's tables.
+; WAITS: no.
+; Entry: X object. Exit: as DrawTilePiece072A.
+DrawTilePiece0B4A:
+    ldy a:OBJ_3510,x
+    lda a:PieceRecords0B4A+2,y
+    clc
+    adc a:OBJ_34B8,x
+    cly
+    jsr VecDrawTileScript
+    lda a:OBJ_33B0,x
+    sta z:zTemp00
+    ldy a:OBJ_3510,x
+    lda a:PieceRecords0B4A+3,y
+    asl a
+    asl a
+    asl a
+    asl a
+    clc
+    adc z:zTemp00
+    tay
+    lda a:PieceEntries0B4A,y
+    beq DrawTilePiece0B4A+$6B
+
+; @routine 0BFA:082 DrawTilePiece0BFA
+; @run 70:A882
+; @stop A8A8
+; WHAT IT DOES: DrawTilePiece072A in the overlay at sector 0BFA: draws the object's tile script (the item $B039 gives by
+; OBJ_3510, plus OBJ_34B8), then looks in $B0A6 at the row $B03A gives plus OBJ_33B0 and goes on to $A8A8 or $A8ED.
+; HOW: draw_tile_piece_at with this overlay's tables.
+; WAITS: no.
+; Entry: X object. Exit: as DrawTilePiece072A.
+DrawTilePiece0BFA:
+    ldy a:OBJ_3510,x
+    lda a:PieceRecords0BFA+2,y
+    clc
+    adc a:OBJ_34B8,x
+    cly
+    jsr VecDrawTileScript
+    lda a:OBJ_33B0,x
+    sta z:zTemp00
+    ldy a:OBJ_3510,x
+    lda a:PieceRecords0BFA+3,y
+    asl a
+    asl a
+    asl a
+    asl a
+    clc
+    adc z:zTemp00
+    tay
+    lda a:PieceEntries0BFA,y
+    beq DrawTilePiece0BFA+$6B
+
+; @routine 0CAA:082 DrawTilePiece0CAA
+; @run 70:A882
+; @stop A8A8
+; WHAT IT DOES: DrawTilePiece072A in the overlay at sector 0CAA: draws the object's tile script (the item $AE9F gives by
+; OBJ_3510, plus OBJ_34B8), then looks in $AEBC at the row $AEA0 gives plus OBJ_33B0 and goes on to $A8A8 or $A8ED.
+; HOW: draw_tile_piece_at with this overlay's tables.
+; WAITS: no.
+; Entry: X object. Exit: as DrawTilePiece072A.
+DrawTilePiece0CAA:
+    ldy a:OBJ_3510,x
+    lda a:PieceRecords0CAA+2,y
+    clc
+    adc a:OBJ_34B8,x
+    cly
+    jsr VecDrawTileScript
+    lda a:OBJ_33B0,x
+    sta z:zTemp00
+    ldy a:OBJ_3510,x
+    lda a:PieceRecords0CAA+3,y
+    asl a
+    asl a
+    asl a
+    asl a
+    clc
+    adc z:zTemp00
+    tay
+    lda a:PieceEntries0CAA,y
+    beq DrawTilePiece0CAA+$6B
+
+; @routine 0D5A:082 DrawTilePiece0D5A
+; @run 70:A882
+; @stop A8A8
+; WHAT IT DOES: DrawTilePiece072A in the overlay at sector 0D5A: draws the object's tile script (the item $B01E gives by
+; OBJ_3510, plus OBJ_34B8), then looks in $B07B at the row $B01F gives plus OBJ_33B0 and goes on to $A8A8 or $A8ED.
+; HOW: draw_tile_piece_at with this overlay's tables.
+; WAITS: no.
+; Entry: X object. Exit: as DrawTilePiece072A.
+DrawTilePiece0D5A:
+    ldy a:OBJ_3510,x
+    lda a:PieceRecords0D5A+2,y
+    clc
+    adc a:OBJ_34B8,x
+    cly
+    jsr VecDrawTileScript
+    lda a:OBJ_33B0,x
+    sta z:zTemp00
+    ldy a:OBJ_3510,x
+    lda a:PieceRecords0D5A+3,y
+    asl a
+    asl a
+    asl a
+    asl a
+    clc
+    adc z:zTemp00
+    tay
+    lda a:PieceEntries0D5A,y
+    beq DrawTilePiece0D5A+$6B
+
+; @routine 0E0A:082 DrawTilePiece0E0A
+; @run 70:A882
+; @stop A8A8
+; WHAT IT DOES: DrawTilePiece072A in the overlay at sector 0E0A: draws the object's tile script (the item $AEF6 gives by
+; OBJ_3510, plus OBJ_34B8), then looks in $AF03 at the row $AEF7 gives plus OBJ_33B0 and goes on to $A8A8 or $A8ED.
+; HOW: draw_tile_piece_at with this overlay's tables.
+; WAITS: no.
+; Entry: X object. Exit: as DrawTilePiece072A.
+DrawTilePiece0E0A:
+    ldy a:OBJ_3510,x
+    lda a:PieceRecords0E0A+2,y
+    clc
+    adc a:OBJ_34B8,x
+    cly
+    jsr VecDrawTileScript
+    lda a:OBJ_33B0,x
+    sta z:zTemp00
+    ldy a:OBJ_3510,x
+    lda a:PieceRecords0E0A+3,y
+    asl a
+    asl a
+    asl a
+    asl a
+    clc
+    adc z:zTemp00
+    tay
+    lda a:PieceEntries0E0A,y
+    beq DrawTilePiece0E0A+$6B
+
+; @routine 0EBA:082 DrawTilePiece0EBA
+; @run 70:A882
+; @stop A8A8
+; WHAT IT DOES: DrawTilePiece072A in the overlay at sector 0EBA: draws the object's tile script (the item $AF1F gives by
+; OBJ_3510, plus OBJ_34B8), then looks in $AF3C at the row $AF20 gives plus OBJ_33B0 and goes on to $A8A8 or $A8ED.
+; HOW: draw_tile_piece_at with this overlay's tables.
+; WAITS: no.
+; Entry: X object. Exit: as DrawTilePiece072A.
+DrawTilePiece0EBA:
+    ldy a:OBJ_3510,x
+    lda a:PieceRecords0EBA+2,y
+    clc
+    adc a:OBJ_34B8,x
+    cly
+    jsr VecDrawTileScript
+    lda a:OBJ_33B0,x
+    sta z:zTemp00
+    ldy a:OBJ_3510,x
+    lda a:PieceRecords0EBA+3,y
+    asl a
+    asl a
+    asl a
+    asl a
+    clc
+    adc z:zTemp00
+    tay
+    lda a:PieceEntries0EBA,y
+    beq DrawTilePiece0EBA+$6B
+
+; @routine 0F6A:082 DrawTilePiece0F6A
+; @run 70:A882
+; @stop A8A8
+; WHAT IT DOES: DrawTilePiece072A in the overlay at sector 0F6A: draws the object's tile script (the item $ADBF gives by
+; OBJ_3510, plus OBJ_34B8), then looks in $ADBC at the row $ADC0 gives plus OBJ_33B0 and goes on to $A8A8 or $A8ED.
+; HOW: draw_tile_piece_at with this overlay's tables.
+; WAITS: no.
+; Entry: X object. Exit: as DrawTilePiece072A.
+DrawTilePiece0F6A:
+    ldy a:OBJ_3510,x
+    lda a:PieceRecords0F6A+2,y
+    clc
+    adc a:OBJ_34B8,x
+    cly
+    jsr VecDrawTileScript
+    lda a:OBJ_33B0,x
+    sta z:zTemp00
+    ldy a:OBJ_3510,x
+    lda a:PieceRecords0F6A+3,y
+    asl a
+    asl a
+    asl a
+    asl a
+    clc
+    adc z:zTemp00
+    tay
+    lda a:PieceEntries0F6A,y
+    beq DrawTilePiece0F6A+$6B
+
+; @routine 101A:082 DrawTilePiece101A
+; @run 70:A882
+; @stop A8A8
+; WHAT IT DOES: DrawTilePiece072A in the overlay at sector 101A: draws the object's tile script (the item $B019 gives by
+; OBJ_3510, plus OBJ_34B8), then looks in $B046 at the row $B01A gives plus OBJ_33B0 and goes on to $A8A8 or $A8ED.
+; HOW: draw_tile_piece_at with this overlay's tables.
+; WAITS: no.
+; Entry: X object. Exit: as DrawTilePiece072A.
+DrawTilePiece101A:
+    ldy a:OBJ_3510,x
+    lda a:PieceRecords101A+2,y
+    clc
+    adc a:OBJ_34B8,x
+    cly
+    jsr VecDrawTileScript
+    lda a:OBJ_33B0,x
+    sta z:zTemp00
+    ldy a:OBJ_3510,x
+    lda a:PieceRecords101A+3,y
+    asl a
+    asl a
+    asl a
+    asl a
+    clc
+    adc z:zTemp00
+    tay
+    lda a:PieceEntries101A,y
+    beq DrawTilePiece101A+$6B
+
+; @routine 10CA:082 DrawTilePiece10CA
+; @run 70:A882
+; @stop A8A8
+; WHAT IT DOES: DrawTilePiece072A in the overlay at sector 10CA: draws the object's tile script (the item $AEF6 gives by
+; OBJ_3510, plus OBJ_34B8), then looks in $AF03 at the row $AEF7 gives plus OBJ_33B0 and goes on to $A8A8 or $A8ED.
+; HOW: draw_tile_piece_at with this overlay's tables.
+; WAITS: no.
+; Entry: X object. Exit: as DrawTilePiece072A.
+DrawTilePiece10CA:
+    ldy a:OBJ_3510,x
+    lda a:PieceRecords10CA+2,y
+    clc
+    adc a:OBJ_34B8,x
+    cly
+    jsr VecDrawTileScript
+    lda a:OBJ_33B0,x
+    sta z:zTemp00
+    ldy a:OBJ_3510,x
+    lda a:PieceRecords10CA+3,y
+    asl a
+    asl a
+    asl a
+    asl a
+    clc
+    adc z:zTemp00
+    tay
+    lda a:PieceEntries10CA,y
+    beq DrawTilePiece10CA+$6B
+
+; @routine 117A:082 DrawTilePiece117A
+; @run 70:A882
+; @stop A8A8
+; WHAT IT DOES: DrawTilePiece072A in the overlay at sector 117A: draws the object's tile script (the item $B075 gives by
+; OBJ_3510, plus OBJ_34B8), then looks in $B0B2 at the row $B076 gives plus OBJ_33B0 and goes on to $A8A8 or $A8ED.
+; HOW: draw_tile_piece_at with this overlay's tables.
+; WAITS: no.
+; Entry: X object. Exit: as DrawTilePiece072A.
+DrawTilePiece117A:
+    ldy a:OBJ_3510,x
+    lda a:PieceRecords117A+2,y
+    clc
+    adc a:OBJ_34B8,x
+    cly
+    jsr VecDrawTileScript
+    lda a:OBJ_33B0,x
+    sta z:zTemp00
+    ldy a:OBJ_3510,x
+    lda a:PieceRecords117A+3,y
+    asl a
+    asl a
+    asl a
+    asl a
+    clc
+    adc z:zTemp00
+    tay
+    lda a:PieceEntries117A,y
+    beq DrawTilePiece117A+$6B
+
+; @routine 12DA:082 DrawTilePiece12DA
+; @run 70:A882
+; @stop A8A8
+; WHAT IT DOES: DrawTilePiece072A in the overlay at sector 12DA: draws the object's tile script (the item $AEE1 gives by
+; OBJ_3510, plus OBJ_34B8), then looks in $AEFE at the row $AEE2 gives plus OBJ_33B0 and goes on to $A8A8 or $A8ED.
+; HOW: draw_tile_piece_at with this overlay's tables.
+; WAITS: no.
+; Entry: X object. Exit: as DrawTilePiece072A.
+DrawTilePiece12DA:
+    ldy a:OBJ_3510,x
+    lda a:PieceRecords12DA+2,y
+    clc
+    adc a:OBJ_34B8,x
+    cly
+    jsr VecDrawTileScript
+    lda a:OBJ_33B0,x
+    sta z:zTemp00
+    ldy a:OBJ_3510,x
+    lda a:PieceRecords12DA+3,y
+    asl a
+    asl a
+    asl a
+    asl a
+    clc
+    adc z:zTemp00
+    tay
+    lda a:PieceEntries12DA,y
+    beq DrawTilePiece12DA+$6B
+
+; @routine 13FA:082 DrawTilePiece13FA
+; @run 70:A882
+; @stop A8A8
+; WHAT IT DOES: DrawTilePiece072A in the overlay at sector 13FA: draws the object's tile script (the item $AEA9 gives by
+; OBJ_3510, plus OBJ_34B8), then looks in $AEC6 at the row $AEAA gives plus OBJ_33B0 and goes on to $A8A8 or $A8ED.
+; HOW: draw_tile_piece_at with this overlay's tables.
+; WAITS: no.
+; Entry: X object. Exit: as DrawTilePiece072A.
+DrawTilePiece13FA:
+    ldy a:OBJ_3510,x
+    lda a:PieceRecords13FA+2,y
+    clc
+    adc a:OBJ_34B8,x
+    cly
+    jsr VecDrawTileScript
+    lda a:OBJ_33B0,x
+    sta z:zTemp00
+    ldy a:OBJ_3510,x
+    lda a:PieceRecords13FA+3,y
+    asl a
+    asl a
+    asl a
+    asl a
+    clc
+    adc z:zTemp00
+    tay
+    lda a:PieceEntries13FA,y
+    beq DrawTilePiece13FA+$6B
+
+; @routine 161A:082 DrawTilePiece161A
+; @run 70:A882
+; @stop A8A8
+; WHAT IT DOES: DrawTilePiece072A in the overlay at sector 161A: draws the object's tile script (the item $B0A5 gives by
+; OBJ_3510, plus OBJ_34B8), then looks in $B0F2 at the row $B0A6 gives plus OBJ_33B0 and goes on to $A8A8 or $A8ED.
+; HOW: draw_tile_piece_at with this overlay's tables.
+; WAITS: no.
+; Entry: X object. Exit: as DrawTilePiece072A.
+DrawTilePiece161A:
+    ldy a:OBJ_3510,x
+    lda a:PieceRecords161A+2,y
+    clc
+    adc a:OBJ_34B8,x
+    cly
+    jsr VecDrawTileScript
+    lda a:OBJ_33B0,x
+    sta z:zTemp00
+    ldy a:OBJ_3510,x
+    lda a:PieceRecords161A+3,y
+    asl a
+    asl a
+    asl a
+    asl a
+    clc
+    adc z:zTemp00
+    tay
+    lda a:PieceEntries161A,y
+    beq DrawTilePiece161A+$6B
+
+; @routine 16CA:082 DrawTilePiece16CA
+; @run 70:A882
+; @stop A8A8
+; WHAT IT DOES: DrawTilePiece072A in the overlay at sector 16CA: draws the object's tile script (the item $AE7F gives by
+; OBJ_3510, plus OBJ_34B8), then looks in $AEBC at the row $AE80 gives plus OBJ_33B0 and goes on to $A8A8 or $A8ED.
+; HOW: draw_tile_piece_at with this overlay's tables.
+; WAITS: no.
+; Entry: X object. Exit: as DrawTilePiece072A.
+DrawTilePiece16CA:
+    ldy a:OBJ_3510,x
+    lda a:PieceRecords16CA+2,y
+    clc
+    adc a:OBJ_34B8,x
+    cly
+    jsr VecDrawTileScript
+    lda a:OBJ_33B0,x
+    sta z:zTemp00
+    ldy a:OBJ_3510,x
+    lda a:PieceRecords16CA+3,y
+    asl a
+    asl a
+    asl a
+    asl a
+    clc
+    adc z:zTemp00
+    tay
+    lda a:PieceEntries16CA,y
+    beq DrawTilePiece16CA+$6B
+
+; @routine 18DA:082 DrawTilePiece18DA
+; @run 70:A882
+; @stop A8A8
+; WHAT IT DOES: DrawTilePiece072A in the overlay at sector 18DA: draws the object's tile script (the item $AE87 gives by
+; OBJ_3510, plus OBJ_34B8), then looks in $AEC4 at the row $AE88 gives plus OBJ_33B0 and goes on to $A8A8 or $A8ED.
+; HOW: draw_tile_piece_at with this overlay's tables.
+; WAITS: no.
+; Entry: X object. Exit: as DrawTilePiece072A.
+DrawTilePiece18DA:
+    ldy a:OBJ_3510,x
+    lda a:PieceRecords18DA+2,y
+    clc
+    adc a:OBJ_34B8,x
+    cly
+    jsr VecDrawTileScript
+    lda a:OBJ_33B0,x
+    sta z:zTemp00
+    ldy a:OBJ_3510,x
+    lda a:PieceRecords18DA+3,y
+    asl a
+    asl a
+    asl a
+    asl a
+    clc
+    adc z:zTemp00
+    tay
+    lda a:PieceEntries18DA,y
+    beq DrawTilePiece18DA+$6B

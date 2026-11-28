@@ -115,6 +115,8 @@ member,ZeroPageRec,bios_a,u16le,F8,zBiosAl|zBiosAh,
 member,ZeroPageRec,bios_b,u16le,FA,zBiosBl|zBiosBh,
 member,ZeroPageRec,bios_c,u16le,FC,zBiosCl|zBiosCh,
 member,ZeroPageRec,bios_d,u16le,FE,zBiosDl|zBiosDh,
+member,ZeroPageRec,script_ptr,u8,7E,zScriptPtr,the pointer scripts and demo records are read through; low
+member,ZeroPageRec,script_ptr_hi,u8,7F,zScriptPtrHi,
 
 record,ObjectTable,soa,2750,58,1398,OBJ
 member,ObjectTable,kind,u8,0000,OBJ_2750,

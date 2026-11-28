@@ -26,9 +26,9 @@ ModeDoneAdd:
 AttractBegin:
     jsr VecResetGameState
     lda #$98
-    sta z:$7E
+    sta z:zScriptPtr
     lda #$8F
-    sta z:$7F
+    sta z:zScriptPtrHi
     lda #$FF
     sta z:zWaitTimer3
     sta z:zWaitTimer4
@@ -96,14 +96,14 @@ AttractHoldBeforeEnd:
 ; Entry: nothing. Exit: as ScriptStep, X the command that was stepped past (when ScriptStep left
 ; X alone), V from the pointer's add (when it set none).
 ScriptAdvance:
-    lda ($7E)
+    lda (zScriptPtr)
     tax
     lda a:$87F0,x
     clc
-    adc z:$7E
-    sta z:$7E
+    adc z:zScriptPtr
+    sta z:zScriptPtr
     bcc ScriptStep
-    inc z:$7F
+    inc z:zScriptPtrHi
 
 ; @routine 00C2:00F ScriptStep
 ; @run 6B:880F
@@ -117,14 +117,14 @@ ScriptAdvance:
 ; X kept. Otherwise as the handler leaves them.
 ScriptStep:
     ldy #$01
-    lda ($7E),y
+    lda (zScriptPtr),y
     cmp z:zWaitTimer3
     bne $87DC
     iny
-    lda ($7E),y
+    lda (zScriptPtr),y
     cmp z:zWaitTimer4
     bne $87DC
-    lda ($7E)
+    lda (zScriptPtr)
     asl a
     tax
     ldy #$03
@@ -151,7 +151,7 @@ ScriptSaveReadAndState:
 ; WAITS: no.
 ; Entry: from ScriptStep, Y 3. Exit: as ScriptAdvance.
 ScriptSound:
-    lda ($7E),y
+    lda (zScriptPtr),y
     jsr VecSoundCommand
     bra ScriptAdvance
 
@@ -163,7 +163,7 @@ ScriptSound:
 ; WAITS: no.
 ; Entry: from ScriptStep, Y 3. Exit: as ScriptAdvance.
 ScriptStartListAndClear:
-    lda ($7E),y
+    lda (zScriptPtr),y
     jsr VecStartListChannel0Kind2
     jsr VecClearScreenState
     jsr ClearAllObjects
@@ -176,7 +176,7 @@ ScriptStartListAndClear:
 ; WAITS: no.
 ; Entry: from ScriptStep, Y 3. Exit: as ScriptAdvance.
 ScriptStartList:
-    lda ($7E),y
+    lda (zScriptPtr),y
     jsr VecStartListChannel0Kind2
     bra ScriptAdvance
 
@@ -187,7 +187,7 @@ ScriptStartList:
 ; WAITS: no.
 ; Entry: from ScriptStep, Y 3. Exit: as ScriptAdvance.
 ScriptStartSlotKind1:
-    lda ($7E),y
+    lda (zScriptPtr),y
     jsr VecStartScriptSlot0Kind1
     bra ScriptAdvance
 
@@ -198,7 +198,7 @@ ScriptStartSlotKind1:
 ; WAITS: no.
 ; Entry: from ScriptStep, Y 3. Exit: as ScriptAdvance.
 ScriptStartSlotKind2:
-    lda ($7E),y
+    lda (zScriptPtr),y
     jsr VecStartScriptSlot0Kind2
     bra ScriptAdvance
 
@@ -209,7 +209,7 @@ ScriptStartSlotKind2:
 ; WAITS: no.
 ; Entry: from ScriptStep, Y 3. Exit: as ScriptAdvance.
 ScriptStartSlotKind3:
-    lda ($7E),y
+    lda (zScriptPtr),y
     jsr VecStartScriptSlot0Kind3
     jmp ScriptAdvance
 
@@ -222,7 +222,7 @@ ScriptStartSlotKind3:
 ; call's two bytes and X and Y pushed (2).
 ; Entry: from ScriptStep, X the doubled command, Y 3. Exit: as ScriptAdvance.
 ScriptPlayTrack:
-    lda ($7E),y
+    lda (zScriptPtr),y
     jsr VecCdPlayOnce
     jmp ScriptAdvance
 
@@ -235,11 +235,11 @@ ScriptPlayTrack:
 ; WAITS: no.
 ; Entry: from ScriptStep, Y 3. Exit: as ScriptAdvance.
 ScriptPlaceObjectState:
-    lda ($7E),y
+    lda (zScriptPtr),y
     tax
     jsr ScriptPlaceObject
     iny
-    lda ($7E),y
+    lda (zScriptPtr),y
     sta a:OBJ_2750,x
     jmp ScriptAdvance
 
@@ -251,14 +251,14 @@ ScriptPlaceObjectState:
 ; WAITS: no.
 ; Entry: from ScriptStep, Y 3. Exit: as ScriptAdvance.
 ScriptPlaceObjectKind2:
-    lda ($7E),y
+    lda (zScriptPtr),y
     tax
     jsr ScriptPlaceObject
     iny
-    lda ($7E),y
+    lda (zScriptPtr),y
     sta a:OBJ_3040,x
     iny
-    lda ($7E),y
+    lda (zScriptPtr),y
     sta a:OBJ_2A10,x
     lda #$02
     sta a:OBJ_2750,x
@@ -272,14 +272,14 @@ ScriptPlaceObjectKind2:
 ; WAITS: no.
 ; Entry: from ScriptStep, Y 3. Exit: as ScriptAdvance.
 ScriptPlaceObjectFrame:
-    lda ($7E),y
+    lda (zScriptPtr),y
     tax
     jsr ScriptPlaceObject
     iny
-    lda ($7E),y
+    lda (zScriptPtr),y
     sta a:OBJ_2A68,x
     iny
-    lda ($7E),y
+    lda (zScriptPtr),y
     sta a:OBJ_2A10,x
     jmp ScriptAdvance
 
@@ -309,16 +309,16 @@ ClearAllObjects_at0:
 ScriptPlaceObject:
     jsr VecClearObject
     iny
-    lda ($7E),y
+    lda (zScriptPtr),y
     sta a:OBJ_X_LO,x
     iny
-    lda ($7E),y
+    lda (zScriptPtr),y
     sta a:OBJ_X_HI,x
     iny
-    lda ($7E),y
+    lda (zScriptPtr),y
     sta a:OBJ_Y_LO,x
     iny
-    lda ($7E),y
+    lda (zScriptPtr),y
     sta a:OBJ_Y_HI,x
     rts
 
@@ -334,16 +334,16 @@ ScriptPlaceTitleObjectA:
     ldx #$2E
     jsr VecClearObject
     inc a:OBJ_2750,x
-    lda ($7E),y
+    lda (zScriptPtr),y
     sta a:OBJ_3040,x
     iny
-    lda ($7E),y
+    lda (zScriptPtr),y
     sta a:OBJ_34B8,x
     iny
-    lda ($7E),y
+    lda (zScriptPtr),y
     sta a:OBJ_3510,x
     iny
-    lda ($7E),y
+    lda (zScriptPtr),y
     sta a:OBJ_3568,x
     lda #$C8
     sta a:OBJ_Y_LO,x
@@ -359,16 +359,16 @@ ScriptPlaceTitleObjectB:
     ldx #$2F
     jsr VecClearObject
     inc a:OBJ_2750,x
-    lda ($7E),y
+    lda (zScriptPtr),y
     sta a:OBJ_3040,x
     iny
-    lda ($7E),y
+    lda (zScriptPtr),y
     sta a:OBJ_34B8,x
     iny
-    lda ($7E),y
+    lda (zScriptPtr),y
     sta a:OBJ_3510,x
     iny
-    lda ($7E),y
+    lda (zScriptPtr),y
     sta a:OBJ_3568,x
     lda #$D8
     sta a:OBJ_Y_LO,x

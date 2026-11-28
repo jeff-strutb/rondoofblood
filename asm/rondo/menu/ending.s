@@ -23,9 +23,9 @@ EndingStep:
 EndingBegin:
     jsr VecResetGameState
     lda #$A3
-    sta z:$7E
+    sta z:zScriptPtr
     lda #$8A
-    sta z:$7F
+    sta z:zScriptPtrHi
     lda #$FF
     sta z:zWaitTimer3
     sta z:zWaitTimer4
@@ -66,14 +66,14 @@ EndingFrameTick_at0:
 ; Entry: nothing. Exit: as EndingScriptStep, X the command stepped past (when EndingScriptStep left X alone), V from the pointer's add
 ; (when it set none).
 EndingScriptAdvance:
-    lda ($7E)
+    lda (zScriptPtr)
     tax
     lda a:TitleSteps+2,x
     clc
-    adc z:$7E
-    sta z:$7E
+    adc z:zScriptPtr
+    sta z:zScriptPtr
     bcc EndingScriptStep
-    inc z:$7F
+    inc z:zScriptPtrHi
 
 ; @routine 010D:04F EndingScriptStep
 ; @run 6B:804F
@@ -84,14 +84,14 @@ EndingScriptAdvance:
 ; Entry: nothing. Exit, a time byte differs: A that byte, N, Z and C from comparing it, Y 1 or 2, X kept. Otherwise as the command leaves them.
 EndingScriptStep:
     ldy #$01
-    lda ($7E),y
+    lda (zScriptPtr),y
     cmp z:zWaitTimer3
     bne $8028
     iny
-    lda ($7E),y
+    lda (zScriptPtr),y
     cmp z:zWaitTimer4
     bne $8028
-    lda ($7E)
+    lda (zScriptPtr)
     asl a
     tax
     ldy #$03
@@ -115,7 +115,7 @@ EndingModeDoneBack:
 ; WAITS: no.
 ; Entry: from EndingScriptStep, Y 3. Exit: as EndingScriptAdvance.
 EndingCommandStartList:
-    lda ($7E),y
+    lda (zScriptPtr),y
     jsr VecStartListChannel0Kind2
     jsr VecClearScreenState
     jsr EndingClearObjects
@@ -129,7 +129,7 @@ EndingCommandStartList:
 ; WAITS: no.
 ; Entry: from EndingScriptStep, Y 3. Exit: as EndingScriptAdvance.
 EndingCommandStartScript1:
-    lda ($7E),y
+    lda (zScriptPtr),y
     jsr VecStartScriptSlot0Kind1
     bra EndingScriptAdvance
 
@@ -140,7 +140,7 @@ EndingCommandStartScript1:
 ; WAITS: no.
 ; Entry: from EndingScriptStep, Y 3. Exit: as EndingScriptAdvance.
 EndingCommandStartScript2:
-    lda ($7E),y
+    lda (zScriptPtr),y
     jsr VecStartScriptSlot0Kind2
     jmp EndingScriptAdvance
 
@@ -151,7 +151,7 @@ EndingCommandStartScript2:
 ; WAITS: no.
 ; Entry: from EndingScriptStep, X the doubled command, Y 3. Exit: as EndingScriptAdvance.
 EndingCommandCdPlay:
-    lda ($7E),y
+    lda (zScriptPtr),y
     jsr VecCdPlayOnce
     jmp EndingScriptAdvance
 
@@ -162,11 +162,11 @@ EndingCommandCdPlay:
 ; WAITS: no.
 ; Entry: from EndingScriptStep, Y 3. Exit: as EndingScriptAdvance.
 EndingCommandPlaceKind:
-    lda ($7E),y
+    lda (zScriptPtr),y
     tax
     jsr EndingPlaceObject
     iny
-    lda ($7E),y
+    lda (zScriptPtr),y
     sta a:OBJ_2750,x
     jmp EndingScriptAdvance
 
@@ -177,14 +177,14 @@ EndingCommandPlaceKind:
 ; WAITS: no.
 ; Entry: from EndingScriptStep, Y 3. Exit: as EndingScriptAdvance.
 EndingCommandPlaceNext:
-    lda ($7E),y
+    lda (zScriptPtr),y
     tax
     jsr EndingPlaceObject
     iny
-    lda ($7E),y
+    lda (zScriptPtr),y
     sta a:OBJ_3040,x
     iny
-    lda ($7E),y
+    lda (zScriptPtr),y
     sta a:OBJ_2A10,x
     lda #$02
     sta a:OBJ_2750,x
@@ -197,14 +197,14 @@ EndingCommandPlaceNext:
 ; WAITS: no.
 ; Entry: from EndingScriptStep, Y 3. Exit: as EndingScriptAdvance.
 EndingCommandPlaceFrame:
-    lda ($7E),y
+    lda (zScriptPtr),y
     tax
     jsr EndingPlaceObject
     iny
-    lda ($7E),y
+    lda (zScriptPtr),y
     sta a:OBJ_2A68,x
     iny
-    lda ($7E),y
+    lda (zScriptPtr),y
     sta a:OBJ_2A10,x
     jmp EndingScriptAdvance
 
@@ -215,20 +215,20 @@ EndingCommandPlaceFrame:
 ; WAITS: no.
 ; Entry: from EndingScriptStep, Y 3. Exit: as EndingScriptAdvance.
 EndingCommandPlaceTimed:
-    lda ($7E),y
+    lda (zScriptPtr),y
     tax
     jsr EndingPlaceObject
     iny
-    lda ($7E),y
+    lda (zScriptPtr),y
     sta a:OBJ_2A68,x
     iny
-    lda ($7E),y
+    lda (zScriptPtr),y
     sta a:OBJ_2A10,x
     iny
-    lda ($7E),y
+    lda (zScriptPtr),y
     sta a:OBJ_3040,x
     iny
-    lda ($7E),y
+    lda (zScriptPtr),y
     sta a:OBJ_34B8,x
     lda #$03
     sta a:OBJ_2750,x
@@ -258,16 +258,16 @@ EndingClearObjects_at0:
 EndingPlaceObject:
     jsr VecClearObject
     iny
-    lda ($7E),y
+    lda (zScriptPtr),y
     sta a:OBJ_X_LO,x
     iny
-    lda ($7E),y
+    lda (zScriptPtr),y
     sta a:OBJ_X_HI,x
     iny
-    lda ($7E),y
+    lda (zScriptPtr),y
     sta a:OBJ_Y_LO,x
     iny
-    lda ($7E),y
+    lda (zScriptPtr),y
     sta a:OBJ_Y_HI,x
     rts
 
@@ -1879,3 +1879,32 @@ EndingEffectFade_at7:
     sta a:VCE_ADDR_HI
     tia SavedColoursLo,VCE_DATA_LO,$0020
     jmp EndingEffectFade_at9
+
+; @routine 1E61:00B EndingBegin1E61
+; @run 6B:800B
+; WHAT IT DOES: Starts the ending of the overlay at sector 1E61: the game state is wiped, bit 3 of ProgressCharacter is set,
+; the script runs from the address the table at $802D gives for the character, its frame counter is set to $FFFF and the
+; state goes on.
+; HOW: ResetGameState; an ORA into ProgressCharacter; zCharacter doubled indexes the table; the counter written;
+; zGameSubMode counted up.
+; WAITS: yes, through ResetGameState (the vertical blank, the display off); the stack there is this routine's return
+; address and the call's.
+; Entry: X the doubled sub-mode and Y kept (ResetGameState saves them). Exit: A $FF, X 0, Y the character doubled, N and
+; Z from the new state, C bit 7 of zCharacter (the ASL).
+EndingBegin1E61:
+    jsr VecResetGameState
+    lda a:ProgressCharacter
+    ora #$08
+    sta a:ProgressCharacter
+    lda z:zCharacter
+    asl a
+    tay
+    lda a:EndingScripts1E61,y
+    sta z:zScriptPtr
+    lda a:EndingScripts1E61+1,y
+    sta z:zScriptPtrHi
+    lda #$FF
+    sta z:zWaitTimer3
+    sta z:zWaitTimer4
+    inc z:zGameSubMode
+    rts

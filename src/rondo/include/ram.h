@@ -604,6 +604,8 @@
 #define zWaitTimer2 0x2079 /* frames or steps left in a second wait */
 #define zWaitTimer3 0x207A /* steps left in a third wait */
 #define zWaitTimer4 0x207B /* frames left in a fourth wait */
+#define zScriptPtr 0x207E /* the pointer a scene script, the ending's script or a demo's pad record is read through; low */
+#define zScriptPtrHi 0x207F /* zScriptPtr's high byte */
 #define PaletteWork 0x3B00 /* 32 bytes: a palette of 16 colours read from the VCE to be worked on */
 #define PaletteWorkSpare 0x3B20 /* the colour kept while a palette is rotated */
 #define StageMaskBuffer 0x3B40 /* 128 bytes the stage overlay's mask routines work in place: cleared, then ANDed with a mask */
@@ -623,6 +625,8 @@
 #define SpriteXMin 0x81A1 /* the 00D1 overlay's 2 lowest X values a sprite part is drawn at (bank 6C) */
 #define SpriteSetTable 0x81A3 /* the 00D1 overlay's table of sprite sets, a word per set: the frame pointers' table (bank 6C) */
 #define StageSpawnSlot 0x93D0 /* by spawn row of 8 in the stage overlay: the object slot to clear and fill */
+#define HitBoxKindByFrame 0xC545 /* the 0F6D overlay's hit-box row kind (0 to 3) by object frame (OBJ_2A68), 48 bytes up to HitBoxRows (bank 71; read by HitBoxRowByFrameKind) */
+#define HitBoxRows 0xC575 /* the 0F6D overlay's 4 hit-box rows of 4 bytes (half width, half height, X offset, Y offset) by kind; row 0 all zero (bank 71; read by HitBoxRowByFrameKind) */
 #define StageSpawnFrame 0x93D8 /* by spawn row of 8 in the stage overlay: stored to the object's 2A68 field (its frame) */
 #define StageSpawnKind 0x93E0 /* by spawn row of 8 in the stage overlay: stored to the object's 2A10 field */
 #define StageSpawnXLo 0x93E8 /* by spawn row of 8 in the stage overlay: stored to the object's X low */
@@ -644,5 +648,112 @@
 #define SceneRecords 0x74D1 /* by scene, five bytes: its disc address and the address of its list of ops */
 #define StageScenes 0x74B1 /* by stage, its scene; the next byte on is the second scene, and the character's added to the first */
 #define StageScenesSecret 0x74C2 /* as StageScenes, for the stages with bit 7 set */
+#define DropChances0519 0xABFB /* overlay 0519's drop chance by drop class less one: a random number below it drops */
+#define DropChances05C9 0xABBF /* overlay 05C9's drop chance by drop class less one: a random number below it drops */
+#define DropChances0729 0xABC7 /* overlay 0729's drop chance by drop class less one: a random number below it drops */
+#define DropChances0889 0xAAC4 /* overlay 0889's drop chance by drop class less one: a random number below it drops */
+#define DropChances0B49 0xAAC8 /* overlay 0B49's drop chance by drop class less one: a random number below it drops */
+#define DropChances0E09 0xAB31 /* overlay 0E09's drop chance by drop class less one: a random number below it drops */
+#define DropChances0F69 0xAAD8 /* overlay 0F69's drop chance by drop class less one: a random number below it drops */
+#define DropChances10C9 0xABFA /* overlay 10C9's drop chance by drop class less one: a random number below it drops */
+#define DropChances12D9 0xAC88 /* overlay 12D9's drop chance by drop class less one: a random number below it drops */
+#define DropChances13F9 0xAC68 /* overlay 13F9's drop chance by drop class less one: a random number below it drops */
+#define DropChances1619 0xAC62 /* overlay 1619's drop chance by drop class less one: a random number below it drops */
+#define DropChances16C9 0xAB96 /* overlay 16C9's drop chance by drop class less one: a random number below it drops */
+#define DropChances18D9 0xAB7A /* overlay 18D9's drop chance by drop class less one: a random number below it drops */
+#define DropItems0519 0xAC03 /* overlay 0519's dropped item, 16 a drop class less one, by the player distance sum's low nibble */
+#define DropItems05C9 0xABC7 /* overlay 05C9's dropped item, 16 a drop class less one, by the player distance sum's low nibble */
+#define DropItems0729 0xABCF /* overlay 0729's dropped item, 16 a drop class less one, by the player distance sum's low nibble */
+#define DropItems0889 0xAACC /* overlay 0889's dropped item, 16 a drop class less one, by the player distance sum's low nibble */
+#define DropItems0B49 0xAAD0 /* overlay 0B49's dropped item, 16 a drop class less one, by the player distance sum's low nibble */
+#define DropItems0E09 0xAB39 /* overlay 0E09's dropped item, 16 a drop class less one, by the player distance sum's low nibble */
+#define DropItems0F69 0xAAE0 /* overlay 0F69's dropped item, 16 a drop class less one, by the player distance sum's low nibble */
+#define DropItems10C9 0xAC02 /* overlay 10C9's dropped item, 16 a drop class less one, by the player distance sum's low nibble */
+#define DropItems12D9 0xAC90 /* overlay 12D9's dropped item, 16 a drop class less one, by the player distance sum's low nibble */
+#define DropItems13F9 0xAC70 /* overlay 13F9's dropped item, 16 a drop class less one, by the player distance sum's low nibble */
+#define DropItems1619 0xAC6A /* overlay 1619's dropped item, 16 a drop class less one, by the player distance sum's low nibble */
+#define DropItems16C9 0xAB9E /* overlay 16C9's dropped item, 16 a drop class less one, by the player distance sum's low nibble */
+#define DropItems18D9 0xAB82 /* overlay 18D9's dropped item, 16 a drop class less one, by the player distance sum's low nibble */
+#define EndingScripts1E61 0x802D /* overlay 1E61's ending script start by character, a word each */
+#define HitSounds05C9 0xABE7 /* overlay 05C9's hit sound by sound class less one */
+#define HitSounds0729 0xABEF /* overlay 0729's hit sound by sound class less one */
+#define HitSounds0889 0xAADC /* overlay 0889's hit sound by sound class less one */
+#define HitSounds0B49 0xAAE0 /* overlay 0B49's hit sound by sound class less one */
+#define HitSounds0E09 0xAB49 /* overlay 0E09's hit sound by sound class less one */
+#define HitSounds0F69 0xAB00 /* overlay 0F69's hit sound by sound class less one */
+#define HitSounds10C9 0xAC22 /* overlay 10C9's hit sound by sound class less one */
+#define HitSounds12D9 0xACB0 /* overlay 12D9's hit sound by sound class less one */
+#define HitSounds13F9 0xAC90 /* overlay 13F9's hit sound by sound class less one */
+#define HitSounds1619 0xAC8A /* overlay 1619's hit sound by sound class less one */
+#define HitSounds18D9 0xABA2 /* overlay 18D9's hit sound by sound class less one */
+#define KindScores0519 0xAC2A /* overlay 0519's score by object kind less $20, a word each, for ScoreForKind0519 */
+#define KindScores05C9 0xABEE /* overlay 05C9's score by object kind less $20, a word each, for ScoreForKind05C9 */
+#define KindScores0729 0xABF6 /* overlay 0729's score by object kind less $20, a word each, for ScoreForKind0729 */
+#define KindScores07D9 0xAB7C /* overlay 07D9's score by object kind less $20, a word each, for ScoreForKind07D9 */
+#define KindScores0889 0xAAE3 /* overlay 0889's score by object kind less $20, a word each, for ScoreForKind0889 */
+#define KindScores0939 0xAC3C /* overlay 0939's score by object kind less $20, a word each, for ScoreForKind0939 */
+#define KindScores09E9 0xAC1E /* overlay 09E9's score by object kind less $20, a word each, for ScoreForKind09E9 */
+#define KindScores0A99 0xAC83 /* overlay 0A99's score by object kind less $20, a word each, for ScoreForKind0A99 */
+#define KindScores0B49 0xAAE7 /* overlay 0B49's score by object kind less $20, a word each, for ScoreForKind0B49 */
+#define KindScores0BF9 0xAC47 /* overlay 0BF9's score by object kind less $20, a word each, for ScoreForKind0BF9 */
+#define KindScores0CA9 0xAC6B /* overlay 0CA9's score by object kind less $20, a word each, for ScoreForKind0CA9 */
+#define KindScores0D59 0xAD11 /* overlay 0D59's score by object kind less $20, a word each, for ScoreForKind0D59 */
+#define KindScores0E09 0xAB50 /* overlay 0E09's score by object kind less $20, a word each, for ScoreForKind0E09 */
+#define KindScores0EB9 0xAC9F /* overlay 0EB9's score by object kind less $20, a word each, for ScoreForKind0EB9 */
+#define KindScores0F69 0xAB07 /* overlay 0F69's score by object kind less $20, a word each, for ScoreForKind0F69 */
+#define KindScores1019 0xAC7B /* overlay 1019's score by object kind less $20, a word each, for ScoreForKind1019 */
+#define KindScores10C9 0xAC29 /* overlay 10C9's score by object kind less $20, a word each, for ScoreForKind10C9 */
+#define KindScores1179 0xAC96 /* overlay 1179's score by object kind less $20, a word each, for ScoreForKind1179 */
+#define KindScores12D9 0xACB7 /* overlay 12D9's score by object kind less $20, a word each, for ScoreForKind12D9 */
+#define KindScores13F9 0xAC97 /* overlay 13F9's score by object kind less $20, a word each, for ScoreForKind13F9 */
+#define KindScores1619 0xAC91 /* overlay 1619's score by object kind less $20, a word each, for ScoreForKind1619 */
+#define KindScores16C9 0xABC5 /* overlay 16C9's score by object kind less $20, a word each, for ScoreForKind16C9 */
+#define KindScores18D9 0xABA9 /* overlay 18D9's score by object kind less $20, a word each, for ScoreForKind18D9 */
+#define PieceEntries025A 0xAE9A /* overlay 025A's tile piece entries by entry row times 16 plus OBJ_33B0; zero ends the draw */
+#define PieceEntries051A 0xB0DE /* overlay 051A's tile piece entries by entry row times 16 plus OBJ_33B0; zero ends the draw */
+#define PieceEntries05CA 0xAE70 /* overlay 05CA's tile piece entries by entry row times 16 plus OBJ_33B0; zero ends the draw */
+#define PieceEntries07DA 0xD3CA /* overlay 07DA's tile piece entries by entry row times 16 plus OBJ_33B0; zero ends the draw */
+#define PieceEntries088A 0xC231 /* overlay 088A's tile piece entries by entry row times 16 plus OBJ_33B0; zero ends the draw */
+#define PieceEntries093A 0xB3B7 /* overlay 093A's tile piece entries by entry row times 16 plus OBJ_33B0; zero ends the draw */
+#define PieceEntries09EA 0xBCF1 /* overlay 09EA's tile piece entries by entry row times 16 plus OBJ_33B0; zero ends the draw */
+#define PieceEntries0A9A 0xB6C7 /* overlay 0A9A's tile piece entries by entry row times 16 plus OBJ_33B0; zero ends the draw */
+#define PieceEntries0B4A 0xB36E /* overlay 0B4A's tile piece entries by entry row times 16 plus OBJ_33B0; zero ends the draw */
+#define PieceEntries0BFA 0xB0A6 /* overlay 0BFA's tile piece entries by entry row times 16 plus OBJ_33B0; zero ends the draw */
+#define PieceEntries0CAA 0xAEBC /* overlay 0CAA's tile piece entries by entry row times 16 plus OBJ_33B0; zero ends the draw */
+#define PieceEntries0D5A 0xB07B /* overlay 0D5A's tile piece entries by entry row times 16 plus OBJ_33B0; zero ends the draw */
+#define PieceEntries0E0A 0xAF03 /* overlay 0E0A's tile piece entries by entry row times 16 plus OBJ_33B0; zero ends the draw */
+#define PieceEntries0EBA 0xAF3C /* overlay 0EBA's tile piece entries by entry row times 16 plus OBJ_33B0; zero ends the draw */
+#define PieceEntries0F6A 0xADBC /* overlay 0F6A's tile piece entries by entry row times 16 plus OBJ_33B0; zero ends the draw */
+#define PieceEntries101A 0xB046 /* overlay 101A's tile piece entries by entry row times 16 plus OBJ_33B0; zero ends the draw */
+#define PieceEntries10CA 0xAF03 /* overlay 10CA's tile piece entries by entry row times 16 plus OBJ_33B0; zero ends the draw */
+#define PieceEntries117A 0xB0B2 /* overlay 117A's tile piece entries by entry row times 16 plus OBJ_33B0; zero ends the draw */
+#define PieceEntries12DA 0xAEFE /* overlay 12DA's tile piece entries by entry row times 16 plus OBJ_33B0; zero ends the draw */
+#define PieceEntries13FA 0xAEC6 /* overlay 13FA's tile piece entries by entry row times 16 plus OBJ_33B0; zero ends the draw */
+#define PieceEntries161A 0xB0F2 /* overlay 161A's tile piece entries by entry row times 16 plus OBJ_33B0; zero ends the draw */
+#define PieceEntries16CA 0xAEBC /* overlay 16CA's tile piece entries by entry row times 16 plus OBJ_33B0; zero ends the draw */
+#define PieceEntries18DA 0xAEC4 /* overlay 18DA's tile piece entries by entry row times 16 plus OBJ_33B0; zero ends the draw */
+#define PieceRecords025A 0xAE9B /* overlay 025A's tile piece records, 16 bytes by OBJ_3040: hit box width and height, tile script, entry row */
+#define PieceRecords051A 0xB07F /* overlay 051A's tile piece records, 16 bytes by OBJ_3040: hit box width and height, tile script, entry row */
+#define PieceRecords05CA 0xAE61 /* overlay 05CA's tile piece records, 16 bytes by OBJ_3040: hit box width and height, tile script, entry row */
+#define PieceRecords07DA 0xD39B /* overlay 07DA's tile piece records, 16 bytes by OBJ_3040: hit box width and height, tile script, entry row */
+#define PieceRecords088A 0xC222 /* overlay 088A's tile piece records, 16 bytes by OBJ_3040: hit box width and height, tile script, entry row */
+#define PieceRecords093A 0xB3A8 /* overlay 093A's tile piece records, 16 bytes by OBJ_3040: hit box width and height, tile script, entry row */
+#define PieceRecords09EA 0xBCE2 /* overlay 09EA's tile piece records, 16 bytes by OBJ_3040: hit box width and height, tile script, entry row */
+#define PieceRecords0A9A 0xB678 /* overlay 0A9A's tile piece records, 16 bytes by OBJ_3040: hit box width and height, tile script, entry row */
+#define PieceRecords0B4A 0xB36F /* overlay 0B4A's tile piece records, 16 bytes by OBJ_3040: hit box width and height, tile script, entry row */
+#define PieceRecords0BFA 0xB037 /* overlay 0BFA's tile piece records, 16 bytes by OBJ_3040: hit box width and height, tile script, entry row */
+#define PieceRecords0CAA 0xAE9D /* overlay 0CAA's tile piece records, 16 bytes by OBJ_3040: hit box width and height, tile script, entry row */
+#define PieceRecords0D5A 0xB01C /* overlay 0D5A's tile piece records, 16 bytes by OBJ_3040: hit box width and height, tile script, entry row */
+#define PieceRecords0E0A 0xAEF4 /* overlay 0E0A's tile piece records, 16 bytes by OBJ_3040: hit box width and height, tile script, entry row */
+#define PieceRecords0EBA 0xAF1D /* overlay 0EBA's tile piece records, 16 bytes by OBJ_3040: hit box width and height, tile script, entry row */
+#define PieceRecords0F6A 0xADBD /* overlay 0F6A's tile piece records, 16 bytes by OBJ_3040: hit box width and height, tile script, entry row */
+#define PieceRecords101A 0xB017 /* overlay 101A's tile piece records, 16 bytes by OBJ_3040: hit box width and height, tile script, entry row */
+#define PieceRecords10CA 0xAEF4 /* overlay 10CA's tile piece records, 16 bytes by OBJ_3040: hit box width and height, tile script, entry row */
+#define PieceRecords117A 0xB073 /* overlay 117A's tile piece records, 16 bytes by OBJ_3040: hit box width and height, tile script, entry row */
+#define PieceRecords12DA 0xAEDF /* overlay 12DA's tile piece records, 16 bytes by OBJ_3040: hit box width and height, tile script, entry row */
+#define PieceRecords13FA 0xAEA7 /* overlay 13FA's tile piece records, 16 bytes by OBJ_3040: hit box width and height, tile script, entry row */
+#define PieceRecords161A 0xB0A3 /* overlay 161A's tile piece records, 16 bytes by OBJ_3040: hit box width and height, tile script, entry row */
+#define PieceRecords16CA 0xAE7D /* overlay 16CA's tile piece records, 16 bytes by OBJ_3040: hit box width and height, tile script, entry row */
+#define PieceRecords18DA 0xAE85 /* overlay 18DA's tile piece records, 16 bytes by OBJ_3040: hit box width and height, tile script, entry row */
 
 #endif

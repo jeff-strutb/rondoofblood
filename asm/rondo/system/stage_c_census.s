@@ -251,9 +251,9 @@ DemoStart3CD_at0:
     stz z:zFrameTick
     stz z:$7C
     stz z:$7D
-    stz z:$7E
+    stz z:zScriptPtr
     lda #$A0
-    sta z:$7F
+    sta z:zScriptPtrHi
 DemoStart3CD_at2:
     rts
 
@@ -284,7 +284,7 @@ DemoStep3CD:
     tam #$40
     lda z:zWaitTimer
     bmi DemoPlay3CD
-    lda ($7E)
+    lda (zScriptPtr)
     cmp #$FF
     bne DemoStep3CD_at2
     bsr DemoAdvance3CD
@@ -292,24 +292,24 @@ DemoStep3CD_at2:
     lda a:BiosJoyTrigger+1
     and #$04
     bne DemoStep3CD_at0
-    lda ($7E)
+    lda (zScriptPtr)
     beq DemoStep3CD_at1
     ldy #$01
     lda a:BiosPadState
-    cmp ($7E),y
+    cmp (zScriptPtr),y
     bne DemoStep3CD_at3
-    lda ($7E)
+    lda (zScriptPtr)
     inc a
-    sta ($7E)
+    sta (zScriptPtr)
     rts
 DemoStep3CD_at3:
     bsr DemoAdvance3CD
 DemoStep3CD_at1:
     lda #$01
-    sta ($7E)
+    sta (zScriptPtr)
     tay
     lda a:BiosPadState
-    sta ($7E),y
+    sta (zScriptPtr),y
     rts
 DemoStep3CD_at0:
     bsr DemoAdvance3CD
@@ -332,11 +332,11 @@ DemoStep3CD_at0:
 ; WAITS: no.
 ; Entry: nothing. Exit, at the end: N and Z from the page's compare, C set. Else: A 0, Y 1, N and Z from Y.
 DemoAdvance3CD:
-    inc z:$7E
-    inc z:$7E
+    inc z:zScriptPtr
+    inc z:zScriptPtr
     bne DemoAdvance3CD_at0
-    inc z:$7F
-    lda z:$7F
+    inc z:zScriptPtrHi
+    lda z:zScriptPtrHi
     cmp #$E0
     bne DemoAdvance3CD_at0
 DemoAdvance3CD_at1:
@@ -344,9 +344,9 @@ DemoAdvance3CD_at1:
     rts
 DemoAdvance3CD_at0:
     cla
-    sta ($7E)
+    sta (zScriptPtr)
     ldy #$01
-    sta ($7E),y
+    sta (zScriptPtr),y
     rts
 
 ; @routine 03CD:0EF DemoPlay3CD
@@ -368,12 +368,12 @@ DemoAdvance3CD_at0:
 DemoPlay3CD:
     lda z:$7D
     bne DemoPlay3CD_at0
-    lda ($7E)
+    lda (zScriptPtr)
     beq DemoAdvance3CD_at1
     sta z:$7D
 DemoPlay3CD_at0:
     ldy #$01
-    lda ($7E),y
+    lda (zScriptPtr),y
     sta a:BiosPadState
     lda z:$7C
     eor #$FF
@@ -385,11 +385,11 @@ DemoPlay3CD_at0:
     beq DemoPlay3CD_at1
     rts
 DemoPlay3CD_at1:
-    inc z:$7E
-    inc z:$7E
+    inc z:zScriptPtr
+    inc z:zScriptPtr
     bne DemoPlay3CD_at2
-    inc z:$7F
-    lda z:$7F
+    inc z:zScriptPtrHi
+    lda z:zScriptPtrHi
     cmp #$E0
     bne DemoPlay3CD_at2
     stz z:zWaitTimer

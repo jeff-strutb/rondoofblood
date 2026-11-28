@@ -2164,8 +2164,8 @@ void abi_EndingPieceSpawn(void)
  * at $8030, a time as two bytes, and operands; EndingScriptAdvance steps past a command and EndingScriptStep runs the next if its time is
  * the counter's, and each command goes back to EndingScriptAdvance.
  */
-#define ENDING_PTR _gap_007C[2]
-#define ENDING_PTR_HI _gap_007C[3]
+#define ENDING_PTR script_ptr
+#define ENDING_PTR_HI script_ptr_hi
 
 enum { VDC_REG_VRAM_A = 2, ENDING_LENGTHS = 0x8030, ENDING_COMMANDS = 0x806A, ENDING_OBJECTS = 0x58 };
 

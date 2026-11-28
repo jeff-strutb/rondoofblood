@@ -16,9 +16,9 @@ ResetStageVariables024D:
     stz z:$7C
     stz z:$7D
     lda #$0D
-    sta z:$7E
+    sta z:zScriptPtr
     lda #$C2
-    sta z:$7F
+    sta z:zScriptPtrHi
 ResetStageVariables024D_at0:
     rts
 
@@ -40,9 +40,9 @@ ResetStageVariables050D:
     stz z:$7C
     stz z:$7D
     lda #$66
-    sta z:$7E
+    sta z:zScriptPtr
     lda #$CE
-    sta z:$7F
+    sta z:zScriptPtrHi
 ResetStageVariables050D_at0:
     rts
 
@@ -64,9 +64,9 @@ ResetStageVariables05BD:
     stz z:$7C
     stz z:$7D
     lda #$15
-    sta z:$7E
+    sta z:zScriptPtr
     lda #$BE
-    sta z:$7F
+    sta z:zScriptPtrHi
 ResetStageVariables05BD_at0:
     rts
 
@@ -88,9 +88,9 @@ ResetStageVariables071D:
     stz z:$7C
     stz z:$7D
     lda #$4E
-    sta z:$7E
+    sta z:zScriptPtr
     lda #$C2
-    sta z:$7F
+    sta z:zScriptPtrHi
 ResetStageVariables071D_at0:
     rts
 
@@ -112,9 +112,9 @@ ResetStageVariables07CD:
     stz z:$7C
     stz z:$7D
     lda #$50
-    sta z:$7E
+    sta z:zScriptPtr
     lda #$DC
-    sta z:$7F
+    sta z:zScriptPtrHi
 ResetStageVariables07CD_at0:
     rts
 
@@ -136,9 +136,9 @@ ResetStageVariables087D:
     stz z:$7C
     stz z:$7D
     lda #$AA
-    sta z:$7E
+    sta z:zScriptPtr
     lda #$C3
-    sta z:$7F
+    sta z:zScriptPtrHi
 ResetStageVariables087D_at0:
     rts
 
@@ -160,9 +160,9 @@ ResetStageVariables092D:
     stz z:$7C
     stz z:$7D
     lda #$8F
-    sta z:$7E
+    sta z:zScriptPtr
     lda #$DB
-    sta z:$7F
+    sta z:zScriptPtrHi
 ResetStageVariables092D_at0:
     rts
 
@@ -184,9 +184,9 @@ ResetStageVariables09DD:
     stz z:$7C
     stz z:$7D
     lda #$74
-    sta z:$7E
+    sta z:zScriptPtr
     lda #$C2
-    sta z:$7F
+    sta z:zScriptPtrHi
 ResetStageVariables09DD_at0:
     rts
 
@@ -208,9 +208,9 @@ ResetStageVariables0A8D:
     stz z:$7C
     stz z:$7D
     lda #$D7
-    sta z:$7E
+    sta z:zScriptPtr
     lda #$DD
-    sta z:$7F
+    sta z:zScriptPtrHi
 ResetStageVariables0A8D_at0:
     rts
 
@@ -232,9 +232,9 @@ ResetStageVariables0B3D:
     stz z:$7C
     stz z:$7D
     lda #$6F
-    sta z:$7E
+    sta z:zScriptPtr
     lda #$D4
-    sta z:$7F
+    sta z:zScriptPtrHi
 ResetStageVariables0B3D_at0:
     rts
 
@@ -256,9 +256,9 @@ ResetStageVariables0BED:
     stz z:$7C
     stz z:$7D
     lda #$06
-    sta z:$7E
+    sta z:zScriptPtr
     lda #$DA
-    sta z:$7F
+    sta z:zScriptPtrHi
 ResetStageVariables0BED_at0:
     rts
 
@@ -280,9 +280,9 @@ ResetStageVariables0C9D:
     stz z:$7C
     stz z:$7D
     lda #$1A
-    sta z:$7E
+    sta z:zScriptPtr
     lda #$C3
-    sta z:$7F
+    sta z:zScriptPtrHi
 ResetStageVariables0C9D_at0:
     rts
 
@@ -304,9 +304,9 @@ ResetStageVariables0D4D:
     stz z:$7C
     stz z:$7D
     lda #$37
-    sta z:$7E
+    sta z:zScriptPtr
     lda #$D9
-    sta z:$7F
+    sta z:zScriptPtrHi
 ResetStageVariables0D4D_at0:
     rts
 
@@ -328,9 +328,9 @@ ResetStageVariables0DFD:
     stz z:$7C
     stz z:$7D
     lda #$5C
-    sta z:$7E
+    sta z:zScriptPtr
     lda #$C1
-    sta z:$7F
+    sta z:zScriptPtrHi
 ResetStageVariables0DFD_at0:
     rts
 
@@ -352,9 +352,9 @@ ResetStageVariables0EAD:
     stz z:$7C
     stz z:$7D
     lda #$89
-    sta z:$7E
+    sta z:zScriptPtr
     lda #$B3
-    sta z:$7F
+    sta z:zScriptPtrHi
 ResetStageVariables0EAD_at0:
     rts
 
@@ -376,9 +376,9 @@ ResetStageVariables0F5D:
     stz z:$7C
     stz z:$7D
     lda #$F3
-    sta z:$7E
+    sta z:zScriptPtr
     lda #$B1
-    sta z:$7F
+    sta z:zScriptPtrHi
 ResetStageVariables0F5D_at0:
     rts
 
@@ -400,9 +400,9 @@ ResetStageVariables100D:
     stz z:$7C
     stz z:$7D
     lda #$56
-    sta z:$7E
+    sta z:zScriptPtr
     lda #$D5
-    sta z:$7F
+    sta z:zScriptPtrHi
 ResetStageVariables100D_at0:
     rts
 
@@ -424,9 +424,9 @@ ResetStageVariables10BD:
     stz z:$7C
     stz z:$7D
     lda #$8C
-    sta z:$7E
+    sta z:zScriptPtr
     lda #$C5
-    sta z:$7F
+    sta z:zScriptPtrHi
 ResetStageVariables10BD_at0:
     rts
 
@@ -448,9 +448,9 @@ ResetStageVariables116D:
     stz z:$7C
     stz z:$7D
     lda #$63
-    sta z:$7E
+    sta z:zScriptPtr
     lda #$DB
-    sta z:$7F
+    sta z:zScriptPtrHi
 ResetStageVariables116D_at0:
     rts
 
@@ -472,9 +472,9 @@ ResetStageVariables12CD:
     stz z:$7C
     stz z:$7D
     lda #$5A
-    sta z:$7E
+    sta z:zScriptPtr
     lda #$D2
-    sta z:$7F
+    sta z:zScriptPtrHi
 ResetStageVariables12CD_at0:
     rts
 
@@ -496,9 +496,9 @@ ResetStageVariables160D:
     stz z:$7C
     stz z:$7D
     lda #$16
-    sta z:$7E
+    sta z:zScriptPtr
     lda #$D9
-    sta z:$7F
+    sta z:zScriptPtrHi
 ResetStageVariables160D_at0:
     rts
 
@@ -520,9 +520,9 @@ ResetStageVariables16BD:
     stz z:$7C
     stz z:$7D
     lda #$26
-    sta z:$7E
+    sta z:zScriptPtr
     lda #$BF
-    sta z:$7F
+    sta z:zScriptPtrHi
 ResetStageVariables16BD_at0:
     rts
 
@@ -544,8 +544,8 @@ ResetStageVariables18CD:
     stz z:$7C
     stz z:$7D
     lda #$73
-    sta z:$7E
+    sta z:zScriptPtr
     lda #$C3
-    sta z:$7F
+    sta z:zScriptPtrHi
 ResetStageVariables18CD_at0:
     rts

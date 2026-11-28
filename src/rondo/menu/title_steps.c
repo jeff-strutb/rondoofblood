@@ -448,8 +448,8 @@ Exit AttractWaitStart(void)
     if (joy == 0) {
         return after_load(exit, joy);
     }
-    WR8(ZP->_gap_007C[2], RESTART_LOW);
-    WR8(ZP->_gap_007C[3], RESTART_HIGH);
+    WR8(ZP->script_ptr, RESTART_LOW);
+    WR8(ZP->script_ptr_hi, RESTART_HIGH);
     WR8(ZP->wait_timer3, 0xFF);
     WR8(ZP->wait_timer4, 0xFF);
     next_step();

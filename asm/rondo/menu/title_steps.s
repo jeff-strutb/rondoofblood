@@ -193,9 +193,9 @@ AttractWaitStart:
     and #$08
     beq $8791
     lda #$92
-    sta z:$7E
+    sta z:zScriptPtr
     lda #$91
-    sta z:$7F
+    sta z:zScriptPtrHi
     lda #$FF
     sta z:zWaitTimer3
     sta z:zWaitTimer4

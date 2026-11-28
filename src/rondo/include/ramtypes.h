@@ -89,7 +89,9 @@ typedef struct {
     uint8_t wait_timer2; /* zWaitTimer2 */
     uint8_t wait_timer3; /* zWaitTimer3 */
     uint8_t wait_timer4; /* zWaitTimer4 */
-    uint8_t _gap_007C[4]; /* no name yet: $207C-$207F */
+    uint8_t _gap_007C[2]; /* no name yet: $207C-$207D */
+    uint8_t script_ptr; /* zScriptPtr: the pointer scripts and demo records are read through; low */
+    uint8_t script_ptr_hi; /* zScriptPtrHi */
     uint8_t field80; /* zField80 */
     uint8_t stage; /* zStage */
     uint8_t field82; /* zField82 */
@@ -235,6 +237,8 @@ _Static_assert(ZeroPageRec_BASE + offsetof(ZeroPageRec, wait_timer) + 0 == zWait
 _Static_assert(ZeroPageRec_BASE + offsetof(ZeroPageRec, wait_timer2) + 0 == zWaitTimer2, "ZeroPageRec.wait_timer2 is not at zWaitTimer2");
 _Static_assert(ZeroPageRec_BASE + offsetof(ZeroPageRec, wait_timer3) + 0 == zWaitTimer3, "ZeroPageRec.wait_timer3 is not at zWaitTimer3");
 _Static_assert(ZeroPageRec_BASE + offsetof(ZeroPageRec, wait_timer4) + 0 == zWaitTimer4, "ZeroPageRec.wait_timer4 is not at zWaitTimer4");
+_Static_assert(ZeroPageRec_BASE + offsetof(ZeroPageRec, script_ptr) + 0 == zScriptPtr, "ZeroPageRec.script_ptr is not at zScriptPtr");
+_Static_assert(ZeroPageRec_BASE + offsetof(ZeroPageRec, script_ptr_hi) + 0 == zScriptPtrHi, "ZeroPageRec.script_ptr_hi is not at zScriptPtrHi");
 _Static_assert(ZeroPageRec_BASE + offsetof(ZeroPageRec, field80) + 0 == zField80, "ZeroPageRec.field80 is not at zField80");
 _Static_assert(ZeroPageRec_BASE + offsetof(ZeroPageRec, stage) + 0 == zStage, "ZeroPageRec.stage is not at zStage");
 _Static_assert(ZeroPageRec_BASE + offsetof(ZeroPageRec, field82) + 0 == zField82, "ZeroPageRec.field82 is not at zField82");

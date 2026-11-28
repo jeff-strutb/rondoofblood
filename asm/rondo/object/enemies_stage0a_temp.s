@@ -59,7 +59,7 @@ FaceBreakAndRun:
 ; WAITS: no.
 ; Entry: X object. Exit: A $0B, N and Z from it, C 0.
 BreakWhenHit:
-    lda a:OBJ_27A8,x
+    lda a:OBJ_STATE,x
     cmp #$0B
     bcs BreakWhenHit_at0
     lda a:OBJ_31A0,x
@@ -69,12 +69,12 @@ BreakWhenHit:
     jsr VecClearObject
     dex
     stz a:OBJ_3250,x
-    stz a:OBJ_3408,x
-    stz a:OBJ_3460,x
+    stz a:OBJ_ANIM_STEP,x
+    stz a:OBJ_ANIM_TIMER,x
     lda #$40
     sta a:OBJ_3778,x
     lda #$0B
-    sta a:OBJ_27A8,x
+    sta a:OBJ_STATE,x
 BreakWhenHit_at0:
     rts
 
@@ -85,7 +85,7 @@ BreakWhenHit_at0:
 ; WAITS: no.
 ; Entry: X object. Exit: as the code jumped to; A the high byte, Y the doubled state.
 JumpByStateTableC:
-    lda a:OBJ_27A8,x
+    lda a:OBJ_STATE,x
     asl a
     tay
     lda a:$C058,y
@@ -129,9 +129,9 @@ StopWhenLanded:
     lda #$04
     jsr VecStopOnLanding
     bcc StopWhenLanded_at0
-    stz a:OBJ_3408,x
-    stz a:OBJ_3460,x
-    inc a:OBJ_27A8,x
+    stz a:OBJ_ANIM_STEP,x
+    stz a:OBJ_ANIM_TIMER,x
+    inc a:OBJ_STATE,x
 StopWhenLanded_at0:
     rts
 
@@ -147,7 +147,7 @@ WalkAndAttackA:
     jsr WalkByPhase
     jsr ChooseAttackByDistance
     lda a:OBJ_3618,x
-    sta a:OBJ_2AC0,x
+    sta a:OBJ_FACING_LEFT,x
     dec a:OBJ_3510,x
     bne WalkAndAttackA_at0
     lda #$B0
@@ -232,23 +232,23 @@ ChooseAttackByDistance:
     jsr VecDistanceYToPlayer
     cmp #$20
     bcs ChooseAttackByDistance_at0
-    stz a:OBJ_3408,x
-    stz a:OBJ_3460,x
+    stz a:OBJ_ANIM_STEP,x
+    stz a:OBJ_ANIM_TIMER,x
     lda #$01
     sta a:OBJ_3720,x
     lda #$04
-    sta a:OBJ_27A8,x
+    sta a:OBJ_STATE,x
     rts
 ChooseAttackByDistance_at0:
     jsr VecDistanceXToPlayer
     cmp #$18
     bcs ChooseAttackByDistance_at1
-    stz a:OBJ_3408,x
-    stz a:OBJ_3460,x
+    stz a:OBJ_ANIM_STEP,x
+    stz a:OBJ_ANIM_TIMER,x
     lda #$02
     sta a:OBJ_3720,x
     lda #$07
-    sta a:OBJ_27A8,x
+    sta a:OBJ_STATE,x
 ChooseAttackByDistance_at1:
     rts
 
@@ -263,7 +263,7 @@ WalkAndAttackB:
     jsr WalkByPhase
     jsr ChooseAttackByDistance
     lda a:OBJ_3618,x
-    sta a:OBJ_2AC0,x
+    sta a:OBJ_FACING_LEFT,x
     dec a:OBJ_3510,x
     bne WalkAndAttackB_at0
     lda #$B0
@@ -286,20 +286,20 @@ ChasePlayerA:
     cmp #$64
     bcs ChasePlayerA_at0
     lda #$05
-    sta a:OBJ_27A8,x
+    sta a:OBJ_STATE,x
 ChasePlayerA_at0:
     lda #$01
     jsr WalkByPhase
-    lda a:OBJ_2AC0,x
+    lda a:OBJ_FACING_LEFT,x
     sta a:OBJ_3618,x
     jsr ChooseNextMove
     jsr VecDistanceYToPlayer
     cmp #$40
     bcc ChasePlayerA_at1
-    stz a:OBJ_3408,x
-    stz a:OBJ_3460,x
+    stz a:OBJ_ANIM_STEP,x
+    stz a:OBJ_ANIM_TIMER,x
     lda #$03
-    sta a:OBJ_27A8,x
+    sta a:OBJ_STATE,x
 ChasePlayerA_at1:
     rts
 
@@ -314,11 +314,11 @@ ChasePlayerB:
     cmp #$78
     bcc ChasePlayerB_at0
     lda #$04
-    sta a:OBJ_27A8,x
+    sta a:OBJ_STATE,x
 ChasePlayerB_at0:
     lda #$01
     jsr WalkByPhase
-    lda a:OBJ_2AC0,x
+    lda a:OBJ_FACING_LEFT,x
     eor #$01
     sta a:OBJ_3618,x
     jsr ChooseNextMove
@@ -326,14 +326,14 @@ ChasePlayerB_at0:
 
 ; @routine 0A9D:1CF ChooseNextMove
 ; @run 71:C1CF
-; WHAT IT DOES: While the object in slot 0 is in OBJ_2800 state 1 and the player is $50 or more away along X and the distance sum is even, the
+; WHAT IT DOES: While the object in slot 0 is in OBJ_SUBSTATE state 1 and the player is $50 or more away along X and the distance sum is even, the
 ; object resets its animation and enters state 9; otherwise its wait OBJ_3568 counts down and at zero it resets, picks a new wait from the table
 ; at $C226 by the distance sum and its next state from the table at $C223 by a counter OBJ_37D0, which goes up one.
 ; HOW: DistanceXToPlayer, PlayerDistanceSum (twice, with the carry the compares left), table reads (bank 71).
 ; WAITS: no.
 ; Entry: X object, C entry (it reaches PlayerDistanceSum when a compare did not set it). Exit: the last compare, AND, DEC or INC.
 ChooseNextMove:
-    lda a:OBJ_2800
+    lda a:OBJ_SUBSTATE
     cmp #$01
     bne ChooseNextMove_at0
     jsr VecDistanceXToPlayer
@@ -342,16 +342,16 @@ ChooseNextMove:
     jsr VecPlayerDistanceSum
     and #$01
     bne ChooseNextMove_at0
-    stz a:OBJ_3408,x
-    stz a:OBJ_3460,x
+    stz a:OBJ_ANIM_STEP,x
+    stz a:OBJ_ANIM_TIMER,x
     lda #$09
-    sta a:OBJ_27A8,x
+    sta a:OBJ_STATE,x
     rts
 ChooseNextMove_at0:
     dec a:OBJ_3568,x
     bne ChooseNextMove_at1
-    stz a:OBJ_3408,x
-    stz a:OBJ_3460,x
+    stz a:OBJ_ANIM_STEP,x
+    stz a:OBJ_ANIM_TIMER,x
     jsr VecPlayerDistanceSum
     and #$03
     tay
@@ -363,7 +363,7 @@ ChooseNextMove_at0:
     lda a:$C21B,y
     tay
     lda a:$C223,y
-    sta a:OBJ_27A8,x
+    sta a:OBJ_STATE,x
     inc a:OBJ_37D0,x
 ChooseNextMove_at1:
     rts
@@ -383,22 +383,22 @@ StepAndLunge:
     jsr VecStepObjectFrames
     beq StepAndLunge_at0
     bcc StepAndLunge_at1
-    lda a:OBJ_2A68,x
+    lda a:OBJ_FRAME,x
     cmp #$07
     bne StepAndLunge_at1
     lda #$1F
     jsr VecSoundIfOnFirstScreen
-    ldy a:OBJ_2AC0,x
+    ldy a:OBJ_FACING_LEFT,x
     lda a:$C25E,y
     sta a:OBJ_VX_HI,x
     jsr BounceWithHeight4
 StepAndLunge_at1:
     rts
 StepAndLunge_at0:
-    stz a:OBJ_3408,x
-    stz a:OBJ_3460,x
+    stz a:OBJ_ANIM_STEP,x
+    stz a:OBJ_ANIM_TIMER,x
     lda #$04
-    sta a:OBJ_27A8,x
+    sta a:OBJ_STATE,x
     rts
 
 ; @routine 0A9D:269 WalkThenTurn
@@ -411,16 +411,16 @@ StepAndLunge_at0:
 WalkThenTurn:
     lda #$02
     jsr WalkByPhase
-    lda a:OBJ_2AC0,x
+    lda a:OBJ_FACING_LEFT,x
     sta a:OBJ_3618,x
     jsr TurnWhenWaitEnds
     jsr VecDistanceXToPlayer
     cmp #$48
     bcc WalkThenTurn_at0
-    stz a:OBJ_3408,x
-    stz a:OBJ_3460,x
+    stz a:OBJ_ANIM_STEP,x
+    stz a:OBJ_ANIM_TIMER,x
     lda #$03
-    sta a:OBJ_27A8,x
+    sta a:OBJ_STATE,x
 WalkThenTurn_at0:
     rts
 
@@ -433,13 +433,13 @@ WalkThenTurn_at0:
 TurnWhenWaitEnds:
     dec a:OBJ_3568,x
     bne TurnWhenWaitEnds_at0
-    stz a:OBJ_3408,x
-    stz a:OBJ_3460,x
+    stz a:OBJ_ANIM_STEP,x
+    stz a:OBJ_ANIM_TIMER,x
     jsr VecSideOfPlayer
     lsr a
     sta a:OBJ_3670,x
     lda #$08
-    sta a:OBJ_27A8,x
+    sta a:OBJ_STATE,x
 TurnWhenWaitEnds_at0:
     rts
 
@@ -461,7 +461,7 @@ StepAndShout:
     jsr VecStepObjectFrames
     beq StepAndShout_at0
     bcc StepAndShout_at1
-    lda a:OBJ_2A68,x
+    lda a:OBJ_FRAME,x
     cmp #$26
     beq StepAndShout_at2
     cmp #$2D
@@ -470,10 +470,10 @@ StepAndShout_at2:
     lda #$1F
     jmp VecSoundIfOnFirstScreen
 StepAndShout_at0:
-    stz a:OBJ_3408,x
-    stz a:OBJ_3460,x
+    stz a:OBJ_ANIM_STEP,x
+    stz a:OBJ_ANIM_TIMER,x
     lda #$07
-    sta a:OBJ_27A8,x
+    sta a:OBJ_STATE,x
     jsr VecPlayerDistanceSum
     and #$03
     tay
@@ -502,10 +502,10 @@ StepWithArmor:
     lda a:OBJ_3148,x
     and #$FC
     sta a:OBJ_3148,x
-    stz a:OBJ_3408,x
-    stz a:OBJ_3460,x
+    stz a:OBJ_ANIM_STEP,x
+    stz a:OBJ_ANIM_TIMER,x
     lda #$05
-    sta a:OBJ_27A8,x
+    sta a:OBJ_STATE,x
 StepWithArmor_at0:
     rts
 
@@ -527,13 +527,13 @@ StepAndPounce:
     jsr VecStepObjectFrames
     beq StepAndPounce_at0
     bcc StepAndPounce_at1
-    lda a:OBJ_2A68,x
+    lda a:OBJ_FRAME,x
     cmp #$0E
     bne StepAndPounce_at2
     lda #$1A
     jsr VecSoundIfOnFirstScreen
 StepAndPounce_at2:
-    lda a:OBJ_2A68,x
+    lda a:OBJ_FRAME,x
     sec
     sbc #$0C
     cmp #$02
@@ -541,7 +541,7 @@ StepAndPounce_at2:
     asl a
     asl a
     sta z:zTemp00
-    lda a:OBJ_2AC0,x
+    lda a:OBJ_FACING_LEFT,x
     asl a
     clc
     adc z:zTemp00
@@ -556,10 +556,10 @@ StepAndPounce_at1:
 StepAndPounce_at0:
     lda #$02
     sta a:OBJ_3358+1,x
-    stz a:OBJ_3408,x
-    stz a:OBJ_3460,x
+    stz a:OBJ_ANIM_STEP,x
+    stz a:OBJ_ANIM_TIMER,x
     lda #$04
-    sta a:OBJ_27A8,x
+    sta a:OBJ_STATE,x
     rts
 
 ; @routine 0A9D:3DA FlashAndCount
@@ -633,11 +633,11 @@ ShootArrow:
 ; WAITS: no.
 ; Entry: X object, Y kept unless a callee sets it. Exit: see the wrapper.
 FollowPartner:
-    lda a:OBJ_27A8,x
+    lda a:OBJ_STATE,x
     bne FollowPartner_at0
     jmp VecLoadObjectRecord
 FollowPartner_at0:
-    lda a:OBJ_33B0,x
+    lda a:OBJ_HIT_TAKEN,x
     cmp #$02
     bcc FollowPartner_at1
     lda #$12
@@ -656,15 +656,15 @@ FollowPartner_at1:
     asl a
     tay
     lda a:$C4AA,y
-    sta a:OBJ_3930,x
+    sta a:OBJ_HITBOX_DX,x
     lda a:$C4AB,y
-    sta a:OBJ_39E0,x
+    sta a:OBJ_HITBOX_DY,x
     lda a:$C4AC,y
-    sta a:OBJ_3988,x
+    sta a:OBJ_HITBOX_HALF_W,x
     lda a:$C4AD,y
-    sta a:OBJ_3A38,x
+    sta a:OBJ_HITBOX_HALF_H,x
     lda a:$2ABF,x
-    sta a:OBJ_2AC0,x
+    sta a:OBJ_FACING_LEFT,x
     lda a:$324F,x
     sta a:OBJ_3250,x
     lda a:$274F,x
@@ -682,7 +682,7 @@ FollowPartner_at2:
 ; WAITS: no.
 ; Entry: X object, Y the probe's column, C passed to the lookup. Exit: see the wrapper.
 HopAndSettle:
-    lda a:OBJ_27A8,x
+    lda a:OBJ_STATE,x
     beq HopAndSettle_at0
     lda a:OBJ_Y_HI,x
     bne HopAndSettle_at0
@@ -737,18 +737,18 @@ HopAndSettle_at0:
 SetHitboxByFrame:
     lda #$02
     sta a:OBJ_3250,x
-    lda a:OBJ_2A68,x
+    lda a:OBJ_FRAME,x
     cmp #$86
     bcs SetHitboxByFrame_at0
     sec
     sbc #$80
     tay
     lda a:$CD39,y
-    sta a:OBJ_3930,x
+    sta a:OBJ_HITBOX_DX,x
     rts
 SetHitboxByFrame_at0:
     stz a:OBJ_3250,x
-    stz a:OBJ_3930,x
+    stz a:OBJ_HITBOX_DX,x
     rts
 
 ; @routine 0A9E:53F StartKnifeThrower
@@ -794,7 +794,7 @@ StartKnifeThrower_at0:
     sta a:OBJ_3040,x
     and #$01
     eor #$01
-    sta a:OBJ_2AC0,x
+    sta a:OBJ_FACING_LEFT,x
     jsr ThrowByNextKindB
     jsr PickTimersAtRandomB
     jsr PickAngleAtRandomB
@@ -824,10 +824,10 @@ CountDownThenAdvance:
     ora a:OBJ_3510,x
     bne CountDownThenAdvance_at0
     jsr PickTimersAtRandomB
-    stz a:OBJ_3408,x
-    stz a:OBJ_3460,x
+    stz a:OBJ_ANIM_STEP,x
+    stz a:OBJ_ANIM_TIMER,x
     lda #$02
-    sta a:OBJ_27A8,x
+    sta a:OBJ_STATE,x
     rts
 CountDownThenAdvance_at0:
     lda a:OBJ_3510,x
@@ -842,7 +842,7 @@ CountDownThenAdvance_at0:
 ; @routine 0A9E:61E CountDownAngleThenAdvance
 ; @run 71:CE1E
 ; WHAT IT DOES: With the object's X high byte 0, a 16-bit wait (OBJ_3568 high, OBJ_35C0 low) counts down; at zero it picks a new angle
-; (PickAngleAtRandomB), stops the animation, clears OBJ_2800 and enters state 3.
+; (PickAngleAtRandomB), stops the animation, clears OBJ_SUBSTATE and enters state 3.
 ; HOW: An ORA of the two bytes, a 16-bit subtract.
 ; Untraced: everything past the X high byte test.
 ; WAITS: no.
@@ -854,11 +854,11 @@ CountDownAngleThenAdvance:
     ora a:OBJ_35C0,x
     bne CountDownAngleThenAdvance_at1
     jsr PickAngleAtRandomB
-    stz a:OBJ_3408,x
-    stz a:OBJ_3460,x
-    stz a:OBJ_2800,x
+    stz a:OBJ_ANIM_STEP,x
+    stz a:OBJ_ANIM_TIMER,x
+    stz a:OBJ_SUBSTATE,x
     lda #$03
-    sta a:OBJ_27A8,x
+    sta a:OBJ_STATE,x
     rts
 CountDownAngleThenAdvance_at1:
     lda a:OBJ_35C0,x

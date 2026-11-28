@@ -31,7 +31,7 @@ CountThenTileScript:
     inc a
     cly
     jsr VecDrawTileScript
-    inc a:OBJ_27A8,x
+    inc a:OBJ_STATE,x
 CountThenTileScript_at0:
     rts
 
@@ -65,7 +65,7 @@ StepWithGuardTable:
     jsr EnterStateFiveOnPlayerState9
     jsr SetHitboxFromFrame
     jsr JumpByStateTableD
-    ldy a:OBJ_2A68,x
+    ldy a:OBJ_FRAME,x
     lda a:$B1B3,y
     beq StepWithGuardTable_at0
     phx
@@ -79,28 +79,28 @@ StepWithGuardTable_at0:
 
 ; @routine 0CAB:203 StartWhenHurt
 ; @run 70:B203
-; WHAT IT DOES: An object in state 3 that has taken a hit of 5 or more resets its animation, enters state 6 and clears OBJ_2800.
+; WHAT IT DOES: An object in state 3 that has taken a hit of 5 or more resets its animation, enters state 6 and clears OBJ_SUBSTATE.
 ; HOW: Two compares.
 ; WAITS: no.
 ; Entry: X object. Exit: the last compare or load.
 StartWhenHurt:
-    lda a:OBJ_27A8,x
+    lda a:OBJ_STATE,x
     cmp #$03
     bne StartWhenHurt_at0
-    lda a:OBJ_33B0,x
+    lda a:OBJ_HIT_TAKEN,x
     cmp #$05
     bcc StartWhenHurt_at0
-    stz a:OBJ_3408,x
-    stz a:OBJ_3460,x
+    stz a:OBJ_ANIM_STEP,x
+    stz a:OBJ_ANIM_TIMER,x
     lda #$06
-    sta a:OBJ_27A8,x
-    stz a:OBJ_2800,x
+    sta a:OBJ_STATE,x
+    stz a:OBJ_SUBSTATE,x
 StartWhenHurt_at0:
     rts
 
 ; @routine 0CAB:220 EnterStateSevenOnFlag
 ; @run 70:B220
-; WHAT IT DOES: When bit 7 of the object's status flags is set and its state is below 7, it faces right, resets its animation, enters state 7 and clears OBJ_2800.
+; WHAT IT DOES: When bit 7 of the object's status flags is set and its state is below 7, it faces right, resets its animation, enters state 7 and clears OBJ_SUBSTATE.
 ; HOW: Two compares.
 ; Untraced: every arm past the flag test (B227 to B23E).
 ; WAITS: no.
@@ -109,15 +109,15 @@ EnterStateSevenOnFlag:
     lda a:OBJ_31A0,x
     and #$80
     beq EnterStateSevenOnFlag_at0
-    lda a:OBJ_27A8,x
+    lda a:OBJ_STATE,x
     cmp #$07
     bcs EnterStateSevenOnFlag_at0
-    stz a:OBJ_2AC0,x
-    stz a:OBJ_3408,x
-    stz a:OBJ_3460,x
+    stz a:OBJ_FACING_LEFT,x
+    stz a:OBJ_ANIM_STEP,x
+    stz a:OBJ_ANIM_TIMER,x
     lda #$07
-    sta a:OBJ_27A8,x
-    stz a:OBJ_2800,x
+    sta a:OBJ_STATE,x
+    stz a:OBJ_SUBSTATE,x
 EnterStateSevenOnFlag_at0:
     rts
 
@@ -128,7 +128,7 @@ EnterStateSevenOnFlag_at0:
 ; WAITS: no.
 ; Entry: X object. Exit: as the code jumped to; A the high byte, Y the doubled state.
 JumpByStateTableD:
-    lda a:OBJ_27A8,x
+    lda a:OBJ_STATE,x
     asl a
     tay
     lda a:$B2F4,y
@@ -173,18 +173,18 @@ CountThenCue:
     lda #$80
     sta a:OBJ_3568,x
     stz a:OBJ_35C0,x
-    inc a:OBJ_27A8,x
+    inc a:OBJ_STATE,x
 CountThenCue_at0:
     rts
 
 ; @routine 0CAB:339 SlideTurnByTable
 ; @run 70:B339
 ; WHAT IT DOES: Steps the animation list at $B3E0, sets the object's Y to $0070 and its Y speed to the cosine of the angle OBJ_3510 scaled by the 16-bit
-; length OBJ_3568:OBJ_35C0, moves it in Y, turns the angle half a circle, and runs the code a table at $B383 names for OBJ_2800 (SlideAngleDown,
+; length OBJ_3568:OBJ_35C0, moves it in Y, turns the angle half a circle, and runs the code a table at $B383 names for OBJ_SUBSTATE (SlideAngleDown,
 ; SlideAngleUp, TurnAngleBack).
 ; HOW: StepObjectFrames, ScaleByCosine, ApplyVelocityY, then a jump through the table.
 ; WAITS: no.
-; Entry: X object. Exit: as the code jumped to; Y the doubled OBJ_2800.
+; Entry: X object. Exit: as the code jumped to; Y the doubled OBJ_SUBSTATE.
 SlideTurnByTable:
     lda #$E0
     sta z:zTemp10
@@ -208,7 +208,7 @@ SlideTurnByTable:
     lda a:OBJ_3510,x
     eor #$80
     sta a:OBJ_3510,x
-    lda a:OBJ_2800,x
+    lda a:OBJ_SUBSTATE,x
     asl a
     tay
     lda a:$B383,y
@@ -220,7 +220,7 @@ SlideTurnByTable:
 ; @routine 0CAB:389 SlideAngleDown
 ; @run 70:B389
 ; WHAT IT DOES: Takes one off the 16-bit angle word (OBJ_3568 high, OBJ_35C0 low, in steps of $0100 less 0 on the low byte as the code subtracts $0100); when the high byte
-; reaches 0 the object's OBJ_2800 goes up one.
+; reaches 0 the object's OBJ_SUBSTATE goes up one.
 ; HOW: A 16-bit subtract.
 ; WAITS: no.
 ; Entry: X object. Exit: the last subtract or INC.
@@ -233,13 +233,13 @@ SlideAngleDown:
     sbc #$01
     sta a:OBJ_3568,x
     bne SlideAngleDown_at0
-    inc a:OBJ_2800,x
+    inc a:OBJ_SUBSTATE,x
 SlideAngleDown_at0:
     rts
 
 ; @routine 0CAB:3A0 SlideAngleUp
 ; @run 70:B3A0
-; WHAT IT DOES: Adds $00C0 to the 16-bit angle word (OBJ_3568 high, OBJ_35C0 low); once the high byte reaches $10 the object's OBJ_2800 goes up one.
+; WHAT IT DOES: Adds $00C0 to the 16-bit angle word (OBJ_3568 high, OBJ_35C0 low); once the high byte reaches $10 the object's OBJ_SUBSTATE goes up one.
 ; HOW: A 16-bit add and a compare.
 ; WAITS: no.
 ; Entry: X object. Exit: the compare or the INC.
@@ -253,16 +253,16 @@ SlideAngleUp:
     sta a:OBJ_3568,x
     cmp #$10
     bcc SlideAngleUp_at0
-    inc a:OBJ_2800,x
+    inc a:OBJ_SUBSTATE,x
 SlideAngleUp_at0:
     rts
 ; @routine 0CAB:3E5 StepPhaseThenPause
 ; @run 70:B3E5
-; WHAT IT DOES: Runs the code OBJ_2800 names (JumpByPhaseTable); afterwards a pause counter OBJ_36C8 counts down, and at zero it is set from a table at $B406 picked at random, the state is 4
-; and OBJ_2800 is 0.
+; WHAT IT DOES: Runs the code OBJ_SUBSTATE names (JumpByPhaseTable); afterwards a pause counter OBJ_36C8 counts down, and at zero it is set from a table at $B406 picked at random, the state is 4
+; and OBJ_SUBSTATE is 0.
 ; HOW: JumpByPhaseTable, NextRandom, a table read (bank 70).
 ; WAITS: no.
-; Entry: X object. Exit: the count; at zero, the OBJ_2800 clear.
+; Entry: X object. Exit: the count; at zero, the OBJ_SUBSTATE clear.
 StepPhaseThenPause:
     jsr JumpByPhaseTable
     lda a:OBJ_36C8,x
@@ -276,18 +276,18 @@ StepPhaseThenPause_at0:
     lda a:$B406,y
     sta a:OBJ_36C8,x
     lda #$04
-    sta a:OBJ_27A8,x
-    stz a:OBJ_2800,x
+    sta a:OBJ_STATE,x
+    stz a:OBJ_SUBSTATE,x
     rts
 
 ; @routine 0CAB:40A JumpByPhaseTable
 ; @run 70:B40A
-; WHAT IT DOES: Goes to the code a table at $B41C names for OBJ_2800.
+; WHAT IT DOES: Goes to the code a table at $B41C names for OBJ_SUBSTATE.
 ; HOW: The table's two bytes go to zTemp00-01 and the code is jumped through them.
 ; WAITS: no.
-; Entry: X object. Exit: as the code jumped to; A the high byte, Y the doubled OBJ_2800.
+; Entry: X object. Exit: as the code jumped to; A the high byte, Y the doubled OBJ_SUBSTATE.
 JumpByPhaseTable:
-    lda a:OBJ_2800,x
+    lda a:OBJ_SUBSTATE,x
     asl a
     tay
     lda a:$B41C,y
@@ -299,10 +299,10 @@ JumpByPhaseTable:
 ; @routine 0CAB:422 AimAtPlayerThenArm
 ; @run 70:B422
 ; WHAT IT DOES: Takes OBJ_3510 as the angle to the player (a random one on three counts out of four, by OBJ_3670 and 3), sets the angle word from a table at $B44F by
-; OBJ_3670 and 3, and moves OBJ_3670 and OBJ_2800 on.
+; OBJ_3670 and 3, and moves OBJ_3670 and OBJ_SUBSTATE on.
 ; HOW: AngleToPlayer, NextRandom, table reads (bank 70).
 ; WAITS: no.
-; Entry: X object. Exit: N and Z of the new OBJ_2800; A the table's low byte, Y the table index, C 0.
+; Entry: X object. Exit: N and Z of the new OBJ_SUBSTATE; A the table's low byte, Y the table index, C 0.
 AimAtPlayerThenArm:
     jsr VecAngleToPlayer
     sta a:OBJ_3510,x
@@ -321,14 +321,14 @@ AimAtPlayerThenArm_at0:
     lda a:$B44F,y
     sta a:OBJ_35C0,x
     inc a:OBJ_3670,x
-    inc a:OBJ_2800,x
+    inc a:OBJ_SUBSTATE,x
     rts
 
 ; @routine 0CAB:457 MoveAlongAndSlow
 ; @run 70:B457
 ; WHAT IT DOES: Moves the object along its angle OBJ_3510 by the 16-bit length OBJ_3568:OBJ_35C0. Outside the screen box (InsideScreenBox) it clears OBJ_3670
-; and OBJ_2800 and stops. Inside, it takes a byte of a table at $B4A0 (picked by OBJ_3670 and 7) off the length, and when the length runs out
-; it sets the timer from a table at $B4A8 picked at random and goes on to the next OBJ_2800.
+; and OBJ_SUBSTATE and stops. Inside, it takes a byte of a table at $B4A0 (picked by OBJ_3670 and 7) off the length, and when the length runs out
+; it sets the timer from a table at $B4A8 picked at random and goes on to the next OBJ_SUBSTATE.
 ; HOW: SetVelocityFromAngle, ApplyVelocity, InsideScreenBox, a 16-bit subtract, NextRandom, table reads (bank 70).
 ; Untraced: the outside arm (B46F).
 ; WAITS: no.
@@ -344,7 +344,7 @@ MoveAlongAndSlow:
     jsr InsideScreenBox
     bcc MoveAlongAndSlow_at0
     stz a:OBJ_3670,x
-    stz a:OBJ_2800,x
+    stz a:OBJ_SUBSTATE,x
     rts
 MoveAlongAndSlow_at0:
     lda a:OBJ_3670,x
@@ -363,7 +363,7 @@ MoveAlongAndSlow_at0:
     tay
     lda a:$B4A8,y
     sta a:OBJ_34B8,x
-    inc a:OBJ_2800,x
+    inc a:OBJ_SUBSTATE,x
 MoveAlongAndSlow_at1:
     rts
 
@@ -397,20 +397,20 @@ InsideScreenBox_at0:
 
 ; @routine 0CAB:4CE CountThenStop
 ; @run 70:B4CE
-; WHAT IT DOES: Counts the object's timer down; at zero it clears OBJ_2800.
+; WHAT IT DOES: Counts the object's timer down; at zero it clears OBJ_SUBSTATE.
 ; HOW: DEC and a store.
 ; WAITS: no.
 ; Entry: X object. Exit: N and Z from the count.
 CountThenStop:
     dec a:OBJ_34B8,x
     bne CountThenStop_at0
-    stz a:OBJ_2800,x
+    stz a:OBJ_SUBSTATE,x
 CountThenStop_at0:
     rts
 
 ; @routine 0CAB:509 PickNextMoveBySide
 ; @run 70:B509
-; WHAT IT DOES: Faces the player (bit 0 of SideOfPlayer), picks OBJ_2800 from a table at $B52C by the object's hit points halved (the high nibble) and a counter OBJ_3720 (the low
+; WHAT IT DOES: Faces the player (bit 0 of SideOfPlayer), picks OBJ_SUBSTATE from a table at $B52C by the object's hit points halved (the high nibble) and a counter OBJ_3720 (the low
 ; nibble), and counts the counter up.
 ; HOW: SideOfPlayer, table read (bank 70).
 ; WAITS: no.
@@ -418,7 +418,7 @@ CountThenStop_at0:
 PickNextMoveBySide:
     jsr VecSideOfPlayer
     and #$01
-    sta a:OBJ_2AC0,x
+    sta a:OBJ_FACING_LEFT,x
     lda a:OBJ_32A8,x
     lsr a
     and #$F0
@@ -429,16 +429,16 @@ PickNextMoveBySide:
     adc z:zTemp00
     tay
     lda a:$B52C,y
-    sta a:OBJ_2800,x
+    sta a:OBJ_SUBSTATE,x
     inc a:OBJ_3720,x
     rts
 
 ; @routine 0CAB:55C StepThenSpawnShot
 ; @run 70:B55C
-; WHAT IT DOES: Steps the animation list at $B582; when it ends, starts a kind $28 object at its place in slot $12 with a timer of 1 and its facing, and moves OBJ_2800 on.
+; WHAT IT DOES: Steps the animation list at $B582; when it ends, starts a kind $28 object at its place in slot $12 with a timer of 1 and its facing, and moves OBJ_SUBSTATE on.
 ; HOW: StepObjectFrames, ClearObjectInY, StartObjectAtPlace.
 ; WAITS: no.
-; Entry: X object, Y kept unless a callee sets it. Exit: list running: as the step; ended: N and Z of the new OBJ_2800.
+; Entry: X object, Y kept unless a callee sets it. Exit: list running: as the step; ended: N and Z of the new OBJ_SUBSTATE.
 StepThenSpawnShot:
     lda #$82
     sta z:zTemp10
@@ -452,9 +452,9 @@ StepThenSpawnShot:
     jsr VecStartObjectAtPlace
     lda #$01
     sta a:OBJ_34B8,y
-    lda a:OBJ_2AC0,x
-    sta a:OBJ_2AC0,y
-    inc a:OBJ_2800,x
+    lda a:OBJ_FACING_LEFT,x
+    sta a:OBJ_FACING_LEFT,y
+    inc a:OBJ_SUBSTATE,x
 StepThenSpawnShot_at0:
     rts
 
@@ -474,16 +474,16 @@ StartShotsUnlessThere:
 
 ; @routine 0CAB:5A0 ResetToStateThree
 ; @run 70:B5A0
-; WHAT IT DOES: Sets the object's frame to 1, its state to 3 and clears OBJ_2800.
+; WHAT IT DOES: Sets the object's frame to 1, its state to 3 and clears OBJ_SUBSTATE.
 ; HOW: Three stores.
 ; WAITS: no.
 ; Entry: X object. Exit: A 3, N and Z from it.
 ResetToStateThree:
     lda #$01
-    sta a:OBJ_2A68,x
+    sta a:OBJ_FRAME,x
     lda #$03
-    sta a:OBJ_27A8,x
-    stz a:OBJ_2800,x
+    sta a:OBJ_STATE,x
+    stz a:OBJ_SUBSTATE,x
 ResetToStateThree_at0:
     rts
 
@@ -500,8 +500,8 @@ StartThreeShots_at0:
     jsr VecClearObjectInY
     lda #$26
     jsr VecStartObjectAtPlace
-    lda a:OBJ_2AC0,x
-    sta a:OBJ_2AC0,y
+    lda a:OBJ_FACING_LEFT,x
+    sta a:OBJ_FACING_LEFT,y
     lda z:zTemp00
     sta a:OBJ_34B8,y
     inc z:zTemp00
@@ -511,10 +511,10 @@ StartThreeShots_at0:
     rts
 ; @routine 0CAB:5CD StepThenWaitLonger
 ; @run 70:B5CD
-; WHAT IT DOES: Steps the animation list at $B5E6; when it ends the object's frame is 0, its timer $30 and OBJ_2800 goes on.
+; WHAT IT DOES: Steps the animation list at $B5E6; when it ends the object's frame is 0, its timer $30 and OBJ_SUBSTATE goes on.
 ; HOW: StepObjectFrames and stores.
 ; WAITS: no.
-; Entry: X object, Y kept unless the step sets it. Exit: list running: as the step; ended: N and Z of the new OBJ_2800.
+; Entry: X object, Y kept unless the step sets it. Exit: list running: as the step; ended: N and Z of the new OBJ_SUBSTATE.
 StepThenWaitLonger:
     lda #$E6
     sta z:zTemp10
@@ -522,17 +522,17 @@ StepThenWaitLonger:
     sta z:zTemp11
     jsr VecStepObjectFrames
     bne StepThenWaitLonger_at0
-    stz a:OBJ_2A68,x
+    stz a:OBJ_FRAME,x
     lda #$30
     sta a:OBJ_34B8,x
-    inc a:OBJ_2800,x
+    inc a:OBJ_SUBSTATE,x
 StepThenWaitLonger_at0:
     rts
 
 ; @routine 0CAB:5F1 FlickerAndStartPieces
 ; @run 70:B5F1
 ; WHAT IT DOES: Counts the object's timer down; while it runs it starts up to two pieces (StartTwoPieces) and, when the timer is $18, moves the object to a random
-; place (X and Y low bytes from a table at $B623, high bytes 0); at zero OBJ_2800 moves on.
+; place (X and Y low bytes from a table at $B623, high bytes 0); at zero OBJ_SUBSTATE moves on.
 ; HOW: DEC, StartTwoPieces, NextRandom twice, table reads (bank 70).
 ; WAITS: no.
 ; Entry: X object. Exit: the last compare, load or INC.
@@ -557,7 +557,7 @@ FlickerAndStartPieces:
     sta a:OBJ_Y_LO,x
     rts
 FlickerAndStartPieces_at0:
-    inc a:OBJ_2800,x
+    inc a:OBJ_SUBSTATE,x
     rts
 
 ; @routine 0CAB:62B StartTwoPieces
@@ -580,7 +580,7 @@ StartTwoPieces_at0:
 
 ; @routine 0CAB:640 StepThenRest
 ; @run 70:B640
-; WHAT IT DOES: Steps the animation list at $B65B; when it ends the object shows frame 1, enters state 3 and clears OBJ_2800.
+; WHAT IT DOES: Steps the animation list at $B65B; when it ends the object shows frame 1, enters state 3 and clears OBJ_SUBSTATE.
 ; HOW: StepObjectFrames and three stores.
 ; WAITS: no.
 ; Entry: X object, Y kept unless the step sets it. Exit: list running: as the step; ended: A 3.
@@ -592,19 +592,19 @@ StepThenRest:
     jsr VecStepObjectFrames
     bne StepThenRest_at0
     lda #$01
-    sta a:OBJ_2A68,x
+    sta a:OBJ_FRAME,x
     lda #$03
-    sta a:OBJ_27A8,x
-    stz a:OBJ_2800,x
+    sta a:OBJ_STATE,x
+    stz a:OBJ_SUBSTATE,x
 StepThenRest_at0:
     rts
 
 ; @routine 0CAB:666 StepThenThrowShot
 ; @run 70:B666
-; WHAT IT DOES: Steps the animation list at $B582; when it ends, starts a kind $28 object at its place in slot $12 with its facing and moves OBJ_2800 on.
+; WHAT IT DOES: Steps the animation list at $B582; when it ends, starts a kind $28 object at its place in slot $12 with its facing and moves OBJ_SUBSTATE on.
 ; HOW: StepObjectFrames, ClearObjectInY, StartObjectAtPlace.
 ; WAITS: no.
-; Entry: X object, Y kept unless a callee sets it. Exit: list running: as the step; ended: N and Z of the new OBJ_2800.
+; Entry: X object, Y kept unless a callee sets it. Exit: list running: as the step; ended: N and Z of the new OBJ_SUBSTATE.
 StepThenThrowShot:
     lda #$82
     sta z:zTemp10
@@ -616,18 +616,18 @@ StepThenThrowShot:
     jsr VecClearObjectInY
     lda #$28
     jsr VecStartObjectAtPlace
-    lda a:OBJ_2AC0,x
-    sta a:OBJ_2AC0,y
-    inc a:OBJ_2800,x
+    lda a:OBJ_FACING_LEFT,x
+    sta a:OBJ_FACING_LEFT,y
+    inc a:OBJ_SUBSTATE,x
 StepThenThrowShot_at0:
     rts
 
 ; @routine 0CAB:687 SinkWhenPartnerGone
 ; @run 70:B687
-; WHAT IT DOES: When slot $12's kind is not $28 the object sinks (SinkToLimit), its timer becomes $30 and OBJ_2800 moves on.
+; WHAT IT DOES: When slot $12's kind is not $28 the object sinks (SinkToLimit), its timer becomes $30 and OBJ_SUBSTATE moves on.
 ; HOW: A compare, SinkToLimit, two stores.
 ; WAITS: no.
-; Entry: X object. Exit: the compare's flags, or N and Z of the new OBJ_2800.
+; Entry: X object. Exit: the compare's flags, or N and Z of the new OBJ_SUBSTATE.
 SinkWhenPartnerGone:
     lda a:$2762
     cmp #$28
@@ -635,7 +635,7 @@ SinkWhenPartnerGone:
     jsr SinkToLimit
     lda #$30
     sta a:OBJ_34B8,x
-    inc a:OBJ_2800,x
+    inc a:OBJ_SUBSTATE,x
 SinkWhenPartnerGone_at0:
     rts
 
@@ -658,7 +658,7 @@ SinkToLimit_at0:
 
 ; @routine 0CAB:6AB SinkAndShootThenRestart
 ; @run 70:B6AB
-; WHAT IT DOES: ShootEveryFourth and SinkToLimit; the timer counts down and at zero the object shows frame 1, enters state 3 and clears OBJ_2800.
+; WHAT IT DOES: ShootEveryFourth and SinkToLimit; the timer counts down and at zero the object shows frame 1, enters state 3 and clears OBJ_SUBSTATE.
 ; HOW: The two calls, a DEC and three stores.
 ; WAITS: no.
 ; Entry: X object, Y the sound driver's. Exit: see the wrapper.
@@ -668,10 +668,10 @@ SinkAndShootThenRestart:
     dec a:OBJ_34B8,x
     bne SinkAndShootThenRestart_at0
     lda #$01
-    sta a:OBJ_2A68,x
+    sta a:OBJ_FRAME,x
     lda #$03
-    sta a:OBJ_27A8,x
-    stz a:OBJ_2800,x
+    sta a:OBJ_STATE,x
+    stz a:OBJ_SUBSTATE,x
 SinkAndShootThenRestart_at0:
     rts
 
@@ -696,8 +696,8 @@ ShootEveryFourth:
     jsr VecSoundCommand
     lda #$27
     jsr VecStartObjectAtPlace
-    lda a:OBJ_2AC0,x
-    sta a:OBJ_2AC0,y
+    lda a:OBJ_FACING_LEFT,x
+    sta a:OBJ_FACING_LEFT,y
     lda a:OBJ_3778,x
     and #$07
     sta a:OBJ_3040,y
@@ -724,27 +724,27 @@ StepThenThrowSlowShot:
     jsr VecStartObjectAtPlace
     lda #$02
     sta a:OBJ_34B8,y
-    lda a:OBJ_2AC0,x
-    sta a:OBJ_2AC0,y
-    inc a:OBJ_2800,x
+    lda a:OBJ_FACING_LEFT,x
+    sta a:OBJ_FACING_LEFT,y
+    inc a:OBJ_SUBSTATE,x
 StepThenThrowSlowShot_at0:
     rts
 
 ; @routine 0CAB:719 SetLongWait
 ; @run 70:B719
-; WHAT IT DOES: Sets the object's timer to $40 and moves OBJ_2800 on.
+; WHAT IT DOES: Sets the object's timer to $40 and moves OBJ_SUBSTATE on.
 ; HOW: A store and an INC.
 ; WAITS: no.
-; Entry: X object. Exit: N and Z from the new OBJ_2800, A $40.
+; Entry: X object. Exit: N and Z from the new OBJ_SUBSTATE, A $40.
 SetLongWait:
     lda #$40
     sta a:OBJ_34B8,x
-    inc a:OBJ_2800,x
+    inc a:OBJ_SUBSTATE,x
     rts
 
 ; @routine 0CAB:722 SinkThenRestart
 ; @run 70:B722
-; WHAT IT DOES: Drops a shot when a slot is free (DropShotWhenSlotFree), counts its timer down and at zero shows frame 1, enters state 3 and clears OBJ_2800.
+; WHAT IT DOES: Drops a shot when a slot is free (DropShotWhenSlotFree), counts its timer down and at zero shows frame 1, enters state 3 and clears OBJ_SUBSTATE.
 ; HOW: DropShotWhenSlotFree, DEC, three stores.
 ; WAITS: no.
 ; Entry: X object. Exit: the count's N and Z, or A 3 at zero.
@@ -753,10 +753,10 @@ SinkThenRestart:
     dec a:OBJ_34B8,x
     bne SinkThenRestart_at0
     lda #$01
-    sta a:OBJ_2A68,x
+    sta a:OBJ_FRAME,x
     lda #$03
-    sta a:OBJ_27A8,x
-    stz a:OBJ_2800,x
+    sta a:OBJ_STATE,x
+    stz a:OBJ_SUBSTATE,x
 SinkThenRestart_at0:
     rts
 
@@ -772,7 +772,7 @@ DropShotWhenSlotFree:
     bne DropShotWhenSlotFree_at0
     ldy #$30
 DropShotWhenSlotFree_at2:
-    lda a:OBJ_2750,y
+    lda a:OBJ_KIND,y
     beq DropShotWhenSlotFree_at1
     iny
     cpy #$36
@@ -799,23 +799,23 @@ StepThenRestB:
     jsr VecStepObjectFrames
     bne StepThenRestB_at0
     lda #$01
-    sta a:OBJ_2A68,x
+    sta a:OBJ_FRAME,x
     lda #$03
-    sta a:OBJ_27A8,x
-    stz a:OBJ_2800,x
+    sta a:OBJ_STATE,x
+    stz a:OBJ_SUBSTATE,x
 StepThenRestB_at0:
     rts
 ; @routine 0CAB:7CD LaunchThenFall
 ; @run 70:B7CD
 ; WHAT IT DOES: State 0: plays sound $C0, quarters OBJ_36C8, takes the angle to the player plus $80 as the object's angle with the length $0080 and goes on to the next
-; OBJ_2800. Later: when it has been hit five times (OBJ_33B0) it sets OBJ_2EE0 to 3, its state to 4 and OBJ_2800 to 9; else it moves and steps the animation list at $B829, and when the
-; list ends it sets its frame to 1, its state to 3 and OBJ_2800 to 0.
+; OBJ_SUBSTATE. Later: when it has been hit five times (OBJ_HIT_TAKEN) it sets OBJ_2EE0 to 3, its state to 4 and OBJ_SUBSTATE to 9; else it moves and steps the animation list at $B829, and when the
+; list ends it sets its frame to 1, its state to 3 and OBJ_SUBSTATE to 0.
 ; HOW: SoundCommand, LSR (twice), AngleToPlayer, SetVelocityFromAngle, ApplyVelocity, StepObjectFrames.
 ; Untraced: the hit arm (B7FB to B80A).
 ; WAITS: no.
 ; Entry: X object, Y kept unless a callee sets it. Exit: see abi_sound_end.
 LaunchThenFall:
-    lda a:OBJ_2800,x
+    lda a:OBJ_SUBSTATE,x
     bne LaunchThenFall_at0
     lda #$C0
     jsr VecSoundCommand
@@ -831,18 +831,18 @@ LaunchThenFall:
     sta z:zTemp01
     pla
     jsr VecSetVelocityFromAngle
-    inc a:OBJ_2800,x
+    inc a:OBJ_SUBSTATE,x
     rts
 LaunchThenFall_at0:
-    lda a:OBJ_33B0,x
+    lda a:OBJ_HIT_TAKEN,x
     cmp #$05
     bcc LaunchThenFall_at1
     lda #$03
     sta a:OBJ_FIELDS_2EE0,x
     lda #$04
-    sta a:OBJ_27A8,x
+    sta a:OBJ_STATE,x
     lda #$09
-    sta a:OBJ_2800,x
+    sta a:OBJ_SUBSTATE,x
     rts
 LaunchThenFall_at1:
     jsr VecApplyVelocity
@@ -853,10 +853,10 @@ LaunchThenFall_at1:
     jsr VecStepObjectFrames
     bne LaunchThenFall_at2
     lda #$01
-    sta a:OBJ_2A68,x
+    sta a:OBJ_FRAME,x
     lda #$03
-    sta a:OBJ_27A8,x
-    stz a:OBJ_2800,x
+    sta a:OBJ_STATE,x
+    stz a:OBJ_SUBSTATE,x
 LaunchThenFall_at2:
     rts
 
@@ -868,11 +868,11 @@ LaunchThenFall_at2:
 ; WAITS: no.
 ; Entry: X object. Exit: state 0: as LoadObjectRecord; else the last load or add.
 FollowAndFacePlayer:
-    lda a:OBJ_27A8,x
+    lda a:OBJ_STATE,x
     bne FollowAndFacePlayer_at0
     jmp VecLoadObjectRecord
 FollowAndFacePlayer_at0:
-    stz a:OBJ_2A68,x
+    stz a:OBJ_FRAME,x
     ldy a:$2A78
     lda a:$BAAF,y
     beq FollowAndFacePlayer_at1
@@ -888,7 +888,7 @@ FollowAndFacePlayer_at0:
     lsr a
     clc
     adc #$29
-    sta a:OBJ_2A68,x
+    sta a:OBJ_FRAME,x
 FollowAndFacePlayer_at1:
     rts
 
@@ -902,17 +902,17 @@ FollowAndFacePlayer_at1:
 ; WAITS: no.
 ; Entry: X object, Y the sound driver's. Exit: see the wrapper.
 StartSoundedPiece:
-    lda a:OBJ_27A8,x
+    lda a:OBJ_STATE,x
     bne StepOrClearByKind
     jsr VecLoadObjectRecord
     ldy a:OBJ_34B8,x
     lda a:$BB12,y
     jsr VecSoundCommand
-    ldy a:OBJ_2AC0,x
+    ldy a:OBJ_FACING_LEFT,x
     lda a:$BB10,y
     sta a:OBJ_VX_HI,x
     jsr VecApplyVelocityX
-    stz a:OBJ_2AC0,x
+    stz a:OBJ_FACING_LEFT,x
     rts
 
 ; @routine 0CAC:315 StepOrClearByKind
@@ -945,10 +945,10 @@ StepOrClearByKind_at0:
 ; WAITS: no.
 ; Entry: X object, Y kept unless a callee sets it. Exit: state 0: the last load or negate; else as StepListAndMove.
 StartSideDrifter:
-    lda a:OBJ_27A8,x
+    lda a:OBJ_STATE,x
     bne $BB97
     jsr VecLoadObjectRecord
-    ldy a:OBJ_2AC0,x
+    ldy a:OBJ_FACING_LEFT,x
     lda a:$BB89,y
     sta a:OBJ_VX_HI,x
     jsr VecApplyVelocityX
@@ -964,7 +964,7 @@ StartSideDrifter:
     sta a:OBJ_VY_HI,x
     lda a:$BB8D,y
     sta a:OBJ_VY_LO,x
-    lda a:OBJ_2AC0,x
+    lda a:OBJ_FACING_LEFT,x
     beq StartSideDrifter_at0
     jsr VecNegateVelocityX
 StartSideDrifter_at0:
@@ -994,7 +994,7 @@ StepListAndMove:
 ; WAITS: no.
 ; Entry: X object, Y kept unless a callee sets it. Exit: the last random's pick and table read.
 StartScatteringPiece:
-    lda a:OBJ_27A8,x
+    lda a:OBJ_STATE,x
     beq StartScatteringPiece_at0
     jmp StepMoveOrClear
 StartScatteringPiece_at0:
@@ -1065,7 +1065,7 @@ StartThrownPiece:
     lda a:OBJ_3250,x
     ora #$80
     sta a:OBJ_3250,x
-    ldy a:OBJ_2AC0,x
+    ldy a:OBJ_FACING_LEFT,x
     lda a:$BCD1,y
     sta a:OBJ_VX_HI,x
     lda #$18
@@ -1082,7 +1082,7 @@ StartThrownPiece:
     ldy a:OBJ_3040,x
     lda a:$BCE3,y
     jsr VecSetVelocityFromAngle
-    lda a:OBJ_2AC0,x
+    lda a:OBJ_FACING_LEFT,x
     beq StartThrownPiece_at0
     jsr VecNegateVelocityX
 StartThrownPiece_at0:
@@ -1092,7 +1092,7 @@ StartThrownPiece_at0:
 ; @run 70:BCEB
 ; WHAT IT DOES: Steps the animation list at $BD51; an object not on the first Y page is cleared; its hitbox half height comes from a table at $BD78 by the frame less $17; it moves, $0008 is added to
 ; its Y speed (gravity), and it asks the terrain: a wall (request $22, height 4) halves its X speed and reverses it (the shift of the 16-bit speed through the carry, then NegateVelocityX); else a floor
-; (request 9) stops its X speed, sets its timer to $40 and moves OBJ_2800 on.
+; (request 9) stops its X speed, sets its timer to $40 and moves OBJ_SUBSTATE on.
 ; HOW: StepObjectFrames, ApplyVelocity, ProbeTerrain twice, table read (bank 70), a tail jump into NegateVelocityX or ClearObject.
 ; WAITS: no.
 ; Entry: X object, Y kept unless the step sets it. Exit: see abi_chain.
@@ -1106,12 +1106,12 @@ BounceSparkOffWalls:
     beq BounceSparkOffWalls_at0
     jmp VecClearObject
 BounceSparkOffWalls_at0:
-    lda a:OBJ_2A68,x
+    lda a:OBJ_FRAME,x
     sec
     sbc #$17
     tay
     lda a:$BD78,y
-    sta a:OBJ_3A38,x
+    sta a:OBJ_HITBOX_HALF_H,x
     jsr VecApplyVelocity
     lda a:OBJ_VY_LO,x
     clc
@@ -1140,7 +1140,7 @@ BounceSparkOffWalls_at1:
     stz a:OBJ_VX_LO,x
     lda #$40
     sta a:OBJ_34B8,x
-    inc a:OBJ_27A8,x
+    inc a:OBJ_STATE,x
 BounceSparkOffWalls_at2:
     rts
 
@@ -1161,12 +1161,12 @@ StepCountClear:
     bne StepCountClear_at0
     jmp VecClearObject
 StepCountClear_at0:
-    lda a:OBJ_2A68,x
+    lda a:OBJ_FRAME,x
     sec
     sbc #$17
     tay
     lda a:$BD78,y
-    sta a:OBJ_3A38,x
+    sta a:OBJ_HITBOX_HALF_H,x
     rts
 
 ; @routine 0CAC:5B5 StartFallingSpark
@@ -1217,7 +1217,7 @@ TrackThenAimAtPlayer:
     sta z:zTemp01
     pla
     jsr VecSetVelocityFromAngle
-    inc a:OBJ_27A8,x
+    inc a:OBJ_STATE,x
     rts
 
 ; @routine 0CAC:60A TrackPointOrLand
@@ -1380,7 +1380,7 @@ OrbitThenLeave:
     clc
     adc #$80
     jsr VecSetVelocityFromAngle
-    inc a:OBJ_27A8,x
+    inc a:OBJ_STATE,x
 OrbitThenLeave_at0:
     rts
 
@@ -1395,18 +1395,18 @@ OrbitThenLeave_at0:
 ; WAITS: no.
 ; Entry: X object. Exit: see the wrapper.
 ShatterOnHits:
-    lda a:OBJ_27A8,x
+    lda a:OBJ_STATE,x
     bne ShatterOnHits_at0
     jsr VecLoadObjectRecord
     lda #$06
     sta a:OBJ_2A10,x
     lda #$01
-    sta a:OBJ_2A68,x
+    sta a:OBJ_FRAME,x
     lda #$04
     sta a:OBJ_VX_HI,x
     rts
 ShatterOnHits_at0:
-    lda a:OBJ_33B0,x
+    lda a:OBJ_HIT_TAKEN,x
     cmp #$05
     bcc ShatterOnHits_at1
     jsr VecRecordObjectEvent
@@ -1416,12 +1416,12 @@ ShatterOnHits_at0:
     ldy #$04
 ShatterOnHits_at2:
     lda a:$C160,y
-    sta a:OBJ_2750,x
-    stz a:OBJ_27A8,x
+    sta a:OBJ_KIND,x
+    stz a:OBJ_STATE,x
     stz a:OBJ_VX_HI,x
     stz a:OBJ_VX_LO,x
-    stz a:OBJ_3408,x
-    stz a:OBJ_3460,x
+    stz a:OBJ_ANIM_STEP,x
+    stz a:OBJ_ANIM_TIMER,x
     lda #$FB
     sta a:OBJ_VY_HI,x
     stz a:OBJ_VY_LO,x
@@ -1432,7 +1432,7 @@ ShatterOnHits_at2:
     lda #$9B
     jmp VecStartObjectAtPlace
 ShatterOnHits_at1:
-    lda a:OBJ_27A8,x
+    lda a:OBJ_STATE,x
     dec a
     bne $C135
     bsr StepPartList
@@ -1469,13 +1469,13 @@ DoNothing:
 ; WAITS: no.
 ; Entry: X object. Exit: see the wrapper.
 WatchVramForMark:
-    lda a:OBJ_27A8,x
+    lda a:OBJ_STATE,x
     bne WatchVramForMark_at0
     jsr VecLoadObjectRecord
     lda #$06
     sta a:OBJ_2A10,x
     lda #$07
-    sta a:OBJ_2A68,x
+    sta a:OBJ_FRAME,x
 WatchVramForMark_at0:
     jsr VecSelectVramReadAddress
     st1 #$FB

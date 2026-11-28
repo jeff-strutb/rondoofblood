@@ -1156,7 +1156,7 @@ StageBossWaitDoor152D:
     lda a:$283A
     cmp #$04
     bne StageBossWaitDoor152D_at0
-    lda a:OBJ_3408+2
+    lda a:OBJ_ANIM_STEP+2
     bne StageBossWaitDoor152D_at0
     lda #$20
     sta a:OBJ_3358
@@ -2894,12 +2894,12 @@ StageOpeningCopyRow152D_at0:
     lda a:$39C3,x
     and z:zTemp00
     sta a:$39C1,x
-    lda a:OBJ_39E0+2,x
+    lda a:OBJ_HITBOX_DY+2,x
     and z:zTemp00
-    sta a:OBJ_39E0,x
-    lda a:OBJ_39E0+3,x
+    sta a:OBJ_HITBOX_DY,x
+    lda a:OBJ_HITBOX_DY+3,x
     and z:zTemp00
-    sta a:OBJ_39E0+1,x
+    sta a:OBJ_HITBOX_DY+1,x
     inx
     inx
     dey
@@ -2929,12 +2929,12 @@ StageOpeningCopyRow152D_at6:
     lda a:$39C1,x
     and z:zTemp00
     sta a:$39C1,x
-    lda a:OBJ_39E0,x
+    lda a:OBJ_HITBOX_DY,x
     and z:zTemp00
-    sta a:OBJ_39E0,x
-    lda a:OBJ_39E0+1,x
+    sta a:OBJ_HITBOX_DY,x
+    lda a:OBJ_HITBOX_DY+1,x
     and z:zTemp00
-    sta a:OBJ_39E0+1,x
+    sta a:OBJ_HITBOX_DY+1,x
     inx
     inx
     dey

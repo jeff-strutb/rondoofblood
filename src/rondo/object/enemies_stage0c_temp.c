@@ -144,7 +144,7 @@ void abi_FallingWithGravity(void)
 /*
  * @routine 0CAB:203 StartWhenHurt
  * @run 70:B203
- * WHAT IT DOES: An object in state 3 that has taken a hit of 5 or more resets its animation, enters state 6 and clears OBJ_2800.
+ * WHAT IT DOES: An object in state 3 that has taken a hit of 5 or more resets its animation, enters state 6 and clears OBJ_SUBSTATE.
  * HOW: Two compares.
  * WAITS: no.
  * Entry: X object. Exit: the last compare or load.
@@ -166,7 +166,7 @@ ObjArm StartWhenHurt(uint8_t slot)
     WR8(OBJ->anim_step[slot], 0);
     WR8(OBJ->anim_timer[slot], 0);
     WR8(OBJ->state[slot], 6);
-    WR8(OBJ->f2800[slot], 0);
+    WR8(OBJ->substate[slot], 0);
     r.arm = SH_STARTED;
     return r;
 }
@@ -193,7 +193,7 @@ void abi_StartWhenHurt(void)
 /*
  * @routine 0CAB:220 EnterStateSevenOnFlag
  * @run 70:B220
- * WHAT IT DOES: When bit 7 of the object's status flags is set and its state is below 7, it faces right, resets its animation, enters state 7 and clears OBJ_2800.
+ * WHAT IT DOES: When bit 7 of the object's status flags is set and its state is below 7, it faces right, resets its animation, enters state 7 and clears OBJ_SUBSTATE.
  * HOW: Two compares.
  * Untraced: every arm past the flag test (B227 to B23E).
  * WAITS: no.
@@ -218,7 +218,7 @@ ObjArm EnterStateSevenOnFlag(uint8_t slot)
     WR8(OBJ->anim_step[slot], 0);
     WR8(OBJ->anim_timer[slot], 0);
     WR8(OBJ->state[slot], 7);
-    WR8(OBJ->f2800[slot], 0);
+    WR8(OBJ->substate[slot], 0);
     r.arm = E7_ENTERED;
     return r;
 }
@@ -284,7 +284,7 @@ void abi_StartWithGuard(void)
  * @routine 0CAB:389 SlideAngleDown
  * @run 70:B389
  * WHAT IT DOES: Takes one off the 16-bit angle word (OBJ_3568 high, OBJ_35C0 low, in steps of $0100 less 0 on the low byte as the code subtracts $0100); when the high byte
- * reaches 0 the object's OBJ_2800 goes up one.
+ * reaches 0 the object's OBJ_SUBSTATE goes up one.
  * HOW: A 16-bit subtract.
  * WAITS: no.
  * Entry: X object. Exit: the last subtract or INC.
@@ -304,7 +304,7 @@ ObjArm SlideAngleDown(uint8_t slot)
     if (r.sum2.value != 0) {
         return r;
     }
-    r.first = INC8(OBJ->f2800[slot]);
+    r.first = INC8(OBJ->substate[slot]);
     r.arm = SD_ADVANCED;
     return r;
 }
@@ -327,7 +327,7 @@ void abi_SlideAngleDown(void)
 /*
  * @routine 0CAB:3A0 SlideAngleUp
  * @run 70:B3A0
- * WHAT IT DOES: Adds $00C0 to the 16-bit angle word (OBJ_3568 high, OBJ_35C0 low); once the high byte reaches $10 the object's OBJ_2800 goes up one.
+ * WHAT IT DOES: Adds $00C0 to the 16-bit angle word (OBJ_3568 high, OBJ_35C0 low); once the high byte reaches $10 the object's OBJ_SUBSTATE goes up one.
  * HOW: A 16-bit add and a compare.
  * WAITS: no.
  * Entry: X object. Exit: the compare or the INC.
@@ -347,7 +347,7 @@ ObjArm SlideAngleUp(uint8_t slot)
     if (r.sum2.value < 0x10) {
         return r;
     }
-    r.first = INC8(OBJ->f2800[slot]);
+    r.first = INC8(OBJ->substate[slot]);
     r.arm = SU_ADVANCED;
     return r;
 }
@@ -371,10 +371,10 @@ void abi_SlideAngleUp(void)
  * @routine 0CAB:422 AimAtPlayerThenArm
  * @run 70:B422
  * WHAT IT DOES: Takes OBJ_3510 as the angle to the player (a random one on three counts out of four, by OBJ_3670 and 3), sets the angle word from a table at $B44F by
- * OBJ_3670 and 3, and moves OBJ_3670 and OBJ_2800 on.
+ * OBJ_3670 and 3, and moves OBJ_3670 and OBJ_SUBSTATE on.
  * HOW: AngleToPlayer, NextRandom, table reads (bank 70).
  * WAITS: no.
- * Entry: X object. Exit: N and Z of the new OBJ_2800; A the table's low byte, Y the table index, C 0.
+ * Entry: X object. Exit: N and Z of the new OBJ_SUBSTATE; A the table's low byte, Y the table index, C 0.
  */
 ObjArm AimAtPlayerThenArm(uint8_t slot)
 {
@@ -402,7 +402,7 @@ ObjArm AimAtPlayerThenArm(uint8_t slot)
     r.third = rd8((uint16_t)(0xB44F + r.second));
     WR8(OBJ->angle_lo[slot], r.third);
     r.fourth = INC8(OBJ->f3670[slot]);
-    r.fifth = INC8(OBJ->f2800[slot]);
+    r.fifth = INC8(OBJ->substate[slot]);
     return r;
 }
 
@@ -497,7 +497,7 @@ void abi_InsideScreenBox(void)
 /*
  * @routine 0CAB:4CE CountThenStop
  * @run 70:B4CE
- * WHAT IT DOES: Counts the object's timer down; at zero it clears OBJ_2800.
+ * WHAT IT DOES: Counts the object's timer down; at zero it clears OBJ_SUBSTATE.
  * HOW: DEC and a store.
  * WAITS: no.
  * Entry: X object. Exit: N and Z from the count.
@@ -508,7 +508,7 @@ ObjArm CountThenStop(uint8_t slot)
 
     r.first = DEC8(OBJ->life_timer[slot]);
     if (r.first == 0) {
-        WR8(OBJ->f2800[slot], 0);
+        WR8(OBJ->substate[slot], 0);
     }
     return r;
 }
@@ -526,7 +526,7 @@ void abi_CountThenStop(void)
 /*
  * @routine 0CAB:509 PickNextMoveBySide
  * @run 70:B509
- * WHAT IT DOES: Faces the player (bit 0 of SideOfPlayer), picks OBJ_2800 from a table at $B52C by the object's hit points halved (the high nibble) and a counter OBJ_3720 (the low
+ * WHAT IT DOES: Faces the player (bit 0 of SideOfPlayer), picks OBJ_SUBSTATE from a table at $B52C by the object's hit points halved (the high nibble) and a counter OBJ_3720 (the low
  * nibble), and counts the counter up.
  * HOW: SideOfPlayer, table read (bank 70).
  * WAITS: no.
@@ -550,7 +550,7 @@ ObjArm PickNextMoveBySide(uint8_t slot)
     index = RD8(ZP->temp00);
     r.sum = add_bytes(r.fourth, index, false);
     byte = rd8((uint16_t)(0xB52C + r.sum.value));
-    WR8(OBJ->f2800[slot], byte);
+    WR8(OBJ->substate[slot], byte);
     r.fifth = byte;
     r.sixth = INC8(OBJ->f3720[slot]);
     return r;
@@ -576,10 +576,10 @@ void abi_PickNextMoveBySide(void)
 /*
  * @routine 0CAB:55C StepThenSpawnShot
  * @run 70:B55C
- * WHAT IT DOES: Steps the animation list at $B582; when it ends, starts a kind $28 object at its place in slot $12 with a timer of 1 and its facing, and moves OBJ_2800 on.
+ * WHAT IT DOES: Steps the animation list at $B582; when it ends, starts a kind $28 object at its place in slot $12 with a timer of 1 and its facing, and moves OBJ_SUBSTATE on.
  * HOW: StepObjectFrames, ClearObjectInY, StartObjectAtPlace.
  * WAITS: no.
- * Entry: X object, Y kept unless a callee sets it. Exit: list running: as the step; ended: N and Z of the new OBJ_2800.
+ * Entry: X object, Y kept unless a callee sets it. Exit: list running: as the step; ended: N and Z of the new OBJ_SUBSTATE.
  */
 ObjArm StepThenSpawnShot(uint8_t slot)
 {
@@ -601,7 +601,7 @@ ObjArm StepThenSpawnShot(uint8_t slot)
     WR8(OBJ->life_timer[0x12], 1);
     r.second = RD8(OBJ->facing_left[slot]);
     WR8(OBJ->facing_left[0x12], r.second);
-    r.third = INC8(OBJ->f2800[slot]);
+    r.third = INC8(OBJ->substate[slot]);
     r.arm = TS_SPAWNED;
     return r;
 }
@@ -626,7 +626,7 @@ void abi_StepThenSpawnShot(void)
 /*
  * @routine 0CAB:5A0 ResetToStateThree
  * @run 70:B5A0
- * WHAT IT DOES: Sets the object's frame to 1, its state to 3 and clears OBJ_2800.
+ * WHAT IT DOES: Sets the object's frame to 1, its state to 3 and clears OBJ_SUBSTATE.
  * HOW: Three stores.
  * WAITS: no.
  * Entry: X object. Exit: A 3, N and Z from it.
@@ -637,7 +637,7 @@ ObjArm ResetToStateThree(uint8_t slot)
 
     WR8(OBJ->frame[slot], 1);
     WR8(OBJ->state[slot], 3);
-    WR8(OBJ->f2800[slot], 0);
+    WR8(OBJ->substate[slot], 0);
     return r;
 }
 
@@ -713,7 +713,7 @@ static ObjArm spawn_shot(uint8_t slot, uint16_t ret_clear, uint16_t ret_start, i
     }
     r.second = RD8(OBJ->facing_left[slot]);
     WR8(OBJ->facing_left[0x12], r.second);
-    r.third = INC8(OBJ->f2800[slot]);
+    r.third = INC8(OBJ->substate[slot]);
     return r;
 }
 
@@ -731,10 +731,10 @@ static Ended spawn_shot_exit_shim(ObjArm r)
 /*
  * @routine 0CAB:666 StepThenThrowShot
  * @run 70:B666
- * WHAT IT DOES: Steps the animation list at $B582; when it ends, starts a kind $28 object at its place in slot $12 with its facing and moves OBJ_2800 on.
+ * WHAT IT DOES: Steps the animation list at $B582; when it ends, starts a kind $28 object at its place in slot $12 with its facing and moves OBJ_SUBSTATE on.
  * HOW: StepObjectFrames, ClearObjectInY, StartObjectAtPlace.
  * WAITS: no.
- * Entry: X object, Y kept unless a callee sets it. Exit: list running: as the step; ended: N and Z of the new OBJ_2800.
+ * Entry: X object, Y kept unless a callee sets it. Exit: list running: as the step; ended: N and Z of the new OBJ_SUBSTATE.
  */
 ObjArm StepThenThrowShot(uint8_t slot)
 {
@@ -806,7 +806,7 @@ void abi_StepThenThrowSlowShot(void)
     abi_ended(step_then_throw_slow_shot_exit_shim(StepThenThrowSlowShot(cpu.x)));
 }
 
-/* The step several objects share when their list ends: frame 1, state 3, OBJ_2800 cleared. */
+/* The step several objects share when their list ends: frame 1, state 3, OBJ_SUBSTATE cleared. */
 static ObjArm step_then_rest(uint8_t slot, uint16_t list, uint16_t ret, bool frame_one)
 {
     ObjArm r = { 0 };
@@ -820,7 +820,7 @@ static ObjArm step_then_rest(uint8_t slot, uint16_t list, uint16_t ret, bool fra
     }
     WR8(OBJ->frame[slot], frame_one ? 1 : 0);
     WR8(OBJ->state[slot], 3);
-    WR8(OBJ->f2800[slot], 0);
+    WR8(OBJ->substate[slot], 0);
     r.arm = TR_RESTED;
     return r;
 }
@@ -838,7 +838,7 @@ static Ended step_then_rest_exit_shim(ObjArm r)
 /*
  * @routine 0CAB:640 StepThenRest
  * @run 70:B640
- * WHAT IT DOES: Steps the animation list at $B65B; when it ends the object shows frame 1, enters state 3 and clears OBJ_2800.
+ * WHAT IT DOES: Steps the animation list at $B65B; when it ends the object shows frame 1, enters state 3 and clears OBJ_SUBSTATE.
  * HOW: StepObjectFrames and three stores.
  * WAITS: no.
  * Entry: X object, Y kept unless the step sets it. Exit: list running: as the step; ended: A 3.
@@ -874,10 +874,10 @@ void abi_StepThenRestB(void)
 /*
  * @routine 0CAB:5CD StepThenWaitLonger
  * @run 70:B5CD
- * WHAT IT DOES: Steps the animation list at $B5E6; when it ends the object's frame is 0, its timer $30 and OBJ_2800 goes on.
+ * WHAT IT DOES: Steps the animation list at $B5E6; when it ends the object's frame is 0, its timer $30 and OBJ_SUBSTATE goes on.
  * HOW: StepObjectFrames and stores.
  * WAITS: no.
- * Entry: X object, Y kept unless the step sets it. Exit: list running: as the step; ended: N and Z of the new OBJ_2800.
+ * Entry: X object, Y kept unless the step sets it. Exit: list running: as the step; ended: N and Z of the new OBJ_SUBSTATE.
  */
 ObjArm StepThenWaitLonger(uint8_t slot)
 {
@@ -892,7 +892,7 @@ ObjArm StepThenWaitLonger(uint8_t slot)
     }
     WR8(OBJ->frame[slot], 0);
     WR8(OBJ->life_timer[slot], 0x30);
-    r.first = INC8(OBJ->f2800[slot]);
+    r.first = INC8(OBJ->substate[slot]);
     r.arm = TW_WAITING;
     return r;
 }
@@ -1003,10 +1003,10 @@ void abi_SinkToLimit(void)
 /*
  * @routine 0CAB:687 SinkWhenPartnerGone
  * @run 70:B687
- * WHAT IT DOES: When slot $12's kind is not $28 the object sinks (SinkToLimit), its timer becomes $30 and OBJ_2800 moves on.
+ * WHAT IT DOES: When slot $12's kind is not $28 the object sinks (SinkToLimit), its timer becomes $30 and OBJ_SUBSTATE moves on.
  * HOW: A compare, SinkToLimit, two stores.
  * WAITS: no.
- * Entry: X object. Exit: the compare's flags, or N and Z of the new OBJ_2800.
+ * Entry: X object. Exit: the compare's flags, or N and Z of the new OBJ_SUBSTATE.
  */
 ObjArm SinkWhenPartnerGone(uint8_t slot)
 {
@@ -1021,7 +1021,7 @@ ObjArm SinkWhenPartnerGone(uint8_t slot)
     r.sub = obj_sub(SinkToLimit(slot));
     jsr_pop();
     WR8(OBJ->life_timer[slot], 0x30);
-    r.second = INC8(OBJ->f2800[slot]);
+    r.second = INC8(OBJ->substate[slot]);
     r.arm = PN_GONE;
     return r;
 }
@@ -1046,17 +1046,17 @@ void abi_SinkWhenPartnerGone(void)
 /*
  * @routine 0CAB:719 SetLongWait
  * @run 70:B719
- * WHAT IT DOES: Sets the object's timer to $40 and moves OBJ_2800 on.
+ * WHAT IT DOES: Sets the object's timer to $40 and moves OBJ_SUBSTATE on.
  * HOW: A store and an INC.
  * WAITS: no.
- * Entry: X object. Exit: N and Z from the new OBJ_2800, A $40.
+ * Entry: X object. Exit: N and Z from the new OBJ_SUBSTATE, A $40.
  */
 ObjArm SetLongWait(uint8_t slot)
 {
     ObjArm r = { 0 };
 
     WR8(OBJ->life_timer[slot], 0x40);
-    r.first = INC8(OBJ->f2800[slot]);
+    r.first = INC8(OBJ->substate[slot]);
     return r;
 }
 
@@ -1146,7 +1146,7 @@ void abi_DropShotWhenSlotFree(void)
 /*
  * @routine 0CAB:722 SinkThenRestart
  * @run 70:B722
- * WHAT IT DOES: Drops a shot when a slot is free (DropShotWhenSlotFree), counts its timer down and at zero shows frame 1, enters state 3 and clears OBJ_2800.
+ * WHAT IT DOES: Drops a shot when a slot is free (DropShotWhenSlotFree), counts its timer down and at zero shows frame 1, enters state 3 and clears OBJ_SUBSTATE.
  * HOW: DropShotWhenSlotFree, DEC, three stores.
  * WAITS: no.
  * Entry: X object. Exit: the count's N and Z, or A 3 at zero.
@@ -1165,7 +1165,7 @@ ObjArm SinkThenRestart(uint8_t slot)
     }
     WR8(OBJ->frame[slot], 1);
     WR8(OBJ->state[slot], 3);
-    WR8(OBJ->f2800[slot], 0);
+    WR8(OBJ->substate[slot], 0);
     r.arm = SR_RESTARTED;
     return r;
 }
@@ -1278,7 +1278,7 @@ void abi_ShootEveryFourth(void)
 /*
  * @routine 0CAB:6AB SinkAndShootThenRestart
  * @run 70:B6AB
- * WHAT IT DOES: ShootEveryFourth and SinkToLimit; the timer counts down and at zero the object shows frame 1, enters state 3 and clears OBJ_2800.
+ * WHAT IT DOES: ShootEveryFourth and SinkToLimit; the timer counts down and at zero the object shows frame 1, enters state 3 and clears OBJ_SUBSTATE.
  * HOW: The two calls, a DEC and three stores.
  * WAITS: no.
  * Entry: X object, Y the sound driver's. Exit: see the wrapper.
@@ -1298,7 +1298,7 @@ ObjArm SinkAndShootThenRestart(uint8_t slot, uint8_t y)
     if (r.first == 0) {
         WR8(OBJ->frame[slot], 1);
         WR8(OBJ->state[slot], 3);
-        WR8(OBJ->f2800[slot], 0);
+        WR8(OBJ->substate[slot], 0);
         r.arm = SA_RESTARTED;
     }
     return r;
@@ -1329,7 +1329,7 @@ void abi_SinkAndShootThenRestart(void)
  * @routine 0CAB:5F1 FlickerAndStartPieces
  * @run 70:B5F1
  * WHAT IT DOES: Counts the object's timer down; while it runs it starts up to two pieces (StartTwoPieces) and, when the timer is $18, moves the object to a random
- * place (X and Y low bytes from a table at $B623, high bytes 0); at zero OBJ_2800 moves on.
+ * place (X and Y low bytes from a table at $B623, high bytes 0); at zero OBJ_SUBSTATE moves on.
  * HOW: DEC, StartTwoPieces, NextRandom twice, table reads (bank 70).
  * WAITS: no.
  * Entry: X object. Exit: the last compare, load or INC.
@@ -1342,7 +1342,7 @@ ObjArm FlickerAndStartPieces(uint8_t slot)
     r.first = DEC8(OBJ->life_timer[slot]);
     r.arm = FK_ENDED;
     if (r.first == 0) {
-        r.second = INC8(OBJ->f2800[slot]);
+        r.second = INC8(OBJ->substate[slot]);
         return r;
     }
     jsr_push(0xB5F9);
@@ -2395,7 +2395,7 @@ void abi_CountThenCue(void)
  * @run 70:BCEB
  * WHAT IT DOES: Steps the animation list at $BD51; an object not on the first Y page is cleared; its hitbox half height comes from a table at $BD78 by the frame less $17; it moves, $0008 is added to
  * its Y speed (gravity), and it asks the terrain: a wall (request $22, height 4) halves its X speed and reverses it (the shift of the 16-bit speed through the carry, then NegateVelocityX); else a floor
- * (request 9) stops its X speed, sets its timer to $40 and moves OBJ_2800 on.
+ * (request 9) stops its X speed, sets its timer to $40 and moves OBJ_SUBSTATE on.
  * HOW: StepObjectFrames, ApplyVelocity, ProbeTerrain twice, table read (bank 70), a tail jump into NegateVelocityX or ClearObject.
  * WAITS: no.
  * Entry: X object, Y kept unless the step sets it. Exit: see abi_chain.
@@ -2811,11 +2811,11 @@ void abi_OrbitThenLeave(void)
  * @routine 0CAB:339 SlideTurnByTable
  * @run 70:B339
  * WHAT IT DOES: Steps the animation list at $B3E0, sets the object's Y to $0070 and its Y speed to the cosine of the angle OBJ_3510 scaled by the 16-bit
- * length OBJ_3568:OBJ_35C0, moves it in Y, turns the angle half a circle, and runs the code a table at $B383 names for OBJ_2800 (SlideAngleDown,
+ * length OBJ_3568:OBJ_35C0, moves it in Y, turns the angle half a circle, and runs the code a table at $B383 names for OBJ_SUBSTATE (SlideAngleDown,
  * SlideAngleUp, TurnAngleBack).
  * HOW: StepObjectFrames, ScaleByCosine, ApplyVelocityY, then a jump through the table.
  * WAITS: no.
- * Entry: X object. Exit: as the code jumped to; Y the doubled OBJ_2800.
+ * Entry: X object. Exit: as the code jumped to; Y the doubled OBJ_SUBSTATE.
  */
 ObjArm SlideTurnByTable(uint8_t slot)
 {
@@ -2844,7 +2844,7 @@ ObjArm SlideTurnByTable(uint8_t slot)
     byte = RD8(OBJ->f3510[slot]);
     r.third = (uint8_t)(byte ^ 0x80);
     WR8(OBJ->f3510[slot], r.third);
-    r.fourth = RD8(OBJ->f2800[slot]);
+    r.fourth = RD8(OBJ->substate[slot]);
     r.fifth = (uint8_t)(r.fourth << 1);
     low = rd8((uint16_t)(0xB383 + r.fifth));
     WR8(ZP->temp00, low);
@@ -2888,8 +2888,8 @@ void abi_SlideTurnByTable(void)
  * @routine 0CAB:457 MoveAlongAndSlow
  * @run 70:B457
  * WHAT IT DOES: Moves the object along its angle OBJ_3510 by the 16-bit length OBJ_3568:OBJ_35C0. Outside the screen box (InsideScreenBox) it clears OBJ_3670
- * and OBJ_2800 and stops. Inside, it takes a byte of a table at $B4A0 (picked by OBJ_3670 and 7) off the length, and when the length runs out
- * it sets the timer from a table at $B4A8 picked at random and goes on to the next OBJ_2800.
+ * and OBJ_SUBSTATE and stops. Inside, it takes a byte of a table at $B4A0 (picked by OBJ_3670 and 7) off the length, and when the length runs out
+ * it sets the timer from a table at $B4A8 picked at random and goes on to the next OBJ_SUBSTATE.
  * HOW: SetVelocityFromAngle, ApplyVelocity, InsideScreenBox, a 16-bit subtract, NextRandom, table reads (bank 70).
  * Untraced: the outside arm (B46F).
  * WAITS: no.
@@ -2919,7 +2919,7 @@ ObjArm MoveAlongAndSlow(uint8_t slot)
     r.arm = MA_OUTSIDE;
     if (!view.flag) {
         WR8(OBJ->f3670[slot], 0);
-        WR8(OBJ->f2800[slot], 0);
+        WR8(OBJ->substate[slot], 0);
         return r;
     }
     byte = RD8(OBJ->f3670[slot]);
@@ -2941,7 +2941,7 @@ ObjArm MoveAlongAndSlow(uint8_t slot)
     r.third = pick;
     r.fourth = rd8((uint16_t)(0xB4A8 + pick));
     WR8(OBJ->life_timer[slot], r.fourth);
-    r.fifth = INC8(OBJ->f2800[slot]);
+    r.fifth = INC8(OBJ->substate[slot]);
     r.arm = MA_NEXT;
     return r;
 }
@@ -2977,8 +2977,8 @@ void abi_MoveAlongAndSlow(void)
  * @routine 0CAB:7CD LaunchThenFall
  * @run 70:B7CD
  * WHAT IT DOES: State 0: plays sound $C0, quarters OBJ_36C8, takes the angle to the player plus $80 as the object's angle with the length $0080 and goes on to the next
- * OBJ_2800. Later: when it has been hit five times (OBJ_33B0) it sets OBJ_2EE0 to 3, its state to 4 and OBJ_2800 to 9; else it moves and steps the animation list at $B829, and when the
- * list ends it sets its frame to 1, its state to 3 and OBJ_2800 to 0.
+ * OBJ_SUBSTATE. Later: when it has been hit five times (OBJ_HIT_TAKEN) it sets OBJ_2EE0 to 3, its state to 4 and OBJ_SUBSTATE to 9; else it moves and steps the animation list at $B829, and when the
+ * list ends it sets its frame to 1, its state to 3 and OBJ_SUBSTATE to 0.
  * HOW: SoundCommand, LSR (twice), AngleToPlayer, SetVelocityFromAngle, ApplyVelocity, StepObjectFrames.
  * Untraced: the hit arm (B7FB to B80A).
  * WAITS: no.
@@ -2989,7 +2989,7 @@ ObjArm LaunchThenFall(uint8_t slot, uint8_t y_entry)
     ObjArm r = { 0 };
     uint8_t y, byte;
 
-    r.first = RD8(OBJ->f2800[slot]);
+    r.first = RD8(OBJ->substate[slot]);
     if (r.first == 0) {
         r.arm = LF_START;
         r.sounded = true;
@@ -3010,7 +3010,7 @@ ObjArm LaunchThenFall(uint8_t slot, uint8_t y_entry)
         jsr_push(0xB7F0);
         r.scale = SetVelocityFromAngle(r.third, slot);
         jsr_pop();
-        r.fourth = INC8(OBJ->f2800[slot]);
+        r.fourth = INC8(OBJ->substate[slot]);
         return r;
     }
     r.second = RD8(OBJ->hit_taken[slot]);
@@ -3018,7 +3018,7 @@ ObjArm LaunchThenFall(uint8_t slot, uint8_t y_entry)
         r.arm = LF_HIT;
         WR8(OBJ->fields_2ee0[slot], 3);
         WR8(OBJ->state[slot], 4);
-        WR8(OBJ->f2800[slot], 9);
+        WR8(OBJ->substate[slot], 9);
         return r;
     }
     jsr_push(0xB80E);
@@ -3032,7 +3032,7 @@ ObjArm LaunchThenFall(uint8_t slot, uint8_t y_entry)
     }
     WR8(OBJ->frame[slot], 1);
     WR8(OBJ->state[slot], 3);
-    WR8(OBJ->f2800[slot], 0);
+    WR8(OBJ->substate[slot], 0);
     r.arm = LF_RESTED;
     (void)byte;
     return r;
@@ -3218,17 +3218,17 @@ void abi_JumpByStateTableD(void)
 /*
  * @routine 0CAB:40A JumpByPhaseTable
  * @run 70:B40A
- * WHAT IT DOES: Goes to the code a table at $B41C names for OBJ_2800.
+ * WHAT IT DOES: Goes to the code a table at $B41C names for OBJ_SUBSTATE.
  * HOW: The table's two bytes go to zTemp00-01 and the code is jumped through them.
  * WAITS: no.
- * Entry: X object. Exit: as the code jumped to; A the high byte, Y the doubled OBJ_2800.
+ * Entry: X object. Exit: as the code jumped to; A the high byte, Y the doubled OBJ_SUBSTATE.
  */
 ObjArm JumpByPhaseTable(uint8_t slot)
 {
     ObjArm r = { 0 };
     uint8_t low;
 
-    r.third = RD8(OBJ->f2800[slot]);
+    r.third = RD8(OBJ->substate[slot]);
     r.second = (uint8_t)(r.third << 1);
     low = rd8((uint16_t)(0xB41C + r.second));
     WR8(ZP->temp00, low);
@@ -3368,11 +3368,11 @@ void abi_StepWithGuardTable(void)
 /*
  * @routine 0CAB:3E5 StepPhaseThenPause
  * @run 70:B3E5
- * WHAT IT DOES: Runs the code OBJ_2800 names (JumpByPhaseTable); afterwards a pause counter OBJ_36C8 counts down, and at zero it is set from a table at $B406 picked at random, the state is 4
- * and OBJ_2800 is 0.
+ * WHAT IT DOES: Runs the code OBJ_SUBSTATE names (JumpByPhaseTable); afterwards a pause counter OBJ_36C8 counts down, and at zero it is set from a table at $B406 picked at random, the state is 4
+ * and OBJ_SUBSTATE is 0.
  * HOW: JumpByPhaseTable, NextRandom, a table read (bank 70).
  * WAITS: no.
- * Entry: X object. Exit: the count; at zero, the OBJ_2800 clear.
+ * Entry: X object. Exit: the count; at zero, the OBJ_SUBSTATE clear.
  */
 ObjArm StepPhaseThenPause(uint8_t slot)
 {
@@ -3396,7 +3396,7 @@ ObjArm StepPhaseThenPause(uint8_t slot)
     r.fourth = rd8((uint16_t)(0xB406 + r.third));
     WR8(OBJ->f36c8[slot], r.fourth);
     WR8(OBJ->state[slot], 4);
-    WR8(OBJ->f2800[slot], 0);
+    WR8(OBJ->substate[slot], 0);
     r.arm = PP_REPICKED;
     return r;
 }

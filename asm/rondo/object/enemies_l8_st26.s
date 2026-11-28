@@ -15,10 +15,10 @@ PlaySound58A:
 ; WAITS: no.
 ; Entry: X object. Exit: as the last instruction that ran. The drop arm ran in no script; the draft stops there.
 MaybeDropItemByPlayerDistance1019:
-    lda a:OBJ_33B0,x
+    lda a:OBJ_HIT_TAKEN,x
     cmp #$05
     bcc RichterStandStep1
-    lda a:OBJ_31F8,x
+    lda a:OBJ_HIT_REACTION,x
     lsr a
     lsr a
     and #$07
@@ -53,7 +53,7 @@ MaybeDropItemByPlayerDistance1019:
 ; WAITS: no.
 ; Entry: X object. Exit: as the last instruction that ran. The exit when no slot is empty ran in no script.
 CountDownThenStartPieceInSlots18To1B:
-    lda a:OBJ_27A8,x
+    lda a:OBJ_STATE,x
     bne CountDownThenStartPieceInSlots18To1B_at0
     jmp VecLoadObjectRecord
 CountDownThenStartPieceInSlots18To1B_at0:
@@ -78,7 +78,7 @@ CountDownThenStartPieceInSlots18To1B_at0:
     rts
     ldy #$18
 CountDownThenStartPieceInSlots18To1B_at3:
-    lda a:OBJ_2750,y
+    lda a:OBJ_KIND,y
     beq CountDownThenStartPieceInSlots18To1B_at2
     iny
     cpy #$1C
@@ -102,7 +102,7 @@ CountDownThenStartPieceInSlots18To1B_at2:
 ; WAITS: no.
 ; Entry: X object, Y kept unless the step sets it. Exit: as the last instruction that ran.
 ChaseWanderingPointWithSpeedRamp:
-    lda a:OBJ_27A8,x
+    lda a:OBJ_STATE,x
     bne ChaseWanderingPointWithSpeedRamp_at0
     jsr VecLoadObjectRecord
     lda a:OBJ_2B18,x
@@ -125,7 +125,7 @@ ChaseWanderingPointWithSpeedRamp_at0:
     jsr SettleWhenLowOnFirstRow
     jsr VecSideOfPlayer
     and #$01
-    sta a:OBJ_2AC0,x
+    sta a:OBJ_FACING_LEFT,x
     lda a:OBJ_3618,x
     bne ChaseWanderingPointWithSpeedRamp_at1
     jsr VecNextRandom
@@ -240,11 +240,11 @@ SettleWhenLowOnFirstRow_at0:
 ; WAITS: no.
 ; Entry: X object. Exit: as the last instruction that ran.
 LoadRecordFrameFromKind:
-    lda a:OBJ_27A8,x
+    lda a:OBJ_STATE,x
     bne LoadRecordFrameFromKind_at0
     jsr VecLoadObjectRecord
     lda a:OBJ_3040,x
-    sta a:OBJ_2A68,x
+    sta a:OBJ_FRAME,x
 LoadRecordFrameFromKind_at0:
     rts
 
@@ -283,7 +283,7 @@ CapPlayerXOnScreen1_at0:
 ; WAITS: no.
 ; Entry: X object. Exit: as the last instruction that ran. Everything past state 0 ran in no script; the draft stops there and the arms are written from the decoded bytes.
 SpawnerWithScrollGates:
-    lda a:OBJ_27A8,x
+    lda a:OBJ_STATE,x
     bne JumpByStateTable0CAB12F
     jsr VecLoadObjectRecord
     rts
@@ -297,7 +297,7 @@ SpawnerWithScrollGates:
     jsr VecStartListChannelKind2
     plx
 SpawnerWithScrollGates_at1:
-    inc a:OBJ_27A8,x
+    inc a:OBJ_STATE,x
     rts
 SpawnerWithScrollGates_at0:
     lda a:OBJ_3040,x
@@ -310,7 +310,7 @@ SpawnerWithScrollGates_at0:
 SpawnerWithScrollGates_at2:
     ldy #$1A
 SpawnerWithScrollGates_at4:
-    lda a:OBJ_2750,y
+    lda a:OBJ_KIND,y
     beq SpawnerWithScrollGates_at3
     iny
     cpy #$20
@@ -355,7 +355,7 @@ SpawnerWithScrollGates_at5:
     bcs SpawnerWithScrollGates_at9
     ldy #$11
 SpawnerWithScrollGates_at10:
-    lda a:OBJ_2750,y
+    lda a:OBJ_KIND,y
     beq EnterState5WhenFlagged
     iny
     cpy #$20
@@ -376,13 +376,13 @@ SpawnerWithScrollGates_at9:
 ; WAITS: no.
 ; Entry: X object. Exit: as the last instruction that ran.
 LoadRecordThenDriftAndCount:
-    lda a:OBJ_27A8,x
+    lda a:OBJ_STATE,x
     bne LoadRecordThenDriftAndCount_at0
     jsr VecLoadObjectRecord
     lda #$06
     sta a:OBJ_2A10,x
     lda #$45
-    sta a:OBJ_2A68,x
+    sta a:OBJ_FRAME,x
     lda #$10
     sta a:OBJ_3510,x
     lda #$01
@@ -400,7 +400,7 @@ LoadRecordThenDriftAndCount_at0:
     bne LoadRecordThenDriftAndCount_at1
     dec a:OBJ_3510,x
     bpl LoadRecordThenDriftAndCount_at1
-    inc a:OBJ_27A8,x
+    inc a:OBJ_STATE,x
     rts
 
 ; @routine 18DD:260 LoadRecordAtX80
@@ -410,7 +410,7 @@ LoadRecordThenDriftAndCount_at0:
 ; WAITS: no.
 ; Entry: X object. Exit: as the last instruction that ran.
 LoadRecordAtX80:
-    lda a:OBJ_27A8,x
+    lda a:OBJ_STATE,x
     bne LoadRecordAtX80_at0
     jsr VecLoadObjectRecord
     lda #$80

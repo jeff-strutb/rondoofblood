@@ -116,16 +116,16 @@ void abi_RichterObjectMarkOff(void)
 /*
  * @routine 01BD:401 RichterObjectTake2FE8
  * @run 6E:C401
- * WHAT IT DOES: Gives an object Richter's OBJ_2FE8, doubled.
+ * WHAT IT DOES: Gives an object Richter's OBJ_SPRITE_FLIP, doubled.
  * HOW: Shifted up a place.
  * WAITS: no.
  * Entry: X object. Exit: A the value, N and Z from it, C Richter's bit 7. X, Y and V kept.
  */
 uint8_t RichterObjectTake2FE8(uint8_t object)
 {
-    uint8_t player = rd8(OBJ_2FE8 + PLAYER);
+    uint8_t player = rd8(OBJ_SPRITE_FLIP + PLAYER);
 
-    wr8((uint16_t)(OBJ_2FE8 + object), (uint8_t)(player << 1));
+    wr8((uint16_t)(OBJ_SPRITE_FLIP + object), (uint8_t)(player << 1));
     return player;
 }
 
@@ -162,7 +162,7 @@ void abi_MariaObjectTake2FE8(void)
 /*
  * @routine 01E1:387 MariaObjectFromPlayer
  * @run 6E:C387
- * WHAT IT DOES: Gives an object Maria's OBJ_2FE8, doubled, and her facing; the doubled byte is written twice.
+ * WHAT IT DOES: Gives an object Maria's OBJ_SPRITE_FLIP, doubled, and her facing; the doubled byte is written twice.
  * HOW: The doubling once inline, then on into the copy of RichterObjectFromPlayer at $C38E, which calls
  * MariaObjectTake2FE8 and copies the facing.
  * WAITS: no.
@@ -171,14 +171,14 @@ void abi_MariaObjectTake2FE8(void)
 ObjectFromPlayer MariaObjectFromPlayer(uint8_t object)
 {
     ObjectFromPlayer from;
-    uint8_t player = rd8(OBJ_2FE8 + PLAYER);
+    uint8_t player = rd8(OBJ_SPRITE_FLIP + PLAYER);
 
-    wr8((uint16_t)(OBJ_2FE8 + object), (uint8_t)(player << 1));
+    wr8((uint16_t)(OBJ_SPRITE_FLIP + object), (uint8_t)(player << 1));
     jsr_push(0xC390);
     from.player_2fe8 = MariaObjectTake2FE8(object);
     jsr_pop();
-    from.facing = rd8(OBJ_2AC0 + PLAYER);
-    wr8((uint16_t)(OBJ_2AC0 + object), from.facing);
+    from.facing = rd8(OBJ_FACING_LEFT + PLAYER);
+    wr8((uint16_t)(OBJ_FACING_LEFT + object), from.facing);
     return from;
 }
 
@@ -194,7 +194,7 @@ void abi_MariaObjectFromPlayer(void)
 /*
  * @routine 01BD:3F8 RichterObjectFromPlayer
  * @run 6E:C3F8
- * WHAT IT DOES: Gives an object Richter's facing and his OBJ_2FE8, doubled.
+ * WHAT IT DOES: Gives an object Richter's facing and his OBJ_SPRITE_FLIP, doubled.
  * HOW: RichterObjectTake2FE8, then the facing copied.
  * WAITS: no.
  * Entry: X object. Exit: A the facing, N and Z from it, C as RichterObjectTake2FE8. X, Y and V
@@ -207,8 +207,8 @@ ObjectFromPlayer RichterObjectFromPlayer(uint8_t object)
     jsr_push(0xC3FA);
     from.player_2fe8 = RichterObjectTake2FE8(object);
     jsr_pop();
-    from.facing = rd8(OBJ_2AC0 + PLAYER);
-    wr8((uint16_t)(OBJ_2AC0 + object), from.facing);
+    from.facing = rd8(OBJ_FACING_LEFT + PLAYER);
+    wr8((uint16_t)(OBJ_FACING_LEFT + object), from.facing);
     return from;
 }
 
@@ -268,15 +268,15 @@ void abi_MariaObjectSlot(void)
  * @routine 01BD:5C5 RichterObjectNextState
  * @run 6E:C5C5
  * WHAT IT DOES: Moves an object on to its next state.
- * HOW: OBJ_27A8 counted up.
+ * HOW: OBJ_STATE counted up.
  * WAITS: no.
  * Entry: X object. Exit: N and Z from the new state. A, X, Y, C and V kept.
  */
 static uint8_t object_next_state_body(uint8_t object)
 {
-    uint8_t state = (uint8_t)(rd8((uint16_t)(OBJ_27A8 + object)) + 1);
+    uint8_t state = (uint8_t)(rd8((uint16_t)(OBJ_STATE + object)) + 1);
 
-    wr8((uint16_t)(OBJ_27A8 + object), state);
+    wr8((uint16_t)(OBJ_STATE + object), state);
     return state;
 }
 
@@ -386,12 +386,12 @@ Flash RichterObjectFlash(uint8_t object)
     flash.code = OBJECT_FLASH_FIRST;
     if (rd8((uint16_t)(OBJ_3568 + object)) == 0)
         return flash;
-    flash.value = rd8((uint16_t)(OBJ_2A68 + object));
+    flash.value = rd8((uint16_t)(OBJ_FRAME + object));
     flash.how = FLASH_OTHER_FRAME;
     for (unsigned i = 0; i < sizeof flash_frames; i++) {
         flash.code = (uint8_t)(OBJECT_FLASH_FIRST + i);
         if (flash.value == flash_frames[i]) {
-            wr8((uint16_t)(OBJ_2A68 + object), flash.code);
+            wr8((uint16_t)(OBJ_FRAME + object), flash.code);
             flash.base = rd8((uint16_t)(OBJ_34B8 + object));
             flash.value = (uint8_t)(rd8((uint16_t)(RichterFlashFlags + (uint8_t)(flash.base - OBJECT_FLASH_BASE))) |
                                     OBJECT_FLASH_BIT);
@@ -435,7 +435,7 @@ void abi_RichterObjectFlash(void)
  * @run 6E:C4D1
  * WHAT IT DOES: Charges an object from OBJ_34B8 $0C on, the first time the way it faces is newly
  * pressed.
- * HOW: OBJ_3568 counted up; RichterChargePads by OBJ_2AC0 against zPadPressed.
+ * HOW: OBJ_3568 counted up; RichterChargePads by OBJ_FACING_LEFT against zPadPressed.
  * WAITS: no.
  * Entry: X object. Exit: X kept. Before $0C, A OBJ_34B8, N, Z and C from comparing it with $0C.
  * Charged already, A the charge, N and Z from it, C set. Not pressed, A 0, Z set, C set, Y the
@@ -452,7 +452,7 @@ Charge RichterObjectCharge(uint8_t object)
     charge.how = CHARGE_ALREADY;
     if (charge.value != 0)
         return charge;
-    charge.facing = rd8((uint16_t)(OBJ_2AC0 + object));
+    charge.facing = rd8((uint16_t)(OBJ_FACING_LEFT + object));
     charge.value = (uint8_t)(rd8(zPadPressed) & rd8((uint16_t)(RichterChargePads + charge.facing)));
     charge.how = CHARGE_NOT_PRESSED;
     if (charge.value == 0)
@@ -818,11 +818,11 @@ Hitbox RichterObjectHitboxFrom(uint8_t object, uint8_t hitbox, bool none)
     box.given = true;
     box.hitbox = hitbox;
     entry = (uint8_t)(hitbox << 2);
-    wr8((uint16_t)(OBJ_3930 + object), rd8((uint16_t)(RichterObjectHitboxes + entry)));
-    wr8((uint16_t)(OBJ_39E0 + object), rd8((uint16_t)(RichterObjectHitboxes + entry + 1)));
-    wr8((uint16_t)(OBJ_3988 + object), rd8((uint16_t)(RichterObjectHitboxes + entry + 2)));
+    wr8((uint16_t)(OBJ_HITBOX_DX + object), rd8((uint16_t)(RichterObjectHitboxes + entry)));
+    wr8((uint16_t)(OBJ_HITBOX_DY + object), rd8((uint16_t)(RichterObjectHitboxes + entry + 1)));
+    wr8((uint16_t)(OBJ_HITBOX_HALF_W + object), rd8((uint16_t)(RichterObjectHitboxes + entry + 2)));
     box.last = rd8((uint16_t)(RichterObjectHitboxes + entry + 3));
-    wr8((uint16_t)(OBJ_3A38 + object), box.last);
+    wr8((uint16_t)(OBJ_HITBOX_HALF_H + object), box.last);
     return box;
 }
 
@@ -845,14 +845,14 @@ void abi_RichterObjectHitboxFrom(void)
  * @routine 01C0:524 RichterObjectHitboxByFrame
  * @run 6E:DD24
  * WHAT IT DOES: Gives an object the hitbox of the frame it shows, or none.
- * HOW: RichterFrameHitboxes by OBJ_2A68; runs on into RichterObjectHitboxFrom.
+ * HOW: RichterFrameHitboxes by OBJ_FRAME; runs on into RichterObjectHitboxFrom.
  * WAITS: no.
  * Entry: X object. Exit: none, A 0, Z set, N clear, Y the frame. Otherwise as
  * RichterObjectHitboxFrom.
  */
 Hitbox RichterObjectHitboxForFrame(uint8_t object)
 {
-    uint8_t frame = rd8((uint16_t)(OBJ_2A68 + object));
+    uint8_t frame = rd8((uint16_t)(OBJ_FRAME + object));
     uint8_t hitbox = rd8((uint16_t)(RichterFrameHitboxes + frame));
     Hitbox box = RichterObjectHitboxFrom(object, hitbox, hitbox == 0);
 
@@ -1050,7 +1050,7 @@ void abi_RichterObjectSetAnimation(void)
  * @run 6E:DA51
  * WHAT IT DOES: Counts down an object's frame on show; at zero moves to the next step of its list.
  * A timer of $FF means its animation has stopped.
- * HOW: OBJ_2F90 the timer, OBJ_FLAGS_2F38 the step, OBJ_2A68 the frame shown.
+ * HOW: OBJ_2F90 the timer, OBJ_FLAGS_2F38 the step, OBJ_FRAME the frame shown.
  * WAITS: no.
  * Entry: X object. Exit: as RichterAnimationTick.
  */
@@ -1362,7 +1362,7 @@ void abi_MariaObjectMove(void)
  * @routine 01E1:369 MariaObjectFacingVelocity
  * @run 6E:C369
  * WHAT IT DOES: Turns an object's X velocity round when it faces left.
- * HOW: OBJ_2AC0, then NegateVelocityX (through its kernel vector).
+ * HOW: OBJ_FACING_LEFT, then NegateVelocityX (through its kernel vector).
  * WAITS: no.
  * Entry: X object. Exit: facing right, A 0, Z set; else as NegateVelocityX. X and Y kept.
  */
@@ -1408,7 +1408,7 @@ void abi_MariaObjectClear(void)
  * @run 6E:C880
  * WHAT IT DOES: Adds to an object's X speed the step for the way it faces, and says whether the speed's sign
  * changed.
- * HOW: The word from her table at $C8A2 by OBJ_2AC0, added into OBJ_VX_LO and OBJ_VX_HI; the old high byte kept in
+ * HOW: The word from her table at $C8A2 by OBJ_FACING_LEFT, added into OBJ_VX_LO and OBJ_VX_HI; the old high byte kept in
  * zTemp00 and its bit 7 compared.
  * WAITS: no.
  * Entry: X object. Exit: A $80 if the sign changed, else 0, N and Z from it; C and V from the high byte's add; Y
@@ -1496,7 +1496,7 @@ enum { MARIA_SLOTS_B_FIRST = 0x0B, MARIA_SLOTS_B_END = 0x0F, MARIA_KIND_18 = 0x1
  * @routine 01DE:48B MariaClaimSlotsB
  * @run 6D:AC8B
  * WHAT IT DOES: Takes every free one of object slots $0B to $0E for an object of kind $18.
- * HOW: OBJ_2750 zero is free: ClearObject (through its kernel vector), then the kind.
+ * HOW: OBJ_KIND zero is free: ClearObject (through its kernel vector), then the kind.
  * Untraced: a slot already in use ($AC90 taken); no script had one taken when she jumped.
  * WAITS: no.
  * Entry: nothing. Exit: X $0F; A the last kind read or $18; N clear, Z and C set from the CPX. Y and V kept.
@@ -1531,7 +1531,7 @@ void abi_MariaClaimSlotsB(void)
  * @routine 01DE:7D7 MariaClearSlotAsKind
  * @run 6D:AFD7
  * WHAT IT DOES: Clears an object slot and gives it a kind.
- * HOW: ClearObject (through its kernel vector), then Y into OBJ_2750.
+ * HOW: ClearObject (through its kernel vector), then Y into OBJ_KIND.
  * WAITS: no.
  * Entry: X object, Y the kind. Exit: A the kind, N and Z from it. X, Y, C and V kept.
  */
@@ -1554,7 +1554,7 @@ void abi_MariaClearSlotAsKind(void)
  * @routine 01DE:7BA MariaReplaceSlotsOneTwo
  * @run 6D:AFBA
  * WHAT IT DOES: Clears object slots 1 and 2 as kind 4, each unless it holds kind 1 or 2.
- * HOW: OBJ_2750 compared with 1 and 2; MariaClearSlotAsKind for slot 1, then a run on into it for slot 2.
+ * HOW: OBJ_KIND compared with 1 and 2; MariaClearSlotAsKind for slot 1, then a run on into it for slot 2.
  * Untraced: a slot of kind 1 or 2 ($AFC3, $AFC7, $AFD1 and $AFD5 taken); no script had one there.
  * WAITS: no.
  * Entry: nothing. Exit: Y 4, X 2; slot 2 kept, A its kind, N, Z and C from comparing it with 1 or 2; else A 4, N

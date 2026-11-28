@@ -72,11 +72,11 @@ F5,zp,BiosIrqDisable,the card's interrupt mask byte
 # card's own code says what each is.
 2214,abs,BiosScreenLo,the card's RAM: written once at start
 2215,abs,BiosScreenHi,the card's RAM: written once at start
-E05D,abs,BiosE05D,sets an interrupt handler: A which, X and Y its address
-E063,abs,BiosE063,called every frame
-E06C,abs,BiosE06C,called once at start
-E06F,abs,BiosE06F,called once at start
-E0A2,abs,BiosE0A2,called once at start
+E05D,abs,BiosExSetvec,"ex_setvec: sets an interrupt handler: A which, X and Y its address", X and Y its address
+E063,abs,BiosExJoysns,ex_joysns: reads the pads; called every frame
+E06C,abs,BiosExDotmod,ex_dotmod: sets the dot clock; called once at start
+E06F,abs,BiosExScrmod,ex_scrmod: sets the screen mode; called once at start
+E0A2,abs,BiosExSatclr,ex_satclr: clears the sprite table; called once at start
 # Work RAM.
 22D0,abs,SoundCommandIn,the sound driver: the command it is taking; also the first byte of low game RAM the start clears
 26D0,abs,LevelStreamLo,the object stream's position low
@@ -98,12 +98,12 @@ E0A2,abs,BiosE0A2,called once at start
 2730,abs,HitboxHi,per slot of 16: the high bytes: X high plus the sign of the X offset, ORed with Y high plus the sign of the Y offset
 2744,abs,LevelFullWalk,set during a whole-screen stream walk
 2742,abs,Field2742,a stage overlay byte (six uses in 024F:67F); no meaning found yet
-2750,abs,OBJ_2750,object field not yet identified
-27A8,abs,OBJ_27A8,object field not yet identified
-2800,abs,OBJ_2800,object field not yet identified
+2750,abs,OBJ_KIND,"the object's kind: 0 an empty slot; it picks the object's code (RunObjects, DispatchByKind)"
+27A8,abs,OBJ_STATE,"the object's state: stepped with INC, compared, and doubled to pick its handler from a table"
+2800,abs,OBJ_SUBSTATE,"the object's step within its state: cleared when the state changes, stepped with INC, doubled to pick a handler"
 2A10,abs,OBJ_2A10,object field not yet identified
-2A68,abs,OBJ_2A68,object field not yet identified
-2AC0,abs,OBJ_2AC0,object field not yet identified
+2A68,abs,OBJ_FRAME,the object's animation frame
+2AC0,abs,OBJ_FACING_LEFT,"1 when the object faces left, 0 right; turned with EOR #1"
 2B18,abs,OBJ_2B18,object field not yet identified
 2B70,abs,OBJ_X_HI,object X position high
 2BC8,abs,OBJ_X_LO,object X position low
@@ -119,19 +119,19 @@ E0A2,abs,BiosE0A2,called once at start
 2F38,abs,OBJ_FLAGS_2F38,bit 7: records an event when told to
 3098,abs,OBJ_EVENT_ID,event this object records
 2F90,abs,OBJ_2F90,object field not yet identified
-2FE8,abs,OBJ_2FE8,object field not yet identified
+2FE8,abs,OBJ_SPRITE_FLIP,"the object's sprite flip bits ($80, $C0) for its attribute word"
 3040,abs,OBJ_3040,object field not yet identified
 30F0,abs,OBJ_30F0,object field not yet identified
 3148,abs,OBJ_3148,object field not yet identified
 31A0,abs,OBJ_31A0,object field not yet identified
-31F8,abs,OBJ_31F8,object field not yet identified
+31F8,abs,OBJ_HIT_REACTION,"what a hit does: bits 2 to 4 the item it may drop (DropItemWhenHit), bits 5 to 7 the sound it plays (PlayHitSound)"
 3250,abs,OBJ_3250,object field not yet identified
 32A8,abs,OBJ_32A8,object field not yet identified
 3300,abs,OBJ_3300,object field not yet identified
 3358,abs,OBJ_3358,object field not yet identified
-33B0,abs,OBJ_33B0,object field not yet identified
-3408,abs,OBJ_3408,object field not yet identified
-3460,abs,OBJ_3460,object field not yet identified
+33B0,abs,OBJ_HIT_TAKEN,the hit the object has taken this frame; 5 or more is a damaging hit
+3408,abs,OBJ_ANIM_STEP,the step in the object's frame list; cleared with the timer when a list starts
+3460,abs,OBJ_ANIM_TIMER,frames left on the object's current animation step
 34B8,abs,OBJ_34B8,object field not yet identified
 3510,abs,OBJ_3510,object field not yet identified
 3568,abs,OBJ_3568,object field not yet identified
@@ -145,10 +145,10 @@ E0A2,abs,BiosE0A2,called once at start
 3828,abs,OBJ_3828,object field not yet identified
 3880,abs,OBJ_3880,object field not yet identified
 38D8,abs,OBJ_38D8,object field not yet identified
-3930,abs,OBJ_3930,object field not yet identified
-3988,abs,OBJ_3988,object field not yet identified
-39E0,abs,OBJ_39E0,object field not yet identified
-3A38,abs,OBJ_3A38,object field not yet identified
+3930,abs,OBJ_HITBOX_DX,"the hitbox's centre, X offset from the object"
+3988,abs,OBJ_HITBOX_HALF_W,the hitbox's half width; 0 with the half height: no hitbox
+39E0,abs,OBJ_HITBOX_DY,"the hitbox's centre, Y offset from the object"
+3A38,abs,OBJ_HITBOX_HALF_H,the hitbox's half height
 3A90,abs,OBJ_3A90,object field not yet identified
 3AE8,abs,OBJ_3AE8,object field not yet identified
 3C00,abs,ScriptSlotKind,script slot kind by slot

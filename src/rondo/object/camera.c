@@ -1057,7 +1057,7 @@ LeftWallMode CameraModeLeftWall(void)
         }
         return mode;
     }
-    if (rd8(OBJ_27A8) == PLAYER_STATE_NO_WALL_PUSH) {
+    if (rd8(OBJ_STATE) == PLAYER_STATE_NO_WALL_PUSH) {
         if (!(rd8(OBJ_VY_HI) & 0x80))
             StopPlayerX();
         mode.how = LEFT_WALL_STOPPED;
@@ -1187,7 +1187,7 @@ static void push_from_wall(WallPush *push, const PushFrames *frames, uint8_t oth
     uint8_t kept;
     uint8_t answer;
 
-    if (rd8(OBJ_27A8) == PLAYER_STATE_NO_WALL_PUSH) {
+    if (rd8(OBJ_STATE) == PLAYER_STATE_NO_WALL_PUSH) {
         if (!(rd8(OBJ_VY_HI) & 0x80)) {
             jsr_push(frames->stop_first);
             StopPlayerX();

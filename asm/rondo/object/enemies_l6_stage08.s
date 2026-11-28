@@ -19,7 +19,7 @@ LoadThenSpeedF0:
 NextStateOnScrollY:
     lda a:ScrollYHi
     beq NextStateOnScrollY_at0
-    inc a:OBJ_27A8,x
+    inc a:OBJ_STATE,x
 NextStateOnScrollY_at0:
     rts
 
@@ -59,7 +59,7 @@ DrawStepCountThenClear_at0:
 ; WAITS: no.
 ; Entry: X object, Y kept unless the step sets it. Exit: state 0: as LoadObjectRecord; else as ApplyVelocity.
 StartThenFallAlongList:
-    lda a:OBJ_27A8,x
+    lda a:OBJ_STATE,x
     bne StartThenFallAlongList_at0
     jmp VecLoadObjectRecord
 StartThenFallAlongList_at0:
@@ -78,18 +78,18 @@ StartThenFallAlongList_at0:
 ; WAITS: no.
 ; Entry: X object. Exit: the scroll's load, or the new state's N and Z (A $C0).
 FrameBySideThenTimerOnScroll:
-    stz a:OBJ_2A68,x
+    stz a:OBJ_FRAME,x
     lda a:OBJ_X_LO,x
     cmp #$C0
     bcs FrameBySideThenTimerOnScroll_at0
     lda #$25
-    sta a:OBJ_2A68,x
+    sta a:OBJ_FRAME,x
 FrameBySideThenTimerOnScroll_at0:
     lda a:ScrollYHi
     beq FrameBySideThenTimerOnScroll_at1
     lda #$C0
     sta a:OBJ_34B8,x
-    inc a:OBJ_27A8,x
+    inc a:OBJ_STATE,x
 FrameBySideThenTimerOnScroll_at1:
     rts
 
@@ -111,7 +111,7 @@ StepListACB2ThenNextOnScreen:
     lda a:OBJ_Y_LO,x
     cmp #$C0
     bcs StepListACB2ThenNextOnScreen_at0
-    inc a:OBJ_27A8,x
+    inc a:OBJ_STATE,x
 StepListACB2ThenNextOnScreen_at0:
     rts
 
@@ -153,7 +153,7 @@ StartThreeNumberedObjects_at0:
     sta a:OBJ_34B8,y
     clc
     adc #$47
-    sta a:OBJ_2A68,y
+    sta a:OBJ_FRAME,y
     inc z:zTemp00
     iny
     cpy #$19
@@ -183,7 +183,7 @@ LoadThenSpeedFromTable:
     tya
     clc
     adc #$47
-    sta a:OBJ_2A68,x
+    sta a:OBJ_FRAME,x
     rts
 
 ; @routine 088A:52D CountThenNextStateF3510
@@ -197,7 +197,7 @@ CountThenNextStateF3510:
     bne CountThenNextStateF3510_at0
     lda #$30
     sta a:OBJ_3510,x
-    inc a:OBJ_27A8,x
+    inc a:OBJ_STATE,x
 CountThenNextStateF3510_at0:
     rts
 
@@ -216,14 +216,14 @@ FallAndBlinkThenClear:
     adc #$00
     sta a:OBJ_VY_HI,x
     jsr VecApplyVelocity
-    stz a:OBJ_2A68,x
+    stz a:OBJ_FRAME,x
     lda z:zWaveCounter
     and #$01
     beq FallAndBlinkThenClear_at0
     lda a:OBJ_34B8,x
     clc
     adc #$47
-    sta a:OBJ_2A68,x
+    sta a:OBJ_FRAME,x
 FallAndBlinkThenClear_at0:
     dec a:OBJ_3510,x
     bne FallAndBlinkThenClear_at1
@@ -233,25 +233,25 @@ FallAndBlinkThenClear_at1:
 
 ; @routine 088A:63F SetHitBoxFromFrameTable
 ; @run 70:AE3F
-; WHAT IT DOES: Takes the object's hit box (OBJ_3930, OBJ_39E0, OBJ_3988, OBJ_3A38) from the four-byte row of the table at $B8F7 that its frame less one names.
+; WHAT IT DOES: Takes the object's hit box (OBJ_HITBOX_DX, OBJ_HITBOX_DY, OBJ_HITBOX_HALF_W, OBJ_HITBOX_HALF_H) from the four-byte row of the table at $B8F7 that its frame less one names.
 ; HOW: Table reads (bank 70).
 ; WAITS: no.
 ; Entry: X object. Exit: A the last byte read, Y the row offset.
 SetHitBoxFromFrameTable:
-    lda a:OBJ_2A68,x
+    lda a:OBJ_FRAME,x
     sec
     sbc #$01
     asl a
     asl a
     tay
     lda a:$B8F7,y
-    sta a:OBJ_3930,x
+    sta a:OBJ_HITBOX_DX,x
     lda a:$B8F8,y
-    sta a:OBJ_39E0,x
+    sta a:OBJ_HITBOX_DY,x
     lda a:$B8F9,y
-    sta a:OBJ_3988,x
+    sta a:OBJ_HITBOX_HALF_W,x
     lda a:SoundMusicTable,y
-    sta a:OBJ_3A38,x
+    sta a:OBJ_HITBOX_HALF_H,x
     rts
 
 ; @routine 088A:699 LoadThenStartFiveFromTable
@@ -308,18 +308,18 @@ PlaySoundTwo:
 
 ; @routine 088A:724 SetFrameThenCountToNext
 ; @run 70:AF24
-; WHAT IT DOES: Sets the object's frame (OBJ_2A68) to $0C and counts OBJ_3568 down; at zero it sets it to $10 and goes on to the next state.
+; WHAT IT DOES: Sets the object's frame (OBJ_FRAME) to $0C and counts OBJ_3568 down; at zero it sets it to $10 and goes on to the next state.
 ; HOW: A store, DEC, a store, INC.
 ; WAITS: no.
 ; Entry: X object. Exit: the count, or the new state's N and Z (A $10).
 SetFrameThenCountToNext:
     lda #$0C
-    sta a:OBJ_2A68,x
+    sta a:OBJ_FRAME,x
     dec a:OBJ_3568,x
     bne SetFrameThenCountToNext_at0
     lda #$10
     sta a:OBJ_3568,x
-    inc a:OBJ_27A8,x
+    inc a:OBJ_STATE,x
 SetFrameThenCountToNext_at0:
     rts
 
@@ -338,51 +338,51 @@ StepListByIndex088A:
 
 ; @routine 088B:044 CheckPlayerThenStepListIndex08
 ; @run 70:B044
-; WHAT IT DOES: With OBJ_2800 0 it goes on to OBJ_2800 1 and, when the player is $50 or more away along X, goes to state 6. Later it steps the animation list StepListByIndex088A gives for index 8 and when that ends clears its animation step and timer and goes to state 5. (The state 6 arm ran in no script; it is written from the decoded bytes.)
+; WHAT IT DOES: With OBJ_SUBSTATE 0 it goes on to OBJ_SUBSTATE 1 and, when the player is $50 or more away along X, goes to state 6. Later it steps the animation list StepListByIndex088A gives for index 8 and when that ends clears its animation step and timer and goes to state 5. (The state 6 arm ran in no script; it is written from the decoded bytes.)
 ; HOW: DistanceXToPlayer, StepListByIndex088A, stores.
 ; WAITS: no.
 ; Entry: X object. Exit: the compare, the step's, or A 5 / 6.
 CheckPlayerThenStepListIndex08:
-    lda a:OBJ_2800,x
+    lda a:OBJ_SUBSTATE,x
     bne CheckPlayerThenStepListIndex08_at0
-    inc a:OBJ_2800,x
+    inc a:OBJ_SUBSTATE,x
     jsr VecDistanceXToPlayer
     cmp #$50
     bcc CheckPlayerThenStepListIndex08_at1
     lda #$06
-    sta a:OBJ_27A8,x
+    sta a:OBJ_STATE,x
 CheckPlayerThenStepListIndex08_at1:
     rts
 CheckPlayerThenStepListIndex08_at0:
     ldy #$08
     jsr StepListByIndex088A
     bne CheckPlayerThenStepListIndex08_at2
-    stz a:OBJ_3408,x
-    stz a:OBJ_3460,x
+    stz a:OBJ_ANIM_STEP,x
+    stz a:OBJ_ANIM_TIMER,x
     lda #$05
-    sta a:OBJ_27A8,x
+    sta a:OBJ_STATE,x
 CheckPlayerThenStepListIndex08_at2:
     rts
 
 ; @routine 088B:084 StartFallWithFrame21
 ; @run 70:B084
-; WHAT IT DOES: Zeroes the object's X speed, sets its Y speed high to $FD and its frame to $21 and goes on to the next OBJ_2800.
+; WHAT IT DOES: Zeroes the object's X speed, sets its Y speed high to $FD and its frame to $21 and goes on to the next OBJ_SUBSTATE.
 ; HOW: Stores and an INC.
 ; WAITS: no.
-; Entry: X object. Exit: A $21, N and Z from the new OBJ_2800.
+; Entry: X object. Exit: A $21, N and Z from the new OBJ_SUBSTATE.
 StartFallWithFrame21:
     stz a:OBJ_VX_HI,x
     stz a:OBJ_VX_LO,x
     lda #$FD
     sta a:OBJ_VY_HI,x
     lda #$21
-    sta a:OBJ_2A68,x
-    inc a:OBJ_2800,x
+    sta a:OBJ_FRAME,x
+    inc a:OBJ_SUBSTATE,x
     rts
 
 ; @routine 088B:098 FallThenSoundAtPeak
 ; @run 70:B098
-; WHAT IT DOES: Applies gravity and moves the object; once its Y speed high byte is not negative it sends sound $9A and goes on to the next OBJ_2800.
+; WHAT IT DOES: Applies gravity and moves the object; once its Y speed high byte is not negative it sends sound $9A and goes on to the next OBJ_SUBSTATE.
 ; HOW: ApplyGravity, ApplyVelocity, SoundCommand, an INC.
 ; WAITS: no.
 ; Entry: X object, Y kept for the sound's push. Exit: see the wrapper.
@@ -393,7 +393,7 @@ FallThenSoundAtPeak:
     bmi FallThenSoundAtPeak_at0
     lda #$9A
     jsr VecSoundCommand
-    inc a:OBJ_2800,x
+    inc a:OBJ_SUBSTATE,x
 FallThenSoundAtPeak_at0:
     rts
 
@@ -408,7 +408,7 @@ StepListIndex0AThenSpawn:
     jsr StepListByIndex088A
     beq StepListIndex0AThenSpawn_at0
     bcc StepListIndex0AThenSpawn_at1
-    lda a:OBJ_2A68,x
+    lda a:OBJ_FRAME,x
     cmp #$24
     bne StepListIndex0AThenSpawn_at1
     jsr VecFindFreeSlotFrom30
@@ -417,10 +417,10 @@ StepListIndex0AThenSpawn:
     jsr VecStartObjectAtPlace
     rts
 StepListIndex0AThenSpawn_at0:
-    stz a:OBJ_3408,x
-    stz a:OBJ_3460,x
+    stz a:OBJ_ANIM_STEP,x
+    stz a:OBJ_ANIM_TIMER,x
     lda #$02
-    sta a:OBJ_27A8,x
+    sta a:OBJ_STATE,x
 StepListIndex0AThenSpawn_at1:
     rts
 
@@ -454,7 +454,7 @@ SpeedFromRandomRow:
 ; Entry: X object. Exit: as NegateVelocityX.
 TurnAroundInState9:
     lda #$09
-    sta a:OBJ_27A8,x
+    sta a:OBJ_STATE,x
     jmp VecNegateVelocityX
 
 ; @routine 088B:225 FallBackInState9
@@ -465,7 +465,7 @@ TurnAroundInState9:
 ; Entry: X object. Exit: as NegateVelocityY.
 FallBackInState9:
     lda #$09
-    sta a:OBJ_27A8,x
+    sta a:OBJ_STATE,x
     jmp VecNegateVelocityY
 
 ; @routine 088B:240 SpeedBySideOfScreen
@@ -502,12 +502,12 @@ NearPlayerThenPlaceOrState11:
     bcc SpeedBySideOfScreen
 NearPlayerThenPlaceOrState11_at0:
     lda #$0B
-    sta a:OBJ_27A8,x
+    sta a:OBJ_STATE,x
     rts
 
 ; @routine 088B:285 SoundThenAimRandomLength
 ; @run 70:B285
-; WHAT IT DOES: Sends sound $2B, then sets the object's speed along the angle to the player with a length from a table at $B2A7 by a random 0 to 3, and goes on to the next OBJ_2800.
+; WHAT IT DOES: Sends sound $2B, then sets the object's speed along the angle to the player with a length from a table at $B2A7 by a random 0 to 3, and goes on to the next OBJ_SUBSTATE.
 ; HOW: SoundCommand, AngleToPlayer, NextRandom, SetVelocityFromAngle, an INC.
 ; WAITS: no.
 ; Entry: X object, Y kept for the sound's push. Exit: see the wrapper.
@@ -526,7 +526,7 @@ SoundThenAimRandomLength:
     sta z:zTemp01
     pla
     jsr VecSetVelocityFromAngle
-    inc a:OBJ_2800,x
+    inc a:OBJ_SUBSTATE,x
     rts
 
 ; @routine 088B:6C5 ClearFrame
@@ -536,7 +536,7 @@ SoundThenAimRandomLength:
 ; WAITS: no.
 ; Entry: X object. Exit: all kept.
 ClearFrame:
-    stz a:OBJ_2A68,x
+    stz a:OBJ_FRAME,x
     rts
 ; @routine 088B:6C9 PlaceFromTableCopySlot10
 ; @run 70:B6C9
@@ -555,9 +555,9 @@ PlaceFromTableCopySlot10:
     lda a:$2A20
     sta a:OBJ_2A10,x
     lda a:$2A78
-    sta a:OBJ_2A68,x
+    sta a:OBJ_FRAME,x
     lda a:$2AD0
-    sta a:OBJ_2AC0,x
+    sta a:OBJ_FACING_LEFT,x
     lda #$10
     sta a:OBJ_2B18,x
     rts
@@ -579,7 +579,7 @@ PlaceFromTableThenStepList:
     lda #$07
     sta a:OBJ_2A10,x
     lda a:$2AD0
-    sta a:OBJ_2AC0,x
+    sta a:OBJ_FACING_LEFT,x
     lda a:OBJ_3510,x
     asl a
     tay
@@ -612,7 +612,7 @@ SetTimersOf12To15_at0:
 ; WAITS: no.
 ; Entry: X object. Exit: the compare with $20, or as ClearObject.
 FollowSlot10WithHitBox:
-    lda a:OBJ_27A8,x
+    lda a:OBJ_STATE,x
     bne FollowSlot10WithHitBox_at0
     jmp VecLoadObjectRecord
 FollowSlot10WithHitBox_at0:
@@ -625,19 +625,19 @@ FollowSlot10WithHitBox_at0:
     asl a
     tay
     lda a:$B9DF,y
-    sta a:OBJ_3930,x
+    sta a:OBJ_HITBOX_DX,x
     lda a:$B9E0,y
-    sta a:OBJ_39E0,x
+    sta a:OBJ_HITBOX_DY,x
     lda a:$B9E1,y
-    sta a:OBJ_3988,x
+    sta a:OBJ_HITBOX_HALF_W,x
     lda a:$B9E2,y
-    sta a:OBJ_3A38,x
+    sta a:OBJ_HITBOX_HALF_H,x
     lda a:$2AD0
-    sta a:OBJ_2AC0,x
+    sta a:OBJ_FACING_LEFT,x
     lda a:$3260
     sta a:OBJ_3250,x
-    lda a:OBJ_3988,x
-    ora a:OBJ_3A38,x
+    lda a:OBJ_HITBOX_HALF_W,x
+    ora a:OBJ_HITBOX_HALF_H,x
     bne FollowSlot10WithHitBox_at1
     stz a:OBJ_3250,x
 FollowSlot10WithHitBox_at1:
@@ -655,11 +655,11 @@ FollowSlot10WithHitBox_at2:
 ; WAITS: no.
 ; Entry: X object. Exit: the DEC, the load of zField83, or the new state's N and Z (A $58).
 StartThenWaitForField83:
-    lda a:OBJ_27A8,x
+    lda a:OBJ_STATE,x
     bne StartThenWaitForField83_at0
     jsr VecLoadObjectRecord
     lda #$02
-    sta a:OBJ_2A68,x
+    sta a:OBJ_FRAME,x
     lda #$06
     sta a:OBJ_2A10,x
 StartThenWaitForField83_at0:
@@ -670,13 +670,13 @@ StartThenWaitForField83_at0:
     lda #$01
     sta a:ScrollYHi
     lda #$46
-    sta a:OBJ_2A68,x
+    sta a:OBJ_FRAME,x
     lda #$07
     sta a:OBJ_2A10,x
     lda #$80
     sta a:OBJ_X_LO,x
     lda #$58
     sta a:OBJ_Y_LO,x
-    inc a:OBJ_27A8,x
+    inc a:OBJ_STATE,x
 StartThenWaitForField83_at1:
     rts

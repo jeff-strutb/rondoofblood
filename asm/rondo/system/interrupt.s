@@ -11,13 +11,13 @@ KernelStart:
     cla
     ldx #$20
     ldy #$1E
-    jsr BiosE06F
+    jsr BiosExScrmod
     cla
-    jsr BiosE06C
+    jsr BiosExDotmod
     stz a:BiosScreenLo
     lda #$10
     sta a:BiosScreenHi
-    jsr BiosE0A2
+    jsr BiosExSatclr
     lda #$00
     sta z:zGameMode
     lda #$0D
@@ -45,11 +45,11 @@ KernelStart:
     lda #$01
     ldx #<FrameInterrupt
     ldy #>FrameInterrupt
-    jsr BiosE05D
+    jsr BiosExSetvec
     lda #$02
     ldx #<IgnoredInterrupt
     ldy #>IgnoredInterrupt
-    jsr BiosE05D
+    jsr BiosExSetvec
     lda #$06
     sta z:BiosIrqDisable
     lda #$03
@@ -177,7 +177,7 @@ FrameInterrupt_at5:
     jsr FrameOverlay8003
     jsr FrameOverlay8000
     jsr SoundFrameTick
-    jsr BiosE063
+    jsr BiosExJoysns
     jsr NextRandom
     lda #$03
     clc

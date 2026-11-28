@@ -446,7 +446,7 @@ void abi_StepWithArmor(void)
 /*
  * @routine 0A9D:1CF ChooseNextMove
  * @run 71:C1CF
- * WHAT IT DOES: While the object in slot 0 is in OBJ_2800 state 1 and the player is $50 or more away along X and the distance sum is even, the
+ * WHAT IT DOES: While the object in slot 0 is in OBJ_SUBSTATE state 1 and the player is $50 or more away along X and the distance sum is even, the
  * object resets its animation and enters state 9; otherwise its wait OBJ_3568 counts down and at zero it resets, picks a new wait from the table
  * at $C226 by the distance sum and its next state from the table at $C223 by a counter OBJ_37D0, which goes up one.
  * HOW: DistanceXToPlayer, PlayerDistanceSum (twice, with the carry the compares left), table reads (bank 71).
@@ -459,7 +459,7 @@ ObjArm ChooseNextMove(uint8_t slot, bool carry_in)
     bool carry;
 
     (void)carry_in;   /* the compare of the first byte sets C before anything reads it */
-    r.first = RD8(OBJ->f2800[0]);
+    r.first = RD8(OBJ->substate[0]);
     carry = r.first >= 1;
     if (r.first == 1) {
         r.flag = true;
@@ -1002,7 +1002,7 @@ void abi_CountDownThenAdvance(void)
  * @routine 0A9E:61E CountDownAngleThenAdvance
  * @run 71:CE1E
  * WHAT IT DOES: With the object's X high byte 0, a 16-bit wait (OBJ_3568 high, OBJ_35C0 low) counts down; at zero it picks a new angle
- * (PickAngleAtRandomB), stops the animation, clears OBJ_2800 and enters state 3.
+ * (PickAngleAtRandomB), stops the animation, clears OBJ_SUBSTATE and enters state 3.
  * HOW: An ORA of the two bytes, a 16-bit subtract.
  * Untraced: everything past the X high byte test.
  * WAITS: no.
@@ -1028,7 +1028,7 @@ ObjArm CountDownAngleThenAdvance(uint8_t slot)
         jsr_pop();
         WR8(OBJ->anim_step[slot], 0);
         WR8(OBJ->anim_timer[slot], 0);
-        WR8(OBJ->f2800[slot], 0);
+        WR8(OBJ->substate[slot], 0);
         WR8(OBJ->state[slot], 3);
         r.arm = S0A_CD_PICKED;
         return r;

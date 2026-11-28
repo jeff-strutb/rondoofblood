@@ -141,7 +141,7 @@ void abi_CountdownThenState4(void)
  * @routine 07DB:785 ChangeToType9B
  * @run 70:B785
  * WHAT IT DOES: Turns the object into one of type $9B, in state 0.
- * HOW: Stores $9B in its type byte (OBJ_2750) and zero in its state.
+ * HOW: Stores $9B in its type byte (OBJ_KIND) and zero in its state.
  * WAITS: no.
  * Entry: X object. Exit: A $9B, N set, Z clear; X, Y and C kept.
  */
@@ -441,15 +441,15 @@ void abi_WalkWhileFrameChanges(void)
 ObjArm WaitThenState2(uint8_t slot)
 {
     ObjArm r = { 0 };
-    uint8_t step = RD8(OBJ->f2800[slot]);
+    uint8_t step = RD8(OBJ->substate[slot]);
     uint8_t left;
     ObjArm frames;
 
     if (step == 0) {
         WR8(OBJ->life_timer[slot], 0x1C);
-        step = RD8(OBJ->f2800[slot]);
+        step = RD8(OBJ->substate[slot]);
         step = (uint8_t)(step + 1);
-        WR8(OBJ->f2800[slot], step);
+        WR8(OBJ->substate[slot], step);
         r.arm = WT_START;
         r.first = step;
         return r;
@@ -1080,7 +1080,7 @@ ObjArm AnimateMoveThenSetUpNextStep(uint8_t slot, bool carry_in, uint8_t entry_y
     WR8(OBJ->f36c8[slot], (uint8_t)(r.second + 0x58));
     WR8(OBJ->anim_step[slot], 0);
     WR8(OBJ->anim_timer[slot], 0);
-    r.third = INC8(OBJ->f2800[slot]);
+    r.third = INC8(OBJ->substate[slot]);
     r.arm = AM_DONE;
     return r;
 }
@@ -1169,7 +1169,7 @@ ObjArm ChargeWhenPlayerNear(uint8_t slot)
     r.third = (uint8_t)(sum.value & 0x1F);
     WR8(OBJ->f36c8[slot], (uint8_t)(r.third + 0x48));
     WR8(OBJ->state[slot], 4);
-    WR8(OBJ->f2800[slot], 2);
+    WR8(OBJ->substate[slot], 2);
     r.second = y;
     r.arm = CH_CHARGED;
     return r;
@@ -1213,7 +1213,7 @@ void abi_ChargeWhenPlayerNear(void)
 ObjArm TurnOnRandomBeatWalkA(uint8_t slot)
 {
     ObjArm r = { 0 };
-    uint8_t phase = RD8(OBJ->f2800[slot]);
+    uint8_t phase = RD8(OBJ->substate[slot]);
 
     if (phase != 0) {
         r.arm = TW_FOLLOW;

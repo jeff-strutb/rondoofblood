@@ -58,7 +58,7 @@ uint8_t LoadObjectRecord(uint8_t object, uint8_t *exit_nz, bool *exit_c)
     byte = RD8_PTR_Y(ZP->temp10, 10);
     WR8(OBJ->status_flags[object], byte);
     byte = RD8_PTR_Y(ZP->temp10, 11);
-    WR8(OBJ->f31f8[object], byte);
+    WR8(OBJ->hit_reaction[object], byte);
     WR8(OBJ->hitbox_dx[object], 0);
     WR8(OBJ->hitbox_dy[object], 0);
     state = INC8(OBJ->state[object]);

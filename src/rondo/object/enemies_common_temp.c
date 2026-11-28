@@ -25,7 +25,7 @@ ObjArm drop_item_when_hit(uint8_t slot, uint16_t limits, uint16_t items)
     if (r.first < 5) {
         return r;
     }
-    r.second = RD8(OBJ->f31f8[slot]);
+    r.second = RD8(OBJ->hit_reaction[slot]);
     r.third = (uint8_t)((r.second >> 2) & 7);
     r.arm = CT_DI_NO_BITS;
     if (r.third == 0) {
@@ -96,7 +96,7 @@ Ended drop_item_when_hit_exit_shim(ObjArm r)
 ObjArm sound_from_hit_code(uint8_t slot, uint16_t table)
 {
     ObjArm r = { 0 };
-    uint8_t code = RD8(OBJ->f31f8[slot]);
+    uint8_t code = RD8(OBJ->hit_reaction[slot]);
 
     r.first = (uint8_t)((code >> 5) & 7);
     r.flag = (code & 0x10) != 0;

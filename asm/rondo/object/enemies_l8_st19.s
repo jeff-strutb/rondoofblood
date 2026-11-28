@@ -5,7 +5,7 @@
 ; WAITS: no.
 ; Entry: X object. Exit: the state's N and Z, or as LoadObjectRecord.
 LoadRecordInStateZero:
-    lda a:OBJ_27A8,x
+    lda a:OBJ_STATE,x
     bne LoadRecordInStateZero_at0
     jsr VecLoadObjectRecord
 LoadRecordInStateZero_at0:
@@ -21,41 +21,41 @@ FaceThePlayerByStateTable:
     lda a:OBJ_3618,x
     and #$07
     bne FaceThePlayerByStateTable_at0
-    ldy a:OBJ_27A8,x
+    ldy a:OBJ_STATE,x
     lda a:$B596,y
     beq FaceThePlayerByStateTable_at0
     jsr VecSideOfPlayer
     and #$01
-    sta a:OBJ_2AC0,x
+    sta a:OBJ_FACING_LEFT,x
 FaceThePlayerByStateTable_at0:
     rts
 
 ; @routine 0B4B:5AE StateTableHurtFlag
 ; @run 70:B5AE
-; WHAT IT DOES: Sets OBJ_2EE0 from the table at $B5D2 by the state; in the states the table at $B5E2 marks, an object that has taken 5 hits goes to state $0E and clears its OBJ_2800 and animation.
+; WHAT IT DOES: Sets OBJ_2EE0 from the table at $B5D2 by the state; in the states the table at $B5E2 marks, an object that has taken 5 hits goes to state $0E and clears its OBJ_SUBSTATE and animation.
 ; HOW: Two table reads by the state, a compare, stores.
 ; WAITS: no.
 ; Entry: X object. Exit: as the last instruction that ran.
 StateTableHurtFlag:
-    ldy a:OBJ_27A8,x
+    ldy a:OBJ_STATE,x
     lda a:$B5D2,y
     sta a:OBJ_FIELDS_2EE0,x
     lda a:$B5E2,y
     beq StateTableHurtFlag_at0
-    lda a:OBJ_33B0,x
+    lda a:OBJ_HIT_TAKEN,x
     cmp #$05
     bcc StateTableHurtFlag_at0
     lda #$0E
-    sta a:OBJ_27A8,x
-    stz a:OBJ_2800,x
-    stz a:OBJ_3408,x
-    stz a:OBJ_3460,x
+    sta a:OBJ_STATE,x
+    stz a:OBJ_SUBSTATE,x
+    stz a:OBJ_ANIM_STEP,x
+    stz a:OBJ_ANIM_TIMER,x
 StateTableHurtFlag_at0:
     rts
 
 ; @routine 0B4B:5F2 EnterState0FWhenFlagged
 ; @run 70:B5F2
-; WHAT IT DOES: When bit 7 of OBJ_31A0 is set and the state is not $0F, plays sound $B7, clears the animation and the speed and goes to state $0F with OBJ_2800 0.
+; WHAT IT DOES: When bit 7 of OBJ_31A0 is set and the state is not $0F, plays sound $B7, clears the animation and the speed and goes to state $0F with OBJ_SUBSTATE 0.
 ; HOW: Two tests, SoundCommand, stores.
 ; WAITS: no.
 ; Entry: X object, Y kept for the sound. Exit: as the last instruction that ran. The arm past the flag test ran in no script; the draft stops there.
@@ -63,26 +63,26 @@ EnterState0FWhenFlagged:
     lda a:OBJ_31A0,x
     and #$80
     beq EnterState0FWhenFlagged_at0
-    lda a:OBJ_27A8,x
+    lda a:OBJ_STATE,x
     cmp #$0F
     beq EnterState0FWhenFlagged_at0
     lda #$B7
     jsr VecSoundCommand
-    stz a:OBJ_3408,x
-    stz a:OBJ_3460,x
+    stz a:OBJ_ANIM_STEP,x
+    stz a:OBJ_ANIM_TIMER,x
     stz a:OBJ_VX_HI,x
     stz a:OBJ_VX_LO,x
     stz a:OBJ_VY_HI,x
     stz a:OBJ_VY_LO,x
     lda #$0F
-    sta a:OBJ_27A8,x
-    stz a:OBJ_2800,x
+    sta a:OBJ_STATE,x
+    stz a:OBJ_SUBSTATE,x
 EnterState0FWhenFlagged_at0:
     rts
 
 ; @routine 0B4B:620 HitBoxByFrameTable
 ; @run 70:B620
-; WHAT IT DOES: When OBJ_3250 is set, sets it 2 and takes the hit box (OBJ_3930, OBJ_39E0, OBJ_3988, OBJ_3A38) from a four byte row of the table at $C207 picked by the frame less 1.
+; WHAT IT DOES: When OBJ_3250 is set, sets it 2 and takes the hit box (OBJ_HITBOX_DX, OBJ_HITBOX_DY, OBJ_HITBOX_HALF_W, OBJ_HITBOX_HALF_H) from a four byte row of the table at $C207 picked by the frame less 1.
 ; HOW: A test, a subtract, two shifts, four table reads, stores.
 ; WAITS: no.
 ; Entry: X object. Exit: as the last instruction that ran.
@@ -91,20 +91,20 @@ HitBoxByFrameTable:
     beq HitBoxByFrameTable_at0
     lda #$02
     sta a:OBJ_3250,x
-    lda a:OBJ_2A68,x
+    lda a:OBJ_FRAME,x
     sec
     sbc #$01
     asl a
     asl a
     tay
     lda a:$C207,y
-    sta a:OBJ_3930,x
+    sta a:OBJ_HITBOX_DX,x
     lda a:$C208,y
-    sta a:OBJ_39E0,x
+    sta a:OBJ_HITBOX_DY,x
     lda a:$C209,y
-    sta a:OBJ_3988,x
+    sta a:OBJ_HITBOX_HALF_W,x
     lda a:$C20A,y
-    sta a:OBJ_3A38,x
+    sta a:OBJ_HITBOX_HALF_H,x
 HitBoxByFrameTable_at0:
     rts
 
@@ -139,7 +139,7 @@ CountDownThenMusicAgain:
     sta a:OBJ_3670,x
     lda #$01
     sta a:OBJ_34B8,x
-    inc a:OBJ_27A8,x
+    inc a:OBJ_STATE,x
 CountDownThenMusicAgain_at0:
     rts
 
@@ -167,7 +167,7 @@ StartScriptsFromTable_at0:
     lda a:$B729,y
     cmp #$FF
     beq StartScriptsFromTable_at1
-    sta a:OBJ_2A68,x
+    sta a:OBJ_FRAME,x
     phx
     lda a:$B72A,y
     ldx #$05
@@ -179,7 +179,7 @@ StartScriptsFromTable_at1:
     ora #$04
     sta z:zField8E
     lda #$2D
-    sta a:OBJ_2A68,x
+    sta a:OBJ_FRAME,x
     lda #$01
     sta a:OBJ_VX_HI,x
     lda #$FA
@@ -188,7 +188,7 @@ StartScriptsFromTable_at1:
     sta a:OBJ_3250,x
     lda #$30
     sta a:OBJ_34B8,x
-    inc a:OBJ_27A8,x
+    inc a:OBJ_STATE,x
     rts
 
 ; @routine 0B4B:76E FallThenSoundAtGround
@@ -202,7 +202,7 @@ FallThenSoundAtGround:
     bcc FallThenSoundAtGround_at0
     lda #$4A
     jsr VecSoundCommand
-    inc a:OBJ_27A8,x
+    inc a:OBJ_STATE,x
 FallThenSoundAtGround_at0:
     rts
 
@@ -240,13 +240,13 @@ CountDownThenHopTowardPlayer:
     jsr CountDownOrPickNextTimer
     bcs CountDownThenHopTowardPlayer_at0
     jsr StepListThenWallBounce
-    lda a:OBJ_2AC0,x
+    lda a:OBJ_FACING_LEFT,x
     sta a:OBJ_3568,x
     jsr VecDistanceXToPlayer
     cmp #$28
     bcs CountDownThenHopTowardPlayer_at0
     lda #$06
-    sta a:OBJ_27A8,x
+    sta a:OBJ_STATE,x
 CountDownThenHopTowardPlayer_at0:
     rts
 
@@ -307,20 +307,20 @@ CountDownThenHopAwayFromPlayer:
     jsr CountDownOrPickNextTimer
     bcs CountDownThenHopAwayFromPlayer_at0
     jsr StepListThenWallBounce
-    lda a:OBJ_2AC0,x
+    lda a:OBJ_FACING_LEFT,x
     eor #$01
     sta a:OBJ_3568,x
     jsr VecDistanceXToPlayer
     cmp #$40
     bcc CountDownThenHopAwayFromPlayer_at0
     lda #$05
-    sta a:OBJ_27A8,x
+    sta a:OBJ_STATE,x
 CountDownThenHopAwayFromPlayer_at0:
     rts
 
 ; @routine 0B4C:15F StepListFallThenSoundAtGround
 ; @run 70:B95F
-; WHAT IT DOES: Steps the animation list at $B97D and falls (FallToGroundAt98); on landing plays sound $4A, sets OBJ_3510 $28 and goes to the next OBJ_2800.
+; WHAT IT DOES: Steps the animation list at $B97D and falls (FallToGroundAt98); on landing plays sound $4A, sets OBJ_3510 $28 and goes to the next OBJ_SUBSTATE.
 ; HOW: StepObjectFrames, FallToGroundAt98, SoundCommand, stores, an INC.
 ; WAITS: no.
 ; Entry: X object, Y kept unless the step sets it. Exit: as the last instruction that ran.
@@ -336,7 +336,7 @@ StepListFallThenSoundAtGround:
     jsr VecSoundCommand
     lda #$28
     sta a:OBJ_3510,x
-    inc a:OBJ_2800,x
+    inc a:OBJ_SUBSTATE,x
 StepListFallThenSoundAtGround_at0:
     rts
 
@@ -358,26 +358,26 @@ StepListThenTileWriteAndSpawn:
     jmp SoundAndSpawnFiveAtFrame27
 StepListThenTileWriteAndSpawn_at0:
     lda #$05
-    sta a:OBJ_27A8,x
+    sta a:OBJ_STATE,x
 StepListThenTileWriteAndSpawn_at1:
     rts
 
 ; @routine 0B4C:3B8 WaitThenStepListWithSoundAndBounce
 ; @run 70:BBB8
-; WHAT IT DOES: In OBJ_2800 0 goes to state 9 when the player is $58 or more away in X, and on to the next OBJ_2800. Later it steps the animation list at $BC00: when it ends it clears the animation and goes to state 5; at frame $12 it plays sound $2C, sets the X speed from the table at $BC07 by its facing and goes on to MoveXAndProbeWallBounce.
+; WHAT IT DOES: In OBJ_SUBSTATE 0 goes to state 9 when the player is $58 or more away in X, and on to the next OBJ_SUBSTATE. Later it steps the animation list at $BC00: when it ends it clears the animation and goes to state 5; at frame $12 it plays sound $2C, sets the X speed from the table at $BC07 by its facing and goes on to MoveXAndProbeWallBounce.
 ; HOW: DistanceXToPlayer, StepObjectFrames, SoundCommand, a table read, a tail jump.
 ; WAITS: no.
 ; Entry: X object, Y kept unless the step sets it. Exit: as the last instruction that ran.
 WaitThenStepListWithSoundAndBounce:
-    lda a:OBJ_2800,x
+    lda a:OBJ_SUBSTATE,x
     bne WaitThenStepListWithSoundAndBounce_at0
     jsr VecDistanceXToPlayer
     cmp #$58
     bcc WaitThenStepListWithSoundAndBounce_at1
     lda #$09
-    sta a:OBJ_27A8,x
+    sta a:OBJ_STATE,x
 WaitThenStepListWithSoundAndBounce_at1:
-    inc a:OBJ_2800,x
+    inc a:OBJ_SUBSTATE,x
     rts
 WaitThenStepListWithSoundAndBounce_at0:
     lda #$BC
@@ -387,20 +387,20 @@ WaitThenStepListWithSoundAndBounce_at0:
     jsr VecStepObjectFrames
     beq WaitThenStepListWithSoundAndBounce_at2
     bcc JumpByStateTable093C3FF
-    lda a:OBJ_2A68,x
+    lda a:OBJ_FRAME,x
     cmp #$12
     bne JumpByStateTable093C3FF
     lda #$2C
     jsr VecSoundCommand
-    ldy a:OBJ_2AC0,x
+    ldy a:OBJ_FACING_LEFT,x
     lda a:$BC07,y
     sta a:OBJ_VX_HI,x
     jmp MoveXAndProbeWallBounce
 WaitThenStepListWithSoundAndBounce_at2:
-    stz a:OBJ_3408,x
-    stz a:OBJ_3460,x
+    stz a:OBJ_ANIM_STEP,x
+    stz a:OBJ_ANIM_TIMER,x
     lda #$05
-    sta a:OBJ_27A8,x
+    sta a:OBJ_STATE,x
     rts
 
 ; @routine 0B4C:46F StepListFallThenCountLandings
@@ -417,10 +417,10 @@ StepListFallThenCountLandings:
     jsr VecStepObjectFrames
     jsr FallToGroundAt98
     bcc StepListFallThenCountLandings_at0
-    stz a:OBJ_3408,x
-    stz a:OBJ_3460,x
+    stz a:OBJ_ANIM_STEP,x
+    stz a:OBJ_ANIM_TIMER,x
     lda #$06
-    sta a:OBJ_27A8,x
+    sta a:OBJ_STATE,x
     lsr a:OBJ_34B8,x
     inc a:OBJ_3778,x
     lda a:OBJ_3778,x
@@ -437,10 +437,10 @@ StepListFallThenCountLandings_at0:
 ; WAITS: no.
 ; Entry: X object. Exit: as the last instruction that ran. Reversing the speed ran in no script; the draft stops there.
 LoadRecordLeapByNumberThenFall:
-    lda a:OBJ_27A8,x
+    lda a:OBJ_STATE,x
     bne LoadRecordLeapByNumberThenFall_at0
     jsr VecLoadObjectRecord
-    ldy a:OBJ_2AC0,x
+    ldy a:OBJ_FACING_LEFT,x
     lda a:$BF9B,y
     sta a:OBJ_VX_HI,x
     lda #$E0
@@ -458,7 +458,7 @@ LoadRecordLeapByNumberThenFall:
     sta a:OBJ_VY_HI,x
     lda a:$BF9F,y
     sta a:OBJ_VY_LO,x
-    lda a:OBJ_2AC0,x
+    lda a:OBJ_FACING_LEFT,x
     beq LoadRecordLeapByNumberThenFall_at1
     jsr VecNegateVelocityX
 LoadRecordLeapByNumberThenFall_at1:
@@ -475,13 +475,13 @@ LoadRecordLeapByNumberThenFall_at0:
 ; Entry: X object. Exit: as the last instruction that ran. Clearing the object ran in no script; the draft stops there.
 FollowObject10HitBoxByFrame:
     inc a:OBJ_34B8,x
-    lda a:OBJ_27A8,x
+    lda a:OBJ_STATE,x
     bne JumpByStateTable
     jmp VecLoadObjectRecord
     lda a:$3680
     bne FollowObject10HitBoxByFrame_at0
-    stz a:OBJ_3988,x
-    stz a:OBJ_3A38,x
+    stz a:OBJ_HITBOX_HALF_W,x
+    stz a:OBJ_HITBOX_HALF_H,x
     rts
 FollowObject10HitBoxByFrame_at0:
     ldy #$10
@@ -493,15 +493,15 @@ FollowObject10HitBoxByFrame_at0:
     asl a
     tay
     lda a:$C33B,y
-    sta a:OBJ_3930,x
+    sta a:OBJ_HITBOX_DX,x
     lda a:$C33C,y
-    sta a:OBJ_39E0,x
+    sta a:OBJ_HITBOX_DY,x
     lda a:$C33D,y
-    sta a:OBJ_3988,x
+    sta a:OBJ_HITBOX_HALF_W,x
     lda a:$C33E,y
-    sta a:OBJ_3A38,x
+    sta a:OBJ_HITBOX_HALF_H,x
     lda a:$2AD0
-    sta a:OBJ_2AC0,x
+    sta a:OBJ_FACING_LEFT,x
     lda a:$2760
     cmp #$24
     beq FaceThePlayerInSomeStatesD

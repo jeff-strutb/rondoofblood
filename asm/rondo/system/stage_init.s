@@ -23,7 +23,7 @@ InitStage:
 InitStage_at0:
     tai KernelZeros,ScrollXFrac,$0030
     tai KernelZeros,Scroll3E66,$0088
-    stz a:OBJ_2FE8
+    stz a:OBJ_SPRITE_FLIP
     lda z:zField8E
     pha
     bsr LoadStageEntry
@@ -70,7 +70,7 @@ InitStageB:
 InitStageB_at0:
     tai KernelZeros,ScrollXFrac,$0030
     tai KernelZeros,Scroll3E66,$0088
-    stz a:OBJ_2FE8
+    stz a:OBJ_SPRITE_FLIP
     lda z:zField8E
     pha
     bsr LoadStageEntryR
@@ -117,7 +117,7 @@ InitStageC:
 InitStageC_at0:
     tai KernelZeros,ScrollXFrac,$0030
     tai KernelZeros,Scroll3E66,$0088
-    stz a:OBJ_2FE8
+    stz a:OBJ_SPRITE_FLIP
     lda z:zField8E
     pha
     bsr LoadStageEntryT

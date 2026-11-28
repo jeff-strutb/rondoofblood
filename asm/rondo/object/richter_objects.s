@@ -85,27 +85,27 @@ RichterObjectMarkOff:
 
 ; @routine 01BD:3F8 RichterObjectFromPlayer
 ; @run 6E:C3F8
-; WHAT IT DOES: Gives an object Richter's facing and his OBJ_2FE8, doubled.
+; WHAT IT DOES: Gives an object Richter's facing and his OBJ_SPRITE_FLIP, doubled.
 ; HOW: RichterObjectTake2FE8, then the facing copied.
 ; WAITS: no.
 ; Entry: X object. Exit: A the facing, N and Z from it, C as RichterObjectTake2FE8. X, Y and V
 ; kept.
 RichterObjectFromPlayer:
     bsr RichterObjectTake2FE8
-    lda a:OBJ_2AC0
-    sta a:OBJ_2AC0,x
+    lda a:OBJ_FACING_LEFT
+    sta a:OBJ_FACING_LEFT,x
     rts
 
 ; @routine 01BD:401 RichterObjectTake2FE8
 ; @run 6E:C401
-; WHAT IT DOES: Gives an object Richter's OBJ_2FE8, doubled.
+; WHAT IT DOES: Gives an object Richter's OBJ_SPRITE_FLIP, doubled.
 ; HOW: Shifted up a place.
 ; WAITS: no.
 ; Entry: X object. Exit: A the value, N and Z from it, C Richter's bit 7. X, Y and V kept.
 RichterObjectTake2FE8:
-    lda a:OBJ_2FE8
+    lda a:OBJ_SPRITE_FLIP
     asl a
-    sta a:OBJ_2FE8,x
+    sta a:OBJ_SPRITE_FLIP,x
     rts
 
 ; @routine 01BD:409 RichterObjectSlot
@@ -160,7 +160,7 @@ RichterObjectFlash:
     ldy #$8E
     lda a:OBJ_3568,x
     beq RichterObjectFlash_at0
-    lda a:OBJ_2A68,x
+    lda a:OBJ_FRAME,x
     cmp #$07
     beq RichterObjectFlash_at1
     iny
@@ -176,7 +176,7 @@ RichterObjectFlash_at0:
     rts
 RichterObjectFlash_at1:
     tya
-    sta a:OBJ_2A68,x
+    sta a:OBJ_FRAME,x
     lda a:OBJ_34B8,x
     sec
     sbc #$0E
@@ -190,7 +190,7 @@ RichterObjectFlash_at1:
 ; @run 6E:C4D1
 ; WHAT IT DOES: Charges an object from OBJ_34B8 $0C on, the first time the way it faces is newly
 ; pressed.
-; HOW: OBJ_3568 counted up; RichterChargePads by OBJ_2AC0 against zPadPressed.
+; HOW: OBJ_3568 counted up; RichterChargePads by OBJ_FACING_LEFT against zPadPressed.
 ; WAITS: no.
 ; Entry: X object. Exit: X kept. Before $0C, A OBJ_34B8, N, Z and C from comparing it with $0C.
 ; Charged already, A the charge, N and Z from it, C set. Not pressed, A 0, Z set, C set, Y the
@@ -201,7 +201,7 @@ RichterObjectCharge:
     bcc RichterObjectCharge_at0
     lda a:OBJ_3568,x
     bne RichterObjectCharge_at0
-    ldy a:OBJ_2AC0,x
+    ldy a:OBJ_FACING_LEFT,x
     lda z:zPadPressed
     and a:RichterChargePads,y
     beq RichterObjectCharge_at0
@@ -212,11 +212,11 @@ RichterObjectCharge_at0:
 ; @routine 01BD:5C5 RichterObjectNextState
 ; @run 6E:C5C5
 ; WHAT IT DOES: Moves an object on to its next state.
-; HOW: OBJ_27A8 counted up.
+; HOW: OBJ_STATE counted up.
 ; WAITS: no.
 ; Entry: X object. Exit: N and Z from the new state. A, X, Y, C and V kept.
 RichterObjectNextState:
-    inc a:OBJ_27A8,x
+    inc a:OBJ_STATE,x
     rts
 
 ; @routine 01BE:67B RichterObjectAtPlayer
@@ -238,7 +238,7 @@ RichterObjectAtPlayer_at0:
     bpl RichterObjectAtPlayer_at1
     dec z:zTemp07
 RichterObjectAtPlayer_at1:
-    lda a:OBJ_2AC0,x
+    lda a:OBJ_FACING_LEFT,x
     beq RichterObjectAtPlayer_at2
     cla
     sec
@@ -330,7 +330,7 @@ RichterObjectAnimationRunning:
 ; @run 6E:DA51
 ; WHAT IT DOES: Counts down an object's frame on show; at zero moves to the next step of its list.
 ; A timer of $FF means its animation has stopped.
-; HOW: OBJ_2F90 the timer, OBJ_FLAGS_2F38 the step, OBJ_2A68 the frame shown.
+; HOW: OBJ_2F90 the timer, OBJ_FLAGS_2F38 the step, OBJ_FRAME the frame shown.
 ; WAITS: no.
 ; Entry: X object. Exit: as RichterAnimationTick.
 RichterObjectAnimationTick:
@@ -368,7 +368,7 @@ RichterObjectSetAnimation_at2:
 RichterObjectSetAnimation_at4:
     iny
     lda (zTemp00),y
-    sta a:OBJ_2A68,x
+    sta a:OBJ_FRAME,x
     rts
 RichterObjectSetAnimation_at0:
     bsr RichterObjectAnimationList
@@ -417,12 +417,12 @@ RichterObjectHitboxOn:
 ; @routine 01C0:524 RichterObjectHitboxByFrame
 ; @run 6E:DD24
 ; WHAT IT DOES: Gives an object the hitbox of the frame it shows, or none.
-; HOW: RichterFrameHitboxes by OBJ_2A68; runs on into RichterObjectHitboxFrom.
+; HOW: RichterFrameHitboxes by OBJ_FRAME; runs on into RichterObjectHitboxFrom.
 ; WAITS: no.
 ; Entry: X object. Exit: none, A 0, Z set, N clear, Y the frame. Otherwise as
 ; RichterObjectHitboxFrom.
 RichterObjectHitboxByFrame:
-    ldy a:OBJ_2A68,x
+    ldy a:OBJ_FRAME,x
     lda a:RichterFrameHitboxes,y
 
 ; @routine 01C0:52A RichterObjectHitboxFrom
@@ -439,30 +439,30 @@ RichterObjectHitboxFrom:
     asl a
     tay
     lda a:RichterObjectHitboxes,y
-    sta a:OBJ_3930,x
+    sta a:OBJ_HITBOX_DX,x
     lda a:RichterObjectHitboxes+1,y
-    sta a:OBJ_39E0,x
+    sta a:OBJ_HITBOX_DY,x
     lda a:RichterObjectHitboxes+2,y
-    sta a:OBJ_3988,x
+    sta a:OBJ_HITBOX_HALF_W,x
     lda a:RichterObjectHitboxes+3,y
-    sta a:OBJ_3A38,x
+    sta a:OBJ_HITBOX_HALF_H,x
     rts
 
 ; @routine 01DE:48B MariaClaimSlotsB
 ; @run 6D:AC8B
 ; WHAT IT DOES: Takes every free one of object slots $0B to $0E for an object of kind $18.
-; HOW: OBJ_2750 zero is free: ClearObject (through its kernel vector), then the kind.
+; HOW: OBJ_KIND zero is free: ClearObject (through its kernel vector), then the kind.
 ; Untraced: a slot already in use ($AC90 taken); no script had one taken when she jumped.
 ; WAITS: no.
 ; Entry: nothing. Exit: X $0F; A the last kind read or $18; N clear, Z and C set from the CPX. Y and V kept.
 MariaClaimSlotsB:
     ldx #$0B
 MariaClaimSlotsB_at1:
-    lda a:OBJ_2750,x
+    lda a:OBJ_KIND,x
     bne MariaClaimSlotsB_at0
     jsr VecClearObject
     lda #$18
-    sta a:OBJ_2750,x
+    sta a:OBJ_KIND,x
 MariaClaimSlotsB_at0:
     inx
     cpx #$0F
@@ -472,7 +472,7 @@ MariaClaimSlotsB_at0:
 ; @routine 01DE:7BA MariaReplaceSlotsOneTwo
 ; @run 6D:AFBA
 ; WHAT IT DOES: Clears object slots 1 and 2 as kind 4, each unless it holds kind 1 or 2.
-; HOW: OBJ_2750 compared with 1 and 2; MariaClearSlotAsKind for slot 1, then a run on into it for slot 2.
+; HOW: OBJ_KIND compared with 1 and 2; MariaClearSlotAsKind for slot 1, then a run on into it for slot 2.
 ; Untraced: a slot of kind 1 or 2 ($AFC3, $AFC7, $AFD1 and $AFD5 taken); no script had one there.
 ; WAITS: no.
 ; Entry: nothing. Exit: Y 4, X 2; slot 2 kept, A its kind, N, Z and C from comparing it with 1 or 2; else A 4, N
@@ -480,7 +480,7 @@ MariaClaimSlotsB_at0:
 MariaReplaceSlotsOneTwo:
     ldy #$04
     ldx #$01
-    lda a:OBJ_2750,x
+    lda a:OBJ_KIND,x
     cmp #$01
     beq MariaReplaceSlotsOneTwo_at0
     cmp #$02
@@ -488,7 +488,7 @@ MariaReplaceSlotsOneTwo:
     bsr MariaClearSlotAsKind
 MariaReplaceSlotsOneTwo_at0:
     inx
-    lda a:OBJ_2750,x
+    lda a:OBJ_KIND,x
     cmp #$01
     beq StepScrollThenMoveOrFadeOut
     cmp #$02
@@ -497,13 +497,13 @@ MariaReplaceSlotsOneTwo_at0:
 ; @routine 01DE:7D7 MariaClearSlotAsKind
 ; @run 6D:AFD7
 ; WHAT IT DOES: Clears an object slot and gives it a kind.
-; HOW: ClearObject (through its kernel vector), then Y into OBJ_2750.
+; HOW: ClearObject (through its kernel vector), then Y into OBJ_KIND.
 ; WAITS: no.
 ; Entry: X object, Y the kind. Exit: A the kind, N and Z from it. X, Y, C and V kept.
 MariaClearSlotAsKind:
     jsr VecClearObject
     tya
-    sta a:OBJ_2750,x
+    sta a:OBJ_KIND,x
     rts
 
 ; @routine 01E1:27C MariaObjectAddXLow
@@ -614,11 +614,11 @@ MariaObjectApplyVelocity:
 ; @routine 01E1:369 MariaObjectFacingVelocity
 ; @run 6E:C369
 ; WHAT IT DOES: Turns an object's X velocity round when it faces left.
-; HOW: OBJ_2AC0, then NegateVelocityX (through its kernel vector).
+; HOW: OBJ_FACING_LEFT, then NegateVelocityX (through its kernel vector).
 ; WAITS: no.
 ; Entry: X object. Exit: facing right, A 0, Z set; else as NegateVelocityX. X and Y kept.
 MariaObjectFacingVelocity:
-    lda a:OBJ_2AC0,x
+    lda a:OBJ_FACING_LEFT,x
     beq MariaObjectFacingVelocity_at0
     jsr VecNegateVelocityX
 MariaObjectFacingVelocity_at0:
@@ -638,18 +638,18 @@ MariaObjectMarkOn:
 
 ; @routine 01E1:387 MariaObjectFromPlayer
 ; @run 6E:C387
-; WHAT IT DOES: Gives an object Maria's OBJ_2FE8, doubled, and her facing; the doubled byte is written twice.
+; WHAT IT DOES: Gives an object Maria's OBJ_SPRITE_FLIP, doubled, and her facing; the doubled byte is written twice.
 ; HOW: The doubling once inline, then on into the copy of RichterObjectFromPlayer at $C38E, which calls
 ; MariaObjectTake2FE8 and copies the facing.
 ; WAITS: no.
 ; Entry: X object. Exit: as RichterObjectFromPlayer.
 MariaObjectFromPlayer:
-    lda a:OBJ_2FE8
+    lda a:OBJ_SPRITE_FLIP
     asl a
-    sta a:OBJ_2FE8,x
+    sta a:OBJ_SPRITE_FLIP,x
     bsr MariaObjectTake2FE8
-    lda a:OBJ_2AC0
-    sta a:OBJ_2AC0,x
+    lda a:OBJ_FACING_LEFT
+    sta a:OBJ_FACING_LEFT,x
     rts
 
 ; @routine 01E1:397 MariaObjectTake2FE8
@@ -659,9 +659,9 @@ MariaObjectFromPlayer:
 ; WAITS: no.
 ; Entry, exit: as RichterObjectTake2FE8.
 MariaObjectTake2FE8:
-    lda a:OBJ_2FE8
+    lda a:OBJ_SPRITE_FLIP
     asl a
-    sta a:OBJ_2FE8,x
+    sta a:OBJ_SPRITE_FLIP,x
     rts
 
 ; @routine 01E1:4EC MariaObjectAtPlayer
@@ -681,7 +681,7 @@ MariaObjectAtPlayer_at0:
     bpl MariaObjectAtPlayer_at1
     dec z:zTemp07
 MariaObjectAtPlayer_at1:
-    lda a:OBJ_2AC0,x
+    lda a:OBJ_FACING_LEFT,x
     beq MariaObjectAtPlayer_at2
     cla
     sec
@@ -714,7 +714,7 @@ MariaObjectAtPlayer_at2:
 ; WAITS: no.
 ; Entry, exit: as RichterObjectNextState.
 MariaObjectNextState:
-    inc a:OBJ_27A8,x
+    inc a:OBJ_STATE,x
     rts
 
 ; @routine 01E1:677 MariaObjectClear
@@ -740,13 +740,13 @@ MariaObjectSlot:
 ; @run 6E:C880
 ; WHAT IT DOES: Adds to an object's X speed the step for the way it faces, and says whether the speed's sign
 ; changed.
-; HOW: The word from her table at $C8A2 by OBJ_2AC0, added into OBJ_VX_LO and OBJ_VX_HI; the old high byte kept in
+; HOW: The word from her table at $C8A2 by OBJ_FACING_LEFT, added into OBJ_VX_LO and OBJ_VX_HI; the old high byte kept in
 ; zTemp00 and its bit 7 compared.
 ; WAITS: no.
 ; Entry: X object. Exit: A $80 if the sign changed, else 0, N and Z from it; C and V from the high byte's add; Y
 ; twice the facing. X kept.
 MariaObjectAccelerate:
-    lda a:OBJ_2AC0,x
+    lda a:OBJ_FACING_LEFT,x
     asl a
     tay
     lda a:MariaObjectAccelerate+$22,y
@@ -777,7 +777,7 @@ MariaObjectNearPlayer:
     beq MariaObjectNearPlayer_at0
     lda a:OBJ_Y_LO
     clc
-    adc a:OBJ_39E0
+    adc a:OBJ_HITBOX_DY
     sta z:zTemp00
     lda a:OBJ_X_HI,x
     bne MariaObjectNearPlayer_at1
@@ -858,7 +858,7 @@ MariaObjectSetAnimation_at2:
 MariaObjectSetAnimation_at4:
     iny
     lda (zTemp00),y
-    sta a:OBJ_2A68,x
+    sta a:OBJ_FRAME,x
     rts
 MariaObjectSetAnimation_at0:
     bsr MariaObjectAnimationList

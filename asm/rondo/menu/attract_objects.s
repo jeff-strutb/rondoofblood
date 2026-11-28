@@ -37,7 +37,7 @@ SceneObjectsEntry:
 StepSceneObjects:
     clx
 StepSceneObjects_at1:
-    lda a:OBJ_2750,x
+    lda a:OBJ_KIND,x
     beq StepSceneObjects_at0
     jsr DispatchSceneObject
 StepSceneObjects_at0:

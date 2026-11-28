@@ -27,7 +27,7 @@ StartChannel81OnceThenStepScrollTable_at0:
 ; WAITS: no.
 ; Entry: X object. Exit: as StepVerticalScrollTable.
 NextStateThenStepScrollTable:
-    inc a:OBJ_27A8,x
+    inc a:OBJ_STATE,x
     jmp StepVerticalScrollTable
 
 ; @routine 025B:5E9 StepListMarksThenSound74AtC8
@@ -50,9 +50,9 @@ StepListMarksThenSound74AtC8:
     bne RichterReadPad
     lda #$74
     jsr VecSoundCommand
-    stz a:OBJ_3408,x
-    stz a:OBJ_3460,x
-    inc a:OBJ_27A8,x
+    stz a:OBJ_ANIM_STEP,x
+    stz a:OBJ_ANIM_TIMER,x
+    inc a:OBJ_STATE,x
     rts
 
 ; @routine 025B:6B1 SpinThenCountDownToState
@@ -77,7 +77,7 @@ SpinThenCountDownToState:
     sta a:OBJ_3510,x
     lda #$02
     sta a:OBJ_3670,x
-    inc a:OBJ_27A8,x
+    inc a:OBJ_STATE,x
 SpinThenCountDownToState_at0:
     rts
 
@@ -101,7 +101,7 @@ SpinThenCountDownToPhase80:
     bne OrbitStepBack
     lda #$80
     sta a:OBJ_36C8,x
-    inc a:OBJ_27A8,x
+    inc a:OBJ_STATE,x
     rts
 
 ; @routine 025B:73C SpinThenCountPhaseDown
@@ -121,15 +121,15 @@ SpinThenCountPhaseDown:
     sta a:OBJ_3670,x
     dec a:OBJ_36C8,x
     bne OrbitStepForward
-    stz a:OBJ_3408,x
-    stz a:OBJ_3460,x
+    stz a:OBJ_ANIM_STEP,x
+    stz a:OBJ_ANIM_TIMER,x
     stz a:OBJ_3670,x
-    inc a:OBJ_27A8,x
+    inc a:OBJ_STATE,x
     rts
 
 ; @routine 025B:7C7 SpinThenCountWordDown
 ; @run 70:B7C7
-; WHAT IT DOES: Steps the animation list at $B6DA, runs SpinOnCircle and counts the 16-bit timer OBJ_34B8:OBJ_3510 down; at zero clears OBJ_3250, goes to the next state and clears OBJ_2800.
+; WHAT IT DOES: Steps the animation list at $B6DA, runs SpinOnCircle and counts the 16-bit timer OBJ_34B8:OBJ_3510 down; at zero clears OBJ_3250, goes to the next state and clears OBJ_SUBSTATE.
 ; HOW: StepObjectFrames, SpinOnCircle, a 16-bit subtract in memory, an ORA, stores, an INC.
 ; WAITS: no.
 ; Entry: X object, Y kept unless the step sets it. Exit: as the last instruction that ran.
@@ -150,8 +150,8 @@ SpinThenCountWordDown:
     ora a:OBJ_3510,x
     bne SpinThenCountWordDown_at0
     stz a:OBJ_3250,x
-    inc a:OBJ_27A8,x
-    stz a:OBJ_2800,x
+    inc a:OBJ_STATE,x
+    stz a:OBJ_SUBSTATE,x
 SpinThenCountWordDown_at0:
     rts
 
@@ -179,6 +179,6 @@ CountDownThenDrawAndSpawnRing:
     sta a:ScrollXMaxLo
     lda #$60
     sta a:OBJ_34B8,x
-    inc a:OBJ_27A8,x
+    inc a:OBJ_STATE,x
 CountDownThenDrawAndSpawnRing_at0:
     rts

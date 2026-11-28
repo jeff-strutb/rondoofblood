@@ -329,7 +329,7 @@ void abi_RichterAnimationRunning(void)
  * @run 6D:B669
  * WHAT IT DOES: Counts down the frame on show; at zero moves to the next step of the list.
  * A timer of $FF means the animation has stopped.
- * HOW: The timer in OBJ_2F90, the step in OBJ_FLAGS_2F38, the frame shown in OBJ_2A68.
+ * HOW: The timer in OBJ_2F90, the step in OBJ_FLAGS_2F38, the frame shown in OBJ_FRAME.
  * WAITS: no.
  * Entry: nothing. Exit: A the frame or $FF; Y twice the step, plus one with a frame; C and N, Z
  * from what was read. X and V kept. Clobbers zTemp00-01.
@@ -522,7 +522,7 @@ static TurnWindow check_turn_window(uint16_t turn_states)
     uint8_t value, facing, x_lo;
 
     wr8(PlayerByte3BD7, 0);
-    value = RD8(OBJ->f2800[0]);
+    value = RD8(OBJ->substate[0]);
     if (value != 0) {
         r.end = ended_load(value);
         return r;
@@ -583,7 +583,7 @@ void abi_MariaCheckTurnWindow(void)
  * @routine 01BB:7CA RichterFaceByPad
  * @run 6D:B7CA
  * WHAT IT DOES: Turns him to face the way the pad holds, left or right; with neither, as he is.
- * HOW: Bits 7 and 5 of zPadHeld, and facing in OBJ_2AC0: 0 for right, 1 for left.
+ * HOW: Bits 7 and 5 of zPadHeld, and facing in OBJ_FACING_LEFT: 0 for right, 1 for left.
  * WAITS: no.
  * Entry: nothing. Exit: A the bits looked at last; N and Z from them, or from the facing when it
  * turns left. X, Y, C and V kept.
@@ -777,12 +777,12 @@ static uint8_t bcd_subtract(uint8_t hearts, uint8_t cost)
  * WHAT IT DOES: The item crash: on a press of the item button with no item of his out, clears
  * the item slots and, if he has the hearts the crash costs, starts its sound and its script and
  * pays the hearts. Says whether it started; when it does not, the forced press is dropped.
- * HOW: Bit 2 of zPadPressed; OBJ_2750 of slots 3 to 15 all empty; RichterItemCosts in BCD, then
+ * HOW: Bit 2 of zPadPressed; OBJ_KIND of slots 3 to 15 all empty; RichterItemCosts in BCD, then
  * RichterItemCrashLists and RichterItemCrashScripts by item, 0 for none, on channel and slot 6.
  * WAITS: no.
  * Entry: nothing. Exit: V bit 6 of the presses. Started: C set, A the hearts left, N and Z from
  * them, X the item, Y the script if one started. Not started, C clear and: no press, N bit 7 of
- * the presses, Z set, A, X, Y kept; an item out, A its OBJ_2750, N and Z from it, X its slot;
+ * the presses, Z set, A, X, Y kept; an item out, A its OBJ_KIND, N and Z from it, X its slot;
  * too few hearts, A the hearts, N and Z from comparing them with the cost, X the item. Y kept.
  */
 /* One character's copy of the item crash: the end of its slot scan, its three tables, its calls' returns. */
@@ -800,7 +800,7 @@ static ItemCrash try_item_crash(const ItemCrashLayout *layout)
     crash.pressed = rd8(zPadPressed);
     if (crash.pressed & PAD_SELECT_BIT) {
         for (crash.slot = ITEM_FIRST_SLOT; crash.slot < layout->slot_end; crash.slot++) {
-            crash.out = rd8((uint16_t)(OBJ_2750 + crash.slot));
+            crash.out = rd8((uint16_t)(OBJ_KIND + crash.slot));
             if (crash.out != 0) {
                 crash.how = CRASH_ITEM_OUT;
                 break;
@@ -1101,18 +1101,18 @@ ItemUse RichterUseThrownItem(uint8_t item)
     }
     use.by_index = false;
     use.item = RD8(ZP->field93);
-    if (rd8(OBJ_2750 + ITEM_SLOT_A) != 0) {
+    if (rd8(OBJ_KIND + ITEM_SLOT_A) != 0) {
         use.item = RD8(ZP->field93);
         use.hearts = rd8(zField94);
         use.cost = rd8((uint16_t)(RichterItemSecondCosts + use.item));
         if (use.hearts < use.cost)
             return item_not_used(use, USE_TOO_FEW_HEARTS);
-        if (rd8(OBJ_2750 + ITEM_SLOT_B) != 0) {
+        if (rd8(OBJ_KIND + ITEM_SLOT_B) != 0) {
             use.hearts = rd8(zField94);
             use.cost = rd8((uint16_t)(RichterItemThirdCosts + use.item));
             if (use.hearts < use.cost)
                 return item_not_used(use, USE_TOO_FEW_HEARTS);
-            use.seen = rd8(OBJ_2750 + ITEM_SLOT_C);
+            use.seen = rd8(OBJ_KIND + ITEM_SLOT_C);
             if (use.seen != 0)
                 return item_not_used(use, USE_SLOTS_FULL);
         }
@@ -1157,7 +1157,7 @@ void abi_RichterUseItemSix(void)
  * @run 6D:B9CD
  * WHAT IT DOES: Item 7: used while one of slots 5, 8 and 11 is free; then the item's attack, and
  * its hearts paid. With all three taken, the whip.
- * HOW: OBJ_2750 of each slot in turn.
+ * HOW: OBJ_KIND of each slot in turn.
  * WAITS: no.
  * Entry: X twice the item. Exit: as RichterUseItem.
  */
@@ -1165,9 +1165,9 @@ ItemUse RichterUseItemSeven(uint8_t item)
 {
     ItemUse use = item_handler(item);
 
-    if (rd8(OBJ_2750 + ITEM_SLOT_A) == 0 || rd8(OBJ_2750 + ITEM_SLOT_B) == 0)
+    if (rd8(OBJ_KIND + ITEM_SLOT_A) == 0 || rd8(OBJ_KIND + ITEM_SLOT_B) == 0)
         return item_used(use);
-    use.seen = rd8(OBJ_2750 + ITEM_SLOT_C);
+    use.seen = rd8(OBJ_KIND + ITEM_SLOT_C);
     if (use.seen == 0)
         return item_used(use);
     return item_not_used(use, USE_SLOTS_FULL);
@@ -1182,9 +1182,9 @@ void abi_RichterUseItemSeven(void)
  * @routine 01BC:1DF RichterFindItemOut
  * @run 6D:B9DF
  * WHAT IT DOES: Finds the first of slots 5 to 15 with an object in it.
- * HOW: OBJ_2750 of each.
+ * HOW: OBJ_KIND of each.
  * WAITS: no.
- * Entry: nothing. Exit: Y the slot, or $10; A its OBJ_2750, or 0. Found: N and Z from A, C kept
+ * Entry: nothing. Exit: Y the slot, or $10; A its OBJ_KIND, or 0. Found: N and Z from A, C kept
  * if it was slot 5, else clear. None: Z and C set, N clear. X and V kept.
  */
 ItemScan RichterFindItemOut(void)
@@ -1192,7 +1192,7 @@ ItemScan RichterFindItemOut(void)
     ItemScan scan = { false, ITEM_SLOT_A, 0 };
 
     for (; scan.slot < ITEM_SLOT_END; scan.slot++) {
-        scan.seen = rd8((uint16_t)(OBJ_2750 + scan.slot));
+        scan.seen = rd8((uint16_t)(OBJ_KIND + scan.slot));
         if (scan.seen != 0) {
             scan.found = true;
             break;
@@ -1407,7 +1407,7 @@ typedef struct { bool found; uint8_t y; uint8_t kind; } LiveObject;
  * @routine 01E0:4C3 MariaFindLiveObject
  * @run 6D:BCC3
  * WHAT IT DOES: Looks for an object alive in slots 5 to 14, other than one of kind $18.
- * HOW: OBJ_2750 by Y.
+ * HOW: OBJ_KIND by Y.
  * Untraced: all of it; only MariaUseItem calls it, past its own untraced test.
  * WAITS: no.
  * Entry: nothing. Exit: found, Y the slot, A its kind, N, Z and C from comparing it with $18; else Y $0F, A the

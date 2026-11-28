@@ -10,7 +10,7 @@ CountdownThenStartScript80:
     lda #$02
     sta a:PlayerByte3BF0
     stz a:OBJ_3568
-    stz a:OBJ_2A68
+    stz a:OBJ_FRAME
     stz a:ScrollXLo+1
     lda #$01
     sta a:ScrollXHi+1
@@ -75,14 +75,14 @@ StepVerticalScrollTable_at2:
 ; WAITS: no.
 ; Entry: X object. Exit: as the last instruction that ran.
 LoadRecordPlaceByKind:
-    lda a:OBJ_27A8,x
+    lda a:OBJ_STATE,x
     bne LoadRecordPlaceByKind_at0
     jsr VecLoadObjectRecord
     lda #$06
     sta a:OBJ_2A10,x
     ldy a:OBJ_3040,x
     lda a:$B17E,y
-    sta a:OBJ_2A68,x
+    sta a:OBJ_FRAME,x
     lda a:OBJ_FLAGS_2F38,x
     bne LoadRecordPlaceByKind_at0
     lda #$20
@@ -105,7 +105,7 @@ LoadRecordPlaceByKind_at0:
 ; WAITS: no.
 ; Entry: X object. Exit: as the last instruction that ran.
 LoadRecordAtPlayerPlace:
-    lda a:OBJ_27A8,x
+    lda a:OBJ_STATE,x
     bne LoadRecordAtPlayerPlace_at0
     jsr VecLoadObjectRecord
     lda a:OBJ_X_LO
@@ -126,11 +126,11 @@ LoadRecordAtPlayerPlace_at0:
 ; WAITS: no.
 ; Entry: X object. Exit: the add's A, N, Z, C and V; Y 11 when the record was loaded.
 LoadRecordThenSinkByF3520:
-    lda a:OBJ_27A8,x
+    lda a:OBJ_STATE,x
     bne JumpByStateTable072B1B1
     jsr VecLoadObjectRecord
     lda #$06
-    sta a:OBJ_2A68,x
+    sta a:OBJ_FRAME,x
     dec a:OBJ_X_HI,x
     lda a:$3520
     clc
@@ -145,7 +145,7 @@ LoadRecordThenSinkByF3520:
 ; WAITS: no.
 ; Entry: X object, Y kept unless the step sets it. Exit: the step.
 LoadRecordThenStepListByKind:
-    lda a:OBJ_27A8,x
+    lda a:OBJ_STATE,x
     bne SwingAndPick
     jsr VecLoadObjectRecord
     dec a:OBJ_X_HI,x
@@ -157,8 +157,8 @@ LoadRecordThenStepListByKind:
     lda a:$27B8
     cmp #$04
     bcc PickPhaseAtRandomB
-    stz a:OBJ_3408,x
-    stz a:OBJ_3460,x
+    stz a:OBJ_ANIM_STEP,x
+    stz a:OBJ_ANIM_TIMER,x
     inc a:OBJ_34B8,x
     bra StartSplitterLow
     tya
@@ -178,7 +178,7 @@ LoadRecordThenStepListByKind:
 ; WAITS: no.
 ; Entry: X object, Y kept unless the step sets it. Exit: the step.
 LoadRecordSinkThenStepListByKind:
-    lda a:OBJ_27A8,x
+    lda a:OBJ_STATE,x
     bne LoadRecordSinkThenStepListByKind_at0
     jsr VecLoadObjectRecord
     dec a:OBJ_X_HI,x
@@ -199,11 +199,11 @@ LoadRecordSinkThenStepListByKind_at0:
 ; @routine 025B:266 StateMachineWithSoundAndList
 ; @run 70:B266
 ; WHAT IT DOES: An object of several phases. State 0 loads the record. State 1 waits on the state of slot $10 (3 or 6): it steps the animation list at $B2FA or $B2FF, plays sound $72 when the scroll byte ScrollXLo+1 is clear, and at state 6 goes on. State 2 counts OBJ_3510 down and goes on. Later states fall, and once off screen to the left start a list channel and clear the object.
-; HOW: Compares of OBJ_27A8 and slot $10's state, SoundCommand, StepObjectFrames, StartListChannelKind2 between a PHX and a PLX, a tail jump into ClearObject.
+; HOW: Compares of OBJ_STATE and slot $10's state, SoundCommand, StepObjectFrames, StartListChannelKind2 between a PHX and a PLX, a tail jump into ClearObject.
 ; WAITS: no.
 ; Entry: X object, Y kept unless a step sets it. Exit: as the last instruction that ran.
 StateMachineWithSoundAndList:
-    lda a:OBJ_27A8,x
+    lda a:OBJ_STATE,x
     bne StateMachineWithSoundAndList_at0
     jsr VecLoadObjectRecord
     dec a:OBJ_X_HI,x
@@ -234,8 +234,8 @@ StateMachineWithSoundAndList_at5:
 StateMachineWithSoundAndList_at4:
     lda #$72
     jsr VecSoundCommand
-    stz a:OBJ_3408,x
-    stz a:OBJ_3460,x
+    stz a:OBJ_ANIM_STEP,x
+    stz a:OBJ_ANIM_TIMER,x
     inc a:OBJ_34B8,x
 StateMachineWithSoundAndList_at3:
     lda #$B2
@@ -256,12 +256,12 @@ StateMachineWithSoundAndList_at1:
     and #$F0
     ora #$05
     sta a:OBJ_FLAGS_2F38,x
-    inc a:OBJ_27A8,x
+    inc a:OBJ_STATE,x
     rts
 StateMachineWithSoundAndList_at6:
     lda #$1C
-    sta a:OBJ_2A68,x
-    inc a:OBJ_27A8,x
+    sta a:OBJ_FRAME,x
+    inc a:OBJ_STATE,x
     lda #$0A
     sta a:OBJ_3510,x
     rts
@@ -285,7 +285,7 @@ StateMachineWithSoundAndList_at8:
 ; WAITS: no.
 ; Entry: X object. Exit: as the last instruction that ran.
 DriftRecordThenMoveWithJitter:
-    lda a:OBJ_27A8,x
+    lda a:OBJ_STATE,x
     bne StartOnFirstState
     jsr VecLoadObjectRecord
     lda #$E8
@@ -302,7 +302,7 @@ DriftRecordThenMoveWithJitter:
     bne DriftRecordThenMoveWithJitter_at1
     inc a:OBJ_34B8,x
     lda #$1D
-    sta a:OBJ_2A68,x
+    sta a:OBJ_FRAME,x
     rts
 DriftRecordThenMoveWithJitter_at1:
     jsr VecApplyVelocity
@@ -339,7 +339,7 @@ DriftRecordThenMoveWithJitter_at0:
 ; WAITS: no.
 ; Entry: X object. Exit: as the last instruction that ran.
 SwingByCosineFromState0B:
-    lda a:OBJ_27A8,x
+    lda a:OBJ_STATE,x
     cmp #$0B
     bcc SwingByCosineFromState0B_at0
     lda #$40
@@ -412,7 +412,7 @@ PushPlayerWhenFlagged_at0:
 ; WAITS: no.
 ; Entry: X object, Y kept for the sound. Exit: as the last instruction that ran.
 HitSoundThenSpawnPieces:
-    lda a:OBJ_33B0,x
+    lda a:OBJ_HIT_TAKEN,x
     cmp #$05
     bne HitSoundThenSpawnPieces_at0
     lda #$75
@@ -437,7 +437,7 @@ HitSoundThenSpawnPieces_at1:
 
 ; @routine 025B:52E EnterState0BWhenFlagged
 ; @run 70:B52E
-; WHAT IT DOES: When bit 7 of OBJ_31A0 is set and the state is below $0B, sets the state $0B and OBJ_2800 0.
+; WHAT IT DOES: When bit 7 of OBJ_31A0 is set and the state is below $0B, sets the state $0B and OBJ_SUBSTATE 0.
 ; HOW: Two tests, two stores.
 ; WAITS: no.
 ; Entry: X object. Exit: as the last instruction that ran. The stores ran in no script; the draft stops there.
@@ -445,12 +445,12 @@ EnterState0BWhenFlagged:
     lda a:OBJ_31A0,x
     and #$80
     beq EnterState0BWhenFlagged_at0
-    lda a:OBJ_27A8,x
+    lda a:OBJ_STATE,x
     cmp #$0B
     bcs EnterState0BWhenFlagged_at0
     lda #$0B
-    sta a:OBJ_27A8,x
-    stz a:OBJ_2800,x
+    sta a:OBJ_STATE,x
+    stz a:OBJ_SUBSTATE,x
 EnterState0BWhenFlagged_at0:
     rts
 
@@ -507,7 +507,7 @@ CountDownThenStartScripts:
     stz a:OBJ_3720,x
     lda #$60
     sta a:OBJ_3510,x
-    inc a:OBJ_27A8,x
+    inc a:OBJ_STATE,x
     rts
 
 ; @routine 025B:5CE CountDownWithSound77
@@ -528,7 +528,7 @@ CountDownWithSound77:
 CountDownWithSound77_at0:
     lda #$80
     sta a:OBJ_3510,x
-    inc a:OBJ_27A8,x
+    inc a:OBJ_STATE,x
     rts
 
 ; @routine 025B:617 StartScriptAtTimerMarks
@@ -601,7 +601,7 @@ SpinOutThenLeave:
     sta a:OBJ_3510,x
     lda #$01
     sta a:OBJ_3670,x
-    inc a:OBJ_27A8,x
+    inc a:OBJ_STATE,x
     rts
 
 ; @routine 025B:6E7 SpinOnCircle
@@ -648,7 +648,7 @@ StepListThenBurstAtFrame18:
     jsr VecStepObjectFrames
     beq StepListThenBurstAtFrame18_at0
     bcc StepListThenBurstAtFrame18_at1
-    lda a:OBJ_2A68,x
+    lda a:OBJ_FRAME,x
     cmp #$18
     bne StepListThenBurstAtFrame18_at1
     lda #$42
@@ -666,12 +666,12 @@ StepListThenBurstAtFrame18_at0:
     sta a:OBJ_3510,x
     lda #$03
     sta a:OBJ_3670,x
-    inc a:OBJ_27A8,x
+    inc a:OBJ_STATE,x
     rts
 
 ; @routine 025B:7F5 HomeOnPointThenRingAndSound
 ; @run 70:B7F5
-; WHAT IT DOES: Steps the animation list at $B6DA while it flies toward the point X $00E0, Y $0030 on a circle of radius $0100; once on it (within 3) plays sound $73, sets OBJ_3670 4 and OBJ_3510 $B0, starts list $83 on channel 5, restarts the animation, and goes to state $0B with OBJ_2800 2.
+; WHAT IT DOES: Steps the animation list at $B6DA while it flies toward the point X $00E0, Y $0030 on a circle of radius $0100; once on it (within 3) plays sound $73, sets OBJ_3670 4 and OBJ_3510 $B0, starts list $83 on channel 5, restarts the animation, and goes to state $0B with OBJ_SUBSTATE 2.
 ; HOW: StepObjectFrames, AngleToPoint, SetVelocityFromAngle, ApplyVelocity, two range tests, SoundCommand, StartListChannelKind2.
 ; WAITS: no.
 ; Entry: X object, Y kept unless the step sets it. Exit: as the last instruction that ran.
@@ -723,11 +723,11 @@ HomeOnPointThenRingAndSound:
     ldx #$05
     jsr VecStartListChannelKind2
     plx
-    stz a:OBJ_3408,x
-    stz a:OBJ_3460,x
+    stz a:OBJ_ANIM_STEP,x
+    stz a:OBJ_ANIM_TIMER,x
     lda #$0B
-    sta a:OBJ_27A8,x
+    sta a:OBJ_STATE,x
     lda #$02
-    sta a:OBJ_2800,x
+    sta a:OBJ_SUBSTATE,x
 HomeOnPointThenRingAndSound_at0:
     rts

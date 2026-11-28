@@ -13,9 +13,9 @@ ComputeHitboxPositions:
 ComputeHitboxPositions_at4:
     lda a:OBJ_3250,x
     beq ComputeHitboxPositions_at0
-    lda a:OBJ_3930,x
+    lda a:OBJ_HITBOX_DX,x
     sta z:zTemp01
-    lda a:OBJ_2AC0,x
+    lda a:OBJ_FACING_LEFT,x
     beq ComputeHitboxPositions_at1
     lda z:zTemp01
     eor #$FF
@@ -34,13 +34,13 @@ ComputeHitboxPositions_at2:
     adc z:zTemp00
     sta a:HitboxHi,x
     stz z:zTemp00
-    lda a:OBJ_39E0,x
+    lda a:OBJ_HITBOX_DY,x
     bpl ComputeHitboxPositions_at3
     dec z:zTemp00
 ComputeHitboxPositions_at3:
     lda a:OBJ_Y_LO,x
     clc
-    adc a:OBJ_39E0,x
+    adc a:OBJ_HITBOX_DY,x
     sta a:HitboxYLo,x
     lda a:OBJ_Y_HI,x
     adc z:zTemp00
@@ -63,9 +63,9 @@ ComputeHitboxPositionsLong:
 ComputeHitboxPositionsLong_at4:
     lda a:OBJ_3250,x
     beq ComputeHitboxPositionsLong_at0
-    lda a:OBJ_3930,x
+    lda a:OBJ_HITBOX_DX,x
     sta z:zTemp01
-    lda a:OBJ_2AC0,x
+    lda a:OBJ_FACING_LEFT,x
     beq ComputeHitboxPositionsLong_at1
     lda z:zTemp01
     eor #$FF
@@ -84,13 +84,13 @@ ComputeHitboxPositionsLong_at2:
     adc z:zTemp00
     sta a:HitboxHi,x
     stz z:zTemp00
-    lda a:OBJ_39E0,x
+    lda a:OBJ_HITBOX_DY,x
     bpl ComputeHitboxPositionsLong_at3
     dec z:zTemp00
 ComputeHitboxPositionsLong_at3:
     lda a:OBJ_Y_LO,x
     clc
-    adc a:OBJ_39E0,x
+    adc a:OBJ_HITBOX_DY,x
     sta a:HitboxYLo,x
     lda a:OBJ_Y_HI,x
     adc z:zTemp00

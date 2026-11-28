@@ -34,9 +34,9 @@ EmitObjectSprites:
     lda a:OBJ_X_HI,x
     adc #$00
     sta z:zTemp0B
-    lda a:OBJ_2AC0,x
+    lda a:OBJ_FACING_LEFT,x
     sta z:zTemp0D
-    lda a:OBJ_2FE8,x
+    lda a:OBJ_SPRITE_FLIP,x
     sta z:zProduct1
     lda a:OBJ_2B18,x
     sta z:zTemp0E
@@ -49,7 +49,7 @@ EmitObjectSprites:
     sta z:zTemp00
     lda a:$81A4,y
     sta z:zTemp01
-    lda a:OBJ_2A68,x
+    lda a:OBJ_FRAME,x
     asl a
     tay
     bcc EmitObjectSprites_at0
@@ -239,7 +239,7 @@ WriteObjectSprites_at0:
     tax
     iny
     sty z:$DA
-    lda a:OBJ_2A68,x
+    lda a:OBJ_FRAME,x
     beq WriteObjectSprites_at2
     lda a:OBJ_2B18,x
     and #$10

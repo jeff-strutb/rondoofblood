@@ -505,7 +505,7 @@ void abi_StartBossWhenStageC0OrLoad(void)
 /*
  * @routine 025A:7DE StepScrollThenMoveOrFadeOut
  * @run 70:AFDE
- * WHAT IT DOES: Runs StepVerticalScrollTable. When slots 0's state and OBJ_2800 and Y speed high byte are all 0 and the byte at $3BC3 is not 0 it acts by OBJ_3670: at 0 it speeds up the object named by OBJ_3040 by $0010, sets ScrollStepXHi+1 to the negative of its X speed high byte, sets slot 0's OBJ_3510 $10 and OBJ_3568 0, hands slot 0's sprite set, frame and facing to the object named by OBJ_3040 and clears slot 0's frame; when ScrollXHi+1 is $FE it then sets the timer $40 and goes to the next state. At 1 it clears OBJ_3670, clears the object named by OBJ_3040, makes it kind $31, sets slot 0's OBJ_3510 $10 and OBJ_3568 0 and fades the CD with type $0C.
+ * WHAT IT DOES: Runs StepVerticalScrollTable. When slots 0's state and OBJ_SUBSTATE and Y speed high byte are all 0 and the byte at $3BC3 is not 0 it acts by OBJ_3670: at 0 it speeds up the object named by OBJ_3040 by $0010, sets ScrollStepXHi+1 to the negative of its X speed high byte, sets slot 0's OBJ_3510 $10 and OBJ_3568 0, hands slot 0's sprite set, frame and facing to the object named by OBJ_3040 and clears slot 0's frame; when ScrollXHi+1 is $FE it then sets the timer $40 and goes to the next state. At 1 it clears OBJ_3670, clears the object named by OBJ_3040, makes it kind $31, sets slot 0's OBJ_3510 $10 and OBJ_3568 0 and fades the CD with type $0C.
  * HOW: StepVerticalScrollTable, tests, 16-bit adds in memory, ClearObjectInY, cd_fade (the card's volume fade), a tail jump into SetTimerThenNextState.
  * WAITS: no.
  * Entry: X object. Exit: as the last instruction that ran; with the fade, as cd_fade leaves them (fade_exit_shim, then cd_fade_exit_shim in the fade arm). The byte at $3BC3 and $3BF0 keep their address form until they have names. The OBJ_3670 not 0 arm ran in no script; the draft stops there.
@@ -520,7 +520,7 @@ L8St11FadeArm StepScrollThenMoveOrFadeOut(uint8_t slot)
     r.table = StepVerticalScrollTable(slot);
     jsr_pop();
     value = RD8(OBJ->state[0]);
-    high = RD8(OBJ->f2800[0]);
+    high = RD8(OBJ->substate[0]);
     r.joined = (uint8_t)(value | high);
     if (r.joined != 0) {
         r.arm = ST11_FADE_BUSY;

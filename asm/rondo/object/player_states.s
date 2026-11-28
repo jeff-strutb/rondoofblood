@@ -1,14 +1,14 @@
 ; @routine 01BD:7C9 ObjectTouchesPlayerBox
 ; @run 6E:C7C9
 ; WHAT IT DOES: Says whether the object lies within a box around the player: 8 either side of his X low byte and, from
-; a point his Y low plus the box offset OBJ_39E0, $14 either side. The answer is 0 for in and 1 for out.
+; a point his Y low plus the box offset OBJ_HITBOX_DY, $14 either side. The answer is 0 for in and 1 for out.
 ; HOW: The first screen only (both high bytes zero); two add and compare windows of $10 and $28.
 ; WAITS: no.
 ; Entry: X object. Exit: A 0 or 1, N and Z from it, C and V from the last window's add and compare. Clobbers zTemp00.
 ObjectTouchesPlayerBox:
     lda a:OBJ_Y_LO
     clc
-    adc a:OBJ_39E0
+    adc a:OBJ_HITBOX_DY
     sta z:zTemp00
     lda a:OBJ_X_HI,x
     bne ObjectTouchesPlayerBox_at0
@@ -87,7 +87,7 @@ WaitForField85Two:
     lda z:zField85
     cmp #$02
     bne NextStateByKindBits_at0
-    inc a:OBJ_27A8,x
+    inc a:OBJ_STATE,x
     rts
 
 ; @routine 0720:571 StepFlashTimer
@@ -106,7 +106,7 @@ StepFlashTimer:
     lda a:OBJ_3510,x
     cmp #$04
     bne StepFlashTimer_at1
-    inc a:OBJ_27A8,x
+    inc a:OBJ_STATE,x
     lda z:zField8C
     ora #$80
     sta z:zField8C
@@ -121,7 +121,7 @@ StepFlashTimer_at1:
     lda a:$9CFD,y
     clc
     adc a:OBJ_3510,x
-    sta a:OBJ_2A68,x
+    sta a:OBJ_FRAME,x
     clc
     adc a:$9CFF,y
     phx
@@ -143,7 +143,7 @@ StepFlashTimer_at0:
 NextStateByKindBits:
     lda z:zField8C
     bmi NextStateByKindBits_at0
-    inc a:OBJ_27A8,x
+    inc a:OBJ_STATE,x
     lda #$04
     sta a:OBJ_34B8,x
     lda a:OBJ_3040,x
@@ -159,7 +159,7 @@ NextStateByKindBits:
 NextStateByKindBits_at1:
     bra NextStateByKindBits_at0
 NextStateByKindBits_at2:
-    inc a:OBJ_27A8,x
+    inc a:OBJ_STATE,x
 NextStateByKindBits_at0:
     rts
 
@@ -175,7 +175,7 @@ StepFlashTimerDown:
     bne StepFlashTimerDown_at0
     dec a:OBJ_3510,x
     bpl StepFlashTimerDown_at1
-    inc a:OBJ_27A8,x
+    inc a:OBJ_STATE,x
     lda #$71
     jmp VecSoundCommand
 StepFlashTimerDown_at1:
@@ -187,7 +187,7 @@ StepFlashTimerDown_at1:
     lda a:$9CFD,y
     clc
     adc a:OBJ_3510,x
-    sta a:OBJ_2A68,x
+    sta a:OBJ_FRAME,x
     clc
     adc a:$9CFF,y
     phx

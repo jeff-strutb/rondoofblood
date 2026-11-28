@@ -102,7 +102,7 @@ RichterColumnOffset:
     txa
     asl a
     clc
-    adc a:OBJ_2AC0
+    adc a:OBJ_FACING_LEFT
     tay
     lda a:RichterColumnOffsets,y
     rts
@@ -538,7 +538,7 @@ RichterWall:
     bne RichterWallPushed
     lda a:RichterWallReach,y
     sta z:zTemp10
-    lda a:OBJ_27A8
+    lda a:OBJ_STATE
     cmp #$03
     beq RichterWall_at0
     cmp #$04
@@ -653,7 +653,7 @@ MariaColumnOffset:
     txa
     asl a
     clc
-    adc a:OBJ_2AC0
+    adc a:OBJ_FACING_LEFT
     tay
     lda a:RichterColumnOffsets+$31C,y
     rts
@@ -827,7 +827,7 @@ MariaWall:
     bne MariaWallPushed
     lda a:RichterWallReach+$31C,y
     sta z:zTemp10
-    lda a:OBJ_27A8
+    lda a:OBJ_STATE
     cmp #$03
     beq MariaWall_at0
     cmp #$04

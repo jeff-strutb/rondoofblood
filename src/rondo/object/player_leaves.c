@@ -686,7 +686,7 @@ void abi_ClearObjectInYAndCopyPlace(void)
  * @run 6D:B0A0
  * WHAT IT DOES: Turns the player round when the pad says so: facing right and the pad's bit 7 held turns him left,
  * facing left and bit 5 held turns him right; the state then takes the next one from a table.
- * HOW: OBJ_2AC0 is the facing; a TST of zPadHeld; the state less 5 indexes the table at $B03B.
+ * HOW: OBJ_FACING_LEFT is the facing; a TST of zPadHeld; the state less 5 indexes the table at $B03B.
  * WAITS: no.
  * Entry: nothing. Exit: no turn: A the facing, N, V, Z from the TST. A turn: A the new state, N and Z from it, Y the
  * old state less 5, C and V from that subtract.
@@ -970,7 +970,7 @@ void abi_LoadRecordThenFrameByKind(void)
 /*
  * @routine 0E00:092 StoreHitFromTable
  * @run 6B:9892
- * WHAT IT DOES: Gives the object's hit timer OBJ_33B0 the byte of OBJ_3828 at the slot in Y.
+ * WHAT IT DOES: Gives the object's hit timer OBJ_HIT_TAKEN the byte of OBJ_3828 at the slot in Y.
  * HOW: One read, one write.
  * WAITS: no.
  * Entry: X object, Y the slot. Exit: A the byte, N and Z from it.

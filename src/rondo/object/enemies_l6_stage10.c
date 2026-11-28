@@ -86,10 +86,10 @@ void abi_StepListC192ThenClear(void)
 /*
  * @routine 10CB:2CB ClearSlot4EUnlessCamera18
  * @run 70:B2CB
- * WHAT IT DOES: Unless the camera mode is $18, clears the object in slot $4E, sets OBJ_3510 to $40 and goes on to the next OBJ_2800.
+ * WHAT IT DOES: Unless the camera mode is $18, clears the object in slot $4E, sets OBJ_3510 to $40 and goes on to the next OBJ_SUBSTATE.
  * HOW: A compare, ClearObjectInY, a store, an INC.
  * WAITS: no.
- * Entry: X object. Exit: the compare, or the new OBJ_2800's N and Z (A $40).
+ * Entry: X object. Exit: the compare, or the new OBJ_SUBSTATE's N and Z (A $40).
  */
 ObjArm ClearSlot4EUnlessCamera18(uint8_t slot)
 {
@@ -104,7 +104,7 @@ ObjArm ClearSlot4EUnlessCamera18(uint8_t slot)
     ClearObjectInY(0x4E);
     jsr_pop();
     WR8(OBJ->f3510[slot], 0x40);
-    r.second = INC8(OBJ->f2800[slot]);
+    r.second = INC8(OBJ->substate[slot]);
     r.arm = L10_CS_CLEARED;
     return r;
 }
@@ -127,10 +127,10 @@ void abi_ClearSlot4EUnlessCamera18(void)
 /*
  * @routine 10CB:680 StepListB697ThenStopY
  * @run 70:B680
- * WHAT IT DOES: Steps the animation list at $B697; when it ends, the object's Y speed is cleared and it goes to the next OBJ_2800.
+ * WHAT IT DOES: Steps the animation list at $B697; when it ends, the object's Y speed is cleared and it goes to the next OBJ_SUBSTATE.
  * HOW: StepObjectFrames, then stores and an increment.
  * WAITS: no.
- * Entry: X object, Y kept unless the step sets it. Exit: the step, or the new OBJ_2800's N and Z when the list ended.
+ * Entry: X object, Y kept unless the step sets it. Exit: the step, or the new OBJ_SUBSTATE's N and Z when the list ended.
  */
 ObjArm StepListB697ThenStopY(uint8_t slot, uint8_t y_entry)
 {
@@ -149,7 +149,7 @@ ObjArm StepListB697ThenStopY(uint8_t slot, uint8_t y_entry)
     }
     WR8(OBJ->vy_hi[slot], 0);
     WR8(OBJ->vy_lo[slot], 0);
-    r.first = INC8(OBJ->f2800[slot]);
+    r.first = INC8(OBJ->substate[slot]);
     r.arm = L10_B6_STOPPED;
     return r;
 }
@@ -172,7 +172,7 @@ void abi_StepListB697ThenStopY(void)
 /*
  * @routine 10CD:334 StartFirstObjectWhenCamera2
  * @run 71:C334
- * WHAT IT DOES: When the level's Y high byte is 2, the scroll Y low is under $30 and the first object's state and OBJ_2800 are both 0, it sets that object's OBJ_3510 to $40 and OBJ_3568 to $10 and this object goes to the next state.
+ * WHAT IT DOES: When the level's Y high byte is 2, the scroll Y low is under $30 and the first object's state and OBJ_SUBSTATE are both 0, it sets that object's OBJ_3510 to $40 and OBJ_3568 to $10 and this object goes to the next state.
  * HOW: Compares and stores, an INC.
  * WAITS: no.
  * Entry: X object. Exit: the last compare or load, or the new state's N and Z (A $10).
@@ -193,7 +193,7 @@ ObjArm StartFirstObjectWhenCamera2(uint8_t slot)
         return r;
     }
     first = RD8(OBJ->state[0]);
-    phase = RD8(OBJ->f2800[0]);
+    phase = RD8(OBJ->substate[0]);
     r.third = (uint8_t)(first | phase);
     r.arm = L10_SF_BUSY;
     if (r.third != 0) {
@@ -232,10 +232,10 @@ void abi_StartFirstObjectWhenCamera2(void)
 /*
  * @routine 10CB:702 StepListB728ThenRiseSlowly
  * @run 70:B702
- * WHAT IT DOES: Steps the animation list at $B728; while it runs the object moves and its Y speed loses $0010 a frame; when it ends the object goes to the next OBJ_2800.
+ * WHAT IT DOES: Steps the animation list at $B728; while it runs the object moves and its Y speed loses $0010 a frame; when it ends the object goes to the next OBJ_SUBSTATE.
  * HOW: StepObjectFrames, ApplyVelocity, a 16-bit subtract, an INC.
  * WAITS: no.
- * Entry: X object, Y kept unless the step sets it. Exit: the subtract's, or the new OBJ_2800's N and Z.
+ * Entry: X object, Y kept unless the step sets it. Exit: the subtract's, or the new OBJ_SUBSTATE's N and Z.
  */
 ObjArm StepListB728ThenRiseSlowly(uint8_t slot, uint8_t y_entry)
 {
@@ -250,7 +250,7 @@ ObjArm StepListB728ThenRiseSlowly(uint8_t slot, uint8_t y_entry)
     r.y = y;
     r.arm = L10_B7_ENDED;
     if (r.step == FRAME_LIST_ENDED) {
-        r.first = INC8(OBJ->f2800[slot]);
+        r.first = INC8(OBJ->substate[slot]);
         return r;
     }
     jsr_push(0xB712);
@@ -430,10 +430,10 @@ void abi_StepListC170ThenMoveAlongAngle(void)
 /*
  * @routine 10CB:6B6 RiseThenPlaceAndDrop
  * @run 70:B6B6
- * WHAT IT DOES: Moves the object along Y by its speed and takes $0018 off its Y speed. When its Y high byte is $FE it puts the object at X $0070, Y $FFC0, gives it X speed $0030 and Y speed $0400, sets its flags to $81 and zTemp $9E to 4 and goes on to the next OBJ_2800.
+ * WHAT IT DOES: Moves the object along Y by its speed and takes $0018 off its Y speed. When its Y high byte is $FE it puts the object at X $0070, Y $FFC0, gives it X speed $0030 and Y speed $0400, sets its flags to $81 and zTemp $9E to 4 and goes on to the next OBJ_SUBSTATE.
  * HOW: ApplyVelocityY, a 16-bit subtract, stores, an INC.
  * WAITS: no.
- * Entry: X object. Exit: the compare, or the new OBJ_2800's N and Z (A 4).
+ * Entry: X object. Exit: the compare, or the new OBJ_SUBSTATE's N and Z (A 4).
  */
 ObjArm RiseThenPlaceAndDrop(uint8_t slot)
 {
@@ -461,7 +461,7 @@ ObjArm RiseThenPlaceAndDrop(uint8_t slot)
     WR8(OBJ->vx_lo[slot], 0x30);
     WR8(OBJ->vy_hi[slot], 4);
     WR8(OBJ->vy_lo[slot], 0);
-    r.second = INC8(OBJ->f2800[slot]);
+    r.second = INC8(OBJ->substate[slot]);
     r.arm = L10_RP_PLACED;
     return r;
 }
@@ -485,7 +485,7 @@ void abi_RiseThenPlaceAndDrop(void)
 /*
  * @routine 10CB:415 RiseThenPlaceWithSound
  * @run 70:B415
- * WHAT IT DOES: Moves the object along Y by its speed and takes $0010 off its Y speed. When its Y high byte is $FE it sends sound $E7, sets its flags to $80, frame $1D, puts it at X $0000, Y $FFE0, gives it X speed $0400 and Y speed $0600 (high bytes) and goes on to the next OBJ_2800.
+ * WHAT IT DOES: Moves the object along Y by its speed and takes $0010 off its Y speed. When its Y high byte is $FE it sends sound $E7, sets its flags to $80, frame $1D, puts it at X $0000, Y $FFE0, gives it X speed $0400 and Y speed $0600 (high bytes) and goes on to the next OBJ_SUBSTATE.
  * HOW: ApplyVelocityY, a 16-bit subtract, SoundCommand, stores, an INC.
  * WAITS: no.
  * Entry: X object, Y kept for the sound's push. Exit: see the wrapper.
@@ -519,7 +519,7 @@ ObjArm RiseThenPlaceWithSound(uint8_t slot, uint8_t y_entry)
     WR8(OBJ->y_lo[slot], 0xE0);
     WR8(OBJ->vy_hi[slot], 6);
     WR8(OBJ->vx_hi[slot], 4);
-    r.second = INC8(OBJ->f2800[slot]);
+    r.second = INC8(OBJ->substate[slot]);
     r.arm = L10_RS_PLACED;
     return r;
 }
@@ -618,7 +618,7 @@ void abi_LoadThenFallAndFlash(void)
 /*
  * @routine 10CB:2E0 CountThenSoleScriptAndSound
  * @run 70:B2E0
- * WHAT IT DOES: Counts OBJ_3510 down; at zero it starts the sole script 0 in slot 3, sends sound $E4, sets its flags to $81, OBJ_3510 to $60 and zTemp $9E to 4 and goes on to the next OBJ_2800.
+ * WHAT IT DOES: Counts OBJ_3510 down; at zero it starts the sole script 0 in slot 3, sends sound $E4, sets its flags to $81, OBJ_3510 to $60 and zTemp $9E to 4 and goes on to the next OBJ_SUBSTATE.
  * HOW: DEC, StartSoleScriptSlot, SoundCommand, stores, an INC.
  * WAITS: no.
  * Entry: X object. Exit: see the wrapper.
@@ -646,7 +646,7 @@ ObjArm CountThenSoleScriptAndSound(uint8_t slot)
     WR8(OBJ->flags[slot], 0x81);
     WR8(OBJ->f3510[slot], 0x60);
     wr8(0x209E, 4);
-    r.third = INC8(OBJ->f2800[slot]);
+    r.third = INC8(OBJ->substate[slot]);
     r.arm = L10_CT_STARTED;
     return r;
 }
@@ -747,7 +747,7 @@ void abi_StartScriptWhenCountInTable(void)
 /*
  * @routine 10CB:45F RiseThenCueMusic
  * @run 70:B45F
- * WHAT IT DOES: Moves the object along Y and takes $0030 off its Y speed. Once the speed's high byte is negative it steps the animation list at $B4AA; when that ends it sets bit 4 of zField8E, sends sound $FF, clears bits 3 and 4, plays the music again (CdPlayAgain), sets bit 2, clears zTemp $9E and OBJ_3250 to 2, clears its animation step and timer, goes on to the next state and clears OBJ_2800.
+ * WHAT IT DOES: Moves the object along Y and takes $0030 off its Y speed. Once the speed's high byte is negative it steps the animation list at $B4AA; when that ends it sets bit 4 of zField8E, sends sound $FF, clears bits 3 and 4, plays the music again (CdPlayAgain), sets bit 2, clears zTemp $9E and OBJ_3250 to 2, clears its animation step and timer, goes on to the next state and clears OBJ_SUBSTATE.
  * HOW: ApplyVelocity, a 16-bit subtract, StepObjectFrames, SoundCommand, CdPlayAgain, stores.
  * WAITS: no.
  * Entry: X object, Y kept unless the step sets it. Exit: see the wrapper.
@@ -799,7 +799,7 @@ ObjArm RiseThenCueMusic(uint8_t slot, uint8_t y_entry)
     WR8(OBJ->anim_step[slot], 0);
     WR8(OBJ->anim_timer[slot], 0);
     r.first = INC8(OBJ->state[slot]);
-    WR8(OBJ->f2800[slot], 0);
+    WR8(OBJ->substate[slot], 0);
     r.arm = L10_MU_CUED;
     return r;
 }
@@ -957,10 +957,10 @@ void abi_SpawnInFreeSlotEvery30(void)
 /*
  * @routine 10CB:3BE CountScriptsThenStepList
  * @run 70:B3BE
- * WHAT IT DOES: Runs StartScriptWhenCountInTable, then steps the animation list at $B3D2; when it ends the object goes to the next OBJ_2800.
+ * WHAT IT DOES: Runs StartScriptWhenCountInTable, then steps the animation list at $B3D2; when it ends the object goes to the next OBJ_SUBSTATE.
  * HOW: StartScriptWhenCountInTable, StepObjectFrames, an INC.
  * WAITS: no.
- * Entry: X object, Y kept unless a callee sets it. Exit: the step, or the new OBJ_2800's N and Z when the list ended.
+ * Entry: X object, Y kept unless a callee sets it. Exit: the step, or the new OBJ_SUBSTATE's N and Z when the list ended.
  */
 ObjArm CountScriptsThenStepList(uint8_t slot, uint8_t y_entry)
 {
@@ -980,7 +980,7 @@ ObjArm CountScriptsThenStepList(uint8_t slot, uint8_t y_entry)
     if (r.step != FRAME_LIST_ENDED) {
         return r;
     }
-    r.first = INC8(OBJ->f2800[slot]);
+    r.first = INC8(OBJ->substate[slot]);
     r.arm = L10_CS2_ENDED;
     return r;
 }

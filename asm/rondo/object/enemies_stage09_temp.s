@@ -8,7 +8,7 @@
 ; WAITS: no.
 ; Entry: X object. Exit: C the answer; A and N, Z as the last load or compare left them.
 TouchesPlayerMark:
-    lda a:OBJ_27A8,x
+    lda a:OBJ_STATE,x
     beq TouchesPlayerMark_at0
     cmp #$04
     beq TouchesPlayerMark_at0
@@ -51,7 +51,7 @@ CountBothPairs:
 
 ; @routine 09E9:28D HitRowByKindAndHits
 ; @run 70:A28D
-; WHAT IT DOES: Puts the byte of a table at $AB9F picked by 16 times OBJ_2EE0 plus the hits taken (OBJ_33B0) into zTemp00.
+; WHAT IT DOES: Puts the byte of a table at $AB9F picked by 16 times OBJ_2EE0 plus the hits taken (OBJ_HIT_TAKEN) into zTemp00.
 ; HOW: Four shifts, an add, a table read (bank 70).
 ; WAITS: no.
 ; Entry: X object. Exit: A the table byte, Y its index, C and V from the add.
@@ -62,7 +62,7 @@ HitRowByKindAndHits:
     asl a
     asl a
     sta z:zTemp00
-    lda a:OBJ_33B0,x
+    lda a:OBJ_HIT_TAKEN,x
     clc
     adc z:zTemp00
     tay
@@ -85,10 +85,10 @@ HealAndClear:
     lda #$0B
     jsr VecSoundCommand
     lda #$9F
-    sta a:OBJ_2750,x
+    sta a:OBJ_KIND,x
     lda #$03
     sta a:OBJ_34B8,x
-    stz a:OBJ_27A8,x
+    stz a:OBJ_STATE,x
     rts
 HealAndClear_at0:
     lda z:zPlayerHealth
@@ -127,24 +127,24 @@ StepWithHitTable:
 FaceByCue:
     lda a:ScrollSpeedX
     bne FaceByCue_at0
-    ldy a:OBJ_27A8,x
+    ldy a:OBJ_STATE,x
     lda a:$AD70,y
     beq FaceByCue_at0
     jsr VecSideOfPlayer
     and #$01
-    sta a:OBJ_2AC0,x
+    sta a:OBJ_FACING_LEFT,x
 FaceByCue_at0:
     rts
 
 ; @routine 09EA:588 SwitchStateOnHitRow
 ; @run 70:AD88
 ; WHAT IT DOES: For a state that a table at $ADB0 gives a row number, looks up the hit row (HitRowByKindAndHits); when that is not 0 the object takes the state a table at $ADC8 gives for the row,
-; plays sound $9F and clears OBJ_2800, OBJ_3408 and OBJ_3460.
+; plays sound $9F and clears OBJ_SUBSTATE, OBJ_ANIM_STEP and OBJ_ANIM_TIMER.
 ; HOW: HitRowByKindAndHits, SoundCommand, table reads (bank 70).
 ; WAITS: no.
 ; Entry: X object. Exit: see abi_sound_end.
 SwitchStateOnHitRow:
-    ldy a:OBJ_27A8,x
+    ldy a:OBJ_STATE,x
     lda a:$ADB0,y
     beq FaceThePlayerInSomeStatesC
     sta z:zTemp01
@@ -153,25 +153,25 @@ SwitchStateOnHitRow:
     beq FaceThePlayerInSomeStatesC
     ldy z:zTemp01
     lda a:$ADC8,y
-    sta a:OBJ_27A8,x
+    sta a:OBJ_STATE,x
     lda #$9F
     jsr VecSoundCommand
-    stz a:OBJ_2800,x
-    stz a:OBJ_3408,x
-    stz a:OBJ_3460,x
+    stz a:OBJ_SUBSTATE,x
+    stz a:OBJ_ANIM_STEP,x
+    stz a:OBJ_ANIM_TIMER,x
     rts
 
 ; @routine 09EA:5CB AdvanceByHealth
 ; @run 70:ADCB
 ; WHAT IT DOES: An object with a state moves to its next phase (OBJ_3618) when its health OBJ_32A8 falls below the limit a table at $AE09 gives for the phase (phase 2 moves on
-; when bit 7 of the health is set): its state becomes the byte a table at $AE0B gives, the phase goes up, the animation and OBJ_2800 are reset, and from phase 2 its OBJ_3148 loses
+; when bit 7 of the health is set): its state becomes the byte a table at $AE0B gives, the phase goes up, the animation and OBJ_SUBSTATE are reset, and from phase 2 its OBJ_3148 loses
 ; bits 3 to 6.
 ; HOW: Table reads (bank 70).
 ; Untraced: the phase 2 test (ADD7) and the OBJ_3148 mask (AE00).
 ; WAITS: no.
 ; Entry: X object. Exit: the last compare, load or AND.
 AdvanceByHealth:
-    lda a:OBJ_27A8,x
+    lda a:OBJ_STATE,x
     beq AdvanceByHealth_at0
     ldy a:OBJ_3618,x
     cpy #$02
@@ -186,11 +186,11 @@ AdvanceByHealth_at1:
     bcs AdvanceByHealth_at0
 AdvanceByHealth_at2:
     lda a:$AE0B,y
-    sta a:OBJ_27A8,x
+    sta a:OBJ_STATE,x
     inc a:OBJ_3618,x
-    stz a:OBJ_3408,x
-    stz a:OBJ_3460,x
-    stz a:OBJ_2800,x
+    stz a:OBJ_ANIM_STEP,x
+    stz a:OBJ_ANIM_TIMER,x
+    stz a:OBJ_SUBSTATE,x
     lda a:OBJ_3618,x
     cmp #$02
     bcc AdvanceByHealth_at0
@@ -207,7 +207,7 @@ AdvanceByHealth_at0:
 ; WAITS: no.
 ; Entry: X object. Exit: as the code jumped to; A the high byte, Y the doubled state.
 JumpByStateTableF:
-    lda a:OBJ_27A8,x
+    lda a:OBJ_STATE,x
     asl a
     tay
     lda a:$AE42,y
@@ -251,13 +251,13 @@ StartTwinSpawner:
 WalkTowardPlayer:
     jsr PickNextAction
     jsr WalkSideways
-    lda a:OBJ_2AC0,x
+    lda a:OBJ_FACING_LEFT,x
     sta a:OBJ_3568,x
     jsr VecDistanceXToPlayer
     cmp #$40
     bcs WalkTowardPlayer_at0
     lda #$02
-    sta a:OBJ_27A8,x
+    sta a:OBJ_STATE,x
 WalkTowardPlayer_at0:
     rts
 
@@ -337,11 +337,11 @@ PickNextAction_at0:
     asl a
     tay
     lda a:$AF28,y
-    sta a:OBJ_27A8,x
+    sta a:OBJ_STATE,x
     lda a:$AF29,y
     jsr VecSoundCommand
-    stz a:OBJ_3408,x
-    stz a:OBJ_3460,x
+    stz a:OBJ_ANIM_STEP,x
+    stz a:OBJ_ANIM_TIMER,x
     jsr VecNextRandom
     and #$03
     tay
@@ -357,14 +357,14 @@ PickNextAction_at0:
 ; Entry: X object, Y kept unless a callee sets it. Exit: as PickNextAction.
 WalkAndPick:
     jsr WalkSideways
-    lda a:OBJ_2AC0,x
+    lda a:OBJ_FACING_LEFT,x
     eor #$01
     sta a:OBJ_3568,x
     jsr VecDistanceXToPlayer
     cmp #$80
     bcc WalkAndPick_at0
     lda #$01
-    sta a:OBJ_27A8,x
+    sta a:OBJ_STATE,x
 WalkAndPick_at0:
     jmp PickNextAction
 
@@ -384,14 +384,14 @@ StepShootOnCue:
     jsr VecStepObjectFrames
     beq StepShootOnCue_at0
     bcc StepShootOnCue_at1
-    lda a:OBJ_3408,x
+    lda a:OBJ_ANIM_STEP,x
     cmp #$03
     bne StepShootOnCue_at1
     lda #$26
     jsr VecSoundCommand
 StepShootOnCue_at1:
     jsr PlayCueOnFrame
-    lda a:OBJ_2A68,x
+    lda a:OBJ_FRAME,x
     cmp #$0A
     bne StepShootOnCue_at2
     lda a:OBJ_35C0,x
@@ -401,12 +401,12 @@ StepShootOnCue_at1:
     bcc StepShootOnCue_at2
     lda #$24
     jsr VecStartObjectAtPlace
-    lda a:OBJ_2AC0,x
-    sta a:OBJ_2AC0,y
+    lda a:OBJ_FACING_LEFT,x
+    sta a:OBJ_FACING_LEFT,y
     rts
 StepShootOnCue_at0:
     lda #$02
-    sta a:OBJ_27A8,x
+    sta a:OBJ_STATE,x
 StepShootOnCue_at2:
     rts
 
@@ -421,7 +421,7 @@ StepShootOnCue_at2:
 ; WAITS: no.
 ; Entry: X object. Exit: no cue: A and flags of the last compare; cue: as StartCueScript.
 PlayCueOnFrame:
-    lda a:OBJ_2A68,x
+    lda a:OBJ_FRAME,x
     cmp #$08
     beq PlayCueOnFrame_at0
     cmp #$0A
@@ -437,7 +437,7 @@ PlayCueOnFrame_at1:
     lda #$16
     sta z:zTemp00
 PlayCueOnFrame_at2:
-    lda a:OBJ_3460,x
+    lda a:OBJ_ANIM_TIMER,x
     cmp a:$AFB9,y
     beq StartCueScript
     iny
@@ -476,7 +476,7 @@ StepFlyingCue:
     jsr VecStepObjectFrames
     beq StepFlyingCue_at1
     bcc StepFlyingCue_at2
-    lda a:OBJ_3408,x
+    lda a:OBJ_ANIM_STEP,x
     cmp #$1A
     bne StepFlyingCue_at2
     lda #$1A
@@ -485,7 +485,7 @@ StepFlyingCue_at0:
     rts
 StepFlyingCue_at1:
     lda #$02
-    sta a:OBJ_27A8,x
+    sta a:OBJ_STATE,x
 StepFlyingCue_at2:
     rts
 ; @routine 09EB:03B StepThenQuarterWait
@@ -505,7 +505,7 @@ StepThenQuarterWait:
     lsr a:OBJ_3510,x
     lsr a:OBJ_3510,x
     lda #$02
-    sta a:OBJ_27A8,x
+    sta a:OBJ_STATE,x
     lda a:OBJ_3A90,x
     cmp #$03
     bcs StepThenQuarterWait_at0
@@ -532,13 +532,13 @@ StartShotRing_at0:
     jsr VecClearObjectInY
     lda #$28
     jsr VecStartObjectAtPlace
-    lda a:OBJ_2AC0,x
-    sta a:OBJ_2AC0,y
+    lda a:OBJ_FACING_LEFT,x
+    sta a:OBJ_FACING_LEFT,y
     iny
     cpy #$28
     bcc StartShotRing_at0
-    stz a:OBJ_3408,x
-    stz a:OBJ_3460,x
+    stz a:OBJ_ANIM_STEP,x
+    stz a:OBJ_ANIM_TIMER,x
     stz a:OBJ_X_HI,x
     lda #$C0
     sec
@@ -550,8 +550,8 @@ StartShotRing_at0:
     sta a:OBJ_Y_LO,x
     stz a:OBJ_VY_HI,x
     stz a:OBJ_VY_LO,x
-    stz a:OBJ_2A68,x
-    inc a:OBJ_27A8,x
+    stz a:OBJ_FRAME,x
+    inc a:OBJ_STATE,x
     rts
 
 ; @routine 09EB:0AE EnterStateWhenSlotClear
@@ -563,7 +563,7 @@ StartShotRing_at0:
 EnterStateWhenSlotClear:
     lda a:$2776
     bne EnterStateWhenSlotClear_at0
-    inc a:OBJ_27A8,x
+    inc a:OBJ_STATE,x
 EnterStateWhenSlotClear_at0:
     rts
 
@@ -605,18 +605,18 @@ BurstOnLanding_at1:
     sta a:OBJ_VX_HI,x
     lda #$40
     sta a:OBJ_VX_LO,x
-    stz a:OBJ_3408,x
-    stz a:OBJ_3460,x
-    inc a:OBJ_27A8,x
+    stz a:OBJ_ANIM_STEP,x
+    stz a:OBJ_ANIM_TIMER,x
+    inc a:OBJ_STATE,x
 BurstOnLanding_at0:
     rts
 
 ; @routine 09EB:108 StepFacingAndJump
 ; @run 70:B108
-; WHAT IT DOES: Steps the animation list at $B13B, sets the facing flag OBJ_2AC0 from the sign of the X speed's high byte (1 when it is not negative) and goes on to the code a table at $B131 names for OBJ_2800.
+; WHAT IT DOES: Steps the animation list at $B13B, sets the facing flag OBJ_FACING_LEFT from the sign of the X speed's high byte (1 when it is not negative) and goes on to the code a table at $B131 names for OBJ_SUBSTATE.
 ; HOW: StepObjectFrames, two rotates through the carry the step leaves, a table jump.
 ; WAITS: no.
-; Entry: X object. Exit: as the code jumped to; A the high byte, Y the doubled OBJ_2800.
+; Entry: X object. Exit: as the code jumped to; A the high byte, Y the doubled OBJ_SUBSTATE.
 StepFacingAndJump:
     lda #$B1
     sta z:zTemp11
@@ -628,8 +628,8 @@ StepFacingAndJump:
     rol a
     and #$01
     eor #$01
-    sta a:OBJ_2AC0,x
-    lda a:OBJ_2800,x
+    sta a:OBJ_FACING_LEFT,x
+    lda a:OBJ_SUBSTATE,x
     asl a
     tay
     lda a:$B131,y
@@ -649,7 +649,7 @@ MoveThenPick:
 
 ; @routine 09EB:14D PickGroundSpeedInWindow
 ; @run 70:B14D
-; WHAT IT DOES: When the object is inside the window (InWindowRange), OBJ_2800 takes a byte of a sixteen-byte table at $B15F picked at random.
+; WHAT IT DOES: When the object is inside the window (InWindowRange), OBJ_SUBSTATE takes a byte of a sixteen-byte table at $B15F picked at random.
 ; HOW: InWindowRange, NextRandom, a table read (bank 70).
 ; WAITS: no.
 ; Entry: X object. Exit: outside: the window test's flags; inside: A the table byte, Y the pick, C and V from the random.
@@ -660,7 +660,7 @@ PickGroundSpeedInWindow:
     and #$0F
     tay
     lda a:$B15F,y
-    sta a:OBJ_2800,x
+    sta a:OBJ_SUBSTATE,x
 PickGroundSpeedInWindow_at0:
     rts
 
@@ -699,7 +699,7 @@ InWindowRange_at1:
 ; @routine 09EB:196 StartSplitterHigh
 ; @run 70:B196
 ; WHAT IT DOES: Starts a falling splitter at Y low $48: its X speed is picked from a table at $B1BF by two bits of the
-; player's distance sum, OBJ_3670 is cleared, OBJ_2800 moves on, and when the object is on the player's left its X speed is
+; player's distance sum, OBJ_3670 is cleared, OBJ_SUBSTATE moves on, and when the object is on the player's left its X speed is
 ; reversed.
 ; HOW: PlayerDistanceSum, SideOfPlayer, NegateVelocityX.
 ; Untraced: the reversal (B1BB).
@@ -717,7 +717,7 @@ StartSplitterHigh:
     lda #$48
     sta a:OBJ_Y_LO,x
     stz a:OBJ_3670,x
-    inc a:OBJ_2800,x
+    inc a:OBJ_SUBSTATE,x
     jsr VecSideOfPlayer
     and #$01
     beq StartSplitterHigh_at0
@@ -765,7 +765,7 @@ StartSplitterLow:
     lda #$58
     sta a:OBJ_Y_LO,x
     stz a:OBJ_3670,x
-    inc a:OBJ_2800,x
+    inc a:OBJ_SUBSTATE,x
     jsr VecSideOfPlayer
     and #$01
     beq StartSplitterLow_at0
@@ -803,8 +803,8 @@ MaybeShootAhead:
     bcc MaybeShootAhead_at0
     lda #$2A
     jsr VecStartObjectAtPlace
-    lda a:OBJ_2AC0,x
-    sta a:OBJ_2AC0,y
+    lda a:OBJ_FACING_LEFT,x
+    sta a:OBJ_FACING_LEFT,y
 MaybeShootAhead_at0:
     rts
 ; @routine 09EB:4FF PickWaterOnTenth
@@ -818,7 +818,7 @@ PickWaterOnTenth:
     jsr JumpByStateTableE
     cpx #$10
     bne PickWaterOnTenth_at0
-    lda a:OBJ_27A8,x
+    lda a:OBJ_STATE,x
     cmp #$02
     bcc PickWaterOnTenth_at0
     jsr PickWaterLevel
@@ -855,7 +855,7 @@ PickWaterLevel:
 ; WAITS: no.
 ; Entry: X object. Exit: as the code jumped to; A the high byte, Y the doubled state.
 JumpByStateTableE:
-    lda a:OBJ_27A8,x
+    lda a:OBJ_STATE,x
     asl a
     tay
     lda a:$B54B,y
@@ -877,7 +877,7 @@ WaitForPage2:
     bne WaitForPage2_at0
     lda #$40
     sta a:OBJ_34B8,x
-    inc a:OBJ_27A8,x
+    inc a:OBJ_STATE,x
     cpx #$10
     bne WaitForPage2_at0
     lda #$A2
@@ -905,7 +905,7 @@ RiseUntilAboveGround:
     bpl RiseUntilAboveGround_at0
     lda a:OBJ_Y_LO,x
     bmi RiseUntilAboveGround_at0
-    inc a:OBJ_27A8,x
+    inc a:OBJ_STATE,x
 RiseUntilAboveGround_at0:
     rts
 
@@ -921,7 +921,7 @@ WaitForSlot10State4:
     bcc WaitForSlot10State4_at0
     lda #$40
     sta a:OBJ_34B8,x
-    inc a:OBJ_27A8,x
+    inc a:OBJ_STATE,x
 WaitForSlot10State4_at0:
     rts
 
@@ -969,8 +969,8 @@ FinalSpinAndEnd:
     lda #$A1
     jsr VecSoundCommand
     lda #$21
-    sta a:OBJ_2750,x
-    stz a:OBJ_27A8,x
+    sta a:OBJ_KIND,x
+    stz a:OBJ_STATE,x
     stz a:LevelYHi
     stz a:RasterWaterWanted
     lda #$02
@@ -978,7 +978,7 @@ FinalSpinAndEnd:
     lda #$7E
     sta a:ScrollXMaxLo
     lda #$01
-    sta a:OBJ_2A68,x
+    sta a:OBJ_FRAME,x
     ldy #$11
     jsr VecClearObjectInY
     iny
@@ -995,19 +995,19 @@ FinalSpinAndEnd_at0:
 ; WAITS: no.
 ; Entry: X object, Y kept unless a callee sets it. Exit: state 0: A $14 from the store; else as StepObjectFrames.
 StartOnPlayerAnimation:
-    lda a:OBJ_27A8,x
+    lda a:OBJ_STATE,x
     bne StartOnPlayerAnimation_at0
     jsr VecLoadObjectRecord
     lda #$15
-    sta a:OBJ_3930,x
+    sta a:OBJ_HITBOX_DX,x
     lda #$14
-    sta a:OBJ_39E0,x
+    sta a:OBJ_HITBOX_DY,x
     rts
 StartOnPlayerAnimation_at0:
     ldy #$10
     jsr VecCopyObjectPlaceBack
     lda a:$2AD0
-    sta a:OBJ_2AC0,x
+    sta a:OBJ_FACING_LEFT,x
     ldy a:$27B8
     lda a:$B6FF,y
     tay
@@ -1027,14 +1027,14 @@ StartOnPlayerAnimation_at0:
 ; WAITS: no.
 ; Entry: X object, Y kept unless a callee sets it. Exit: state 0: A 3, Y the facing doubled; else as StepFallingSpark.
 StartFallingSpark09:
-    lda a:OBJ_27A8,x
+    lda a:OBJ_STATE,x
     bne StepFallingSpark
     jsr VecLoadObjectRecord
     lda #$E0
-    sta a:OBJ_3930,x
+    sta a:OBJ_HITBOX_DX,x
     lda #$F8
-    sta a:OBJ_39E0,x
-    lda a:OBJ_2AC0,x
+    sta a:OBJ_HITBOX_DY,x
+    lda a:OBJ_FACING_LEFT,x
     asl a
     tay
     lda a:$B74F,y
@@ -1069,7 +1069,7 @@ StepFallingSpark_at0:
     lda a:OBJ_VY_HI,x
     sbc #$00
     sta a:OBJ_VY_HI,x
-    lda a:OBJ_2A68,x
+    lda a:OBJ_FRAME,x
     cmp #$10
     bcc StepFallingSpark_at1
     stz a:OBJ_3250,x
@@ -1084,7 +1084,7 @@ StepFallingSpark_at1:
 ; WAITS: no.
 ; Entry: X object. Exit: state 0: as LoadObjectRecord; else A the last table byte, Y the row, N and Z from A, C and V from the subtract.
 FollowPlayerHitbox:
-    lda a:OBJ_27A8,x
+    lda a:OBJ_STATE,x
     bne FollowPlayerHitbox_at0
     jmp VecLoadObjectRecord
 FollowPlayerHitbox_at0:
@@ -1097,13 +1097,13 @@ FollowPlayerHitbox_at0:
     asl a
     tay
     lda a:$BC8B,y
-    sta a:OBJ_3930,x
+    sta a:OBJ_HITBOX_DX,x
     lda a:$BC8C,y
-    sta a:OBJ_39E0,x
+    sta a:OBJ_HITBOX_DY,x
     lda a:$BC8D,y
-    sta a:OBJ_3988,x
+    sta a:OBJ_HITBOX_HALF_W,x
     lda a:$BC8E,y
-    sta a:OBJ_3A38,x
+    sta a:OBJ_HITBOX_HALF_H,x
     rts
 
 ; @routine 09EB:7EB StartNumberedPiece
@@ -1124,7 +1124,7 @@ StartNumberedPiece:
     tya
     clc
     adc #$12
-    sta a:OBJ_2A68,x
+    sta a:OBJ_FRAME,x
     rts
 ; @routine 09EC:01A RiseAndClear
 ; @run 70:B81A
@@ -1161,11 +1161,11 @@ RaiseStateAfterSlot10:
     lda a:$27B8
     cmp #$0A
     bcc RaiseStateAfterSlot10_at0
-    lda a:OBJ_27A8,x
+    lda a:OBJ_STATE,x
     cmp #$03
     bcs RaiseStateAfterSlot10_at0
     lda #$03
-    sta a:OBJ_27A8,x
+    sta a:OBJ_STATE,x
 RaiseStateAfterSlot10_at0:
     rts
 
@@ -1188,7 +1188,7 @@ StartChainLink:
     sta a:OBJ_34B8,x
     cpx #$19
     bne TurnOnRandomBeatWalkFollowC
-    inc a:OBJ_2A68,x
+    inc a:OBJ_FRAME,x
     rts
 
 ; @routine 09EC:090 ChainCountdown
@@ -1201,7 +1201,7 @@ ChainCountdown:
     jsr ChainFollowsPrevious
     dec a:OBJ_34B8,x
     bne ChainCountdown_at0
-    inc a:OBJ_27A8,x
+    inc a:OBJ_STATE,x
 ChainCountdown_at0:
     rts
 
@@ -1215,7 +1215,7 @@ ChainCountdown_at0:
 ChainSwings:
     jsr ChainFollowsPrevious
     lda a:$2AD0
-    sta a:OBJ_2AC0,x
+    sta a:OBJ_FACING_LEFT,x
     lda #$02
     sta z:zTemp01
     lda #$00
@@ -1285,7 +1285,7 @@ ChainFollowsPrevious_at0:
 ; Entry: X object. Exit: as ApplyVelocity with Y the facing.
 StartKickedPiece:
     jsr VecLoadObjectRecord
-    ldy a:OBJ_2AC0,x
+    ldy a:OBJ_FACING_LEFT,x
     lda a:$B9BD,y
     sta a:OBJ_VX_HI,x
     lda #$10
@@ -1319,9 +1319,9 @@ FallStepAndLeave:
     cmp #$C0
     bcc FallStepAndLeave_at0
     stz a:OBJ_3250,x
-    stz a:OBJ_3408,x
-    stz a:OBJ_3460,x
-    inc a:OBJ_27A8,x
+    stz a:OBJ_ANIM_STEP,x
+    stz a:OBJ_ANIM_TIMER,x
+    inc a:OBJ_STATE,x
 FallStepAndLeave_at0:
     rts
 
@@ -1348,7 +1348,7 @@ StepThenClear_at0:
 ; WAITS: no.
 ; Entry: X object. Exit: as the code jumped to; A the high byte, Y the doubled state.
 JumpByStateTable:
-    lda a:OBJ_27A8,x
+    lda a:OBJ_STATE,x
     asl a
     tay
     lda a:$BFCE,y
@@ -1368,7 +1368,7 @@ StartTracker:
     lda #$06
     sta a:OBJ_2A10,x
     lda #$02
-    sta a:OBJ_2A68,x
+    sta a:OBJ_FRAME,x
     lda a:OBJ_Y_LO,x
     sta a:OBJ_35C0,x
     lda a:OBJ_3040,x
@@ -1431,7 +1431,7 @@ SwayThenRestart:
 SwayThenRestart_at0:
     jsr EnterNextAndReset
     lda #$01
-    sta a:OBJ_27A8,x
+    sta a:OBJ_STATE,x
     stz a:OBJ_3510,x
     rts
 
@@ -1442,8 +1442,8 @@ SwayThenRestart_at0:
 ; WAITS: no.
 ; Entry: X object. Exit: every register and flag kept.
 ClearAnimation:
-    stz a:OBJ_3408,x
-    stz a:OBJ_3460,x
+    stz a:OBJ_ANIM_STEP,x
+    stz a:OBJ_ANIM_TIMER,x
     rts
 
 ; @routine 09ED:039 StepListByPhase
@@ -1454,7 +1454,7 @@ ClearAnimation:
 ; Entry: X object. Exit: as StepObjectFrames, Y kept unless the step sets it (the index otherwise).
 StepListByPhase:
     lda a:OBJ_34B8,x
-    sta a:OBJ_2AC0,x
+    sta a:OBJ_FACING_LEFT,x
     lda a:OBJ_3510,x
     asl a
     tay
@@ -1486,7 +1486,7 @@ ReactAtWindowEdge_at0:
     bcs ReactAtWindowEdge_at1
     rts
 ReactAtWindowEdge_at1:
-    lda a:OBJ_27A8,x
+    lda a:OBJ_STATE,x
     cmp #$01
     bne EnterNextAndReset_at0
 
@@ -1498,7 +1498,7 @@ ReactAtWindowEdge_at1:
 ; WAITS: no.
 ; Entry: X object. Exit: A $20, N and Z from it.
 EnterNextAndReset:
-    inc a:OBJ_27A8,x
+    inc a:OBJ_STATE,x
     inc a:OBJ_3510,x
     jsr ClearAnimation
     lda #$20
@@ -1582,7 +1582,7 @@ SetSwaySpeed:
 ; WAITS: no.
 ; Entry: X object, Y kept unless a callee sets it. Exit: as the step.
 StartThenStepList:
-    lda a:OBJ_27A8,x
+    lda a:OBJ_STATE,x
     bne StartThenStepList_at0
     jsr VecLoadObjectRecord
     lda #$06

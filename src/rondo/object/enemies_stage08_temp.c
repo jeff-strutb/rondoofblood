@@ -205,7 +205,7 @@ ObjArm EnterState3WithTallHitbox(uint8_t slot)
     WR8(OBJ->hitbox_dx[slot], 0);
     WR8(OBJ->hitbox_dy[slot], 0);
     WR8(OBJ->state[slot], 3);
-    WR8(OBJ->f2800[slot], 0);
+    WR8(OBJ->substate[slot], 0);
     return r;
 }
 

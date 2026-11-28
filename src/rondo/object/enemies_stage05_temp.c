@@ -133,7 +133,7 @@ ObjArm PhaseTimerToState1(uint8_t slot)
     if (left != 0) {
         WR8(OBJ->anim_step[slot], 0);
         WR8(OBJ->anim_timer[slot], 0);
-        WR8(OBJ->f2800[slot], 1);
+        WR8(OBJ->substate[slot], 1);
         r.arm = S5_PH_COUNTING;
         return r;
     }
@@ -515,9 +515,9 @@ ObjArm AnimateThenNextStep(uint8_t slot)
     if (r.step != FRAME_LIST_ENDED) {
         return r;
     }
-    r.fourth = RD8(OBJ->f2800[slot]);
+    r.fourth = RD8(OBJ->substate[slot]);
     r.fourth = (uint8_t)(r.fourth + 1);
-    WR8(OBJ->f2800[slot], r.fourth);
+    WR8(OBJ->substate[slot], r.fourth);
     r.arm = S5_AN_ENDED;
     return r;
 }
@@ -600,9 +600,9 @@ ObjArm AnimateThenNextStepB(uint8_t slot)
     }
     WR8(OBJ->anim_step[slot], 0);
     WR8(OBJ->anim_timer[slot], 0);
-    r.first = RD8(OBJ->f2800[slot]);
+    r.first = RD8(OBJ->substate[slot]);
     r.first = (uint8_t)(r.first + 1);
-    WR8(OBJ->f2800[slot], r.first);
+    WR8(OBJ->substate[slot], r.first);
     r.arm = S5_AN_ENDED;
     return r;
 }
@@ -881,7 +881,7 @@ ObjArm NextPhaseAtRandom(uint8_t slot)
     jsr_pop();
     bits = (uint8_t)(random.value & 1);
     r.second = (uint8_t)(bits + 1);
-    WR8(OBJ->f2800[slot], r.second);
+    WR8(OBJ->substate[slot], r.second);
     return r;
 }
 
@@ -1060,7 +1060,7 @@ ObjArm StartChargeWhenPlayerNear(uint8_t slot)
     r.second = (uint8_t)(r.random.value & 0x7F);
     WR8(OBJ->f36c8[slot], (uint8_t)(r.second + 0x44));
     WR8(OBJ->state[slot], 4);
-    WR8(OBJ->f2800[slot], 2);
+    WR8(OBJ->substate[slot], 2);
     r.arm = SC_STARTED;
     return r;
 }
@@ -1102,15 +1102,15 @@ void abi_StartChargeWhenPlayerNear(void)
 ObjArm WaitThenState2B(uint8_t slot)
 {
     ObjArm r = { 0 };
-    uint8_t step = RD8(OBJ->f2800[slot]);
+    uint8_t step = RD8(OBJ->substate[slot]);
     uint8_t left;
     ObjArm frames;
 
     if (step == 0) {
         WR8(OBJ->life_timer[slot], 0x1C);
-        step = RD8(OBJ->f2800[slot]);
+        step = RD8(OBJ->substate[slot]);
         step = (uint8_t)(step + 1);
-        WR8(OBJ->f2800[slot], step);
+        WR8(OBJ->substate[slot], step);
         r.arm = WT_START;
         r.first = step;
         return r;
@@ -1191,7 +1191,7 @@ ObjArm ChooseNextMoveWhenFacingAway(uint8_t slot)
     r.y = (uint8_t)(count & 1);
     r.fourth = rd8((uint16_t)(PIECES + r.y));
     WR8(OBJ->f36c8[slot], r.fourth);
-    r.fifth = INC8(OBJ->f2800[slot]);
+    r.fifth = INC8(OBJ->substate[slot]);
     r.arm = S5_CM_PICKED;
     return r;
 }
@@ -1299,7 +1299,7 @@ ObjArm CountAnglePairDownOrRepick(uint8_t slot)
         jsr_pop();
         WR8(OBJ->anim_step[slot], 0);
         WR8(OBJ->anim_timer[slot], 0);
-        WR8(OBJ->f2800[slot], 0);
+        WR8(OBJ->substate[slot], 0);
         WR8(OBJ->state[slot], 3);
         return r;
     }
@@ -1512,7 +1512,7 @@ ObjArm LeapAwayFromPlayerTable(uint8_t slot)
     enum { TABLE = 0xC569 };
     ObjArm r = { 0 };
 
-    INC8(OBJ->f2800[slot]);
+    INC8(OBJ->substate[slot]);
     jsr_push(0xC543);
     r.distance = DistanceXToPlayer(slot);
     jsr_pop();
@@ -1602,7 +1602,7 @@ void abi_PickSpeedAndTurnFromTableC(void)
 ObjArm TurnOnRandomBeatWalkB(uint8_t slot)
 {
     ObjArm r = { 0 };
-    uint8_t phase = RD8(OBJ->f2800[slot]);
+    uint8_t phase = RD8(OBJ->substate[slot]);
 
     if (phase != 0) {
         r.arm = TW_FOLLOW;
@@ -2151,7 +2151,7 @@ ObjArm AnimateMoveThenSetUpAtRandom(uint8_t slot)
     WR8(OBJ->f36c8[slot], (uint8_t)(r.second + 0x18));
     WR8(OBJ->anim_step[slot], 0);
     WR8(OBJ->anim_timer[slot], 0);
-    r.third = INC8(OBJ->f2800[slot]);
+    r.third = INC8(OBJ->substate[slot]);
     r.arm = AR_DONE;
     return r;
 }

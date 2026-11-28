@@ -82,7 +82,7 @@ AttractHoldBeforeEnd:
     sta z:zGameSubMode
     lda #$40
     sta z:zWaitTimer3
-    stz a:OBJ_2750+8
+    stz a:OBJ_KIND+8
     stz a:$2759
     lda #$07
     jmp VecStartScriptSlot0Kind2
@@ -240,7 +240,7 @@ ScriptPlaceObjectState:
     jsr ScriptPlaceObject
     iny
     lda (zScriptPtr),y
-    sta a:OBJ_2750,x
+    sta a:OBJ_KIND,x
     jmp ScriptAdvance
 
 ; @routine 00C2:0A2 ScriptPlaceObjectKind2
@@ -261,7 +261,7 @@ ScriptPlaceObjectKind2:
     lda (zScriptPtr),y
     sta a:OBJ_2A10,x
     lda #$02
-    sta a:OBJ_2750,x
+    sta a:OBJ_KIND,x
     jmp ScriptAdvance
 
 ; @routine 00C2:0BC ScriptPlaceObjectFrame
@@ -277,7 +277,7 @@ ScriptPlaceObjectFrame:
     jsr ScriptPlaceObject
     iny
     lda (zScriptPtr),y
-    sta a:OBJ_2A68,x
+    sta a:OBJ_FRAME,x
     iny
     lda (zScriptPtr),y
     sta a:OBJ_2A10,x
@@ -333,7 +333,7 @@ ScriptPlaceObject:
 ScriptPlaceTitleObjectA:
     ldx #$2E
     jsr VecClearObject
-    inc a:OBJ_2750,x
+    inc a:OBJ_KIND,x
     lda (zScriptPtr),y
     sta a:OBJ_3040,x
     iny
@@ -358,7 +358,7 @@ ScriptPlaceTitleObjectA:
 ScriptPlaceTitleObjectB:
     ldx #$2F
     jsr VecClearObject
-    inc a:OBJ_2750,x
+    inc a:OBJ_KIND,x
     lda (zScriptPtr),y
     sta a:OBJ_3040,x
     iny
@@ -382,12 +382,12 @@ ScriptPlaceTitleObjectB:
 ; WAITS: no.
 ; Entry: X the object. Exit: as the last test left them.
 PlayFrameListOnce:
-    lda a:OBJ_27A8,x
+    lda a:OBJ_STATE,x
     bne PlayFrameListOnce_at0
     lda a:OBJ_3040,x
     jsr ObjectFrameList
     bne PlayFrameListOnce_at0
-    inc a:OBJ_27A8,x
+    inc a:OBJ_STATE,x
 PlayFrameListOnce_at0:
     rts
 
@@ -401,16 +401,16 @@ PlayFrameListOnce_at0:
 ; WAITS: no.
 ; Entry: X the object. Exit: as the last test left them.
 AnimateAndCueSeven:
-    lda a:OBJ_27A8,x
+    lda a:OBJ_STATE,x
     bne AnimateAndCueSeven_at0
     lda #$03
     sta a:OBJ_2A10,x
-    inc a:OBJ_27A8,x
+    inc a:OBJ_STATE,x
 AnimateAndCueSeven_at0:
     cla
     jsr ObjectFrameList
     bcc AnimateAndCueSeven_at1
-    lda a:OBJ_2A68,x
+    lda a:OBJ_FRAME,x
     beq AnimateAndCueSeven_at1
     phx
     ldx #$01
@@ -427,11 +427,11 @@ AnimateAndCueSeven_at1:
 ; WAITS: no.
 ; Entry: X the object. Exit: as the last test left them.
 AnimateList1AndCueSeven:
-    lda a:OBJ_27A8,x
+    lda a:OBJ_STATE,x
     bne AnimateList1AndCueSeven_at0
     lda #$03
     sta a:OBJ_2A10,x
-    inc a:OBJ_27A8,x
+    inc a:OBJ_STATE,x
 AnimateList1AndCueSeven_at0:
     lda #$01
     bra $89FA
@@ -446,11 +446,11 @@ AnimateList1AndCueSeven_at0:
 ; WAITS: no.
 ; Entry: X the object. Exit: as the last test left them.
 AnimateAndCueNine:
-    lda a:OBJ_27A8,x
+    lda a:OBJ_STATE,x
     bne AnimateAndCueNine_at0
     lda #$03
     sta a:OBJ_2A10,x
-    inc a:OBJ_27A8,x
+    inc a:OBJ_STATE,x
 AnimateAndCueNine_at0:
     lda a:ScrollXHi
     ora a:ScrollYHi
@@ -459,7 +459,7 @@ AnimateAndCueNine_at0:
     lda #$08
     jsr ObjectFrameList
     bcc AnimateAndCueNine_at1
-    lda a:OBJ_2A68,x
+    lda a:OBJ_FRAME,x
     beq AnimateAndCueNine_at1
     lda a:ScriptSlotKind
     bne AnimateAndCueNine_at1
@@ -478,11 +478,11 @@ AnimateAndCueNine_at1:
 ; WAITS: no.
 ; Entry: X the object. Exit: as the last test left them.
 AnimateList9AndCueNine:
-    lda a:OBJ_27A8,x
+    lda a:OBJ_STATE,x
     bne AnimateList9AndCueNine_at0
     lda #$03
     sta a:OBJ_2A10,x
-    inc a:OBJ_27A8,x
+    inc a:OBJ_STATE,x
 AnimateList9AndCueNine_at0:
     lda a:ScrollXHi
     ora a:ScrollYHi
@@ -499,9 +499,9 @@ AnimateList9AndCueNine_at0:
 ; WAITS: no.
 ; Entry: X the object. Exit: A 0 or 1, N and Z from it, C clear.
 BlinkScrollFlag:
-    lda a:OBJ_27A8,x
+    lda a:OBJ_STATE,x
     bne BlinkScrollFlag_at0
-    inc a:OBJ_27A8,x
+    inc a:OBJ_STATE,x
 BlinkScrollFlag_at0:
     inc a:OBJ_34B8,x
     lda a:OBJ_34B8,x
@@ -524,9 +524,9 @@ BlinkScrollFlag_at0:
 ; Entry: X the object. Exit: A the last high byte reversed, Z set, N clear, C the last bit rotated
 ; out, Y 0; X kept.
 MirrorVramBlock:
-    lda a:OBJ_27A8,x
+    lda a:OBJ_STATE,x
     bne MirrorVramBlock_at0
-    inc a:OBJ_27A8,x
+    inc a:OBJ_STATE,x
     rts
 MirrorVramBlock_at0:
     jsr VecSelectVramReadAddress
@@ -594,9 +594,9 @@ MirrorVramBlock_at1:
 ; WAITS: no.
 ; Entry: X the object. Exit: as the last test left them.
 NudgeScrollIn:
-    lda a:OBJ_27A8,x
+    lda a:OBJ_STATE,x
     bne NudgeScrollIn_at0
-    inc a:OBJ_27A8,x
+    inc a:OBJ_STATE,x
     rts
 NudgeScrollIn_at0:
     dec a
@@ -604,7 +604,7 @@ NudgeScrollIn_at0:
     inc a:ScrollXLo
     bne NudgeScrollIn_at2
     inc a:ScrollYHi
-    inc a:OBJ_27A8,x
+    inc a:OBJ_STATE,x
 NudgeScrollIn_at2:
     rts
 NudgeScrollIn_at1:
@@ -614,7 +614,7 @@ NudgeScrollIn_at1:
     lda a:ScrollXLo
     cmp #$80
     bne NudgeScrollIn_at2
-    inc a:OBJ_27A8,x
+    inc a:OBJ_STATE,x
 NudgeScrollIn_at3:
     rts
 
@@ -629,9 +629,9 @@ NudgeScrollIn_at3:
 ; WAITS: no.
 ; Entry: X the object. Exit: as the last test left them.
 DropAndShakeScreen:
-    lda a:OBJ_27A8,x
+    lda a:OBJ_STATE,x
     bne DropAndShakeScreen_at0
-    inc a:OBJ_27A8,x
+    inc a:OBJ_STATE,x
     lda #$02
     sta a:OBJ_VY_HI,x
     lda #$FF
@@ -663,7 +663,7 @@ DropAndShakeScreen_at2:
     plx
     lda #$10
     sta a:OBJ_34B8,x
-    inc a:OBJ_27A8,x
+    inc a:OBJ_STATE,x
 DropAndShakeScreen_at3:
     rts
 DropAndShakeScreen_at1:
@@ -678,7 +678,7 @@ DropAndShakeScreen_at1:
     bne DropAndShakeScreen_at3
     stz a:ScrollXLo
     stz a:ScrollXHi
-    inc a:OBJ_27A8,x
+    inc a:OBJ_STATE,x
     rts
 
 ; @routine 00C2:385 BreakApartOnFrame
@@ -689,12 +689,12 @@ DropAndShakeScreen_at1:
 ; WAITS: no.
 ; Entry: X the object. Exit: as the last test left them.
 BreakApartOnFrame:
-    lda a:OBJ_27A8,x
+    lda a:OBJ_STATE,x
     bne BreakApartOnFrame_at0
     lda #$03
     sta a:OBJ_2A10,x
 BreakApartOnFrame_at2:
-    inc a:OBJ_27A8,x
+    inc a:OBJ_STATE,x
     rts
 BreakApartOnFrame_at0:
     dec a
@@ -703,7 +703,7 @@ BreakApartOnFrame_at0:
     jsr ObjectFrameList
     beq BreakApartOnFrame_at2
     bcc BreakApartOnFrame_at1
-    lda a:OBJ_2A68,x
+    lda a:OBJ_FRAME,x
     cmp #$0D
     bne BreakApartOnFrame_at1
     phx
@@ -750,12 +750,12 @@ ScatterDebris_at0:
     sta a:OBJ_VY_LO,x
     iny
     lda a:$8BFE,y
-    sta a:OBJ_2A68,x
+    sta a:OBJ_FRAME,x
     iny
     lda #$03
     sta a:OBJ_2A10,x
     lda #$08
-    sta a:OBJ_2750,x
+    sta a:OBJ_KIND,x
     dex
     cpx #$03
     bne ScatterDebris_at1
@@ -770,9 +770,9 @@ ScatterDebris_at0:
 ; WAITS: no.
 ; Entry: X the object. Exit: as the last test left them.
 FallAndClear:
-    lda a:OBJ_27A8,x
+    lda a:OBJ_STATE,x
     bne FallAndClear_at0
-    inc a:OBJ_27A8,x
+    inc a:OBJ_STATE,x
     rts
 FallAndClear_at0:
     jsr VecApplyVelocity
@@ -801,13 +801,13 @@ FallAndClear_at1:
 ; WAITS: no.
 ; Entry: X the object. Exit: as the last test left them.
 IntroSceneObject:
-    lda a:OBJ_27A8,x
+    lda a:OBJ_STATE,x
     bne IntroSceneObject_at0
-    inc a:OBJ_27A8,x
+    inc a:OBJ_STATE,x
     lda #$FF
     sta a:OBJ_VY_HI,x
     lda #$2F
-    sta a:OBJ_2A68,x
+    sta a:OBJ_FRAME,x
     lda #$03
     sta a:OBJ_2A10,x
     inc a:ScrollXHi
@@ -831,7 +831,7 @@ IntroSceneObject_at0:
     jsr VecApplyVelocity
     lda a:OBJ_Y_LO,x
     bmi IntroSceneObject_at2
-    inc a:OBJ_27A8,x
+    inc a:OBJ_STATE,x
     rts
 IntroSceneObject_at1:
     dec a
@@ -839,7 +839,7 @@ IntroSceneObject_at1:
     lda #$03
     jsr ObjectFrameList
     bne IntroSceneObject_at2
-    inc a:OBJ_27A8,x
+    inc a:OBJ_STATE,x
     rts
     dec a
     bne IntroSceneObject_at3
@@ -850,7 +850,7 @@ IntroSceneObject_at1:
     bne IntroSceneObject_at2
     dec a:ScrollXHi
     inc a:ScrollYHi
-    inc a:OBJ_27A8,x
+    inc a:OBJ_STATE,x
 IntroSceneObject_at2:
     rts
 IntroSceneObject_at3:
@@ -861,7 +861,7 @@ IntroSceneObject_at3:
     dec a:ScrollYLo
     dec a:ScrollYLo
     bne IntroSceneObject_at2
-    inc a:OBJ_27A8,x
+    inc a:OBJ_STATE,x
     rts
 
 ; @routine 00C2:51C RiseAndFallObject
@@ -873,7 +873,7 @@ IntroSceneObject_at3:
 ; WAITS: no.
 ; Entry: X the object. Exit: as the last test left them.
 RiseAndFallObject:
-    lda a:OBJ_27A8,x
+    lda a:OBJ_STATE,x
     bne RiseAndFallObject_at0
     lda #$03
     sta a:OBJ_2A10,x
@@ -882,7 +882,7 @@ RiseAndFallObject:
     sta a:OBJ_VY_HI,x
     lda #$10
     sta a:OBJ_34B8,x
-    inc a:OBJ_27A8,x
+    inc a:OBJ_STATE,x
     rts
 RiseAndFallObject_at0:
     dec a
@@ -893,7 +893,7 @@ RiseAndFallObject_at0:
     sta a:OBJ_34B8,x
     stz a:ScrollXHi
 RiseAndFallObject_at4:
-    inc a:OBJ_27A8,x
+    inc a:OBJ_STATE,x
 RiseAndFallObject_at2:
     rts
 RiseAndFallObject_at1:
@@ -913,7 +913,7 @@ RiseAndFallObject_at3:
     bne RiseAndFallObject_at2
     lda #$0B
     sta a:$276E
-    inc a:OBJ_27A8,x
+    inc a:OBJ_STATE,x
     rts
 RiseAndFallObject_at5:
     dec a
@@ -934,12 +934,12 @@ RiseAndFallObject_at5:
 ; WAITS: no.
 ; Entry: X the object. Exit: as the last test left them.
 DriftAndClearObject:
-    lda a:OBJ_27A8,x
+    lda a:OBJ_STATE,x
     bne DriftAndClearObject_at0
     inc a:OBJ_VX_HI,x
     lda #$40
     sta a:OBJ_VX_LO,x
-    inc a:OBJ_27A8,x
+    inc a:OBJ_STATE,x
 DriftAndClearObject_at4:
     rts
 DriftAndClearObject_at0:
@@ -974,9 +974,9 @@ DriftAndClearObject_at3:
 ; WAITS: no.
 ; Entry: X the object. Exit: as the last test left them.
 SplitScreenObject:
-    lda a:OBJ_27A8,x
+    lda a:OBJ_STATE,x
     bne SplitScreenObject_at0
-    inc a:OBJ_27A8,x
+    inc a:OBJ_STATE,x
     dec a:$2D90
     inc a:$2D91
     lda #$40
@@ -995,7 +995,7 @@ SplitScreenObject_at0:
     bne SplitScreenObject_at1
     dec a:OBJ_34B8,x
     bne SplitScreenObject_at2
-    inc a:OBJ_27A8,x
+    inc a:OBJ_STATE,x
     rts
 SplitScreenObject_at1:
     dec a
@@ -1022,7 +1022,7 @@ SplitScreenObject_at4:
     plx
     stz a:ScrollXHi
     inc a:ScrollYHi
-    inc a:OBJ_27A8,x
+    inc a:OBJ_STATE,x
 SplitScreenObject_at2:
     rts
 SplitScreenObject_at3:
@@ -1031,7 +1031,7 @@ SplitScreenObject_at3:
     stz a:ScrollYHi
     dec a:ScrollYLo
     bne SplitScreenObject_at2
-    inc a:OBJ_27A8,x
+    inc a:OBJ_STATE,x
     rts
 SplitScreenObject_at5:
     dec a
@@ -1047,7 +1047,7 @@ SplitScreenObject_at5:
 ; WAITS: no.
 ; Entry: X the object. Exit: as the last test left them.
 FlingObjectRight:
-    lda a:OBJ_27A8,x
+    lda a:OBJ_STATE,x
     bne FlingObjectRight_at0
     lda #$03
     sta a:OBJ_2A10,x
@@ -1056,7 +1056,7 @@ FlingObjectRight:
 FlingObjectRight_at5:
     lda #$08
     sta a:OBJ_34B8,x
-    inc a:OBJ_27A8,x
+    inc a:OBJ_STATE,x
 FlingObjectRight_at2:
     rts
 FlingObjectRight_at0:
@@ -1097,7 +1097,7 @@ FlingObjectRight_at4:
 ; WAITS: no.
 ; Entry: X the object. Exit: as the last test left them.
 FlingObjectLeft:
-    lda a:OBJ_27A8,x
+    lda a:OBJ_STATE,x
     bne FlingObjectLeft_at1
     lda #$03
     sta a:OBJ_2A10,x
@@ -1107,7 +1107,7 @@ FlingObjectLeft:
 FlingObjectLeft_at2:
     lda #$08
     sta a:OBJ_34B8,x
-    inc a:OBJ_27A8,x
+    inc a:OBJ_STATE,x
 FlingObjectLeft_at4:
     rts
 FlingObjectLeft_at0:

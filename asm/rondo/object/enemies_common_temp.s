@@ -183,10 +183,10 @@
 ; Entry: X object, D clear. Exit: A, N, Z, C, V from the last compare, add or load that ran; Y the
 ; free slot (or the table index); X kept. Clobbers zTemp00.
 DropItemWhenHitA:
-    lda a:OBJ_33B0,x
+    lda a:OBJ_HIT_TAKEN,x
     cmp #$05
     bcc RichterStandStep1
-    lda a:OBJ_31F8,x
+    lda a:OBJ_HIT_REACTION,x
     lsr a
     lsr a
     and #$07
@@ -228,10 +228,10 @@ DropItemWhenHitA:
 ; Entry: X object, D clear. Exit: A, N, Z, C, V from the last compare, add or load that ran; Y the
 ; free slot (or the table index); X kept. Clobbers zTemp00.
 DropItemWhenHitB:
-    lda a:OBJ_33B0,x
+    lda a:OBJ_HIT_TAKEN,x
     cmp #$05
     bcc RichterStandStep1
-    lda a:OBJ_31F8,x
+    lda a:OBJ_HIT_REACTION,x
     lsr a
     lsr a
     and #$07
@@ -273,10 +273,10 @@ DropItemWhenHitB:
 ; Entry: X object, D clear. Exit: A, N, Z, C, V from the last compare, add or load that ran; Y the
 ; free slot (or the table index); X kept. Clobbers zTemp00.
 DropItemWhenHitC:
-    lda a:OBJ_33B0,x
+    lda a:OBJ_HIT_TAKEN,x
     cmp #$05
     bcc RichterStandStep1
-    lda a:OBJ_31F8,x
+    lda a:OBJ_HIT_REACTION,x
     lsr a
     lsr a
     and #$07
@@ -318,10 +318,10 @@ DropItemWhenHitC:
 ; Entry: X object, D clear. Exit: A, N, Z, C, V from the last compare, add or load that ran; Y the
 ; free slot (or the table index); X kept. Clobbers zTemp00.
 DropItemWhenHitD:
-    lda a:OBJ_33B0,x
+    lda a:OBJ_HIT_TAKEN,x
     cmp #$05
     bcc RichterStandStep1
-    lda a:OBJ_31F8,x
+    lda a:OBJ_HIT_REACTION,x
     lsr a
     lsr a
     and #$07
@@ -363,10 +363,10 @@ DropItemWhenHitD:
 ; Entry: X object, D clear. Exit: A, N, Z, C, V from the last compare, add or load that ran; Y the
 ; free slot (or the table index); X kept. Clobbers zTemp00.
 DropItemWhenHitE:
-    lda a:OBJ_33B0,x
+    lda a:OBJ_HIT_TAKEN,x
     cmp #$05
     bcc RichterStandStep1
-    lda a:OBJ_31F8,x
+    lda a:OBJ_HIT_REACTION,x
     lsr a
     lsr a
     and #$07
@@ -401,12 +401,12 @@ DropItemWhenHitE:
 ; WAITS: no.
 ; Entry, exit: as FaceThePlayerInSomeStates.
 FaceThePlayerInSomeStatesC:
-    ldy a:OBJ_27A8,x
+    ldy a:OBJ_STATE,x
     lda a:$ADC0,y
     beq FaceThePlayerInSomeStatesC_at0
     jsr VecSideOfPlayer
     and #$01
-    sta a:OBJ_2AC0,x
+    sta a:OBJ_FACING_LEFT,x
 FaceThePlayerInSomeStatesC_at0:
     rts
 
@@ -417,12 +417,12 @@ FaceThePlayerInSomeStatesC_at0:
 ; WAITS: no.
 ; Entry, exit: as FaceThePlayerInSomeStates.
 FaceThePlayerInSomeStatesD:
-    ldy a:OBJ_27A8,x
+    ldy a:OBJ_STATE,x
     lda a:$C00F,y
     beq FaceThePlayerInSomeStatesD_at0
     jsr VecSideOfPlayer
     and #$01
-    sta a:OBJ_2AC0,x
+    sta a:OBJ_FACING_LEFT,x
 FaceThePlayerInSomeStatesD_at0:
     rts
 
@@ -609,7 +609,7 @@ WalkWhileFrameChangesD_at0:
 ; Entry: X object, D clear. Exit: not played: A the masked bits, N, Z from them, C bit 4 of f31f8;
 ; played: as SoundIfOnFirstScreen leaves it (Y the table index).
 PlayHitSoundA:
-    lda a:OBJ_31F8,x
+    lda a:OBJ_HIT_REACTION,x
     lsr a
     lsr a
     lsr a
@@ -635,7 +635,7 @@ PlayHitSoundA_at0:
 ; Entry: X object, D clear. Exit: not played: A the masked bits, N, Z from them, C bit 4 of f31f8;
 ; played: as SoundIfOnFirstScreen leaves it (Y the table index).
 PlayHitSoundB:
-    lda a:OBJ_31F8,x
+    lda a:OBJ_HIT_REACTION,x
     lsr a
     lsr a
     lsr a
@@ -661,7 +661,7 @@ PlayHitSoundB_at0:
 ; Entry: X object, D clear. Exit: not played: A the masked bits, N, Z from them, C bit 4 of f31f8;
 ; played: as SoundIfOnFirstScreen leaves it (Y the table index).
 PlayHitSoundC:
-    lda a:OBJ_31F8,x
+    lda a:OBJ_HIT_REACTION,x
     lsr a
     lsr a
     lsr a
@@ -687,7 +687,7 @@ PlayHitSoundC_at0:
 ; Entry: X object, D clear. Exit: not played: A the masked bits, N, Z from them, C bit 4 of f31f8;
 ; played: as SoundIfOnFirstScreen leaves it (Y the table index).
 PlayHitSoundD:
-    lda a:OBJ_31F8,x
+    lda a:OBJ_HIT_REACTION,x
     lsr a
     lsr a
     lsr a
@@ -713,7 +713,7 @@ PlayHitSoundD_at0:
 ; Entry: X object, D clear. Exit: not played: A the masked bits, N, Z from them, C bit 4 of f31f8;
 ; played: as SoundIfOnFirstScreen leaves it (Y the table index).
 PlayHitSoundE:
-    lda a:OBJ_31F8,x
+    lda a:OBJ_HIT_REACTION,x
     lsr a
     lsr a
     lsr a
@@ -739,7 +739,7 @@ PlayHitSoundE_at0:
 ; Entry: X object, D clear. Exit: not played: A the masked bits, N, Z from them, C bit 4 of f31f8;
 ; played: as SoundIfOnFirstScreen leaves it (Y the table index).
 PlayHitSoundF:
-    lda a:OBJ_31F8,x
+    lda a:OBJ_HIT_REACTION,x
     lsr a
     lsr a
     lsr a
@@ -765,7 +765,7 @@ PlayHitSoundF_at0:
 ; Entry: X object, D clear. Exit: not played: A the masked bits, N, Z from them, C bit 4 of f31f8;
 ; played: as SoundIfOnFirstScreen leaves it (Y the table index).
 PlayHitSoundG:
-    lda a:OBJ_31F8,x
+    lda a:OBJ_HIT_REACTION,x
     lsr a
     lsr a
     lsr a
@@ -791,7 +791,7 @@ PlayHitSoundG_at0:
 ; Entry: X object, D clear. Exit: not played: A the masked bits, N, Z from them, C bit 4 of f31f8;
 ; played: as SoundIfOnFirstScreen leaves it (Y the table index).
 PlayHitSoundH:
-    lda a:OBJ_31F8,x
+    lda a:OBJ_HIT_REACTION,x
     lsr a
     lsr a
     lsr a
@@ -817,7 +817,7 @@ PlayHitSoundH_at0:
 ; Entry: X object, D clear. Exit: not played: A the masked bits, N, Z from them, C bit 4 of f31f8;
 ; played: as SoundIfOnFirstScreen leaves it (Y the table index).
 PlayHitSoundI:
-    lda a:OBJ_31F8,x
+    lda a:OBJ_HIT_REACTION,x
     lsr a
     lsr a
     lsr a
@@ -843,7 +843,7 @@ PlayHitSoundI_at0:
 ; Entry: X object, D clear. Exit: not played: A the masked bits, N, Z from them, C bit 4 of f31f8;
 ; played: as SoundIfOnFirstScreen leaves it (Y the table index).
 PlayHitSoundJ:
-    lda a:OBJ_31F8,x
+    lda a:OBJ_HIT_REACTION,x
     lsr a
     lsr a
     lsr a
@@ -869,7 +869,7 @@ PlayHitSoundJ_at0:
 ; Entry: X object, D clear. Exit: not played: A the masked bits, N, Z from them, C bit 4 of f31f8;
 ; played: as SoundIfOnFirstScreen leaves it (Y the table index).
 PlayHitSoundK:
-    lda a:OBJ_31F8,x
+    lda a:OBJ_HIT_REACTION,x
     lsr a
     lsr a
     lsr a
@@ -895,7 +895,7 @@ PlayHitSoundK_at0:
 ; Entry: X object, D clear. Exit: not played: A the masked bits, N, Z from them, C bit 4 of f31f8;
 ; played: as SoundIfOnFirstScreen leaves it (Y the table index).
 PlayHitSoundL:
-    lda a:OBJ_31F8,x
+    lda a:OBJ_HIT_REACTION,x
     lsr a
     lsr a
     lsr a
@@ -924,10 +924,10 @@ PlayHitSoundL_at0:
 ; Entry: X object, D clear. Exit: A, N, Z, C, V from the last compare, add or load that ran; Y the
 ; free slot (or the table index); X kept. Clobbers zTemp00.
 DropItemWhenHitF:
-    lda a:OBJ_33B0,x
+    lda a:OBJ_HIT_TAKEN,x
     cmp #$05
     bcc RichterStandStep1
-    lda a:OBJ_31F8,x
+    lda a:OBJ_HIT_REACTION,x
     lsr a
     lsr a
     and #$07
@@ -969,10 +969,10 @@ DropItemWhenHitF:
 ; Entry: X object, D clear. Exit: A, N, Z, C, V from the last compare, add or load that ran; Y the
 ; free slot (or the table index); X kept. Clobbers zTemp00.
 DropItemWhenHitG:
-    lda a:OBJ_33B0,x
+    lda a:OBJ_HIT_TAKEN,x
     cmp #$05
     bcc RichterStandStep1
-    lda a:OBJ_31F8,x
+    lda a:OBJ_HIT_REACTION,x
     lsr a
     lsr a
     and #$07
@@ -1014,10 +1014,10 @@ DropItemWhenHitG:
 ; Entry: X object, D clear. Exit: A, N, Z, C, V from the last compare, add or load that ran; Y the
 ; free slot (or the table index); X kept. Clobbers zTemp00.
 DropItemWhenHitH:
-    lda a:OBJ_33B0,x
+    lda a:OBJ_HIT_TAKEN,x
     cmp #$05
     bcc RichterStandStep1
-    lda a:OBJ_31F8,x
+    lda a:OBJ_HIT_REACTION,x
     lsr a
     lsr a
     and #$07
@@ -1056,7 +1056,7 @@ DropItemWhenHitH:
 ; Entry: X object, D clear. Exit: not played: A the masked bits, N, Z from them, C bit 4 of f31f8;
 ; played: as SoundIfOnFirstScreen leaves it (Y the table index).
 PlayHitSoundM:
-    lda a:OBJ_31F8,x
+    lda a:OBJ_HIT_REACTION,x
     lsr a
     lsr a
     lsr a
@@ -1085,10 +1085,10 @@ PlayHitSoundM_at0:
 ; Entry: X object, D clear. Exit: A, N, Z, C, V from the last compare, add or load that ran; Y the
 ; free slot (or the table index); X kept. Clobbers zTemp00.
 DropItemWhenHitI:
-    lda a:OBJ_33B0,x
+    lda a:OBJ_HIT_TAKEN,x
     cmp #$05
     bcc RichterStandStep1
-    lda a:OBJ_31F8,x
+    lda a:OBJ_HIT_REACTION,x
     lsr a
     lsr a
     and #$07

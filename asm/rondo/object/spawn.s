@@ -13,7 +13,7 @@ LoadObjectRecord:
     sta z:zMultiplierLo
     lda a:OverlayObjectRecords+1
     sta z:zMultiplierHi
-    lda a:OBJ_2750,x
+    lda a:OBJ_KIND,x
     dec a
     asl a
     tay
@@ -43,16 +43,16 @@ LoadObjectRecord:
     sta a:OBJ_FIELDS_2EE0,x
     iny
     lda (zTemp10),y
-    sta a:OBJ_3988,x
+    sta a:OBJ_HITBOX_HALF_W,x
     iny
     lda (zTemp10),y
-    sta a:OBJ_3A38,x
+    sta a:OBJ_HITBOX_HALF_H,x
     iny
     lda (zTemp10),y
     sta a:OBJ_2A10,x
     iny
     lda (zTemp10),y
-    sta a:OBJ_2A68,x
+    sta a:OBJ_FRAME,x
     iny
     lda (zTemp10),y
     sta a:OBJ_30F0,x
@@ -64,10 +64,10 @@ LoadObjectRecord:
     sta a:OBJ_31A0,x
     iny
     lda (zTemp10),y
-    sta a:OBJ_31F8,x
-    stz a:OBJ_3930,x
-    stz a:OBJ_39E0,x
-    inc a:OBJ_27A8,x
+    sta a:OBJ_HIT_REACTION,x
+    stz a:OBJ_HITBOX_DX,x
+    stz a:OBJ_HITBOX_DY,x
+    inc a:OBJ_STATE,x
     rts
 
 ; @routine 0047:15C StartObjectAtPlace
@@ -76,7 +76,7 @@ LoadObjectRecord:
 ; HOW: Stores the type, then runs into CopyObjectPlace.
 ; Entry: A type, X source, Y new object. Exit: as CopyObjectPlace.
 StartObjectAtPlace:
-    sta a:OBJ_2750,y
+    sta a:OBJ_KIND,y
 
 ; @routine 0047:15F CopyObjectPlace
 ; @run 6A:615F
@@ -121,30 +121,30 @@ CopyObjectPlaceBack:
 ; pair's second byte's index. Held: A $FF, C 0, N 1, Z 0, Y kept. Ended: A 0, C 0,
 ; N 0, Z 1, Y the pair's index. X and V kept.
 StepObjectFrames:
-    lda a:OBJ_3460,x
+    lda a:OBJ_ANIM_TIMER,x
     bne StepObjectFrames_at0
-    lda a:OBJ_3408,x
+    lda a:OBJ_ANIM_STEP,x
     asl a
     tay
     lda (zTemp10),y
     bne StepObjectFrames_at1
-    stz a:OBJ_3408,x
-    stz a:OBJ_3460,x
+    stz a:OBJ_ANIM_STEP,x
+    stz a:OBJ_ANIM_TIMER,x
     clc
     lda #$00
     rts
 StepObjectFrames_at1:
-    sta a:OBJ_3460,x
+    sta a:OBJ_ANIM_TIMER,x
     iny
     lda (zTemp10),y
-    sta a:OBJ_2A68,x
-    inc a:OBJ_3408,x
-    dec a:OBJ_3460,x
+    sta a:OBJ_FRAME,x
+    inc a:OBJ_ANIM_STEP,x
+    dec a:OBJ_ANIM_TIMER,x
     sec
     lda #$FF
     rts
 StepObjectFrames_at0:
-    dec a:OBJ_3460,x
+    dec a:OBJ_ANIM_TIMER,x
     clc
     lda #$FF
     rts
@@ -158,7 +158,7 @@ StepObjectFrames_at0:
 FindFreeSlotFrom30:
     ldy #$30
 FindFreeSlotFrom30_at1:
-    lda a:OBJ_2750,y
+    lda a:OBJ_KIND,y
     beq FindFreeSlotFrom30_at0
     iny
     cpy #$40
@@ -187,7 +187,7 @@ FindFreeSlotFrom20:
 FindFreeSlotFrom50:
     ldy #$50
 FindFreeSlotFrom50_at0:
-    lda a:OBJ_2750,y
+    lda a:OBJ_KIND,y
     beq FindFreeSlotFrom30_at0
     iny
     cpy #$54

@@ -190,7 +190,7 @@ void abi_SetBlinkFlash(void)
  * @routine 0519:482 InitObjectFromRecord
  * @run 70:A482
  * WHAT IT DOES: Starts a newly placed object: loads its record, copies slot 0's byte of the
- * OBJ_2FE8 column into the object's, sets two of its counters and its animation delay to 4, and
+ * OBJ_SPRITE_FLIP column into the object's, sets two of its counters and its animation delay to 4, and
  * its timer to $60.
  * HOW: Calls LoadObjectRecord through its vector (which keeps X), then stores each byte.
  * WAITS: no.
@@ -669,7 +669,7 @@ void abi_AnimateKind88(void)
  * @run 70:A764
  * WHAT IT DOES: Starts an object whose kind is a pair: a kind $93 with zField90 set becomes kind $84,
  * and an object whose kind is already the one the table at $A668 gives for zField93 becomes $84; then
- * the record is loaded, slot 0's byte of the OBJ_2FE8 column is copied into the object's, and OBJ_3510
+ * the record is loaded, slot 0's byte of the OBJ_SPRITE_FLIP column is copied into the object's, and OBJ_3510
  * is set from the table at $A79E, row of two bytes by the kind less $84, the second by which character
  * plays.
  * HOW: Compares and, on equality, stores kind $84; LoadObjectRecord; the row by an add with the

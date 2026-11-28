@@ -741,7 +741,7 @@ static Ended l8_band_exit_shim(L8St16Band r)
 /*
  * @routine 05CC:282 LoadRecordThenFollowOrHomeIn
  * @run 70:BA82
- * WHAT IT DOES: In state 0 loads the record and sets the Y speed $1A. Later (unless the game's sub-mode is 4) it takes the place of slot $10 and moves by an X speed from the table at $BA90 by its number and slot $10's facing. While OBJ_34B8 is 0 and slot $10 is in state 4 with OBJ_2800 of 2 or 3 it waits for a hit of 1 to 4, then takes the distance to the player as its aim (OBJ_3510, OBJ_3568) and sets OBJ_34B8 1. While OBJ_34B8 is not 0 it homes in: it puts slot 0 at its place and moves it by the aim (turned on a step by the sign of each part), restores the speed of slot $10 and ends.
+ * WHAT IT DOES: In state 0 loads the record and sets the Y speed $1A. Later (unless the game's sub-mode is 4) it takes the place of slot $10 and moves by an X speed from the table at $BA90 by its number and slot $10's facing. While OBJ_34B8 is 0 and slot $10 is in state 4 with OBJ_SUBSTATE of 2 or 3 it waits for a hit of 1 to 4, then takes the distance to the player as its aim (OBJ_3510, OBJ_3568) and sets OBJ_34B8 1. While OBJ_34B8 is not 0 it homes in: it puts slot 0 at its place and moves it by the aim (turned on a step by the sign of each part), restores the speed of slot $10 and ends.
  * HOW: LoadObjectRecord, CopyObjectPlaceBack, ApplyVelocity, CopyObjectPlace, ApplyVelocity with X and Y swapped, compares, table reads, stores.
  * WAITS: no.
  * Entry: X object. Exit: as the last instruction that ran (l8_follow_or_home_exit_shim). The arm that takes the aim and the whole of the homing arm ran in no script (the draft stops there); the code at $BB62 that the homing arm calls has no row and is written here as inside_edge_band.
@@ -786,7 +786,7 @@ L8St16HomeArm LoadRecordThenFollowOrHomeIn(uint8_t slot, L8Layout lay)
             r.arm = HOME_WAIT_STATE;
             return r;
         }
-        r.phase = RD8(OBJ->f2800[0x10]);
+        r.phase = RD8(OBJ->substate[0x10]);
         if (r.phase != 2) {
             if (r.phase != 3) {
                 r.arm = HOME_WAIT_STEP;

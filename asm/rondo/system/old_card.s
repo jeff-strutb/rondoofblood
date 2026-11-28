@@ -29,7 +29,7 @@ OldCardMain_at0:
     cla
     ldx #$20
     ldy #$1E
-    jsr BiosE06F
+    jsr BiosExScrmod
     stz z:BiosIrqDisable
     jsr $E099
     jsr $E07B
@@ -95,7 +95,7 @@ OldCardMain_at1:
     stz a:BiosScreenLo
     lda #$10
     sta a:BiosScreenHi
-    jsr BiosE0A2
+    jsr BiosExSatclr
     stz a:BiosScreenLo
     lda #$10
     sta a:BiosScreenHi
@@ -112,9 +112,9 @@ OldCardMain_at1:
     lda #$06
     ldx #$25
     ldy #$42
-    jsr BiosE05D
+    jsr BiosExSetvec
 OldCardMain_at3:
-    jsr BiosE063
+    jsr BiosExJoysns
     inc z:zFrameTick
     jsr $E07B
     lda a:ScrollXFrac
@@ -187,7 +187,7 @@ OldCardMain_at4:
     stz a:BiosScreenLo
     lda #$10
     sta a:BiosScreenHi
-    jsr BiosE0A2
+    jsr BiosExSatclr
     stz a:BiosScreenLo
     lda #$10
     sta a:BiosScreenHi
@@ -213,7 +213,7 @@ OldCardMain_at4:
     jsr $E09F
     jsr $E07B
 OldCardMain_at5:
-    jsr BiosE063
+    jsr BiosExJoysns
     inc z:zFrameTick
     jsr $E07B
     lda a:ScrollXFrac
@@ -417,7 +417,7 @@ DrawSprites:
     sta z:zProduct2
     clx
 DrawSprites_at2:
-    lda a:OBJ_2A68,x
+    lda a:OBJ_FRAME,x
     beq DrawSprites_at0
     stx z:zRichterObject
     bsr DrawObjectSprite
@@ -470,9 +470,9 @@ DrawObjectSprite:
     lda a:OBJ_X_HI,x
     adc #$00
     sta z:zTemp0B
-    lda a:OBJ_2AC0,x
+    lda a:OBJ_FACING_LEFT,x
     sta z:zTemp0D
-    lda a:OBJ_2FE8,x
+    lda a:OBJ_SPRITE_FLIP,x
     sta z:SpriteFlipMask
     lda a:OBJ_2B18,x
     sta z:zTemp0E
@@ -482,7 +482,7 @@ DrawObjectSprite:
     sta z:zTemp00
     lda #$4C
     sta z:zTemp01
-    lda a:OBJ_2A68,x
+    lda a:OBJ_FRAME,x
     asl a
     tay
     bcc DrawObjectSprite_at0
@@ -696,7 +696,7 @@ SpawnTitleObjects:
 SpawnTitleObjects_at0:
     jsr $4584
     lda a:$44F0,x
-    sta a:OBJ_2A68,x
+    sta a:OBJ_FRAME,x
     lda a:$44F9,x
     sta a:OBJ_X_LO,x
     lda a:$4502,x
@@ -737,7 +737,7 @@ StepTitleTimer_at0:
     cmp #$E0
     bne StepTitleTimer_at1
     lda #$2F
-    sta a:OBJ_2A68
+    sta a:OBJ_FRAME
 StepTitleTimer_at1:
     lda z:zWaitTimer3
     and #$7F
@@ -751,8 +751,8 @@ StepTitleTimer_at3:
     bmi StepTitleTimer_at4
     bra StepTitleTimer_at5
 StepTitleTimer_at2:
-    stz a:OBJ_2A68+7
-    stz a:OBJ_2A68+8
+    stz a:OBJ_FRAME+7
+    stz a:OBJ_FRAME+8
     lda #$DF
     sta a:$2220
     lda #$57
@@ -766,7 +766,7 @@ StepTitleTimer_at6:
     jmp $E0E4
 StepTitleTimer_at4:
     lda #$36
-    sta a:OBJ_2A68+8
+    sta a:OBJ_FRAME+8
     lda #$DF
     sta a:$2220
     lda #$5B
@@ -774,7 +774,7 @@ StepTitleTimer_at4:
     bra StepTitleTimer_at6
 StepTitleTimer_at5:
     lda #$36
-    sta a:OBJ_2A68+7
+    sta a:OBJ_FRAME+7
     lda #$DF
     sta a:$2220
     lda #$5D
@@ -791,7 +791,7 @@ InitPlayerObject:
     ldx #$00
     jsr $4584
     lda #$03
-    sta a:OBJ_2A68,x
+    sta a:OBJ_FRAME,x
     lda #$A0
     sta a:OBJ_Y_LO,x
     lda #$40
@@ -835,21 +835,21 @@ PlayerStand:
     lda a:BiosPadState
     and #$A0
     beq PlayerStand_at3
-    stz a:OBJ_3408,x
-    stz a:OBJ_3460,x
+    stz a:OBJ_ANIM_STEP,x
+    stz a:OBJ_ANIM_TIMER,x
     lda #$01
     sta a:OBJ_34B8,x
     jmp $47A7
 PlayerStand_at3:
-    stz a:OBJ_3408,x
-    stz a:OBJ_3460,x
+    stz a:OBJ_ANIM_STEP,x
+    stz a:OBJ_ANIM_TIMER,x
     stz a:OBJ_34B8,x
 PlayerStand_at6:
     lda a:OBJ_34B8,x
     jmp StartObjectAnimation
 PlayerStand_at1:
-    stz a:OBJ_3408,x
-    stz a:OBJ_3460,x
+    stz a:OBJ_ANIM_STEP,x
+    stz a:OBJ_ANIM_TIMER,x
     lda #$FB
     sta a:OBJ_VY_HI,x
     stz a:OBJ_VY_LO,x
@@ -869,14 +869,14 @@ PlayerStand_at4:
     sta a:OBJ_34B8,x
     bra PlayerStand_at6
 PlayerStand_at2:
-    stz a:OBJ_3408,x
-    stz a:OBJ_3460,x
+    stz a:OBJ_ANIM_STEP,x
+    stz a:OBJ_ANIM_TIMER,x
     lda #$03
     sta a:OBJ_34B8,x
     bra PlayerStand_at6
 PlayerStand_at0:
-    stz a:OBJ_3408,x
-    stz a:OBJ_3460,x
+    stz a:OBJ_ANIM_STEP,x
+    stz a:OBJ_ANIM_TIMER,x
     lda #$80
     sta a:OBJ_VX_LO,x
     lda a:OBJ_3250,x
@@ -925,7 +925,7 @@ PlayerWalk:
     and #$02
     bne PlayerWalk_at1
     lda #$01
-    sta a:OBJ_2AC0,x
+    sta a:OBJ_FACING_LEFT,x
 PlayerWalk_at1:
     dec a:OBJ_X_LO,x
     jmp PlayerStand_at6
@@ -933,7 +933,7 @@ PlayerWalk_at0:
     lda a:BiosPadState
     and #$02
     bne PlayerWalk_at2
-    stz a:OBJ_2AC0,x
+    stz a:OBJ_FACING_LEFT,x
 PlayerWalk_at2:
     inc a:OBJ_X_LO,x
     jmp PlayerStand_at6
@@ -1042,7 +1042,7 @@ InitObject1:
     sta a:OBJ_Y_LO,x
     lda #$01
     sta a:OBJ_X_HI,x
-    sta a:OBJ_2AC0,x
+    sta a:OBJ_FACING_LEFT,x
     lda #$40
     sta a:OBJ_X_LO,x
     lda #$FF
@@ -1117,8 +1117,8 @@ Object1FacePlayer:
     lda a:OBJ_X_LO,x
     eor a:OBJ_X_LO
     bmi Object1WalkIn_at1
-    stz a:OBJ_3408,x
-    stz a:OBJ_3460,x
+    stz a:OBJ_ANIM_STEP,x
+    stz a:OBJ_ANIM_TIMER,x
     lda a:OBJ_X_LO,x
     bpl Object1FacePlayer_at0
     lda #$05
@@ -1149,7 +1149,7 @@ Object1Wait:
     lda a:OBJ_Y_LO,x
     sta a:OBJ_Y_LO+1,x
     lda #$2E
-    sta a:OBJ_2A68+1,x
+    sta a:OBJ_FRAME+1,x
     lda #$04
     sta a:OBJ_34B8,x
     lda #$80
@@ -1157,8 +1157,8 @@ Object1Wait:
 Object1Wait_at0:
     rts
 Object1Wait_at1:
-    stz a:OBJ_3408,x
-    stz a:OBJ_3460,x
+    stz a:OBJ_ANIM_STEP,x
+    stz a:OBJ_ANIM_TIMER,x
     lda #$FB
     sta a:OBJ_VY_HI,x
     stz a:OBJ_VY_LO,x
@@ -1208,7 +1208,7 @@ Object1Jump_at1:
 Object1Hold:
     dec a:OBJ_3510,x
     bne Object1Hold_at0
-    stz a:OBJ_2A68+1,x
+    stz a:OBJ_FRAME+1,x
     jmp Object1FacePlayer
 Object1Hold_at0:
     rts
@@ -1226,7 +1226,7 @@ Object1StepLeft:
     lda a:OBJ_X_LO,x
     cmp #$40
     bne Object1StepLeft_at0
-    stz a:OBJ_2AC0,x
+    stz a:OBJ_FACING_LEFT,x
     jmp Object1WalkIn_at1
 Object1StepLeft_at0:
     rts
@@ -1245,7 +1245,7 @@ Object1StepRight:
     cmp #$C0
     bne Object1StepRight_at0
     lda #$01
-    sta a:OBJ_2AC0,x
+    sta a:OBJ_FACING_LEFT,x
     jmp Object1WalkIn_at1
 Object1StepRight_at0:
     rts
@@ -1301,7 +1301,7 @@ ClearWorldObjects_at0:
 RunWorldObjects:
     ldx #$05
 RunWorldObjects_at1:
-    lda a:OBJ_2A68,x
+    lda a:OBJ_FRAME,x
     beq RunWorldObjects_at0
     jsr RunWorldObject
 RunWorldObjects_at0:
@@ -1380,7 +1380,7 @@ WorldObjectWalk:
 WorldObjectWalk_at1:
     inc a:OBJ_34B8,x
     lda #$1A
-    sta a:OBJ_2A68,x
+    sta a:OBJ_FRAME,x
     lda #$40
     sta a:OBJ_3720,x
     rts
@@ -1388,8 +1388,8 @@ WorldObjectWalk_at2:
     lda #$05
     jmp StartObjectAnimation
 WorldObjectWalk_at0:
-    stz a:OBJ_3408,x
-    stz a:OBJ_3460,x
+    stz a:OBJ_ANIM_STEP,x
+    stz a:OBJ_ANIM_TIMER,x
     stz a:OBJ_VX_LO,x
     lda a:OBJ_3250,x
     lsr a
@@ -1432,8 +1432,8 @@ WorldObjectWalk_at0:
 WorldObjectStunned:
     dec a:OBJ_3720,x
     bne WorldObjectStunned_at0
-    stz a:OBJ_3408,x
-    stz a:OBJ_3460,x
+    stz a:OBJ_ANIM_STEP,x
+    stz a:OBJ_ANIM_TIMER,x
     stz a:OBJ_VX_LO,x
     stz a:OBJ_VX_HI,x
     stz a:OBJ_VY_LO,x
@@ -1552,7 +1552,7 @@ SpawnerStep:
     phx
     ldx #$04
 SpawnerStep_at3:
-    lda a:OBJ_2A68+1,x
+    lda a:OBJ_FRAME+1,x
     beq SpawnerStep_at2
     inx
     inx
@@ -1581,7 +1581,7 @@ SpawnerStep_at2:
     lda a:OBJ_36C8+3
     sta a:OBJ_36C8,x
     lda #$15
-    sta a:OBJ_2A68,x
+    sta a:OBJ_FRAME,x
     jmp SpawnerStep_at4
 
 ; @routine 0024:37A ApplyWorldVelocity
@@ -1700,10 +1700,10 @@ CheckPlayerHits_at0:
     inx
     cpx #$15
     bne CheckPlayerHits_at3
-    lda a:OBJ_2A68
+    lda a:OBJ_FRAME
     cmp #$0B
     bne CheckPlayerHits_at4
-    lda a:OBJ_2AC0
+    lda a:OBJ_FACING_LEFT
     beq CheckPlayerHits_at5
     lda #$D0
     clc

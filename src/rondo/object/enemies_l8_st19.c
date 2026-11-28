@@ -123,7 +123,7 @@ void abi_FaceThePlayerByStateTable(void)
 /*
  * @routine 0B4B:5AE StateTableHurtFlag
  * @run 70:B5AE
- * WHAT IT DOES: Sets OBJ_2EE0 from the table at $B5D2 by the state; in the states the table at $B5E2 marks, an object that has taken 5 hits goes to state $0E and clears its OBJ_2800 and animation.
+ * WHAT IT DOES: Sets OBJ_2EE0 from the table at $B5D2 by the state; in the states the table at $B5E2 marks, an object that has taken 5 hits goes to state $0E and clears its OBJ_SUBSTATE and animation.
  * HOW: Two table reads by the state, a compare, stores.
  * WAITS: no.
  * Entry: X object. Exit: as the last instruction that ran (l8_state_table_hurt_exit_shim).
@@ -146,7 +146,7 @@ L8St19HurtFlagArm StateTableHurtFlag(uint8_t slot)
         return r;
     }
     WR8(OBJ->state[slot], 0x0E);
-    WR8(OBJ->f2800[slot], 0);
+    WR8(OBJ->substate[slot], 0);
     WR8(OBJ->anim_step[slot], 0);
     WR8(OBJ->anim_timer[slot], 0);
     r.arm = ST19_HURT_HURT;
@@ -178,7 +178,7 @@ void abi_StateTableHurtFlag(void)
 /*
  * @routine 0B4B:5F2 EnterState0FWhenFlagged
  * @run 70:B5F2
- * WHAT IT DOES: When bit 7 of OBJ_31A0 is set and the state is not $0F, plays sound $B7, clears the animation and the speed and goes to state $0F with OBJ_2800 0.
+ * WHAT IT DOES: When bit 7 of OBJ_31A0 is set and the state is not $0F, plays sound $B7, clears the animation and the speed and goes to state $0F with OBJ_SUBSTATE 0.
  * HOW: Two tests, SoundCommand, stores.
  * WAITS: no.
  * Entry: X object, Y kept for the sound. Exit: as the last instruction that ran (l8_enter_state0f_exit_shim). The arm past the flag test ran in no script; the draft stops there.
@@ -207,7 +207,7 @@ L8St19EnterArm EnterState0FWhenFlagged(uint8_t slot, uint8_t y_entry)
     WR8(OBJ->vy_hi[slot], 0);
     WR8(OBJ->vy_lo[slot], 0);
     WR8(OBJ->state[slot], 0x0F);
-    WR8(OBJ->f2800[slot], 0);
+    WR8(OBJ->substate[slot], 0);
     r.arm = ST19_ENTER_ENTERED;
     return r;
 }
@@ -243,7 +243,7 @@ void abi_EnterState0FWhenFlagged(void)
 /*
  * @routine 0B4B:620 HitBoxByFrameTable
  * @run 70:B620
- * WHAT IT DOES: When OBJ_3250 is set, sets it 2 and takes the hit box (OBJ_3930, OBJ_39E0, OBJ_3988, OBJ_3A38) from a four byte row of the table at $C207 picked by the frame less 1.
+ * WHAT IT DOES: When OBJ_3250 is set, sets it 2 and takes the hit box (OBJ_HITBOX_DX, OBJ_HITBOX_DY, OBJ_HITBOX_HALF_W, OBJ_HITBOX_HALF_H) from a four byte row of the table at $C207 picked by the frame less 1.
  * HOW: A test, a subtract, two shifts, four table reads, stores.
  * WAITS: no.
  * Entry: X object. Exit: as the last instruction that ran (l8_hitbox_frame_table_exit_shim).
@@ -839,7 +839,7 @@ void abi_CountDownThenHopAwayFromPlayer(void)
 /*
  * @routine 0B4C:15F StepListFallThenSoundAtGround
  * @run 70:B95F
- * WHAT IT DOES: Steps the animation list at $B97D and falls (FallToGroundAt98); on landing plays sound $4A, sets OBJ_3510 $28 and goes to the next OBJ_2800.
+ * WHAT IT DOES: Steps the animation list at $B97D and falls (FallToGroundAt98); on landing plays sound $4A, sets OBJ_3510 $28 and goes to the next OBJ_SUBSTATE.
  * HOW: StepObjectFrames, FallToGroundAt98, SoundCommand, stores, an INC.
  * WAITS: no.
  * Entry: X object, Y kept unless the step sets it. Exit: as the last instruction that ran (l8_step_fall_sound_exit_shim).
@@ -859,7 +859,7 @@ L8St19StepFallSoundArm StepListFallThenSoundAtGround(uint8_t slot, uint8_t y_ent
     r.call = SoundCommand(0x4A, slot, r.fall.y);
     jsr_pop();
     WR8(OBJ->f3510[slot], 0x28);
-    r.count = INC8(OBJ->f2800[slot]);
+    r.count = INC8(OBJ->substate[slot]);
     return r;
 }
 
@@ -947,7 +947,7 @@ void abi_StepListThenTileWriteAndSpawn(void)
 /*
  * @routine 0B4C:3B8 WaitThenStepListWithSoundAndBounce
  * @run 70:BBB8
- * WHAT IT DOES: In OBJ_2800 0 goes to state 9 when the player is $58 or more away in X, and on to the next OBJ_2800. Later it steps the animation list at $BC00: when it ends it clears the animation and goes to state 5; at frame $12 it plays sound $2C, sets the X speed from the table at $BC07 by its facing and goes on to MoveXAndProbeWallBounce.
+ * WHAT IT DOES: In OBJ_SUBSTATE 0 goes to state 9 when the player is $58 or more away in X, and on to the next OBJ_SUBSTATE. Later it steps the animation list at $BC00: when it ends it clears the animation and goes to state 5; at frame $12 it plays sound $2C, sets the X speed from the table at $BC07 by its facing and goes on to MoveXAndProbeWallBounce.
  * HOW: DistanceXToPlayer, StepObjectFrames, SoundCommand, a table read, a tail jump.
  * WAITS: no.
  * Entry: X object, Y kept unless the step sets it. Exit: as the last instruction that ran (l8_wait_bounce_exit_shim).
@@ -956,7 +956,7 @@ L8St19WaitBounceArm WaitThenStepListWithSoundAndBounce(uint8_t slot, uint8_t y_e
 {
     L8St19WaitBounceArm r = { 0 };
 
-    r.phase = RD8(OBJ->f2800[slot]);
+    r.phase = RD8(OBJ->substate[slot]);
     if (r.phase == 0) {
         jsr_push(0xBBC0);
         r.distance = DistanceXToPlayer(slot);
@@ -965,7 +965,7 @@ L8St19WaitBounceArm WaitThenStepListWithSoundAndBounce(uint8_t slot, uint8_t y_e
             WR8(OBJ->state[slot], 9);
             r.entered = true;
         }
-        r.inc = INC8(OBJ->f2800[slot]);
+        r.inc = INC8(OBJ->substate[slot]);
         r.arm = ST19_WAIT_WAITED;
         return r;
     }

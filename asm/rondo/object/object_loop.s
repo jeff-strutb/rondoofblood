@@ -13,11 +13,11 @@
 RunObjects:
     phx
     ldx #$10
-    lda a:OBJ_2750,x
+    lda a:OBJ_KIND,x
     bne RunObjects_at0
     jmp RunObjects_at1
 RunObjects_at0:
-    lda a:OBJ_27A8,x
+    lda a:OBJ_STATE,x
     bne RunObjects_at2
     jmp RunObjects_at3
 RunObjects_at2:
@@ -52,7 +52,7 @@ RunObjects_at6:
     sbc z:zTemp00
     sta a:OBJ_Y_HI,x
 RunObjects_at4:
-    lda a:OBJ_27A8,x
+    lda a:OBJ_STATE,x
     bne RunObjects_at7
     jmp RunObjects_at3
 RunObjects_at7:
@@ -180,11 +180,11 @@ RunObjects_at18:
 RunObjects07D9:
     phx
     ldx #$10
-    lda a:OBJ_2750,x
+    lda a:OBJ_KIND,x
     bne RunObjects07D9_at0
     jmp RunObjects07D9_at1
 RunObjects07D9_at0:
-    lda a:OBJ_27A8,x
+    lda a:OBJ_STATE,x
     bne RunObjects07D9_at2
     jmp RunObjects07D9_at3
 RunObjects07D9_at2:
@@ -219,7 +219,7 @@ RunObjects07D9_at6:
     sbc z:zTemp00
     sta a:OBJ_Y_HI,x
 RunObjects07D9_at4:
-    lda a:OBJ_27A8,x
+    lda a:OBJ_STATE,x
     bne RunObjects07D9_at7
     jmp RunObjects07D9_at3
 RunObjects07D9_at7:
@@ -348,11 +348,11 @@ RunObjects07D9_at18:
 RunObjects0889:
     phx
     ldx #$10
-    lda a:OBJ_2750,x
+    lda a:OBJ_KIND,x
     bne RunObjects0889_at0
     jmp RunObjects0889_at1
 RunObjects0889_at0:
-    lda a:OBJ_27A8,x
+    lda a:OBJ_STATE,x
     bne RunObjects0889_at2
     jmp RunObjects0889_at3
 RunObjects0889_at2:
@@ -387,7 +387,7 @@ RunObjects0889_at6:
     sbc z:zTemp00
     sta a:OBJ_Y_HI,x
 RunObjects0889_at4:
-    lda a:OBJ_27A8,x
+    lda a:OBJ_STATE,x
     bne RunObjects0889_at7
     jmp RunObjects0889_at3
 RunObjects0889_at7:
@@ -516,11 +516,11 @@ RunObjects0889_at18:
 RunObjects0A99:
     phx
     ldx #$10
-    lda a:OBJ_2750,x
+    lda a:OBJ_KIND,x
     bne RunObjects0A99_at0
     jmp RunObjects0A99_at1
 RunObjects0A99_at0:
-    lda a:OBJ_27A8,x
+    lda a:OBJ_STATE,x
     bne RunObjects0A99_at2
     jmp RunObjects0A99_at3
 RunObjects0A99_at2:
@@ -555,7 +555,7 @@ RunObjects0A99_at6:
     sbc z:zTemp00
     sta a:OBJ_Y_HI,x
 RunObjects0A99_at4:
-    lda a:OBJ_27A8,x
+    lda a:OBJ_STATE,x
     bne RunObjects0A99_at7
     jmp RunObjects0A99_at3
 RunObjects0A99_at7:
@@ -684,11 +684,11 @@ RunObjects0A99_at18:
 RunObjects0B49:
     phx
     ldx #$10
-    lda a:OBJ_2750,x
+    lda a:OBJ_KIND,x
     bne RunObjects0B49_at0
     jmp RunObjects0B49_at1
 RunObjects0B49_at0:
-    lda a:OBJ_27A8,x
+    lda a:OBJ_STATE,x
     bne RunObjects0B49_at2
     jmp RunObjects0B49_at3
 RunObjects0B49_at2:
@@ -723,7 +723,7 @@ RunObjects0B49_at6:
     sbc z:zTemp00
     sta a:OBJ_Y_HI,x
 RunObjects0B49_at4:
-    lda a:OBJ_27A8,x
+    lda a:OBJ_STATE,x
     bne RunObjects0B49_at7
     jmp RunObjects0B49_at3
 RunObjects0B49_at7:
@@ -852,11 +852,11 @@ RunObjects0B49_at18:
 RunObjects0CA9:
     phx
     ldx #$10
-    lda a:OBJ_2750,x
+    lda a:OBJ_KIND,x
     bne RunObjects0CA9_at0
     jmp RunObjects0CA9_at1
 RunObjects0CA9_at0:
-    lda a:OBJ_27A8,x
+    lda a:OBJ_STATE,x
     bne RunObjects0CA9_at2
     jmp RunObjects0CA9_at3
 RunObjects0CA9_at2:
@@ -891,7 +891,7 @@ RunObjects0CA9_at6:
     sbc z:zTemp00
     sta a:OBJ_Y_HI,x
 RunObjects0CA9_at4:
-    lda a:OBJ_27A8,x
+    lda a:OBJ_STATE,x
     bne RunObjects0CA9_at7
     jmp RunObjects0CA9_at3
 RunObjects0CA9_at7:
@@ -1020,11 +1020,11 @@ RunObjects0CA9_at18:
 RunObjects0D59:
     phx
     ldx #$10
-    lda a:OBJ_2750,x
+    lda a:OBJ_KIND,x
     bne RunObjects0D59_at0
     jmp RunObjects0D59_at1
 RunObjects0D59_at0:
-    lda a:OBJ_27A8,x
+    lda a:OBJ_STATE,x
     bne RunObjects0D59_at2
     jmp RunObjects0D59_at3
 RunObjects0D59_at2:
@@ -1059,7 +1059,7 @@ RunObjects0D59_at6:
     sbc z:zTemp00
     sta a:OBJ_Y_HI,x
 RunObjects0D59_at4:
-    lda a:OBJ_27A8,x
+    lda a:OBJ_STATE,x
     bne RunObjects0D59_at7
     jmp RunObjects0D59_at3
 RunObjects0D59_at7:
@@ -1188,11 +1188,11 @@ RunObjects0D59_at18:
 RunObjects0E09:
     phx
     ldx #$10
-    lda a:OBJ_2750,x
+    lda a:OBJ_KIND,x
     bne RunObjects0E09_at0
     jmp RunObjects0E09_at1
 RunObjects0E09_at0:
-    lda a:OBJ_27A8,x
+    lda a:OBJ_STATE,x
     bne RunObjects0E09_at2
     jmp RunObjects0E09_at3
 RunObjects0E09_at2:
@@ -1227,7 +1227,7 @@ RunObjects0E09_at6:
     sbc z:zTemp00
     sta a:OBJ_Y_HI,x
 RunObjects0E09_at4:
-    lda a:OBJ_27A8,x
+    lda a:OBJ_STATE,x
     bne RunObjects0E09_at7
     jmp RunObjects0E09_at3
 RunObjects0E09_at7:
@@ -1356,11 +1356,11 @@ RunObjects0E09_at18:
 RunObjects0EB9:
     phx
     ldx #$10
-    lda a:OBJ_2750,x
+    lda a:OBJ_KIND,x
     bne RunObjects0EB9_at0
     jmp RunObjects0EB9_at1
 RunObjects0EB9_at0:
-    lda a:OBJ_27A8,x
+    lda a:OBJ_STATE,x
     bne RunObjects0EB9_at2
     jmp RunObjects0EB9_at3
 RunObjects0EB9_at2:
@@ -1395,7 +1395,7 @@ RunObjects0EB9_at6:
     sbc z:zTemp00
     sta a:OBJ_Y_HI,x
 RunObjects0EB9_at4:
-    lda a:OBJ_27A8,x
+    lda a:OBJ_STATE,x
     bne RunObjects0EB9_at7
     jmp RunObjects0EB9_at3
 RunObjects0EB9_at7:
@@ -1524,11 +1524,11 @@ RunObjects0EB9_at18:
 RunObjects0F69:
     phx
     ldx #$10
-    lda a:OBJ_2750,x
+    lda a:OBJ_KIND,x
     bne RunObjects0F69_at0
     jmp RunObjects0F69_at1
 RunObjects0F69_at0:
-    lda a:OBJ_27A8,x
+    lda a:OBJ_STATE,x
     bne RunObjects0F69_at2
     jmp RunObjects0F69_at3
 RunObjects0F69_at2:
@@ -1563,7 +1563,7 @@ RunObjects0F69_at6:
     sbc z:zTemp00
     sta a:OBJ_Y_HI,x
 RunObjects0F69_at4:
-    lda a:OBJ_27A8,x
+    lda a:OBJ_STATE,x
     bne RunObjects0F69_at7
     jmp RunObjects0F69_at3
 RunObjects0F69_at7:
@@ -1692,11 +1692,11 @@ RunObjects0F69_at18:
 RunObjects1019:
     phx
     ldx #$10
-    lda a:OBJ_2750,x
+    lda a:OBJ_KIND,x
     bne RunObjects1019_at0
     jmp RunObjects1019_at1
 RunObjects1019_at0:
-    lda a:OBJ_27A8,x
+    lda a:OBJ_STATE,x
     bne RunObjects1019_at2
     jmp RunObjects1019_at3
 RunObjects1019_at2:
@@ -1731,7 +1731,7 @@ RunObjects1019_at6:
     sbc z:zTemp00
     sta a:OBJ_Y_HI,x
 RunObjects1019_at4:
-    lda a:OBJ_27A8,x
+    lda a:OBJ_STATE,x
     bne RunObjects1019_at7
     jmp RunObjects1019_at3
 RunObjects1019_at7:
@@ -1860,11 +1860,11 @@ RunObjects1019_at18:
 RunObjects10C9:
     phx
     ldx #$10
-    lda a:OBJ_2750,x
+    lda a:OBJ_KIND,x
     bne RunObjects10C9_at0
     jmp RunObjects10C9_at1
 RunObjects10C9_at0:
-    lda a:OBJ_27A8,x
+    lda a:OBJ_STATE,x
     bne RunObjects10C9_at2
     jmp RunObjects10C9_at3
 RunObjects10C9_at2:
@@ -1899,7 +1899,7 @@ RunObjects10C9_at6:
     sbc z:zTemp00
     sta a:OBJ_Y_HI,x
 RunObjects10C9_at4:
-    lda a:OBJ_27A8,x
+    lda a:OBJ_STATE,x
     bne RunObjects10C9_at7
     jmp RunObjects10C9_at3
 RunObjects10C9_at7:
@@ -2028,11 +2028,11 @@ RunObjects10C9_at18:
 RunObjects1179:
     phx
     ldx #$10
-    lda a:OBJ_2750,x
+    lda a:OBJ_KIND,x
     bne RunObjects1179_at0
     jmp RunObjects1179_at1
 RunObjects1179_at0:
-    lda a:OBJ_27A8,x
+    lda a:OBJ_STATE,x
     bne RunObjects1179_at2
     jmp RunObjects1179_at3
 RunObjects1179_at2:
@@ -2067,7 +2067,7 @@ RunObjects1179_at6:
     sbc z:zTemp00
     sta a:OBJ_Y_HI,x
 RunObjects1179_at4:
-    lda a:OBJ_27A8,x
+    lda a:OBJ_STATE,x
     bne RunObjects1179_at7
     jmp RunObjects1179_at3
 RunObjects1179_at7:
@@ -2196,11 +2196,11 @@ RunObjects1179_at18:
 RunObjects12D9:
     phx
     ldx #$10
-    lda a:OBJ_2750,x
+    lda a:OBJ_KIND,x
     bne RunObjects12D9_at0
     jmp RunObjects12D9_at1
 RunObjects12D9_at0:
-    lda a:OBJ_27A8,x
+    lda a:OBJ_STATE,x
     bne RunObjects12D9_at2
     jmp RunObjects12D9_at3
 RunObjects12D9_at2:
@@ -2235,7 +2235,7 @@ RunObjects12D9_at6:
     sbc z:zTemp00
     sta a:OBJ_Y_HI,x
 RunObjects12D9_at4:
-    lda a:OBJ_27A8,x
+    lda a:OBJ_STATE,x
     bne RunObjects12D9_at7
     jmp RunObjects12D9_at3
 RunObjects12D9_at7:
@@ -2364,11 +2364,11 @@ RunObjects12D9_at18:
 RunObjects13F9:
     phx
     ldx #$10
-    lda a:OBJ_2750,x
+    lda a:OBJ_KIND,x
     bne RunObjects13F9_at0
     jmp RunObjects13F9_at1
 RunObjects13F9_at0:
-    lda a:OBJ_27A8,x
+    lda a:OBJ_STATE,x
     bne RunObjects13F9_at2
     jmp RunObjects13F9_at3
 RunObjects13F9_at2:
@@ -2403,7 +2403,7 @@ RunObjects13F9_at6:
     sbc z:zTemp00
     sta a:OBJ_Y_HI,x
 RunObjects13F9_at4:
-    lda a:OBJ_27A8,x
+    lda a:OBJ_STATE,x
     bne RunObjects13F9_at7
     jmp RunObjects13F9_at3
 RunObjects13F9_at7:
@@ -2532,11 +2532,11 @@ RunObjects13F9_at18:
 RunObjects1619:
     phx
     ldx #$10
-    lda a:OBJ_2750,x
+    lda a:OBJ_KIND,x
     bne RunObjects1619_at0
     jmp RunObjects1619_at1
 RunObjects1619_at0:
-    lda a:OBJ_27A8,x
+    lda a:OBJ_STATE,x
     bne RunObjects1619_at2
     jmp RunObjects1619_at3
 RunObjects1619_at2:
@@ -2571,7 +2571,7 @@ RunObjects1619_at6:
     sbc z:zTemp00
     sta a:OBJ_Y_HI,x
 RunObjects1619_at4:
-    lda a:OBJ_27A8,x
+    lda a:OBJ_STATE,x
     bne RunObjects1619_at7
     jmp RunObjects1619_at3
 RunObjects1619_at7:
@@ -2700,11 +2700,11 @@ RunObjects1619_at18:
 RunObjects16C9:
     phx
     ldx #$10
-    lda a:OBJ_2750,x
+    lda a:OBJ_KIND,x
     bne RunObjects16C9_at0
     jmp RunObjects16C9_at1
 RunObjects16C9_at0:
-    lda a:OBJ_27A8,x
+    lda a:OBJ_STATE,x
     bne RunObjects16C9_at2
     jmp RunObjects16C9_at3
 RunObjects16C9_at2:
@@ -2739,7 +2739,7 @@ RunObjects16C9_at6:
     sbc z:zTemp00
     sta a:OBJ_Y_HI,x
 RunObjects16C9_at4:
-    lda a:OBJ_27A8,x
+    lda a:OBJ_STATE,x
     bne RunObjects16C9_at7
     jmp RunObjects16C9_at3
 RunObjects16C9_at7:
@@ -2868,11 +2868,11 @@ RunObjects16C9_at18:
 RunObjects18D9:
     phx
     ldx #$10
-    lda a:OBJ_2750,x
+    lda a:OBJ_KIND,x
     bne RunObjects18D9_at0
     jmp RunObjects18D9_at1
 RunObjects18D9_at0:
-    lda a:OBJ_27A8,x
+    lda a:OBJ_STATE,x
     bne RunObjects18D9_at2
     jmp RunObjects18D9_at3
 RunObjects18D9_at2:
@@ -2907,7 +2907,7 @@ RunObjects18D9_at6:
     sbc z:zTemp00
     sta a:OBJ_Y_HI,x
 RunObjects18D9_at4:
-    lda a:OBJ_27A8,x
+    lda a:OBJ_STATE,x
     bne RunObjects18D9_at7
     jmp RunObjects18D9_at3
 RunObjects18D9_at7:

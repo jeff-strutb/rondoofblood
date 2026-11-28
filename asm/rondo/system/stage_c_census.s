@@ -1496,7 +1496,7 @@ StageBossWaitDoor3CD:
     lda a:$283A
     cmp #$04
     bne StageBossWaitDoor3CD_at0
-    lda a:OBJ_3408+2
+    lda a:OBJ_ANIM_STEP+2
     bne StageBossWaitDoor3CD_at0
     lda #$20
     sta a:OBJ_3358

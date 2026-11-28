@@ -8,7 +8,7 @@
 ; Entry: X object. Exit: as the code jumped to; at the jump A the table's high byte, Y the table index,
 ; N and Z from A, C bit 7 of kind less 1. Kind 0: A 0, Z set.
 DispatchByKind0259:
-    lda a:OBJ_2750,x
+    lda a:OBJ_KIND,x
     beq DispatchByKind0259_at0
     dec a
     asl a
@@ -36,11 +36,11 @@ DispatchByKind0259_at0:
 ; the record; stepped: A the hit byte, C clear and N, Z from hit less 5; no slot: as
 ; FindFreeSlotFrom50; spawned: as StartObjectAtPlace with the slot found in Y).
 StepReleaseOnHit:
-    lda a:OBJ_27A8,x
+    lda a:OBJ_STATE,x
     bne StepReleaseOnHit_at0
     jsr VecLoadObjectRecord
     lda #$01
-    sta a:OBJ_2A68,x
+    sta a:OBJ_FRAME,x
     rts
 StepReleaseOnHit_at0:
     lda #$A3
@@ -48,15 +48,15 @@ StepReleaseOnHit_at0:
     lda #$65
     sta z:zTemp10
     jsr VecStepObjectFrames
-    lda a:OBJ_33B0,x
+    lda a:OBJ_HIT_TAKEN,x
     cmp #$05
     bcc StepReleaseOnHit_at1
     jsr VecRecordObjectEvent
     lda a:OBJ_3040,x
-    sta a:OBJ_2750,x
+    sta a:OBJ_KIND,x
     lda #$10
     sta a:OBJ_3A90,x
-    stz a:OBJ_27A8,x
+    stz a:OBJ_STATE,x
     jsr VecFindFreeSlotFrom50
     bcc StepReleaseOnHit_at1
     lda #$9B
@@ -76,12 +76,12 @@ StepReleaseOnHit_at1:
 ; Entry: X object, Y kept unless a callee sets it. Exit: see the wrapper (started: A the speed's low
 ; byte, Y the table index, C bit 7 of kind less $9B; else as StepObjectFrames).
 StepFallingItem:
-    lda a:OBJ_27A8,x
+    lda a:OBJ_STATE,x
     bne StepFallingItem_at0
     jsr VecLoadObjectRecord
-    stz a:OBJ_3408,x
-    stz a:OBJ_3460,x
-    lda a:OBJ_2750,x
+    stz a:OBJ_ANIM_STEP,x
+    stz a:OBJ_ANIM_TIMER,x
+    lda a:OBJ_KIND,x
     sec
     sbc #$9B
     asl a
@@ -94,7 +94,7 @@ StepFallingItem:
 StepFallingItem_at0:
     jsr VecApplyVelocityY
     stz a:OBJ_2B18,x
-    lda a:OBJ_2750,x
+    lda a:OBJ_KIND,x
     sec
     sbc #$9B
     asl a
@@ -119,7 +119,7 @@ StepFallingItem_at1:
 ; doubled state, C the state's bit 7, X kept, V as on entry.
 HurtCheckThenJumpByState:
     jsr EnterHurtStateOnHit
-    lda a:OBJ_27A8,x
+    lda a:OBJ_STATE,x
     asl a
     tay
     lda a:$A45E,y
@@ -137,34 +137,34 @@ HurtCheckThenJumpByState:
 ; WAITS: no.
 ; Entry: X object. Exit: A and flags as the last compare or load left them; X and Y kept.
 EnterHurtStateOnHit:
-    lda a:OBJ_27A8,x
+    lda a:OBJ_STATE,x
     beq EnterHurtStateOnHit_out
     cmp #$05
     bcs EnterHurtStateOnHit_out
-    lda a:OBJ_33B0,x
+    lda a:OBJ_HIT_TAKEN,x
     beq EnterHurtStateOnHit_out
     cmp #$05
     bcs EnterHurtStateOnHit_out
     lda #$05
-    sta a:OBJ_27A8,x
+    sta a:OBJ_STATE,x
 EnterHurtStateOnHit_out:
     rts
 
 ; @routine 0519:482 InitObjectFromRecord
 ; @run 70:A482
 ; WHAT IT DOES: Starts a newly placed object: loads its record, copies slot 0's byte of the
-; OBJ_2FE8 column into the object's, sets two of its counters and its animation delay to 4, and
+; OBJ_SPRITE_FLIP column into the object's, sets two of its counters and its animation delay to 4, and
 ; its timer to $60.
 ; HOW: Calls LoadObjectRecord through its vector (which keeps X), then stores each byte.
 ; WAITS: no.
 ; Entry: X object. Exit: A $60, N and Z from it, C as LoadObjectRecord left it; Y 11; X kept. D clear.
 InitObjectFromRecord:
     jsr VecLoadObjectRecord
-    lda a:OBJ_2FE8
-    sta a:OBJ_2FE8,x
+    lda a:OBJ_SPRITE_FLIP
+    sta a:OBJ_SPRITE_FLIP,x
     lda #$04
-    sta a:OBJ_3988,x
-    sta a:OBJ_3A38,x
+    sta a:OBJ_HITBOX_HALF_W,x
+    sta a:OBJ_HITBOX_HALF_H,x
     lda #$04
     sta a:OBJ_3510,x
     lda #$60
@@ -194,8 +194,8 @@ ClearOnLanding:
     jmp VecClearObject
 ClearOnLanding_at0:
     lda a:OBJ_3510,x
-    sta a:OBJ_2A68,x
-    inc a:OBJ_27A8,x
+    sta a:OBJ_FRAME,x
+    inc a:OBJ_STATE,x
     rts
 
 ; @routine 0519:4BD FallAndBounce
@@ -217,7 +217,7 @@ FallAndBounce:
     jsr VecProbeTerrain
     and #$01
     beq FallAndBounce_at0
-    inc a:OBJ_27A8,x
+    inc a:OBJ_STATE,x
 FallAndBounce_at0:
     lda z:zProduct0
     and #$10
@@ -259,7 +259,7 @@ FallThenWait:
     bne FallThenWait_at0
     lda #$40
     sta a:OBJ_34B8,x
-    inc a:OBJ_27A8,x
+    inc a:OBJ_STATE,x
 FallThenWait_at0:
     rts
 
@@ -308,12 +308,12 @@ FallThenClear:
     bne FallThenClear_at0
     jmp VecClearObject
 FallThenClear_at0:
-    stz a:OBJ_2A68,x
+    stz a:OBJ_FRAME,x
     lda a:OBJ_34B8,x
     and #$02
     beq FallThenClear_at1
     lda a:OBJ_3510,x
-    sta a:OBJ_2A68,x
+    sta a:OBJ_FRAME,x
 FallThenClear_at1:
     rts
 
@@ -326,7 +326,7 @@ FallThenClear_at1:
 ; Entry: X object. Exit: as the code jumped to; A the table's high byte, Y the index, N and Z from A,
 ; C and V from the kind's subtract and shift.
 JumpByKindTable:
-    lda a:OBJ_2750,x
+    lda a:OBJ_KIND,x
     sec
     sbc #$83
     asl a
@@ -347,7 +347,7 @@ JumpByKindTable:
 ; WAITS: no.
 ; Entry: X object, Y the sound driver's. Exit: as BlendStageRowsOfPlayer.
 CollectHearts:
-    lda a:OBJ_2750,x
+    lda a:OBJ_KIND,x
     sec
     sbc #$83
     tay
@@ -378,7 +378,7 @@ CollectHearts_at0:
 CollectScoreItem:
     lda #$0B
     jsr VecSoundCommand
-    lda a:OBJ_2750,x
+    lda a:OBJ_KIND,x
     sec
     sbc #$85
     tay
@@ -402,8 +402,8 @@ CollectScoreItem_at0:
     pla
     sta a:OBJ_34B8,x
     lda #$9F
-    sta a:OBJ_2750,x
-    stz a:OBJ_27A8,x
+    sta a:OBJ_KIND,x
+    stz a:OBJ_STATE,x
     rts
 
 ; @routine 0519:5EF ChangeKindFromTable
@@ -429,7 +429,7 @@ ChangeKindFromTable:
     pha
     lda #$01
     sta a:PlayerByte3BD6
-    lda a:OBJ_2750,x
+    lda a:OBJ_KIND,x
     sec
     sbc #$80
     tay
@@ -440,8 +440,8 @@ ChangeKindFromTable:
     bne ChangeKindFromTable_at0
     jmp VecClearObject
 ChangeKindFromTable_at0:
-    sta a:OBJ_2750,x
-    stz a:OBJ_27A8,x
+    sta a:OBJ_KIND,x
+    stz a:OBJ_STATE,x
     lda #$60
     sta a:OBJ_3A90,x
     ldy #$00
@@ -459,7 +459,7 @@ ChangeKindFromTable_at0:
     sta a:OBJ_VY_HI,x
     lda #$C0
     sta a:OBJ_VY_LO,x
-    lda a:OBJ_2AC0
+    lda a:OBJ_FACING_LEFT
     asl a
     tay
     lda a:$A672,y
@@ -482,7 +482,7 @@ RunObjectState:
     jsr AnimateKind88
     jsr EnterHurtStateOnHit
     jsr SetBlinkFlash
-    lda a:OBJ_27A8,x
+    lda a:OBJ_STATE,x
     asl a
     tay
     lda a:$A71E,y
@@ -501,7 +501,7 @@ RunObjectState:
 ; Entry: X object, Y kept unless the step sets it. Exit: other kind: A the kind, flags of its compare
 ; with $88; kind $88: A the frame, N and Z from it, C as the step left it (changed), Y as it left it.
 AnimateKind88:
-    lda a:OBJ_2750,x
+    lda a:OBJ_KIND,x
     cmp #$88
     bne AnimateKind88_at0
     lda #$A7
@@ -509,7 +509,7 @@ AnimateKind88:
     lda #$45
     sta z:zTemp10
     jsr VecStepObjectFrames
-    lda a:OBJ_2A68,x
+    lda a:OBJ_FRAME,x
     sta a:OBJ_3510,x
 AnimateKind88_at0:
     rts
@@ -539,7 +539,7 @@ SetBlinkFlash_out:
 ; @run 70:A764
 ; WHAT IT DOES: Starts an object whose kind is a pair: a kind $93 with zField90 set becomes kind $84,
 ; and an object whose kind is already the one the table at $A668 gives for zField93 becomes $84; then
-; the record is loaded, slot 0's byte of the OBJ_2FE8 column is copied into the object's, and OBJ_3510
+; the record is loaded, slot 0's byte of the OBJ_SPRITE_FLIP column is copied into the object's, and OBJ_3510
 ; is set from the table at $A79E, row of two bytes by the kind less $84, the second by which character
 ; plays.
 ; HOW: Compares and, on equality, stores kind $84; LoadObjectRecord; the row by an add with the
@@ -549,25 +549,25 @@ SetBlinkFlash_out:
 ; Entry: X object. Exit: A the table byte, N and Z from it, C and V from the add of the character,
 ; Y the table index.
 StartKindFromCharacter:
-    lda a:OBJ_2750,x
+    lda a:OBJ_KIND,x
     cmp #$93
     bne StartKindFromCharacter_at0
     lda z:zField90
     beq StartKindFromCharacter_at0
     lda #$84
-    sta a:OBJ_2750,x
+    sta a:OBJ_KIND,x
 StartKindFromCharacter_at0:
     ldy z:zField93
     lda a:$A668,y
-    cmp a:OBJ_2750,x
+    cmp a:OBJ_KIND,x
     bne StartKindFromCharacter_at1
     lda #$84
-    sta a:OBJ_2750,x
+    sta a:OBJ_KIND,x
 StartKindFromCharacter_at1:
     jsr VecLoadObjectRecord
-    lda a:OBJ_2FE8
-    sta a:OBJ_2FE8,x
-    lda a:OBJ_2750,x
+    lda a:OBJ_SPRITE_FLIP
+    sta a:OBJ_SPRITE_FLIP,x
+    lda a:OBJ_KIND,x
     sec
     sbc #$84
     asl a
@@ -591,7 +591,7 @@ SettleOnLanding:
     bcc SettleOnLanding_at0
     lda #$F0
     sta a:OBJ_34B8,x
-    inc a:OBJ_27A8,x
+    inc a:OBJ_STATE,x
 SettleOnLanding_at0:
     rts
 
@@ -612,7 +612,7 @@ LandThenWait_at0:
     bne LandThenWait_at1
     lda #$50
     sta a:OBJ_34B8,x
-    inc a:OBJ_27A8,x
+    inc a:OBJ_STATE,x
 LandThenWait_at1:
     rts
 
@@ -633,12 +633,12 @@ LandThenClear_at0:
     bne LandThenClear_at1
     jmp VecClearObject
 LandThenClear_at1:
-    stz a:OBJ_2A68,x
+    stz a:OBJ_FRAME,x
     lda a:OBJ_34B8,x
     and #$02
     beq LandThenClear_at2
     lda a:OBJ_3510,x
-    sta a:OBJ_2A68,x
+    sta a:OBJ_FRAME,x
 LandThenClear_at2:
     rts
 
@@ -670,12 +670,12 @@ BitMaskFromIndex_out:
 ; Entry: X object. Exit: started: A the last speed byte, Y the row's start, C bit 6 of OBJ_3510, N and
 ; Z from A; else as DropOffScreen.
 StartThrownItem:
-    lda a:OBJ_27A8,x
+    lda a:OBJ_STATE,x
     bne DropOffScreen
     jsr VecLoadObjectRecord
     ldy a:OBJ_34B8,x
     lda a:$A97E,y
-    sta a:OBJ_2A68,x
+    sta a:OBJ_FRAME,x
     lda a:OBJ_3510,x
     asl a
     asl a
@@ -717,7 +717,7 @@ DropOffScreen_at0:
 ; Entry: X object, Y the sound driver's. Exit: see the wrapper.
 StartScorePickup:
     jsr VecLoadObjectRecord
-    stz a:OBJ_2AC0,x
+    stz a:OBJ_FACING_LEFT,x
     lda a:OBJ_34B8,x
     asl a
     tay
@@ -731,7 +731,7 @@ StartScorePickup:
 StartScorePickup_at0:
     ldy a:OBJ_34B8,x
     lda a:$A9DC,y
-    sta a:OBJ_2A68,x
+    sta a:OBJ_FRAME,x
     lda #$18
     sta a:OBJ_3510,x
     lda #$FE
@@ -753,7 +753,7 @@ FallThenState:
     bne FallThenState_at0
     lda #$10
     sta a:OBJ_3510,x
-    inc a:OBJ_27A8,x
+    inc a:OBJ_STATE,x
 FallThenState_at0:
     rts
 
@@ -779,7 +779,7 @@ ClearWhenCountEnds_at0:
 ; Entry: X object. Exit: as the code jumped to; at the jump A the table's high byte, Y the table index,
 ; N and Z from A, C bit 7 of kind less 1. Kind 0: A 0, Z set.
 DispatchByKind07D9:
-    lda a:OBJ_2750,x
+    lda a:OBJ_KIND,x
     beq DispatchByKind07D9_at0
     dec a
     asl a
@@ -802,7 +802,7 @@ DispatchByKind07D9_at0:
 ; Entry: X object. Exit: as the code jumped to; at the jump A the table's high byte, Y the table index,
 ; N and Z from A, C bit 7 of kind less 1. Kind 0: A 0, Z set.
 DispatchByKind0889:
-    lda a:OBJ_2750,x
+    lda a:OBJ_KIND,x
     beq DispatchByKind0889_at0
     dec a
     asl a
@@ -825,7 +825,7 @@ DispatchByKind0889_at0:
 ; Entry: X object. Exit: as the code jumped to; at the jump A the table's high byte, Y the table index,
 ; N and Z from A, C bit 7 of kind less 1. Kind 0: A 0, Z set.
 DispatchByKind0A99:
-    lda a:OBJ_2750,x
+    lda a:OBJ_KIND,x
     beq DispatchByKind0A99_at0
     dec a
     asl a
@@ -848,7 +848,7 @@ DispatchByKind0A99_at0:
 ; Entry: X object. Exit: as the code jumped to; at the jump A the table's high byte, Y the table index,
 ; N and Z from A, C bit 7 of kind less 1. Kind 0: A 0, Z set.
 DispatchByKind0CA9:
-    lda a:OBJ_2750,x
+    lda a:OBJ_KIND,x
     beq DispatchByKind0CA9_at0
     dec a
     asl a
@@ -871,7 +871,7 @@ DispatchByKind0CA9_at0:
 ; Entry: X object. Exit: as the code jumped to; at the jump A the table's high byte, Y the table index,
 ; N and Z from A, C bit 7 of kind less 1. Kind 0: A 0, Z set.
 DispatchByKind0E09:
-    lda a:OBJ_2750,x
+    lda a:OBJ_KIND,x
     beq DispatchByKind0E09_at0
     dec a
     asl a
@@ -894,7 +894,7 @@ DispatchByKind0E09_at0:
 ; Entry: X object. Exit: as the code jumped to; at the jump A the table's high byte, Y the table index,
 ; N and Z from A, C bit 7 of kind less 1. Kind 0: A 0, Z set.
 DispatchByKind10C9:
-    lda a:OBJ_2750,x
+    lda a:OBJ_KIND,x
     beq DispatchByKind10C9_at0
     dec a
     asl a
@@ -917,7 +917,7 @@ DispatchByKind10C9_at0:
 ; Entry: X object. Exit: as the code jumped to; at the jump A the table's high byte, Y the table index,
 ; N and Z from A, C bit 7 of kind less 1. Kind 0: A 0, Z set.
 DispatchByKind12D9:
-    lda a:OBJ_2750,x
+    lda a:OBJ_KIND,x
     beq DispatchByKind12D9_at0
     dec a
     asl a
@@ -940,7 +940,7 @@ DispatchByKind12D9_at0:
 ; Entry: X object. Exit: as the code jumped to; at the jump A the table's high byte, Y the table index,
 ; N and Z from A, C bit 7 of kind less 1. Kind 0: A 0, Z set.
 DispatchByKind16C9:
-    lda a:OBJ_2750,x
+    lda a:OBJ_KIND,x
     beq DispatchByKind16C9_at0
     dec a
     asl a
@@ -963,7 +963,7 @@ DispatchByKind16C9_at0:
 ; Entry: X object. Exit: as the code jumped to; at the jump A the table's high byte, Y the table index,
 ; N and Z from A, C bit 7 of kind less 1. Kind 0: A 0, Z set.
 DispatchByKind18D9:
-    lda a:OBJ_2750,x
+    lda a:OBJ_KIND,x
     beq DispatchByKind18D9_at0
     dec a
     asl a

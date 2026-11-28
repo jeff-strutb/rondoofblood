@@ -145,7 +145,7 @@ void abi_FlagThenHitsCompare(void)
 /*
  * @routine 05CB:1B8 EnterState5WhenFlagged
  * @run 70:B1B8
- * WHAT IT DOES: When bit 7 of OBJ_31A0 is set and the state is below 5, sets the state 5 and OBJ_2800 0.
+ * WHAT IT DOES: When bit 7 of OBJ_31A0 is set and the state is below 5, sets the state 5 and OBJ_SUBSTATE 0.
  * HOW: Two tests, two stores.
  * WAITS: no.
  * Entry: X object. Exit: as the last instruction that ran (l8_enter_state5_exit_shim). The stores ran in no script; the draft stops there.
@@ -167,7 +167,7 @@ L8Arm EnterState5WhenFlagged(uint8_t slot)
         return r;
     }
     WR8(OBJ->state[slot], 5);
-    WR8(OBJ->f2800[slot], 0);
+    WR8(OBJ->substate[slot], 0);
     r.arm = ST15_ENTER5_ENTERED;
     return r;
 }
@@ -241,10 +241,10 @@ void abi_LoadRecordStartTwoPieces(void)
 /*
  * @routine 05CB:232 SetUpEntryFromLeft
  * @run 70:B232
- * WHAT IT DOES: Places the object at X $FFF0, Y $0030 with the speed X $00C0 and goes to the next OBJ_2800.
+ * WHAT IT DOES: Places the object at X $FFF0, Y $0030 with the speed X $00C0 and goes to the next OBJ_SUBSTATE.
  * HOW: Stores and an INC.
  * WAITS: no.
- * Entry: X object. Exit: A $C0, N and Z from the new OBJ_2800 (l8_entry_from_left_exit_shim).
+ * Entry: X object. Exit: A $C0, N and Z from the new OBJ_SUBSTATE (l8_entry_from_left_exit_shim).
  */
 uint8_t SetUpEntryFromLeft(uint8_t slot)
 {
@@ -254,10 +254,10 @@ uint8_t SetUpEntryFromLeft(uint8_t slot)
     WR8(OBJ->y_lo[slot], 0x30);
     WR8(OBJ->vx_hi[slot], 0);
     WR8(OBJ->vx_lo[slot], 0xC0);
-    return INC8(OBJ->f2800[slot]);
+    return INC8(OBJ->substate[slot]);
 }
 
-/* What SetUpEntryFromLeft leaves (count the new OBJ_2800). */
+/* What SetUpEntryFromLeft leaves (count the new OBJ_SUBSTATE). */
 static Ended l8_entry_from_left_exit_shim(uint8_t count)
 {
     return then(ended_load(0xC0), ended_nz(count));
@@ -271,7 +271,7 @@ void abi_SetUpEntryFromLeft(void)
 /*
  * @routine 05CB:250 StepListMoveXThenTurnUp
  * @run 70:B250
- * WHAT IT DOES: Steps the animation list at $B289 and moves the object along X; once it is at X $0120 or more it takes frame 0, the speed X -$0400 and Y $0500, clears the animation and goes to the next OBJ_2800.
+ * WHAT IT DOES: Steps the animation list at $B289 and moves the object along X; once it is at X $0120 or more it takes frame 0, the speed X -$0400 and Y $0500, clears the animation and goes to the next OBJ_SUBSTATE.
  * HOW: StepObjectFrames, ApplyVelocityX, two compares, stores, an INC.
  * WAITS: no.
  * Entry: X object, Y kept unless the step sets it. Exit: as the last instruction that ran (l8_move_x_turn_up_exit_shim).
@@ -303,12 +303,12 @@ L8Arm StepListMoveXThenTurnUp(uint8_t slot, uint8_t y_entry)
     WR8(OBJ->vy_lo[slot], 0);
     WR8(OBJ->anim_step[slot], 0);
     WR8(OBJ->anim_timer[slot], 0);
-    r.third = INC8(OBJ->f2800[slot]);
+    r.third = INC8(OBJ->substate[slot]);
     r.arm = ST15_TURNUP_TURNED;
     return r;
 }
 
-/* What StepListMoveXThenTurnUp leaves (first the X high byte, second the low, third the new OBJ_2800). */
+/* What StepListMoveXThenTurnUp leaves (first the X high byte, second the low, third the new OBJ_SUBSTATE). */
 static Ended l8_move_x_turn_up_exit_shim(L8Arm r)
 {
     Ended e = l8_step_ended(r.step);
@@ -334,10 +334,10 @@ void abi_StepListMoveXThenTurnUp(void)
 /*
  * @routine 05CB:296 WaitForScreenByte2
  * @run 70:B296
- * WHAT IT DOES: When the scroll byte ScrollXHiScreen is 2 sets OBJ_3510 $60 and goes to the next OBJ_2800.
+ * WHAT IT DOES: When the scroll byte ScrollXHiScreen is 2 sets OBJ_3510 $60 and goes to the next OBJ_SUBSTATE.
  * HOW: A compare, a store, an INC.
  * WAITS: no.
- * Entry: X object. Exit: the compare, or the new OBJ_2800's N and Z (A $60) (l8_wait_screen_exit_shim).
+ * Entry: X object. Exit: the compare, or the new OBJ_SUBSTATE's N and Z (A $60) (l8_wait_screen_exit_shim).
  */
 enum { ST15_SCREEN_WAITING, ST15_SCREEN_REACHED };
 
@@ -351,12 +351,12 @@ L8Arm WaitForScreenByte2(uint8_t slot)
         return r;
     }
     WR8(OBJ->f3510[slot], 0x60);
-    r.second = INC8(OBJ->f2800[slot]);
+    r.second = INC8(OBJ->substate[slot]);
     r.arm = ST15_SCREEN_REACHED;
     return r;
 }
 
-/* What WaitForScreenByte2 leaves (first the screen byte, second the new OBJ_2800). */
+/* What WaitForScreenByte2 leaves (first the screen byte, second the new OBJ_SUBSTATE). */
 static Ended l8_wait_screen_exit_shim(L8Arm r)
 {
     Ended e = ended_compare(r.first, 2);
@@ -376,7 +376,7 @@ void abi_WaitForScreenByte2(void)
 /*
  * @routine 05CB:2A6 CountDownThenSound84AndAppear
  * @run 70:B2A6
- * WHAT IT DOES: Counts OBJ_3510 down; at zero plays sound $84, places the object at X $0110, Y $0010 and goes to the next OBJ_2800.
+ * WHAT IT DOES: Counts OBJ_3510 down; at zero plays sound $84, places the object at X $0110, Y $0010 and goes to the next OBJ_SUBSTATE.
  * HOW: A memory decrement, SoundCommand, stores, an INC.
  * WAITS: no.
  * Entry: X object, Y kept for the sound. Exit: as the last instruction that ran (l8_sound84_appear_exit_shim).
@@ -399,12 +399,12 @@ L8St15Sound CountDownThenSound84AndAppear(uint8_t slot, uint8_t y_entry)
     WR8(OBJ->x_lo[slot], 0x10);
     WR8(OBJ->y_hi[slot], 0);
     WR8(OBJ->y_lo[slot], 0x10);
-    r.second = INC8(OBJ->f2800[slot]);
+    r.second = INC8(OBJ->substate[slot]);
     r.arm = ST15_SOUND_PLAYED;
     return r;
 }
 
-/* What CountDownThenSound84AndAppear leaves, the sound call's included (first the count, second the new OBJ_2800). */
+/* What CountDownThenSound84AndAppear leaves, the sound call's included (first the count, second the new OBJ_SUBSTATE). */
 static SoundEnd l8_sound84_appear_exit_shim(L8St15Sound r)
 {
     SoundEnd s = l8_sound_none(ended_kept());
@@ -429,7 +429,7 @@ void abi_CountDownThenSound84AndAppear(void)
 /*
  * @routine 05CB:2C6 StepListFallAndSwing
  * @run 70:B2C6
- * WHAT IT DOES: Steps the animation list at $B30B and moves the object; its X speed gains $0010 and its Y speed loses $0020 a frame; once its Y high byte is not 0 and its Y low byte is below $C0 it sets OBJ_3510 $40 and goes to the next OBJ_2800.
+ * WHAT IT DOES: Steps the animation list at $B30B and moves the object; its X speed gains $0010 and its Y speed loses $0020 a frame; once its Y high byte is not 0 and its Y low byte is below $C0 it sets OBJ_3510 $40 and goes to the next OBJ_SUBSTATE.
  * HOW: StepObjectFrames, ApplyVelocity, two 16-bit adds in memory, two tests.
  * WAITS: no.
  * Entry: X object, Y kept unless the step sets it. Exit: as the last instruction that ran (l8_fall_swing_exit_shim).
@@ -470,12 +470,12 @@ L8Arm StepListFallAndSwing(uint8_t slot, uint8_t y_entry)
         return r;
     }
     WR8(OBJ->f3510[slot], 0x40);
-    r.third = INC8(OBJ->f2800[slot]);
+    r.third = INC8(OBJ->substate[slot]);
     r.arm = ST15_SWING_DONE;
     return r;
 }
 
-/* What StepListFallAndSwing leaves (first the Y high byte, second the low, third the new OBJ_2800; sum the last subtract). */
+/* What StepListFallAndSwing leaves (first the Y high byte, second the low, third the new OBJ_SUBSTATE; sum the last subtract). */
 static Ended l8_fall_swing_exit_shim(L8Arm r)
 {
     Ended e = l8_step_ended(r.step);
@@ -502,7 +502,7 @@ void abi_StepListFallAndSwing(void)
 /*
  * @routine 05CB:316 CountDownThenLeaveRight
  * @run 70:B316
- * WHAT IT DOES: Counts OBJ_3510 down; at zero sets OBJ_3250 2, places the object at X $00F0, gives it the speed X -$00E0 and Y $0200, clears the animation and goes to the next OBJ_2800.
+ * WHAT IT DOES: Counts OBJ_3510 down; at zero sets OBJ_3250 2, places the object at X $00F0, gives it the speed X -$00E0 and Y $0200, clears the animation and goes to the next OBJ_SUBSTATE.
  * HOW: A memory decrement, stores, an INC.
  * WAITS: no.
  * Entry: X object. Exit: as the last instruction that ran (l8_leave_right_exit_shim).
@@ -527,12 +527,12 @@ L8Arm CountDownThenLeaveRight(uint8_t slot)
     WR8(OBJ->vy_lo[slot], 0);
     WR8(OBJ->anim_step[slot], 0);
     WR8(OBJ->anim_timer[slot], 0);
-    r.second = INC8(OBJ->f2800[slot]);
+    r.second = INC8(OBJ->substate[slot]);
     r.arm = ST15_LEAVE_GONE;
     return r;
 }
 
-/* What CountDownThenLeaveRight leaves (first the count, second the new OBJ_2800). */
+/* What CountDownThenLeaveRight leaves (first the count, second the new OBJ_SUBSTATE). */
 static Ended l8_leave_right_exit_shim(L8Arm r)
 {
     Ended e = ended_nz(r.first);
@@ -645,7 +645,7 @@ void abi_FacingByX(void)
 /*
  * @routine 05CB:3F3 StepListThenTurnAround
  * @run 70:B3F3
- * WHAT IT DOES: Steps the animation list at $B411; when it ends sets frame 5, turns the object round and goes to the next OBJ_2800.
+ * WHAT IT DOES: Steps the animation list at $B411; when it ends sets frame 5, turns the object round and goes to the next OBJ_SUBSTATE.
  * HOW: StepObjectFrames, a store, an EOR, an INC.
  * WAITS: no.
  * Entry: X object, Y kept unless the step sets it. Exit: as the last instruction that ran (l8_turn_around_exit_shim).
@@ -667,12 +667,12 @@ L8Arm StepListThenTurnAround(uint8_t slot, uint8_t y_entry)
     facing = (uint8_t)(facing ^ 0x01);
     WR8(OBJ->facing_left[slot], facing);
     r.first = facing;
-    r.second = INC8(OBJ->f2800[slot]);
+    r.second = INC8(OBJ->substate[slot]);
     r.arm = ST15_TURN_TURNED;
     return r;
 }
 
-/* What StepListThenTurnAround leaves (first the new facing, second the new OBJ_2800). */
+/* What StepListThenTurnAround leaves (first the new facing, second the new OBJ_SUBSTATE). */
 static Ended l8_turn_around_exit_shim(L8Arm r)
 {
     Ended e = l8_step_ended(r.step);
@@ -693,7 +693,7 @@ void abi_StepListThenTurnAround(void)
 /*
  * @routine 05CB:49D StepListThenCountDownToState4
  * @run 70:B49D
- * WHAT IT DOES: Steps the animation list at $B375; when it ends counts OBJ_3510 down and at zero goes to state 4 with OBJ_2800 0.
+ * WHAT IT DOES: Steps the animation list at $B375; when it ends counts OBJ_3510 down and at zero goes to state 4 with OBJ_SUBSTATE 0.
  * HOW: StepObjectFrames, a memory decrement, two stores.
  * WAITS: no.
  * Entry: X object, Y kept unless the step sets it. Exit: as the last instruction that ran (l8_count_to_state4_exit_shim).
@@ -715,7 +715,7 @@ L8Arm StepListThenCountDownToState4(uint8_t slot, uint8_t y_entry)
         return r;
     }
     WR8(OBJ->state[slot], 4);
-    WR8(OBJ->f2800[slot], 0);
+    WR8(OBJ->substate[slot], 0);
     r.arm = ST15_STATE4_ENTERED;
     return r;
 }
@@ -743,7 +743,7 @@ void abi_StepListThenCountDownToState4(void)
 /*
  * @routine 05CB:4D6 PickNextPhaseFromTable
  * @run 70:B4D6
- * WHAT IT DOES: Clears the animation and sets OBJ_2800 from the table at $B4EC by the low three bits of OBJ_3568, then advances OBJ_3568.
+ * WHAT IT DOES: Clears the animation and sets OBJ_SUBSTATE from the table at $B4EC by the low three bits of OBJ_3568, then advances OBJ_3568.
  * HOW: Stores, a table read, an INC.
  * WAITS: no.
  * Entry: X object. Exit: A the table byte, Y the index, N and Z from the new OBJ_3568 (l8_next_phase_exit_shim).
@@ -756,7 +756,7 @@ L8Arm PickNextPhaseFromTable(uint8_t slot, L8Layout lay)
     WR8(OBJ->anim_timer[slot], 0);
     r.first = (uint8_t)(RD8(OBJ->f3568[slot]) & 0x07);
     r.second = rd8((uint16_t)(l8_at(lay, 0xB4EC) + r.first));
-    WR8(OBJ->f2800[slot], r.second);
+    WR8(OBJ->substate[slot], r.second);
     r.third = INC8(OBJ->f3568[slot]);
     return r;
 }
@@ -775,7 +775,7 @@ void abi_PickNextPhaseFromTable(void)
 /*
  * @routine 05CB:4F4 StepListThenLeapWithSound
  * @run 70:B4F4
- * WHAT IT DOES: Steps the animation list at $B525; when it ends plays sound $85 and gives the object a leap: the X speed from the table at $B532 by its facing and the Y speed $0600; goes to the next OBJ_2800.
+ * WHAT IT DOES: Steps the animation list at $B525; when it ends plays sound $85 and gives the object a leap: the X speed from the table at $B532 by its facing and the Y speed $0600; goes to the next OBJ_SUBSTATE.
  * HOW: StepObjectFrames, SoundCommand, table reads, stores, an INC.
  * WAITS: no.
  * Entry: X object, Y kept unless the step sets it. Exit: as the last instruction that ran (l8_leap_sound_exit_shim).
@@ -803,7 +803,7 @@ L8St15Leap StepListThenLeapWithSound(uint8_t slot, uint8_t y_entry)
     WR8(OBJ->vx_lo[slot], value);
     WR8(OBJ->vy_hi[slot], 6);
     WR8(OBJ->vy_lo[slot], 0);
-    r.count = INC8(OBJ->f2800[slot]);
+    r.count = INC8(OBJ->substate[slot]);
     r.arm = ST15_LEAP_LEAPT;
     return r;
 }
@@ -834,7 +834,7 @@ void abi_StepListThenLeapWithSound(void)
 /*
  * @routine 05CB:536 FlyAndSagWithTwoLists
  * @run 70:B536
- * WHAT IT DOES: Clears OBJ_3358 and steps one of two animation lists (at $B575, by the sign of the Y speed) while moving; the Y speed loses $0030 a frame; when it is negative and the Y low byte is below $78 sets OBJ_3358 2 and goes to the next OBJ_2800.
+ * WHAT IT DOES: Clears OBJ_3358 and steps one of two animation lists (at $B575, by the sign of the Y speed) while moving; the Y speed loses $0030 a frame; when it is negative and the Y low byte is below $78 sets OBJ_3358 2 and goes to the next OBJ_SUBSTATE.
  * HOW: A store, two ROLs, a table read, StepObjectFrames, ApplyVelocity, a 16-bit subtract in memory, a compare.
  * WAITS: no.
  * Entry: X object. Exit: as the last instruction that ran (l8_fly_sag_exit_shim).
@@ -878,12 +878,12 @@ L8Arm FlyAndSagWithTwoLists(uint8_t slot, L8Layout lay)
         return r;
     }
     WR8(OBJ->f3358[slot], 2);
-    r.third = INC8(OBJ->f2800[slot]);
+    r.third = INC8(OBJ->substate[slot]);
     r.arm = ST15_SAG_DONE;
     return r;
 }
 
-/* What FlyAndSagWithTwoLists leaves (first the list index, second the Y low byte, third the new OBJ_2800; step the table's last byte, the step and its Y). */
+/* What FlyAndSagWithTwoLists leaves (first the list index, second the Y low byte, third the new OBJ_SUBSTATE; step the table's last byte, the step and its Y). */
 static Ended l8_fly_sag_exit_shim(L8Arm r)
 {
     Ended e = ended_with_y(ended_with_carry(ended_load(r.first), false), r.first);
@@ -955,7 +955,7 @@ void abi_SoundEvery32Frames(void)
 /*
  * @routine 05CB:5C4 PickRandomThenState3
  * @run 70:B5C4
- * WHAT IT DOES: Takes a random number (kept in Y as 0 to 3), clears OBJ_2800 and the animation and goes to state 3.
+ * WHAT IT DOES: Takes a random number (kept in Y as 0 to 3), clears OBJ_SUBSTATE and the animation and goes to state 3.
  * HOW: NextRandom, an AND, stores.
  * WAITS: no.
  * Entry: X object. Exit: A 3, Y the random number masked, C and V from NextRandom (l8_pick_random_exit_shim).
@@ -968,7 +968,7 @@ L8Arm PickRandomThenState3(uint8_t slot, L8Layout lay)
     r.random = NextRandom();
     jsr_pop();
     r.first = r.random.value & 0x03;
-    WR8(OBJ->f2800[slot], 0);
+    WR8(OBJ->substate[slot], 0);
     WR8(OBJ->anim_step[slot], 0);
     WR8(OBJ->anim_timer[slot], 0);
     WR8(OBJ->state[slot], 3);
@@ -1109,7 +1109,7 @@ void abi_EdgeCodeByDirection(void)
 /*
  * @routine 05CB:3A1 TurnTowardCenterOrWait
  * @run 70:B3A1
- * WHAT IT DOES: Clears the animation, goes to the next OBJ_2800, sets OBJ_3510 to 2 to 5 at random and OBJ_3618 to 0 or 1 by whether it is outside the center band; when the object's facing already matches FacingByX goes on once more.
+ * WHAT IT DOES: Clears the animation, goes to the next OBJ_SUBSTATE, sets OBJ_3510 to 2 to 5 at random and OBJ_3618 to 0 or 1 by whether it is outside the center band; when the object's facing already matches FacingByX goes on once more.
  * HOW: NextRandom, InsideCenterBand, FacingByX, a ROL, a compare.
  * WAITS: no.
  * Entry: X object. Exit: as the last instruction that ran (l8_turn_toward_center_exit_shim).
@@ -1122,7 +1122,7 @@ L8St15Turn TurnTowardCenterOrWait(uint8_t slot, L8Layout lay)
 
     WR8(OBJ->anim_step[slot], 0);
     WR8(OBJ->anim_timer[slot], 0);
-    r.count = INC8(OBJ->f2800[slot]);
+    r.count = INC8(OBJ->substate[slot]);
     jsr_push(l8_at(lay, 0xB3AD));
     r.random = NextRandom();
     jsr_pop();
@@ -1142,12 +1142,12 @@ L8St15Turn TurnTowardCenterOrWait(uint8_t slot, L8Layout lay)
         r.arm = ST15_CENTER_WAITING;
         return r;
     }
-    r.count2 = INC8(OBJ->f2800[slot]);
+    r.count2 = INC8(OBJ->substate[slot]);
     r.arm = ST15_CENTER_MATCHED;
     return r;
 }
 
-/* What TurnTowardCenterOrWait leaves (count the first OBJ_2800, sum the random's add, shifted the rotated byte, bit its low bit, count2 the second OBJ_2800). */
+/* What TurnTowardCenterOrWait leaves (count the first OBJ_SUBSTATE, sum the random's add, shifted the rotated byte, bit its low bit, count2 the second OBJ_SUBSTATE). */
 static Ended l8_turn_toward_center_exit_shim(L8St15Turn r)
 {
     Ended e = ended_nz(r.count);
@@ -1174,7 +1174,7 @@ void abi_TurnTowardCenterOrWait(void)
 /*
  * @routine 05CB:41C StepSideToSideWithCenterCheck
  * @run 70:B41C
- * WHAT IT DOES: Sets the X speed from a table at $B462 by the object's facing and moves along X while it steps the animation list at $B375; when the list ends it asks EdgeCodeByDirection: 0 leaves it, 1 sets OBJ_3510 1 and advances OBJ_2800 (and once more when the side of the player matches the facing), 2 counts OBJ_3510 down first.
+ * WHAT IT DOES: Sets the X speed from a table at $B462 by the object's facing and moves along X while it steps the animation list at $B375; when the list ends it asks EdgeCodeByDirection: 0 leaves it, 1 sets OBJ_3510 1 and advances OBJ_SUBSTATE (and once more when the side of the player matches the facing), 2 counts OBJ_3510 down first.
  * HOW: Table reads, ApplyVelocityX, StepObjectFrames, EdgeCodeByDirection, SideOfPlayer.
  * WAITS: no.
  * Entry: X object, Y kept unless the step sets it. Exit: as the last instruction that ran (l8_side_to_side_exit_shim).
@@ -1216,7 +1216,7 @@ L8St15Side StepSideToSideWithCenterCheck(uint8_t slot, uint8_t y_entry)
         }
     }
     WR8(OBJ->f3510[slot], 1);
-    r.count = INC8(OBJ->f2800[slot]);
+    r.count = INC8(OBJ->substate[slot]);
     jsr_push(0xB456);
     r.side = SideOfPlayer(slot);
     jsr_pop();
@@ -1226,7 +1226,7 @@ L8St15Side StepSideToSideWithCenterCheck(uint8_t slot, uint8_t y_entry)
         r.arm = ST15_SIDE_TURNED;
         return r;
     }
-    r.count2 = INC8(OBJ->f2800[slot]);
+    r.count2 = INC8(OBJ->substate[slot]);
     r.arm = ST15_SIDE_TURNED_AGAIN;
     return r;
 }
@@ -1293,7 +1293,7 @@ typedef struct {
 /*
  * @routine 05CB:344 StepListFallThenMusicAgain
  * @run 70:B344
- * WHAT IT DOES: Plays the sound every 32 frames (SoundEvery32Frames), steps the animation list at $B375 and moves; once the Y high byte is 0 and the Y low byte is $40 or more it clears bits 3 and 4 of zField8E, plays the track again (CdPlayAgain), sets bit 2 of zField8E, goes to the next state and clears OBJ_2800.
+ * WHAT IT DOES: Plays the sound every 32 frames (SoundEvery32Frames), steps the animation list at $B375 and moves; once the Y high byte is 0 and the Y low byte is $40 or more it clears bits 3 and 4 of zField8E, plays the track again (CdPlayAgain), sets bit 2 of zField8E, goes to the next state and clears OBJ_SUBSTATE.
  * HOW: SoundEvery32Frames, StepObjectFrames, ApplyVelocity, RMW of zField8E, CdPlayAgain.
  * WAITS: no. (CdPlayAgain starts a disc command; it does not wait.)
  * Entry: X object, Y kept unless the step sets it. Exit: as the last instruction that ran (l8_fall_music_exit_shim).
@@ -1328,7 +1328,7 @@ static L8St15Fall step_list_fall_then_music_again(uint8_t slot, uint8_t y_entry)
     r.flags = (uint8_t)(r.flags | 0x04);
     WR8(ZP->field8e, r.flags);
     r.state = INC8(OBJ->state[slot]);
-    WR8(OBJ->f2800[slot], 0);
+    WR8(OBJ->substate[slot], 0);
     r.arm = ST15_FALL_PLAYED;
     return r;
 }

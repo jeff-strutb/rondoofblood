@@ -275,7 +275,7 @@ void abi_StepFlashTimerDown(void)
  * @routine 01BD:7C9 ObjectTouchesPlayerBox
  * @run 6E:C7C9
  * WHAT IT DOES: Says whether the object lies within a box around the player: 8 either side of his X low byte and, from
- * a point his Y low plus the box offset OBJ_39E0, $14 either side. The answer is 0 for in and 1 for out.
+ * a point his Y low plus the box offset OBJ_HITBOX_DY, $14 either side. The answer is 0 for in and 1 for out.
  * HOW: The first screen only (both high bytes zero); two add and compare windows of $10 and $28.
  * WAITS: no.
  * Entry: X object. Exit: A 0 or 1, N and Z from it, C and V from the last window's add and compare. Clobbers zTemp00.

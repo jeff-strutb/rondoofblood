@@ -66,10 +66,10 @@ void abi_EnterStateFourOnFlag(void)
 /*
  * @routine 0CAB:260 SetHitboxFromFrame
  * @run 70:B260
- * WHAT IT DOES: Loads an object's hitbox (dx, dy, half width, half height: OBJ_3930, OBJ_39E0, OBJ_3988, OBJ_3A38)
+ * WHAT IT DOES: Loads an object's hitbox (dx, dy, half width, half height: OBJ_HITBOX_DX, OBJ_HITBOX_DY, OBJ_HITBOX_HALF_W, OBJ_HITBOX_HALF_H)
  * from a four-byte row of a table, picked by the object's animation frame through a second table
  * of row numbers; no frame, or a row number 0, clears the last two.
- * HOW: Reads the frame (OBJ_2A68), the row number at $B292 + frame - 1, then the four bytes at
+ * HOW: Reads the frame (OBJ_FRAME), the row number at $B292 + frame - 1, then the four bytes at
  * $BA2E + 4 * (row - 1). Tables read at bare addresses until the typed data layer lands.
  * WAITS: no.
  * Entry: X object. Exit: A the last byte loaded (0 when cleared), N and Z from it, Y the
@@ -300,7 +300,7 @@ void abi_LaunchOnTimer(void)
 /*
  * @routine 09EA:60E SetHitboxFromFrameFive
  * @run 70:AE0E
- * WHAT IT DOES: Loads an object's hitbox (OBJ_3930, OBJ_39E0, OBJ_3988, OBJ_3A38) from the
+ * WHAT IT DOES: Loads an object's hitbox (OBJ_HITBOX_DX, OBJ_HITBOX_DY, OBJ_HITBOX_HALF_W, OBJ_HITBOX_HALF_H) from the
  * four-byte row at $BC13 picked by its frame less 5.
  * HOW: Four loads from the row. Table read at a bare address until the typed data layer lands.
  * WAITS: no.
@@ -346,7 +346,7 @@ void abi_SetHitboxFromFrameFive(void)
  * @routine 0CAB:240 EnterStateFiveOnPlayerState9
  * @run 70:B240
  * WHAT IT DOES: When the player (slot 0) is in state 9 and the object is in state 3, turns the
- * object to face right, restarts its frame list, clears OBJ_2800 and moves it to state 5.
+ * object to face right, restarts its frame list, clears OBJ_SUBSTATE and moves it to state 5.
  * HOW: Two compares, then the stores. Random cases never reach the stores: the curated cases
  * of tools/rondo/curated/enemy_state_five.txt do (liftcmp --curated).
  * WAITS: no.
@@ -373,7 +373,7 @@ FiveResult EnterStateFiveOnPlayerState9(uint8_t slot)
     WR8(OBJ->anim_step[slot], 0);
     WR8(OBJ->anim_timer[slot], 0);
     WR8(OBJ->state[slot], 5);
-    WR8(OBJ->f2800[slot], 0);
+    WR8(OBJ->substate[slot], 0);
     result.end = FIVE_ENTERED;
     return result;
 }
@@ -404,7 +404,7 @@ void abi_EnterStateFiveOnPlayerState9(void)
 /*
  * @routine 072C:02C StopAndPickPhase
  * @run 70:B82C
- * WHAT IT DOES: Stops an object (clears OBJ_3670 and its four speed bytes), then sets OBJ_2800
+ * WHAT IT DOES: Stops an object (clears OBJ_3670 and its four speed bytes), then sets OBJ_SUBSTATE
  * from a table of eight bytes at $B84B picked by the low three bits of a counter, OBJ_3720,
  * which it then advances.
  * HOW: Five clears, a table read, an INC in memory. Table read at a bare address until the typed
@@ -426,7 +426,7 @@ PhasePick StopAndPickPhase(uint8_t slot)
     counter = RD8(OBJ->f3720[slot]);
     result.index = (uint8_t)(counter & 0x07);
     value = rd8((uint16_t)(0xB84B + result.index));
-    WR8(OBJ->f2800[slot], value);
+    WR8(OBJ->substate[slot], value);
     result.new_phase = INC8(OBJ->f3720[slot]);
     result.loaded = value;
     return result;

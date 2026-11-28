@@ -1,18 +1,18 @@
 ; @routine 051F:454 WaitForPressThenAnimate
 ; @run 71:D454
-; WHAT IT DOES: In state 0 loads the object's record and sets sprite set 6. Later, with OBJ_2800 0, it waits until the first object is at Y low $AA and X low $CC to $D3 and the pad's new presses have bit 4; then it moves to the next OBJ_2800, clears its animation step and timer and takes the first object's X low and Y low plus $D8 as its place. With OBJ_2800 not 0 it sets the first object's OBJ_3510 to $C0 and OBJ_3568 to $10 and steps the animation list at $D443; sound $3B when a frame changes; when the list ends it clears OBJ_2800, its frame and the first object's OBJ_3510.
+; WHAT IT DOES: In state 0 loads the object's record and sets sprite set 6. Later, with OBJ_SUBSTATE 0, it waits until the first object is at Y low $AA and X low $CC to $D3 and the pad's new presses have bit 4; then it moves to the next OBJ_SUBSTATE, clears its animation step and timer and takes the first object's X low and Y low plus $D8 as its place. With OBJ_SUBSTATE not 0 it sets the first object's OBJ_3510 to $C0 and OBJ_3568 to $10 and steps the animation list at $D443; sound $3B when a frame changes; when the list ends it clears OBJ_SUBSTATE, its frame and the first object's OBJ_3510.
 ; HOW: LoadObjectRecord, StepObjectFrames, SoundCommand, stores.
 ; WAITS: no.
 ; Entry: X object, Y kept unless the step sets it. Exit: see the wrapper.
 WaitForPressThenAnimate:
-    lda a:OBJ_27A8,x
+    lda a:OBJ_STATE,x
     bne WaitForPressThenAnimate_at0
     jsr VecLoadObjectRecord
     lda #$06
     sta a:OBJ_2A10,x
     rts
 WaitForPressThenAnimate_at0:
-    lda a:OBJ_2800,x
+    lda a:OBJ_SUBSTATE,x
     bne WaitForPressThenAnimate_at1
     lda a:OBJ_Y_LO
     cmp #$AA
@@ -26,9 +26,9 @@ WaitForPressThenAnimate_at0:
     lda z:zPadPressed
     and #$10
     beq WaitForPressThenAnimate_at2
-    inc a:OBJ_2800,x
-    stz a:OBJ_3408,x
-    stz a:OBJ_3460,x
+    inc a:OBJ_SUBSTATE,x
+    stz a:OBJ_ANIM_STEP,x
+    stz a:OBJ_ANIM_TIMER,x
     lda a:OBJ_X_LO
     sta a:OBJ_X_LO,x
     lda a:OBJ_Y_LO
@@ -48,8 +48,8 @@ WaitForPressThenAnimate_at1:
     sta z:zTemp11
     jsr VecStepObjectFrames
     bne WaitForPressThenAnimate_at3
-    stz a:OBJ_2800,x
-    stz a:OBJ_2A68,x
+    stz a:OBJ_SUBSTATE,x
+    stz a:OBJ_FRAME,x
     stz a:OBJ_3510
     rts
 WaitForPressThenAnimate_at3:
@@ -71,12 +71,12 @@ LoadRecordA06:
 
 ; @routine 092E:2D1 ClearHitsTaken
 ; @run 6B:8AD1
-; WHAT IT DOES: Sets the object's hits taken (OBJ_33B0) to 0.
+; WHAT IT DOES: Sets the object's hits taken (OBJ_HIT_TAKEN) to 0.
 ; HOW: A store.
 ; WAITS: no.
 ; Entry: X object. Exit: all kept.
 ClearHitsTaken:
-    stz a:OBJ_33B0,x
+    stz a:OBJ_HIT_TAKEN,x
     rts
 ; @routine 0E0B:099 HalveDirectionWhenHurt
 ; @run 70:B099
@@ -85,10 +85,10 @@ ClearHitsTaken:
 ; WAITS: no.
 ; Entry: X object. Exit: the last compare, or the shift's N, Z and C.
 HalveDirectionWhenHurt:
-    lda a:OBJ_27A8,x
+    lda a:OBJ_STATE,x
     cmp #$06
     beq HalveDirectionWhenHurt_at0
-    lda a:OBJ_33B0,x
+    lda a:OBJ_HIT_TAKEN,x
     cmp #$05
     bcc HalveDirectionWhenHurt_at0
     lsr a:OBJ_3618,x
@@ -97,7 +97,7 @@ HalveDirectionWhenHurt_at0:
 
 ; @routine 0E0B:0AB StateSevenOnStatusBit7
 ; @run 70:B0AB
-; WHAT IT DOES: An object in a state under 7 whose OBJ_31A0 has bit 7 set goes to state 7 and clears OBJ_2800. (The part after the test ran in no script; it is written from the bytes.)
+; WHAT IT DOES: An object in a state under 7 whose OBJ_31A0 has bit 7 set goes to state 7 and clears OBJ_SUBSTATE. (The part after the test ran in no script; it is written from the bytes.)
 ; HOW: A test, a compare, two stores.
 ; WAITS: no.
 ; Entry: X object. Exit: the test, the compare, or A 7.
@@ -105,18 +105,18 @@ StateSevenOnStatusBit7:
     lda a:OBJ_31A0,x
     and #$80
     beq StateSevenOnStatusBit7_at0
-    lda a:OBJ_27A8,x
+    lda a:OBJ_STATE,x
     cmp #$07
     bcs StateSevenOnStatusBit7_at0
     lda #$07
-    sta a:OBJ_27A8,x
-    stz a:OBJ_2800,x
+    sta a:OBJ_STATE,x
+    stz a:OBJ_SUBSTATE,x
 StateSevenOnStatusBit7_at0:
     rts
 
 ; @routine 0E0B:0C2 SetHitBoxFromTable
 ; @run 70:B0C2
-; WHAT IT DOES: When OBJ_3250 is not zero, takes the object's hit box (four bytes: OBJ_3930, OBJ_39E0, OBJ_3988, OBJ_3A38) from the table at $BEEC, four bytes a row, the row being the frame less one.
+; WHAT IT DOES: When OBJ_3250 is not zero, takes the object's hit box (four bytes: OBJ_HITBOX_DX, OBJ_HITBOX_DY, OBJ_HITBOX_HALF_W, OBJ_HITBOX_HALF_H) from the table at $BEEC, four bytes a row, the row being the frame less one.
 ; HOW: A pointer built in zTemp00-01 by two adds of twice the row, four reads through it.
 ; WAITS: no.
 ; Entry: X object. Exit: A the last byte read, Y 3; or the test of OBJ_3250.
@@ -127,7 +127,7 @@ SetHitBoxFromTable:
     sta z:zTemp00
     lda #$BE
     sta z:zTemp01
-    lda a:OBJ_2A68,x
+    lda a:OBJ_FRAME,x
     sec
     sbc #$01
     asl a
@@ -148,16 +148,16 @@ SetHitBoxFromTable:
     sta z:zTemp01
     cly
     lda (zTemp00),y
-    sta a:OBJ_3930,x
+    sta a:OBJ_HITBOX_DX,x
     iny
     lda (zTemp00),y
-    sta a:OBJ_39E0,x
+    sta a:OBJ_HITBOX_DY,x
     iny
     lda (zTemp00),y
-    sta a:OBJ_3988,x
+    sta a:OBJ_HITBOX_HALF_W,x
     iny
     lda (zTemp00),y
-    sta a:OBJ_3A38,x
+    sta a:OBJ_HITBOX_HALF_H,x
 SetHitBoxFromTable_at0:
     rts
 
@@ -179,10 +179,10 @@ LoadThenSpawn24:
 ; @routine 0E0B:184 FallThenStopForRaster
 ; @run 70:B184
 ; WHAT IT DOES: Moves the object along Y by its speed and counts OBJ_34B8 down; at zero it clears the raster effect and its argument, clears the object's Y speed and goes
-; on to the next OBJ_2800.
+; on to the next OBJ_SUBSTATE.
 ; HOW: ApplyVelocityY, DEC, stores, INC.
 ; WAITS: no.
-; Entry: X object. Exit: the count, or the new OBJ_2800's N and Z.
+; Entry: X object. Exit: the count, or the new OBJ_SUBSTATE's N and Z.
 FallThenStopForRaster:
     jsr VecApplyVelocityY
     dec a:OBJ_34B8,x
@@ -191,13 +191,13 @@ FallThenStopForRaster:
     stz z:zRasterEffect
     stz a:OBJ_VY_HI,x
     stz a:OBJ_VY_LO,x
-    inc a:OBJ_2800,x
+    inc a:OBJ_SUBSTATE,x
 FallThenStopForRaster_at0:
     rts
 
 ; @routine 0E0B:19A StepListB1BAThenSound
 ; @run 70:B19A
-; WHAT IT DOES: Steps the animation list at $B1BA; when it ends it sends sound $46, sets sprite set 4 and frame 1 and goes on to the next OBJ_2800.
+; WHAT IT DOES: Steps the animation list at $B1BA; when it ends it sends sound $46, sets sprite set 4 and frame 1 and goes on to the next OBJ_SUBSTATE.
 ; HOW: StepObjectFrames, SoundCommand, stores, an INC.
 ; WAITS: no.
 ; Entry: X object, Y kept unless the step sets it. Exit: see the wrapper.
@@ -213,8 +213,8 @@ StepListB1BAThenSound:
     lda #$04
     sta a:OBJ_2A10,x
     lda #$01
-    sta a:OBJ_2A68,x
-    inc a:OBJ_2800,x
+    sta a:OBJ_FRAME,x
+    inc a:OBJ_SUBSTATE,x
 StepListB1BAThenSound_at0:
     rts
 
@@ -241,7 +241,7 @@ StepListB25CThenStartList:
     sta z:zField8E
     lda #$02
     sta a:OBJ_3250,x
-    inc a:OBJ_27A8,x
+    inc a:OBJ_STATE,x
 StepListB25CThenStartList_at0:
     rts
 
@@ -255,12 +255,12 @@ LandThenNextState:
     lda #$04
     jsr VecStopOnLanding
     bcc SoundThenAimRandomLength
-    inc a:OBJ_27A8,x
+    inc a:OBJ_STATE,x
     rts
 
 ; @routine 0E0B:34D CountDownThenState6
 ; @run 70:B34D
-; WHAT IT DOES: Counts OBJ_3618 down; at zero the object goes to state 6, clears OBJ_2800 and takes a new OBJ_3618 from a table at $B36B by the low two bits of OBJ_35C0.
+; WHAT IT DOES: Counts OBJ_3618 down; at zero the object goes to state 6, clears OBJ_SUBSTATE and takes a new OBJ_3618 from a table at $B36B by the low two bits of OBJ_35C0.
 ; HOW: DEC, stores, a table read (bank 70).
 ; WAITS: no.
 ; Entry: X object. Exit: the count; at zero, the table byte as loaded (Y its index).
@@ -271,8 +271,8 @@ CountDownThenState6:
     rts
 CountDownThenState6_at0:
     lda #$06
-    sta a:OBJ_27A8,x
-    stz a:OBJ_2800,x
+    sta a:OBJ_STATE,x
+    stz a:OBJ_SUBSTATE,x
     lda a:OBJ_35C0,x
     and #$03
     tay
@@ -282,7 +282,7 @@ CountDownThenState6_at0:
 
 ; @routine 0E0B:51C StepListB53CToState5
 ; @run 70:B51C
-; WHAT IT DOES: Steps the animation list at $B53C; when it ends it clears the raster effect and its argument and the animation step and timer, and the object goes to state 5 with OBJ_2800 0.
+; WHAT IT DOES: Steps the animation list at $B53C; when it ends it clears the raster effect and its argument and the animation step and timer, and the object goes to state 5 with OBJ_SUBSTATE 0.
 ; HOW: StepObjectFrames, stores.
 ; WAITS: no.
 ; Entry: X object, Y kept unless the step sets it. Exit: the step, or A 5 when the list ended.
@@ -295,16 +295,16 @@ StepListB53CToState5:
     bne BurstWhenFlaggedHitB
     stz z:zRasterArg
     stz z:zRasterEffect
-    stz a:OBJ_3408,x
-    stz a:OBJ_3460,x
+    stz a:OBJ_ANIM_STEP,x
+    stz a:OBJ_ANIM_TIMER,x
     lda #$05
-    sta a:OBJ_27A8,x
-    stz a:OBJ_2800,x
+    sta a:OBJ_STATE,x
+    stz a:OBJ_SUBSTATE,x
     rts
 
 ; @routine 0E0B:543 SetRasterSpawnThenStepList
 ; @run 70:B543
-; WHAT IT DOES: Sets the raster effect to $0B with argument $BF, runs SpawnOnTimerInTable, then steps the animation list at $B568; when it ends it clears the raster effect and its argument, goes to state 4 and clears OBJ_2800.
+; WHAT IT DOES: Sets the raster effect to $0B with argument $BF, runs SpawnOnTimerInTable, then steps the animation list at $B568; when it ends it clears the raster effect and its argument, goes to state 4 and clears OBJ_SUBSTATE.
 ; HOW: SpawnOnTimerInTable, StepObjectFrames, stores.
 ; WAITS: no.
 ; Entry: X object, Y kept unless a callee sets it. Exit: see the wrapper.
@@ -323,24 +323,24 @@ SetRasterSpawnThenStepList:
     stz z:zRasterArg
     stz z:zRasterEffect
     lda #$04
-    sta a:OBJ_27A8,x
-    stz a:OBJ_2800,x
+    sta a:OBJ_STATE,x
+    stz a:OBJ_SUBSTATE,x
 SetRasterSpawnThenStepList_at0:
     rts
 
 ; @routine 0E0B:579 SpawnOnTimerInTable
 ; @run 70:B579
-; WHAT IT DOES: When OBJ_3408 is 6 and OBJ_3460 equals one of the three bytes at $B5A5 it finds a free slot from $30, sends sound $48 and starts a kind $27 object there at its place with its facing.
+; WHAT IT DOES: When OBJ_ANIM_STEP is 6 and OBJ_ANIM_TIMER equals one of the three bytes at $B5A5 it finds a free slot from $30, sends sound $48 and starts a kind $27 object there at its place with its facing.
 ; HOW: A search loop, FindFreeSlotFrom30, SoundCommand, StartObjectAtPlace.
 ; WAITS: no.
 ; Entry: X object, Y kept for the sound's push only when the search ran. Exit: see the wrapper.
 SpawnOnTimerInTable:
-    lda a:OBJ_3408,x
+    lda a:OBJ_ANIM_STEP,x
     cmp #$06
     bne SpawnOnTimerInTable_at0
     cly
 SpawnOnTimerInTable_at2:
-    lda a:OBJ_3460,x
+    lda a:OBJ_ANIM_TIMER,x
     cmp a:$B5A5,y
     beq SpawnOnTimerInTable_at1
     iny
@@ -354,28 +354,28 @@ SpawnOnTimerInTable_at1:
     jsr VecSoundCommand
     lda #$27
     jsr VecStartObjectAtPlace
-    lda a:OBJ_2AC0,x
-    sta a:OBJ_2AC0,y
+    lda a:OBJ_FACING_LEFT,x
+    sta a:OBJ_FACING_LEFT,y
 SpawnOnTimerInTable_at0:
     rts
 
 ; @routine 0E0B:5DD NextPhaseUnlessKind25
 ; @run 70:B5DD
-; WHAT IT DOES: Goes on to the next OBJ_2800 unless the object in slot $50 is of kind $25.
+; WHAT IT DOES: Goes on to the next OBJ_SUBSTATE unless the object in slot $50 is of kind $25.
 ; HOW: A compare and an INC.
 ; WAITS: no.
-; Entry: X object. Exit: the compare, or the new OBJ_2800's N and Z.
+; Entry: X object. Exit: the compare, or the new OBJ_SUBSTATE's N and Z.
 NextPhaseUnlessKind25:
     lda a:$27A0
     cmp #$25
     beq NextPhaseUnlessKind25_at0
-    inc a:OBJ_2800,x
+    inc a:OBJ_SUBSTATE,x
 NextPhaseUnlessKind25_at0:
     rts
 
 ; @routine 0E0B:5E8 StepListB5FEToState4
 ; @run 70:B5E8
-; WHAT IT DOES: Steps the animation list at $B5FE; when it ends, the object goes to state 4 and OBJ_2800 0.
+; WHAT IT DOES: Steps the animation list at $B5FE; when it ends, the object goes to state 4 and OBJ_SUBSTATE 0.
 ; HOW: StepObjectFrames, then stores and an increment.
 ; WAITS: no.
 ; Entry: X object, Y kept unless the step sets it. Exit: the step, or A 4 when the list ended.
@@ -387,8 +387,8 @@ StepListB5FEToState4:
     jsr VecStepObjectFrames
     bne ClampSpeedXToTwo
     lda #$04
-    sta a:OBJ_27A8,x
-    stz a:OBJ_2800,x
+    sta a:OBJ_STATE,x
+    stz a:OBJ_SUBSTATE,x
     rts
 
 ; @routine 0E0C:045 LoadThenSwingAndDrop
@@ -399,16 +399,16 @@ StepListB5FEToState4:
 ; WAITS: no.
 ; Entry: X object. Exit: the last instruction's registers.
 LoadThenSwingAndDrop:
-    lda a:OBJ_27A8,x
+    lda a:OBJ_STATE,x
     bne $B871
     jsr VecLoadObjectRecord
     lda #$F0
     sta a:OBJ_Y_LO,x
-    ldy a:OBJ_2AC0,x
+    ldy a:OBJ_FACING_LEFT,x
     lda a:$B86D,y
     sta a:OBJ_VX_HI,x
     jsr VecApplyVelocityX
-    ldy a:OBJ_2AC0,x
+    ldy a:OBJ_FACING_LEFT,x
     lda a:$B86F,y
     sta a:OBJ_VX_HI,x
     lda #$80
@@ -458,11 +458,11 @@ StepListB9B7ThenAimAtPlayer:
     sta z:zTemp01
     lda a:OBJ_34B8,x
     jsr VecSetVelocityFromAngle
-    stz a:OBJ_3408,x
-    stz a:OBJ_3460,x
+    stz a:OBJ_ANIM_STEP,x
+    stz a:OBJ_ANIM_TIMER,x
     lda #$C0
     sta a:OBJ_3510,x
-    inc a:OBJ_27A8,x
+    inc a:OBJ_STATE,x
 StepListB9B7ThenAimAtPlayer_at0:
     rts
 
@@ -494,7 +494,7 @@ TurnTowardPlayerAndMove:
     bne TurnTowardPlayerAndMove_at0
     lda #$F0
     sta a:OBJ_3510,x
-    inc a:OBJ_27A8,x
+    inc a:OBJ_STATE,x
 TurnTowardPlayerAndMove_at0:
     rts
 
@@ -509,19 +509,19 @@ TurnTowardPlayerOrStepList:
     beq RichterItemSecondCosts
     dec a:OBJ_3568,x
     bne TurnTowardPlayerOrStepList_at0
-    lda a:OBJ_2AC0,x
+    lda a:OBJ_FACING_LEFT,x
     eor #$01
-    sta a:OBJ_2AC0,x
+    sta a:OBJ_FACING_LEFT,x
 TurnTowardPlayerOrStepList_at0:
     rts
     jsr VecSideOfPlayer
     and #$01
-    cmp a:OBJ_2AC0,x
+    cmp a:OBJ_FACING_LEFT,x
     beq TurnTowardPlayerOrStepList_at1
     lda #$05
     sta a:OBJ_3568,x
     lda #$2C
-    sta a:OBJ_2A68,x
+    sta a:OBJ_FRAME,x
     rts
 TurnTowardPlayerOrStepList_at1:
     lda #$FA
@@ -538,14 +538,14 @@ TurnTowardPlayerOrStepList_at1:
 ; WAITS: no.
 ; Entry: X object. Exit: see the code: the last read or the clears.
 CopyPlaceAndHitBoxOfSlot10:
-    lda a:OBJ_27A8,x
+    lda a:OBJ_STATE,x
     bne CopyPlaceAndHitBoxOfSlot10_at0
     jmp VecLoadObjectRecord
 CopyPlaceAndHitBoxOfSlot10_at0:
     ldy #$10
     jsr VecCopyObjectPlaceBack
     lda a:$2AD0
-    sta a:OBJ_2AC0,x
+    sta a:OBJ_FACING_LEFT,x
     lda a:$3260
     beq CopyPlaceAndHitBoxOfSlot10_at1
     lda #$24
@@ -573,22 +573,22 @@ CopyPlaceAndHitBoxOfSlot10_at0:
     sta z:zTemp01
     cly
     lda (zTemp00),y
-    sta a:OBJ_3930,x
+    sta a:OBJ_HITBOX_DX,x
     iny
     lda (zTemp00),y
-    sta a:OBJ_39E0,x
+    sta a:OBJ_HITBOX_DY,x
     iny
     lda (zTemp00),y
     clc
     adc #$08
-    sta a:OBJ_3988,x
+    sta a:OBJ_HITBOX_HALF_W,x
     iny
     lda (zTemp00),y
-    sta a:OBJ_3A38,x
+    sta a:OBJ_HITBOX_HALF_H,x
     rts
 CopyPlaceAndHitBoxOfSlot10_at1:
-    stz a:OBJ_3988,x
-    stz a:OBJ_3A38,x
+    stz a:OBJ_HITBOX_HALF_W,x
+    stz a:OBJ_HITBOX_HALF_H,x
     rts
 
 ; @routine 12DF:038 RandomTimerC0

@@ -47,7 +47,7 @@ static Ended l8_ring_exit_shim(L8St13Ring r);
 /*
  * @routine 025C:131 StepListThenStartChannel85
  * @run 70:B931
- * WHAT IT DOES: Steps the animation list at $B6DA; when OBJ_3510 counts down to zero starts list $85 on channel 5, sets OBJ_3670 5, OBJ_3510 $7B, the byte before the frame $2F and goes to the next OBJ_2800.
+ * WHAT IT DOES: Steps the animation list at $B6DA; when OBJ_3510 counts down to zero starts list $85 on channel 5, sets OBJ_3670 5, OBJ_3510 $7B, the byte before the frame $2F and goes to the next OBJ_SUBSTATE.
  * HOW: StepObjectFrames, a memory decrement, StartListChannelKind2 between a PHX and a PLX, stores.
  * WAITS: no.
  * Entry: X object, Y kept unless the step sets it. Exit: as the last instruction that ran (l8_channel85_exit_shim).
@@ -66,7 +66,7 @@ L8Arm StepListThenStartChannel85(uint8_t slot, uint8_t y_entry)
     WR8(OBJ->f3670[slot], 5);
     WR8(OBJ->f3510[slot], 0x7B);
     WR8(OBJ->frame[slot - 1], 0x2F);
-    r.third = INC8(OBJ->f2800[slot]);
+    r.third = INC8(OBJ->substate[slot]);
     r.arm = C85_STARTED;
     return r;
 }
@@ -92,7 +92,7 @@ void abi_StepListThenStartChannel85(void)
 /*
  * @routine 025C:15D StepListThenStopAnimation
  * @run 70:B95D
- * WHAT IT DOES: Steps the animation list at $B6DA; when OBJ_3510 counts down to zero clears OBJ_3670 and the animation step and timer and goes to the next OBJ_2800.
+ * WHAT IT DOES: Steps the animation list at $B6DA; when OBJ_3510 counts down to zero clears OBJ_3670 and the animation step and timer and goes to the next OBJ_SUBSTATE.
  * HOW: StepObjectFrames, a memory decrement, stores, an INC.
  * WAITS: no.
  * Entry: X object, Y kept unless the step sets it. Exit: as the last instruction that ran (l8_stop_animation_exit_shim).
@@ -110,7 +110,7 @@ L8Arm StepListThenStopAnimation(uint8_t slot, uint8_t y_entry)
     WR8(OBJ->f3670[slot], 0);
     WR8(OBJ->anim_step[slot], 0);
     WR8(OBJ->anim_timer[slot], 0);
-    r.second = INC8(OBJ->f2800[slot]);
+    r.second = INC8(OBJ->substate[slot]);
     r.arm = STOP_DONE;
     return r;
 }
@@ -134,7 +134,7 @@ void abi_StepListThenStopAnimation(void)
 /*
  * @routine 025C:17A StepListB995ThenWait
  * @run 70:B97A
- * WHAT IT DOES: Steps the animation list at $B995; when it ends sets OBJ_3670 6 and OBJ_3510 $3A and goes to the next OBJ_2800.
+ * WHAT IT DOES: Steps the animation list at $B995; when it ends sets OBJ_3670 6 and OBJ_3510 $3A and goes to the next OBJ_SUBSTATE.
  * HOW: StepObjectFrames, stores, an INC.
  * WAITS: no.
  * Entry: X object, Y kept unless the step sets it. Exit: as the last instruction that ran (l8_list_b995_exit_shim).
@@ -150,7 +150,7 @@ L8Arm StepListB995ThenWait(uint8_t slot, uint8_t y_entry)
     }
     WR8(OBJ->f3670[slot], 6);
     WR8(OBJ->f3510[slot], 0x3A);
-    r.first = INC8(OBJ->f2800[slot]);
+    r.first = INC8(OBJ->substate[slot]);
     r.arm = B995_ENDED;
     return r;
 }
@@ -175,7 +175,7 @@ void abi_StepListB995ThenWait(void)
 /*
  * @routine 025C:19C StepListThenStartType2D
  * @run 70:B99C
- * WHAT IT DOES: Steps the animation list at $B6DA; when OBJ_3510 counts down to zero clears slot $50, starts an object of type $2D there at the object's place, sets OBJ_3670 7 and OBJ_3510 $83 and goes to the next OBJ_2800.
+ * WHAT IT DOES: Steps the animation list at $B6DA; when OBJ_3510 counts down to zero clears slot $50, starts an object of type $2D there at the object's place, sets OBJ_3670 7 and OBJ_3510 $83 and goes to the next OBJ_SUBSTATE.
  * HOW: StepObjectFrames, a memory decrement, ClearObjectInY, StartObjectAtPlace, stores, an INC.
  * WAITS: no.
  * Entry: X object, Y kept unless the step sets it. Exit: as the last instruction that ran (l8_type2d_exit_shim).
@@ -198,7 +198,7 @@ L8Arm StepListThenStartType2D(uint8_t slot, uint8_t y_entry)
     jsr_pop();
     WR8(OBJ->f3670[slot], 7);
     WR8(OBJ->f3510[slot], 0x83);
-    r.third = INC8(OBJ->f2800[slot]);
+    r.third = INC8(OBJ->substate[slot]);
     r.arm = T2D_STARTED;
     return r;
 }
@@ -225,7 +225,7 @@ void abi_StepListThenStartType2D(void)
 /*
  * @routine 025C:1C4 StepListThenClearAnimation
  * @run 70:B9C4
- * WHAT IT DOES: Steps the animation list at $B6DA; when OBJ_3510 counts down to zero clears the animation step and timer and OBJ_3670 and goes to the next OBJ_2800.
+ * WHAT IT DOES: Steps the animation list at $B6DA; when OBJ_3510 counts down to zero clears the animation step and timer and OBJ_3670 and goes to the next OBJ_SUBSTATE.
  * HOW: StepObjectFrames, a memory decrement, stores, an INC.
  * WAITS: no.
  * Entry: X object, Y kept unless the step sets it. Exit: as the last instruction that ran (l8_clear_animation_exit_shim).
@@ -243,7 +243,7 @@ L8Arm StepListThenClearAnimation(uint8_t slot, uint8_t y_entry)
     WR8(OBJ->anim_step[slot], 0);
     WR8(OBJ->anim_timer[slot], 0);
     WR8(OBJ->f3670[slot], 0);
-    r.second = INC8(OBJ->f2800[slot]);
+    r.second = INC8(OBJ->substate[slot]);
     r.arm = CLEAR_DONE;
     return r;
 }
@@ -267,7 +267,7 @@ void abi_StepListThenClearAnimation(void)
 /*
  * @routine 025C:1E1 StepListThenStartType2E
  * @run 70:B9E1
- * WHAT IT DOES: Steps the animation list at $BA0E; when it ends clears OBJ_3720, sets OBJ_3670 8, OBJ_34B8 1 and OBJ_3510 $80, goes to the next OBJ_2800, clears slot $30 and starts an object of type $2E there at the object's place.
+ * WHAT IT DOES: Steps the animation list at $BA0E; when it ends clears OBJ_3720, sets OBJ_3670 8, OBJ_34B8 1 and OBJ_3510 $80, goes to the next OBJ_SUBSTATE, clears slot $30 and starts an object of type $2E there at the object's place.
  * HOW: StepObjectFrames, stores, an INC, ClearObjectInY, StartObjectAtPlace.
  * WAITS: no.
  * Entry: X object, Y kept unless the step sets it. Exit: as the last instruction that ran (l8_type2e_exit_shim).
@@ -285,7 +285,7 @@ L8Arm StepListThenStartType2E(uint8_t slot, uint8_t y_entry)
     WR8(OBJ->f3670[slot], 8);
     WR8(OBJ->f34b8[slot], 1);
     WR8(OBJ->f3510[slot], 0x80);
-    r.first = INC8(OBJ->f2800[slot]);
+    r.first = INC8(OBJ->substate[slot]);
     jsr_push(0xBA08);
     ClearObjectInY(0x30);
     jsr_pop();
@@ -318,7 +318,7 @@ void abi_StepListThenStartType2E(void)
 /*
  * @routine 025C:215 StepListThenSoundAndStartChannel86
  * @run 70:BA15
- * WHAT IT DOES: Steps the animation list at $B6DA; when the 16-bit timer OBJ_34B8:OBJ_3510 counts down to zero starts list $86 on channel 5, plays sound $76, clears the animation, OBJ_35C0, OBJ_38D8 and OBJ_3670, sets OBJ_3880 2 and goes to the next OBJ_2800.
+ * WHAT IT DOES: Steps the animation list at $B6DA; when the 16-bit timer OBJ_34B8:OBJ_3510 counts down to zero starts list $86 on channel 5, plays sound $76, clears the animation, OBJ_35C0, OBJ_38D8 and OBJ_3670, sets OBJ_3880 2 and goes to the next OBJ_SUBSTATE.
  * HOW: StepObjectFrames, a 16-bit subtract in memory, StartListChannelKind2 between a PHX and a PLX, SoundCommand, stores.
  * WAITS: no.
  * Entry: X object, Y kept unless the step sets it. Exit: as the last instruction that ran (l8_channel86_exit_shim).
@@ -352,7 +352,7 @@ L8St13SoundArm StepListThenSoundAndStartChannel86(uint8_t slot, uint8_t y_entry)
     WR8(OBJ->f3880[slot], 2);
     WR8(OBJ->f38d8[slot], 0);
     WR8(OBJ->f3670[slot], 0);
-    r.third = INC8(OBJ->f2800[slot]);
+    r.third = INC8(OBJ->substate[slot]);
     r.arm = C86_SOUNDED;
     return r;
 }
@@ -384,7 +384,7 @@ void abi_StepListThenSoundAndStartChannel86(void)
 /*
  * @routine 025C:25C SpiralOutWhileStepping
  * @run 70:BA5C
- * WHAT IT DOES: Steps the animation list at $BA9A while moving the object by the speed made from OBJ_35C0 and the radius OBJ_3880:OBJ_38D8; the radius shrinks by one and OBJ_35C0 turns on by 4; when OBJ_35C0 wraps it goes to the next OBJ_2800.
+ * WHAT IT DOES: Steps the animation list at $BA9A while moving the object by the speed made from OBJ_35C0 and the radius OBJ_3880:OBJ_38D8; the radius shrinks by one and OBJ_35C0 turns on by 4; when OBJ_35C0 wraps it goes to the next OBJ_SUBSTATE.
  * HOW: StepObjectFrames, SetVelocityFromAngle, ApplyVelocity, a 16-bit subtract in memory, an add.
  * WAITS: no.
  * Entry: X object, Y kept unless the step sets it. Exit: as the last instruction that ran (l8_spiral_out_exit_shim).
@@ -421,7 +421,7 @@ L8St13SpiralArm SpiralOutWhileStepping(uint8_t slot, uint8_t y_entry)
         r.arm = SPIRAL_TURNING;
         return r;
     }
-    r.counted = INC8(OBJ->f2800[slot]);
+    r.counted = INC8(OBJ->substate[slot]);
     r.arm = SPIRAL_WRAPPED;
     return r;
 }
@@ -452,7 +452,7 @@ void abi_SpiralOutWhileStepping(void)
 /*
  * @routine 025C:2A7 MoveXUntilPastLeftEdge
  * @run 70:BAA7
- * WHAT IT DOES: Moves the object along X by its speed; once its X high byte is not 0 and its low byte is below $80 sets OBJ_3510 $20 and goes to the next OBJ_2800.
+ * WHAT IT DOES: Moves the object along X by its speed; once its X high byte is not 0 and its low byte is below $80 sets OBJ_3510 $20 and goes to the next OBJ_SUBSTATE.
  * HOW: ApplyVelocityX, two tests, a store, an INC.
  * WAITS: no.
  * Entry: X object. Exit: as the last instruction that ran (l8_past_left_exit_shim).
@@ -475,7 +475,7 @@ L8Arm MoveXUntilPastLeftEdge(uint8_t slot)
         return r;
     }
     WR8(OBJ->f3510[slot], 0x20);
-    r.third = INC8(OBJ->f2800[slot]);
+    r.third = INC8(OBJ->substate[slot]);
     r.arm = LEFT_PAST;
     return r;
 }
@@ -746,10 +746,10 @@ void abi_NearObject19(void)
 /*
  * @routine 025C:425 StartRiseAndSpawnRing
  * @run 70:BC25
- * WHAT IT DOES: Starts the ring of seven objects (SpawnRingOfSeven), sets OBJ_37D0 of slot $19 to 1, clears the object's OBJ_3250, animation and X speed, gives it the Y speed -$0400 and goes to the next OBJ_2800.
+ * WHAT IT DOES: Starts the ring of seven objects (SpawnRingOfSeven), sets OBJ_37D0 of slot $19 to 1, clears the object's OBJ_3250, animation and X speed, gives it the Y speed -$0400 and goes to the next OBJ_SUBSTATE.
  * HOW: A call, stores, an INC.
  * WAITS: no.
- * Entry: X object. Exit: A $FC, N and Z from the new OBJ_2800 (l8_rise_exit_shim).
+ * Entry: X object. Exit: A $FC, N and Z from the new OBJ_SUBSTATE (l8_rise_exit_shim).
  */
 L8St13RiseArm StartRiseAndSpawnRing(uint8_t slot)
 {
@@ -766,7 +766,7 @@ L8St13RiseArm StartRiseAndSpawnRing(uint8_t slot)
     WR8(OBJ->vx_lo[slot], 0);
     WR8(OBJ->vy_hi[slot], 0xFC);
     WR8(OBJ->vy_lo[slot], 0);
-    r.counted = INC8(OBJ->f2800[slot]);
+    r.counted = INC8(OBJ->substate[slot]);
     return r;
 }
 
@@ -828,7 +828,7 @@ void abi_SpawnRingOfSeven(void)
 /*
  * @routine 025C:461 FallAlongListUntilGround
  * @run 70:BC61
- * WHAT IT DOES: Steps the animation list at $BC98 while the object falls (ApplyGravityUnlimited, ApplyVelocityY); once its Y low byte reaches $B8 it takes sprite set 3, frame 0, the speed X -$0400, Y -$0200, clears the animation and goes to the next OBJ_2800.
+ * WHAT IT DOES: Steps the animation list at $BC98 while the object falls (ApplyGravityUnlimited, ApplyVelocityY); once its Y low byte reaches $B8 it takes sprite set 3, frame 0, the speed X -$0400, Y -$0200, clears the animation and goes to the next OBJ_SUBSTATE.
  * HOW: StepObjectFrames, ApplyGravityUnlimited, ApplyVelocityY, stores, an INC.
  * WAITS: no.
  * Entry: X object, Y kept unless the step sets it. Exit: as the last instruction that ran (l8_fall_to_ground_exit_shim).
@@ -858,7 +858,7 @@ L8Arm FallAlongListUntilGround(uint8_t slot, uint8_t y_entry)
     WR8(OBJ->vy_lo[slot], 0);
     WR8(OBJ->anim_step[slot], 0);
     WR8(OBJ->anim_timer[slot], 0);
-    r.second = INC8(OBJ->f2800[slot]);
+    r.second = INC8(OBJ->substate[slot]);
     r.arm = GROUND_LANDED;
     return r;
 }

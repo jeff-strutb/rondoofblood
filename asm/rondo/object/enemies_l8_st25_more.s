@@ -18,14 +18,14 @@ StageTileReadVector9991:
 ; WAITS: no.
 ; Entry: X object, Y kept unless a step sets it. Exit: as the last instruction that ran.
 DroppingPieceStep:
-    lda a:OBJ_27A8,x
+    lda a:OBJ_STATE,x
     bne DroppingPieceStep_at0
     jsr VecLoadObjectRecord
     ldy a:OBJ_3040,x
     lda a:SoundVoicesFirst+5,y
     sta a:OBJ_34B8,x
     lda a:$B91D,y
-    sta a:OBJ_2AC0,x
+    sta a:OBJ_FACING_LEFT,x
     lda a:$B921,y
     sta a:OBJ_VX_HI,x
     jsr VecApplyVelocityX
@@ -91,7 +91,7 @@ DroppingPieceStep_at3:
     stz a:OBJ_3250,x
     lda #$10
     sta a:OBJ_2B18,x
-    inc a:OBJ_27A8,x
+    inc a:OBJ_STATE,x
 DroppingPieceStep_at2:
     rts
 

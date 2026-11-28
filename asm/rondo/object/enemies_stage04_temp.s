@@ -192,20 +192,20 @@ CountdownThenState4:
     bne CountdownThenState4_at1
 CountdownThenState4_at0:
     lda #$04
-    sta a:OBJ_27A8,x
+    sta a:OBJ_STATE,x
 CountdownThenState4_at1:
     rts
 
 ; @routine 07DB:785 ChangeToType9B
 ; @run 70:B785
 ; WHAT IT DOES: Turns the object into one of type $9B, in state 0.
-; HOW: Stores $9B in its type byte (OBJ_2750) and zero in its state.
+; HOW: Stores $9B in its type byte (OBJ_KIND) and zero in its state.
 ; WAITS: no.
 ; Entry: X object. Exit: A $9B, N set, Z clear; X, Y and C kept.
 ChangeToType9B:
     lda #$9B
-    sta a:OBJ_2750,x
-    stz a:OBJ_27A8,x
+    sta a:OBJ_KIND,x
+    stz a:OBJ_STATE,x
     rts
 
 ; @routine 07DB:7B1 EnterState6IfFlagged
@@ -219,7 +219,7 @@ EnterState6IfFlagged:
     and #$80
     beq EnterState6IfFlagged_at0
     lda #$06
-    sta a:OBJ_27A8,x
+    sta a:OBJ_STATE,x
 EnterState6IfFlagged_at0:
     rts
 
@@ -233,10 +233,10 @@ EnterState6IfFlagged_at0:
 CountdownStopThenState4:
     dec a:OBJ_34B8,x
     bne CountdownStopThenState4_at0
-    stz a:OBJ_3408,x
-    stz a:OBJ_3460,x
+    stz a:OBJ_ANIM_STEP,x
+    stz a:OBJ_ANIM_TIMER,x
     lda #$04
-    sta a:OBJ_27A8,x
+    sta a:OBJ_STATE,x
 CountdownStopThenState4_at0:
     rts
 
@@ -253,7 +253,7 @@ CountdownStopThenState4_at0:
 ; liftcmp judges only the type check; the rest waits for coverage (PROCEDURE section 6).
 RightOfObject4DWithin:
     sta z:zTemp00
-    lda a:OBJ_2750+$4D
+    lda a:OBJ_KIND+$4D
     cmp #$AC
     bne RightOfObject4DWithin_at0
     lda a:OBJ_X_LO,x
@@ -310,12 +310,12 @@ LoadRecordTimer50:
 ; when the frame changed; A 0 and C 0 when the list ended; A $FF and C 0 when held; Y changed
 ; only in the first two cases); V and X kept. Clobbers zTemp00, zTemp10-11.
 StepFramesFacingPlayer:
-    lda a:OBJ_27A8,x
+    lda a:OBJ_STATE,x
     cmp #$02
     bcc StepFramesFacingPlayer_at1
     jsr VecSideOfPlayer
     and #$01
-    sta a:OBJ_2AC0,x
+    sta a:OBJ_FACING_LEFT,x
 StepFramesFacingPlayer_at1:
     lda a:$B409,y
     sta z:zTemp10
@@ -334,11 +334,11 @@ StepFramesFacingPlayer_at0:
 ; Entry: X object. Exit: N, Z from the timer or A 2 at zero; C and Y as the animation step left
 ; them (Y 2 if it did not change it).
 WaitThenState2:
-    lda a:OBJ_2800,x
+    lda a:OBJ_SUBSTATE,x
     bne WaitThenState2_at1
     lda #$1C
     sta a:OBJ_34B8,x
-    inc a:OBJ_2800,x
+    inc a:OBJ_SUBSTATE,x
     rts
 WaitThenState2_at1:
     ldy #$02
@@ -347,7 +347,7 @@ WaitThenState2_at1:
     bne WaitThenState2_at2
     lda #$02
 WaitThenState2_at0:
-    sta a:OBJ_27A8,x
+    sta a:OBJ_STATE,x
 WaitThenState2_at2:
     rts
 
@@ -363,8 +363,8 @@ BecomeType9CWhenAnimationEnds:
     jsr StepFramesFacingPlayer
     bne BecomeType9CWhenAnimationEnds_at0
     lda #$9C
-    sta a:OBJ_2750,x
-    stz a:OBJ_27A8,x
+    sta a:OBJ_KIND,x
+    stz a:OBJ_STATE,x
 BecomeType9CWhenAnimationEnds_at0:
     rts
 
@@ -398,7 +398,7 @@ WalkWhileFrameChanges_at0:
 StepFramesFacingPlayerAlways:
     jsr VecSideOfPlayer
     and #$01
-    sta a:OBJ_2AC0,x
+    sta a:OBJ_FACING_LEFT,x
 StepFramesFacingPlayerAlways_at0:
     lda a:$B82C,y
     sta z:zTemp10
@@ -460,10 +460,10 @@ LoadRecordFacingAndRandomFrame:
     jsr VecLoadObjectRecord
     lda a:OBJ_3040,x
     and #$01
-    sta a:OBJ_2AC0,x
+    sta a:OBJ_FACING_LEFT,x
     jsr VecNextRandom
     and #$0F
-    sta a:OBJ_3408,x
+    sta a:OBJ_ANIM_STEP,x
     rts
 
 ; @routine 07DB:4E7 PickSpeedAndTurnFromTableB
@@ -519,7 +519,7 @@ OrbitStepBack:
     bne OrbitStepBack_at0
     lda #$40
     sta a:OBJ_3568,x
-    inc a:OBJ_27A8,x
+    inc a:OBJ_STATE,x
 OrbitStepBack_at0:
     rts
 
@@ -545,7 +545,7 @@ OrbitStepForward:
     bne OrbitStepForward_at0
     lda #$40
     sta a:OBJ_3568,x
-    dec a:OBJ_27A8,x
+    dec a:OBJ_STATE,x
 OrbitStepForward_at0:
     rts
 
@@ -583,7 +583,7 @@ AnimateThenFireOrWait:
     jsr StepFramesFacingPlayerAlways
     beq AnimateThenFireOrWait_at0
     bcc AnimateThenFireOrWait_at1
-    lda a:OBJ_2A68,x
+    lda a:OBJ_FRAME,x
     cmp #$32
     bne AnimateThenFireOrWait_at1
     jsr VecFindFreeSlotFrom30
@@ -592,10 +592,10 @@ AnimateThenFireOrWait:
     jsr VecStartObjectAtPlace
     rts
 AnimateThenFireOrWait_at0:
-    stz a:OBJ_3408,x
-    stz a:OBJ_3460,x
+    stz a:OBJ_ANIM_STEP,x
+    stz a:OBJ_ANIM_TIMER,x
     lda #$03
-    sta a:OBJ_27A8,x
+    sta a:OBJ_STATE,x
     inc a:OBJ_3568,x
     lda a:OBJ_3568,x
     and #$03
@@ -623,8 +623,8 @@ BurstIntoSixPieces_at1:
     bcc BurstIntoSixPieces_at0
     lda #$24
     jsr VecStartObjectAtPlace
-    lda a:OBJ_2AC0,x
-    sta a:OBJ_2AC0,y
+    lda a:OBJ_FACING_LEFT,x
+    sta a:OBJ_FACING_LEFT,y
     stx z:zRichterObject
     lda z:zHitSlot
     asl a
@@ -661,7 +661,7 @@ BurstIntoSixPieces_at0:
 ; Entry: X object, D clear. Exit: A 6 and N, Z clear when it burst, C and V as the piece spawn left
 ; them; otherwise A, N, Z, C from the failing test; X kept; Y as the spawn left it.
 BurstWhenFlaggedHit:
-    lda a:OBJ_27A8,x
+    lda a:OBJ_STATE,x
     cmp #$06
     beq BurstWhenFlaggedHit_at0
     lda a:OBJ_31A0,x
@@ -671,10 +671,10 @@ BurstWhenFlaggedHit:
     jsr VecSoundIfOnFirstScreen
     jsr SpawnSixPiecesA
     stz a:OBJ_3250,x
-    stz a:OBJ_3408,x
-    stz a:OBJ_3460,x
+    stz a:OBJ_ANIM_STEP,x
+    stz a:OBJ_ANIM_TIMER,x
     lda #$06
-    sta a:OBJ_27A8,x
+    sta a:OBJ_STATE,x
 BurstWhenFlaggedHit_at0:
     rts
 
@@ -697,12 +697,12 @@ ChargeWhenPlayerNear:
     jsr VecDistanceXToPlayer
     cmp #$68
     bcs ChargeWhenPlayerNear_at0
-    stz a:OBJ_3408,x
-    stz a:OBJ_3460,x
+    stz a:OBJ_ANIM_STEP,x
+    stz a:OBJ_ANIM_TIMER,x
     lda a:OBJ_FLAGS_2F38,x
     and #$80
     sta a:OBJ_FLAGS_2F38,x
-    ldy a:OBJ_2AC0,x
+    ldy a:OBJ_FACING_LEFT,x
     lda a:$B3E7,y
     sta a:OBJ_VX_HI,x
     lda a:OBJ_3040,x
@@ -719,9 +719,9 @@ ChargeWhenPlayerNear:
     adc #$48
     sta a:OBJ_36C8,x
     lda #$04
-    sta a:OBJ_27A8,x
+    sta a:OBJ_STATE,x
     lda #$02
-    sta a:OBJ_2800,x
+    sta a:OBJ_SUBSTATE,x
 ChargeWhenPlayerNear_at0:
     rts
 
@@ -736,24 +736,24 @@ ChargeWhenPlayerNear_at0:
 ; from PlayerDistanceSum on the last path; Y the table index there. The second branch ran in no
 ; script: the draft stops there, so liftcmp does not judge it.
 PickStateByPlayerDistance:
-    stz a:OBJ_2800,x
+    stz a:OBJ_SUBSTATE,x
     lda a:OBJ_X_HI,x
     beq PickStateByPlayerDistance_at0
     lda #$03
-    sta a:OBJ_27A8,x
+    sta a:OBJ_STATE,x
     rts
 PickStateByPlayerDistance_at0:
     lda a:OBJ_Y_HI,x
     beq PickStateByPlayerDistance_at1
     lda #$04
-    sta a:OBJ_27A8,x
+    sta a:OBJ_STATE,x
     rts
 PickStateByPlayerDistance_at1:
     jsr VecPlayerDistanceSum
     and #$0F
     tay
     lda a:$B494,y
-    sta a:OBJ_27A8,x
+    sta a:OBJ_STATE,x
     rts
 
 ; @routine 07DB:568 AnimateMoveThenSetUpNextStep
@@ -781,9 +781,9 @@ AnimateMoveThenSetUpNextStep:
     clc
     adc #$58
     sta a:OBJ_36C8,x
-    stz a:OBJ_3408,x
-    stz a:OBJ_3460,x
-    inc a:OBJ_2800,x
+    stz a:OBJ_ANIM_STEP,x
+    stz a:OBJ_ANIM_TIMER,x
+    inc a:OBJ_SUBSTATE,x
 AnimateMoveThenSetUpNextStep_at0:
     rts
 
@@ -816,7 +816,7 @@ SoundEveryFourthFrameB_at0:
 ; Entry: X object, D clear. Exit: first step: A the timer, N, Z from the new step, C and V from
 ; NextRandom, Y its index; later as TurnOnRandomBeatWalkFollowA.
 TurnOnRandomBeatWalkA:
-    lda a:OBJ_2800,x
+    lda a:OBJ_SUBSTATE,x
     bne TurnOnRandomBeatWalkFollowA
     jsr VecSideOfPlayer
     and #$01
@@ -831,10 +831,10 @@ TurnOnRandomBeatWalkA:
     tay
     lda a:$B6B0,y
     sta a:OBJ_34B8,x
-    stz a:OBJ_3408,x
-    stz a:OBJ_3460,x
+    stz a:OBJ_ANIM_STEP,x
+    stz a:OBJ_ANIM_TIMER,x
     inc a:OBJ_3510,x
-    inc a:OBJ_2800,x
+    inc a:OBJ_SUBSTATE,x
     rts
 
 ; @routine 07DB:6B8 TurnOnRandomBeatWalkFollowA
@@ -853,8 +853,8 @@ TurnOnRandomBeatWalkFollowA:
     jmp VecApplyVelocityX
 TurnOnRandomBeatWalkFollowA_done:
     lda #$05
-    sta a:OBJ_27A8,x
-    stz a:OBJ_2800,x
+    sta a:OBJ_STATE,x
+    stz a:OBJ_SUBSTATE,x
     rts
 
 ; @routine 07DC:250 FallAnimatedThenBecomeKind9B
@@ -871,7 +871,7 @@ TurnOnRandomBeatWalkFollowA_done:
 ; reversal's add when it ran; counting out: A, N, Z from the decrement (A 0); moving: A, N, Z, C
 ; and V from ApplyVelocity, Y from the frame step.
 FallAnimatedThenBecomeKind9B:
-    lda a:OBJ_27A8,x
+    lda a:OBJ_STATE,x
     bne FallAnimatedThenBecomeKind9B_at0
     jsr VecLoadObjectRecord
     jsr VecSideOfPlayer
@@ -884,8 +884,8 @@ FallAnimatedThenBecomeKind9B_at0:
     dec a:OBJ_3510,x
     bne FallAnimatedThenBecomeKind9B_at2
     lda #$9B
-    sta a:OBJ_2750,x
-    stz a:OBJ_27A8,x
+    sta a:OBJ_KIND,x
+    stz a:OBJ_STATE,x
     rts
 FallAnimatedThenBecomeKind9B_at2:
     lda a:OBJ_34B8,x
@@ -911,7 +911,7 @@ FallAnimatedThenBecomeKind9B_at2:
 ; Entry: X object, Y kept to the frame step, D clear. Exit: state 0: A the Y speed's low byte or the reversal's, N, Z
 ; from it, C from the table shift, V from the distance, Y the table index; later as StepLobArc.
 StartLobTowardPlayer:
-    lda a:OBJ_27A8,x
+    lda a:OBJ_STATE,x
     bne StepLobArc
     jsr VecLoadObjectRecord
     lda #$F0

@@ -30,14 +30,14 @@ static uint8_t countdown_then_advance(uint8_t slot, uint16_t timer, uint16_t adv
  * @routine 051B:526 CountdownNextStepA
  * @run 70:B526
  * WHAT IT DOES: Waits out the object's timer (OBJ_34B8) and then moves it on: once the timer has
- * run down, the object's step byte (OBJ_2800) goes up by one.
- * HOW: Counts the timer down; if it is not zero it stops, otherwise it adds one to OBJ_2800.
+ * run down, the object's step byte (OBJ_SUBSTATE) goes up by one.
+ * HOW: Counts the timer down; if it is not zero it stops, otherwise it adds one to OBJ_SUBSTATE.
  * WAITS: no.
  * Entry: X object. Exit: N and Z from the last byte written; A, X, Y, C and V kept.
  */
 uint8_t CountdownNextStepA(uint8_t slot)
 {
-    return countdown_then_advance(slot, COL(OBJ->f34b8), COL(OBJ->f2800));
+    return countdown_then_advance(slot, COL(OBJ->f34b8), COL(OBJ->substate));
 }
 
 void abi_CountdownNextStepA(void)
@@ -50,7 +50,7 @@ void abi_CountdownNextStepA(void)
  * @run 70:B209
  * WHAT IT DOES: Waits out the object's timer (OBJ_3510) and then moves it on: once the timer has
  * run down, the object's state byte (the index into its handler table) goes up by one.
- * HOW: Counts the timer down; if it is not zero it stops, otherwise it adds one to OBJ_27A8.
+ * HOW: Counts the timer down; if it is not zero it stops, otherwise it adds one to OBJ_STATE.
  * WAITS: no.
  * Entry: X object. Exit: N and Z from the last byte written; A, X, Y, C and V kept.
  */
@@ -69,7 +69,7 @@ void abi_CountdownNextStateA(void)
  * @run 70:B732
  * WHAT IT DOES: Waits out the object's timer (OBJ_34B8) and then moves it on: once the timer has
  * run down, the object's state byte (the index into its handler table) goes up by one.
- * HOW: Counts the timer down; if it is not zero it stops, otherwise it adds one to OBJ_27A8.
+ * HOW: Counts the timer down; if it is not zero it stops, otherwise it adds one to OBJ_STATE.
  * WAITS: no.
  * Entry: X object. Exit: N and Z from the last byte written; A, X, Y, C and V kept.
  */
@@ -87,14 +87,14 @@ void abi_CountdownNextStateB(void)
  * @routine 093D:45E CountdownNextStepB
  * @run 71:C45E
  * WHAT IT DOES: Waits out the object's timer (OBJ_35C0) and then moves it on: once the timer has
- * run down, the object's step byte (OBJ_2800) goes up by one.
- * HOW: Counts the timer down; if it is not zero it stops, otherwise it adds one to OBJ_2800.
+ * run down, the object's step byte (OBJ_SUBSTATE) goes up by one.
+ * HOW: Counts the timer down; if it is not zero it stops, otherwise it adds one to OBJ_SUBSTATE.
  * WAITS: no.
  * Entry: X object. Exit: N and Z from the last byte written; A, X, Y, C and V kept.
  */
 uint8_t CountdownNextStepB(uint8_t slot)
 {
-    return countdown_then_advance(slot, COL(OBJ->f35c0), COL(OBJ->f2800));
+    return countdown_then_advance(slot, COL(OBJ->f35c0), COL(OBJ->substate));
 }
 
 void abi_CountdownNextStepB(void)
@@ -107,7 +107,7 @@ void abi_CountdownNextStepB(void)
  * @run 70:B811
  * WHAT IT DOES: Waits out the object's timer (OBJ_34B8) and then moves it on: once the timer has
  * run down, the object's state byte (the index into its handler table) goes up by one.
- * HOW: Counts the timer down; if it is not zero it stops, otherwise it adds one to OBJ_27A8.
+ * HOW: Counts the timer down; if it is not zero it stops, otherwise it adds one to OBJ_STATE.
  * WAITS: no.
  * Entry: X object. Exit: N and Z from the last byte written; A, X, Y, C and V kept.
  */
@@ -126,7 +126,7 @@ void abi_CountdownNextStateC(void)
  * @run 70:BEFA
  * WHAT IT DOES: Waits out the object's timer (OBJ_35C0) and then moves it on: once the timer has
  * run down, the object's state byte (the index into its handler table) goes up by one.
- * HOW: Counts the timer down; if it is not zero it stops, otherwise it adds one to OBJ_27A8.
+ * HOW: Counts the timer down; if it is not zero it stops, otherwise it adds one to OBJ_STATE.
  * WAITS: no.
  * Entry: X object. Exit: N and Z from the last byte written; A, X, Y, C and V kept.
  */
@@ -145,7 +145,7 @@ void abi_CountdownNextStateD(void)
  * @run 70:B901
  * WHAT IT DOES: Waits out the object's timer (OBJ_34B8) and then moves it on: once the timer has
  * run down, the object's state byte (the index into its handler table) goes up by one.
- * HOW: Counts the timer down; if it is not zero it stops, otherwise it adds one to OBJ_27A8.
+ * HOW: Counts the timer down; if it is not zero it stops, otherwise it adds one to OBJ_STATE.
  * WAITS: no.
  * Entry: X object. Exit: N and Z from the last byte written; A, X, Y, C and V kept.
  */
@@ -163,14 +163,14 @@ void abi_CountdownNextStateE(void)
  * @routine 117D:020 CountdownNextStepC
  * @run 71:C020
  * WHAT IT DOES: Waits out the object's timer (OBJ_35C0) and then moves it on: once the timer has
- * run down, the object's step byte (OBJ_2800) goes up by one.
- * HOW: Counts the timer down; if it is not zero it stops, otherwise it adds one to OBJ_2800.
+ * run down, the object's step byte (OBJ_SUBSTATE) goes up by one.
+ * HOW: Counts the timer down; if it is not zero it stops, otherwise it adds one to OBJ_SUBSTATE.
  * WAITS: no.
  * Entry: X object. Exit: N and Z from the last byte written; A, X, Y, C and V kept.
  */
 uint8_t CountdownNextStepC(uint8_t slot)
 {
-    return countdown_then_advance(slot, COL(OBJ->f35c0), COL(OBJ->f2800));
+    return countdown_then_advance(slot, COL(OBJ->f35c0), COL(OBJ->substate));
 }
 
 void abi_CountdownNextStepC(void)

@@ -130,7 +130,7 @@ void abi_FaceThePlayerByStateTableB(void)
 /*
  * @routine 0EB9:2C5 MaybeDropItemByPlayerDistance
  * @run 70:A2C5
- * WHAT IT DOES: An object with 5 or more hits whose OBJ_31F8 bits 2 to 4 are not 0 draws a random number against the table at $AC70 by those bits; when the number is below it, it picks an item from the table at $AC78 by the player's distance and starts it in a free slot of $30 to $3F at its place.
+ * WHAT IT DOES: An object with 5 or more hits whose OBJ_HIT_REACTION bits 2 to 4 are not 0 draws a random number against the table at $AC70 by those bits; when the number is below it, it picks an item from the table at $AC78 by the player's distance and starts it in a free slot of $30 to $3F at its place.
  * HOW: NextRandom, PlayerDistanceSum, a table read, FindFreeSlotFrom30, StartObjectAtPlace.
  * WAITS: no.
  * Entry: X object. Exit: as the last instruction that ran (l8_drop_item_exit_shim). The drop arm ran in no script; the draft stops there.
@@ -145,7 +145,7 @@ DropArm MaybeDropItemByPlayerDistance(uint8_t slot)
         r.arm = DROP_FEW_HITS;
         return r;
     }
-    raw = RD8(OBJ->f31f8[slot]);
+    raw = RD8(OBJ->hit_reaction[slot]);
     r.bits = (uint8_t)((raw >> 2) & 0x07);
     r.bit1 = ((raw >> 1) & 0x01) != 0;
     if (r.bits == 0) {
@@ -223,7 +223,7 @@ void abi_MaybeDropItemByPlayerDistance(void)
 /*
  * @routine 0EBE:66D HitBoxByFrameTableCE8F
  * @run 71:CE6D
- * WHAT IT DOES: Takes the hit box (OBJ_3930, OBJ_39E0, OBJ_3988, OBJ_3A38) from a four byte row of the table at $CE8F picked by the frame less $45.
+ * WHAT IT DOES: Takes the hit box (OBJ_HITBOX_DX, OBJ_HITBOX_DY, OBJ_HITBOX_HALF_W, OBJ_HITBOX_HALF_H) from a four byte row of the table at $CE8F picked by the frame less $45.
  * HOW: A subtract, two shifts, four table reads, stores.
  * WAITS: no.
  * Entry: X object. Exit: A the last byte, Y the row, C from the shift (l8_hit_box_ce8f_exit_shim). The body returns the subtract (sum), the row (first)
@@ -315,7 +315,7 @@ void abi_StepListFacePlayerUntilNear(void)
 /*
  * @routine 0EBE:6F6 FacePlayerThenPickPhase
  * @run 71:CEF6
- * WHAT IT DOES: Takes the facing of the player's side and sets OBJ_2800 from the table at $CF0E by the low four bits of OBJ_34B8, which then counts up.
+ * WHAT IT DOES: Takes the facing of the player's side and sets OBJ_SUBSTATE from the table at $CF0E by the low four bits of OBJ_34B8, which then counts up.
  * HOW: SideOfPlayer, a table read, stores, an INC.
  * WAITS: no.
  * Entry: X object. Exit: A the table byte, Y the index, N and Z from the new OBJ_34B8 (l8_pick_phase_exit_shim).
@@ -331,7 +331,7 @@ PhaseArm FacePlayerThenPickPhase(uint8_t slot)
     WR8(OBJ->facing_left[slot], r.facing);
     r.index = (uint8_t)(RD8(OBJ->f34b8[slot]) & 0x0F);
     r.value = rd8((uint16_t)(0xCF0E + r.index));
-    WR8(OBJ->f2800[slot], r.value);
+    WR8(OBJ->substate[slot], r.value);
     r.counted = INC8(OBJ->f34b8[slot]);
     return r;
 }
@@ -354,7 +354,7 @@ void abi_FacePlayerThenPickPhase(void)
 /*
  * @routine 0EBE:71E LeapByPlayerDistance
  * @run 71:CF1E
- * WHAT IT DOES: When the player is $40 or more away in X clears OBJ_3568 and gives the object the speed X -$01C0, Y -$00C0; when nearer plays sound $C6, sets OBJ_3568 1 and the speed X -$00E0, Y -$0400. Goes to the next OBJ_2800 and, facing left, reverses the X speed.
+ * WHAT IT DOES: When the player is $40 or more away in X clears OBJ_3568 and gives the object the speed X -$01C0, Y -$00C0; when nearer plays sound $C6, sets OBJ_3568 1 and the speed X -$00E0, Y -$0400. Goes to the next OBJ_SUBSTATE and, facing left, reverses the X speed.
  * HOW: DistanceXToPlayer, SoundCommand, stores, an INC, NegateVelocityX.
  * WAITS: no.
  * Entry: X object, Y kept for the sound. Exit: as the last instruction that ran (l8_leap_by_distance_exit_shim). The near arm and the reverse ran in no
@@ -385,7 +385,7 @@ LeapArm LeapByPlayerDistance(uint8_t slot, uint8_t y_entry)
         WR8(OBJ->vy_lo[slot], 0x00);
         r.arm = LEAP_NEAR;
     }
-    r.counted = INC8(OBJ->f2800[slot]);
+    r.counted = INC8(OBJ->substate[slot]);
     r.facing = RD8(OBJ->facing_left[slot]);
     if (r.facing != 0) {
         jsr_push(0xCF67);
@@ -428,7 +428,7 @@ void abi_LeapByPlayerDistance(void)
 /*
  * @routine 0EBE:7B9 CountDownThenClearPhase
  * @run 71:CFB9
- * WHAT IT DOES: Counts OBJ_3510 down; at zero clears OBJ_2800.
+ * WHAT IT DOES: Counts OBJ_3510 down; at zero clears OBJ_SUBSTATE.
  * HOW: A memory decrement and a store.
  * WAITS: no.
  * Entry: X object. Exit: the decrement's N and Z (the body returns the count). The store ran in no script; the draft stops there.
@@ -438,7 +438,7 @@ uint8_t CountDownThenClearPhase(uint8_t slot)
     uint8_t timer = DEC8(OBJ->f3510[slot]);
 
     if (timer == 0) {
-        WR8(OBJ->f2800[slot], 0);
+        WR8(OBJ->substate[slot], 0);
     }
     return timer;
 }

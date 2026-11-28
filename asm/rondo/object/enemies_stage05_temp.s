@@ -264,18 +264,18 @@ SelectRasterStage1:
 SetHitboxDxFromFrame:
     lda #$02
     sta a:OBJ_3250,x
-    lda a:OBJ_2A68,x
+    lda a:OBJ_FRAME,x
     cmp #$07
     bcs SetHitboxDxFromFrame_at0
     sec
     sbc #$01
     tay
     lda a:$B928,y
-    sta a:OBJ_3930,x
+    sta a:OBJ_HITBOX_DX,x
     rts
 SetHitboxDxFromFrame_at0:
     stz a:OBJ_3250,x
-    stz a:OBJ_3930,x
+    stz a:OBJ_HITBOX_DX,x
     rts
 
 ; @routine 093C:374 PhaseTimerToState1
@@ -289,20 +289,20 @@ SetHitboxDxFromFrame_at0:
 PhaseTimerToState1:
     dec a:OBJ_3720,x
     beq PhaseTimerToState1_at0
-    stz a:OBJ_3408,x
-    stz a:OBJ_3460,x
+    stz a:OBJ_ANIM_STEP,x
+    stz a:OBJ_ANIM_TIMER,x
     lda #$01
-    sta a:OBJ_2800,x
+    sta a:OBJ_SUBSTATE,x
     rts
 PhaseTimerToState1_at0:
     lda #$01
-    sta a:OBJ_27A8,x
+    sta a:OBJ_STATE,x
     lda #$01
-    sta a:OBJ_2A68,x
+    sta a:OBJ_FRAME,x
     lda a:OBJ_36C8,x
     beq PhaseTimerToState1_at1
     lda #$04
-    sta a:OBJ_2A68,x
+    sta a:OBJ_FRAME,x
 PhaseTimerToState1_at1:
     rts
 
@@ -315,20 +315,20 @@ PhaseTimerToState1_at1:
 ; Entry: X object. Exit: A the last byte loaded; N, Z from it; C bit 6 of the frame minus $13
 ; (the last shift); Y the row's offset; X kept.
 SetHitboxFromFrameRows:
-    lda a:OBJ_2A68,x
+    lda a:OBJ_FRAME,x
     sec
     sbc #$13
     asl a
     asl a
     tay
     lda a:$BDA8,y
-    sta a:OBJ_3930,x
+    sta a:OBJ_HITBOX_DX,x
     lda a:$BDA9,y
-    sta a:OBJ_39E0,x
+    sta a:OBJ_HITBOX_DY,x
     lda a:$BDAA,y
-    sta a:OBJ_3988,x
+    sta a:OBJ_HITBOX_HALF_W,x
     lda a:$BDAB,y
-    sta a:OBJ_3A38,x
+    sta a:OBJ_HITBOX_HALF_H,x
     rts
 
 ; @routine 093D:2B7 EnterState7OnFlagOrYSignChange
@@ -356,7 +356,7 @@ EnterState7OnFlagOrYSignChange_at2:
     bmi EnterState7OnFlagOrYSignChange_at1
 EnterState7OnFlagOrYSignChange_at0:
     lda #$07
-    sta a:OBJ_27A8,x
+    sta a:OBJ_STATE,x
 EnterState7OnFlagOrYSignChange_at1:
     rts
 
@@ -369,7 +369,7 @@ EnterState7OnFlagOrYSignChange_at1:
 ; Entry: X object. Exit: A the last byte loaded; N, Z from it; C bit 6 of the row number; Y the
 ; row's offset; X kept.
 SetHitboxFromFrameRowsIndirect:
-    lda a:OBJ_2A68,x
+    lda a:OBJ_FRAME,x
     sec
     sbc #$27
     tay
@@ -378,13 +378,13 @@ SetHitboxFromFrameRowsIndirect:
     asl a
     tay
     lda a:$C6FF,y
-    sta a:OBJ_3930,x
+    sta a:OBJ_HITBOX_DX,x
     lda a:$C700,y
-    sta a:OBJ_39E0,x
+    sta a:OBJ_HITBOX_DY,x
     lda a:$C701,y
-    sta a:OBJ_3988,x
+    sta a:OBJ_HITBOX_HALF_W,x
     lda a:$C702,y
-    sta a:OBJ_3A38,x
+    sta a:OBJ_HITBOX_HALF_H,x
     rts
 
 ; @routine 093D:43A LaunchHopByF3510
@@ -404,10 +404,10 @@ LaunchHopByF3510:
     stz a:OBJ_VX_LO,x
     stz a:OBJ_VY_LO,x
     lda #$36
-    sta a:OBJ_2A68,x
+    sta a:OBJ_FRAME,x
     lda #$08
     sta a:OBJ_35C0,x
-    inc a:OBJ_2800,x
+    inc a:OBJ_SUBSTATE,x
     rts
 
 ; @routine 093D:5C3 CountdownStopThenState3
@@ -420,10 +420,10 @@ LaunchHopByF3510:
 CountdownStopThenState3:
     dec a:OBJ_35C0,x
     bne CountdownStopThenState3_at0
-    stz a:OBJ_3408,x
-    stz a:OBJ_3460,x
+    stz a:OBJ_ANIM_STEP,x
+    stz a:OBJ_ANIM_TIMER,x
     lda #$03
-    sta a:OBJ_27A8,x
+    sta a:OBJ_STATE,x
 CountdownStopThenState3_at0:
     rts
 
@@ -436,11 +436,11 @@ CountdownStopThenState3_at0:
 ; Entry: X object. Exit: A the state, or $1A after the start; N, Z from it; C and Y from the
 ; record load when it ran; X and V kept.
 StartWithFrame1A:
-    lda a:OBJ_27A8,x
+    lda a:OBJ_STATE,x
     bne StartWithFrame1A_at0
     jsr VecLoadObjectRecord
     lda #$1A
-    sta a:OBJ_2A68,x
+    sta a:OBJ_FRAME,x
 StartWithFrame1A_at0:
     rts
 
@@ -495,7 +495,7 @@ AnimateThenState1:
     bne AnimateThenState1_at0
     inc a:OBJ_3618,x
     lda #$01
-    sta a:OBJ_27A8,x
+    sta a:OBJ_STATE,x
 AnimateThenState1_at0:
     rts
 
@@ -521,7 +521,7 @@ AnimateThenNextStep:
     sta z:zTemp11
     jsr VecStepObjectFrames
     bne AnimateThenNextStep_at0
-    inc a:OBJ_2800,x
+    inc a:OBJ_SUBSTATE,x
 AnimateThenNextStep_at0:
     rts
 
@@ -537,7 +537,7 @@ FollowParentYAndLeave:
     ldy a:OBJ_3568,x
     lda a:OBJ_Y_LO,y
     sta a:OBJ_Y_LO,x
-    lda a:OBJ_27A8,y
+    lda a:OBJ_STATE,y
     cmp #$04
     bne FollowParentYAndLeave_at0
     jmp VecClearObject
@@ -559,9 +559,9 @@ AnimateThenNextStepB:
     sta z:zTemp10
     jsr VecStepObjectFrames
     bne AnimateThenNextStepB_at0
-    stz a:OBJ_3408,x
-    stz a:OBJ_3460,x
-    inc a:OBJ_2800,x
+    stz a:OBJ_ANIM_STEP,x
+    stz a:OBJ_ANIM_TIMER,x
+    inc a:OBJ_SUBSTATE,x
 AnimateThenNextStepB_at0:
     rts
 
@@ -577,8 +577,8 @@ CountdownThenFallOrBecomeType9B:
     dec a:OBJ_3510,x
     bne CountdownThenFallOrBecomeType9B_at0
     lda #$9B
-    sta a:OBJ_2750,x
-    stz a:OBJ_27A8,x
+    sta a:OBJ_KIND,x
+    stz a:OBJ_STATE,x
     rts
 CountdownThenFallOrBecomeType9B_at0:
     jsr VecApplyGravityUnlimited
@@ -665,7 +665,7 @@ AnimateMoveAndSag_at0:
 StepFramesFacingPlayerC:
     jsr VecSideOfPlayer
     and #$01
-    sta a:OBJ_2AC0,x
+    sta a:OBJ_FACING_LEFT,x
     lda a:$BEFE,y
     sta z:zTemp10
     lda a:$BEFF,y
@@ -681,12 +681,12 @@ StepFramesFacingPlayerC:
 ; Entry: X object, D clear. Exit: A the table byte or the side bit; N, Z from it; C from
 ; SideOfPlayer's last compare when it ran; Y the state; X kept. Clobbers zTemp00.
 FaceThePlayerInSomeStates:
-    ldy a:OBJ_27A8,x
+    ldy a:OBJ_STATE,x
     lda a:$C293,y
     beq FaceThePlayerInSomeStates_at0
     jsr VecSideOfPlayer
     and #$01
-    sta a:OBJ_2AC0,x
+    sta a:OBJ_FACING_LEFT,x
 FaceThePlayerInSomeStates_at0:
     rts
 
@@ -713,7 +713,7 @@ NextPhaseAtRandom:
     and #$01
     clc
     adc #$01
-    sta a:OBJ_2800,x
+    sta a:OBJ_SUBSTATE,x
     rts
 
 ; @routine 093B:4C3 ShowOnScreenAndWrapX
@@ -728,12 +728,12 @@ NextPhaseAtRandom:
 ; Entry: X object, D clear. Exit: as LoadObjectRecord in state 0; otherwise A, N, Z, C and V
 ; from the last compare, load or add; X, Y kept. Clobbers zTemp00 (in states but 0).
 ShowOnScreenAndWrapX:
-    lda a:OBJ_27A8,x
+    lda a:OBJ_STATE,x
     bne ShowOnScreenAndWrapX_at0
     jmp VecLoadObjectRecord
 ShowOnScreenAndWrapX_at0:
     lda #$02
-    sta a:OBJ_2A68,x
+    sta a:OBJ_FRAME,x
     lda a:OBJ_X_LO,x
     clc
     adc a:ScrollXLo
@@ -744,7 +744,7 @@ ShowOnScreenAndWrapX_at0:
     bcc ShowOnScreenAndWrapX_at1
     lda z:zTemp00
     bpl ShowOnScreenAndWrapX_at1
-    stz a:OBJ_2A68,x
+    stz a:OBJ_FRAME,x
 ShowOnScreenAndWrapX_at1:
     lda a:ScrollSpeedX
     beq ShowOnScreenAndWrapX_at2
@@ -787,7 +787,7 @@ ShowOnScreenAndWrapX_at3:
 ; value (when picking); C and V from the second add; Y the last table index; X kept. Clobbers
 ; zTemp00, zTemp08.
 ChooseNextMoveWhenFacingAway:
-    lda a:OBJ_2AC0,x
+    lda a:OBJ_FACING_LEFT,x
     eor a:OBJ_3618,x
     and #$01
     sta z:zTemp08
@@ -796,7 +796,7 @@ ChooseNextMoveWhenFacingAway:
     cmp z:zTemp08
     beq ChooseNextMoveWhenFacingAway_at0
     lda #$01
-    sta a:OBJ_27A8,x
+    sta a:OBJ_STATE,x
     rts
 ChooseNextMoveWhenFacingAway_at0:
     jsr VecNextRandom
@@ -819,7 +819,7 @@ ChooseNextMoveWhenFacingAway_at0:
     tay
     lda a:$BAF1,y
     sta a:OBJ_36C8,x
-    inc a:OBJ_2800,x
+    inc a:OBJ_SUBSTATE,x
     rts
 
 ; @routine 093C:6AB StartChargeWhenPlayerNear
@@ -842,8 +842,8 @@ StartChargeWhenPlayerNear:
     jsr VecDistanceXToPlayer
     cmp #$78
     bcs StartChargeWhenPlayerNear_at0
-    stz a:OBJ_3408,x
-    stz a:OBJ_3460,x
+    stz a:OBJ_ANIM_STEP,x
+    stz a:OBJ_ANIM_TIMER,x
     lda a:OBJ_FLAGS_2F38,x
     and #$80
     sta a:OBJ_FLAGS_2F38,x
@@ -855,9 +855,9 @@ StartChargeWhenPlayerNear:
     adc #$44
     sta a:OBJ_36C8,x
     lda #$04
-    sta a:OBJ_27A8,x
+    sta a:OBJ_STATE,x
     lda #$02
-    sta a:OBJ_2800,x
+    sta a:OBJ_SUBSTATE,x
 StartChargeWhenPlayerNear_at0:
     rts
 
@@ -870,11 +870,11 @@ StartChargeWhenPlayerNear_at0:
 ; WAITS: no.
 ; Entry: X object, D clear. Exit: as WaitThenState2.
 WaitThenState2B:
-    lda a:OBJ_2800,x
+    lda a:OBJ_SUBSTATE,x
     bne WaitThenState2B_at0
     lda #$1C
     sta a:OBJ_34B8,x
-    inc a:OBJ_2800,x
+    inc a:OBJ_SUBSTATE,x
     rts
 WaitThenState2B_at0:
     ldy #$02
@@ -882,7 +882,7 @@ WaitThenState2B_at0:
     dec a:OBJ_34B8,x
     bne WaitThenState2B_at1
     lda #$02
-    sta a:OBJ_27A8,x
+    sta a:OBJ_STATE,x
 WaitThenState2B_at1:
     rts
 
@@ -900,10 +900,10 @@ CountTimerPairDownOrRepick:
     ora a:OBJ_3510,x
     bne CountTimerPairDownOrRepick_at0
     jsr PickTimersAtRandom
-    stz a:OBJ_3408,x
-    stz a:OBJ_3460,x
+    stz a:OBJ_ANIM_STEP,x
+    stz a:OBJ_ANIM_TIMER,x
     lda #$02
-    sta a:OBJ_27A8,x
+    sta a:OBJ_STATE,x
     rts
 CountTimerPairDownOrRepick_at0:
     lda a:OBJ_3510,x
@@ -931,11 +931,11 @@ CountAnglePairDownOrRepick:
     ora a:OBJ_35C0,x
     bne CountAnglePairDownOrRepick_at1
     jsr PickAngleAtRandom
-    stz a:OBJ_3408,x
-    stz a:OBJ_3460,x
-    stz a:OBJ_2800,x
+    stz a:OBJ_ANIM_STEP,x
+    stz a:OBJ_ANIM_TIMER,x
+    stz a:OBJ_SUBSTATE,x
     lda #$03
-    sta a:OBJ_27A8,x
+    sta a:OBJ_STATE,x
     rts
 CountAnglePairDownOrRepick_at1:
     lda a:OBJ_35C0,x
@@ -1003,7 +1003,7 @@ WalkWhileFrameChangesB_at0:
 ; Entry: X object, D clear. Exit: A, N, Z from f3510 (when zero) or the negated speed's high byte
 ; with C and V from its add; Y the table offset.
 LeapAwayFromPlayerTable:
-    inc a:OBJ_2800,x
+    inc a:OBJ_SUBSTATE,x
     jsr VecDistanceXToPlayer
     lsr a
     lsr a
@@ -1036,7 +1036,7 @@ LeapAwayFromPlayerTable_at0:
 ; Entry: X object, D clear. Exit: as the last store, load, AND or decrement left them; Y 11 after
 ; the record start.
 StartThenBlinkAndExpire:
-    lda a:OBJ_27A8,x
+    lda a:OBJ_STATE,x
     bne StartThenBlinkAndExpire_at0
     jsr VecLoadObjectRecord
     lda #$10
@@ -1047,12 +1047,12 @@ StartThenBlinkAndExpire_at0:
     bne StartThenBlinkAndExpire_at1
     jmp VecClearObject
 StartThenBlinkAndExpire_at1:
-    stz a:OBJ_2A68,x
+    stz a:OBJ_FRAME,x
     lda a:OBJ_3510,x
     and #$03
     bne StartThenBlinkAndExpire_at2
     lda a:OBJ_34B8,x
-    sta a:OBJ_2A68,x
+    sta a:OBJ_FRAME,x
 StartThenBlinkAndExpire_at2:
     rts
 
@@ -1064,24 +1064,24 @@ StartThenBlinkAndExpire_at2:
 ; WAITS: no.
 ; Entry, exit: as PickStateByPlayerDistance.
 PickStateByPlayerDistanceB:
-    stz a:OBJ_2800,x
+    stz a:OBJ_SUBSTATE,x
     lda a:OBJ_X_HI,x
     beq PickStateByPlayerDistanceB_at0
     lda #$03
-    sta a:OBJ_27A8,x
+    sta a:OBJ_STATE,x
     rts
 PickStateByPlayerDistanceB_at0:
     lda a:OBJ_Y_HI,x
     beq PickStateByPlayerDistanceB_at1
     lda #$04
-    sta a:OBJ_27A8,x
+    sta a:OBJ_STATE,x
     rts
 PickStateByPlayerDistanceB_at1:
     jsr VecPlayerDistanceSum
     and #$0F
     tay
     lda a:$BF57,y
-    sta a:OBJ_27A8,x
+    sta a:OBJ_STATE,x
     rts
 
 ; @routine 093C:7AA PickSpeedAndTurnFromTableC
@@ -1124,7 +1124,7 @@ PickSpeedAndTurnFromTableC_at0:
 ; Entry: X object, D clear. Exit: first step: A the timer, N, Z from the new step, C and V from
 ; NextRandom, Y its index; later as TurnOnRandomBeatWalkFollowB.
 TurnOnRandomBeatWalkB:
-    lda a:OBJ_2800,x
+    lda a:OBJ_SUBSTATE,x
     bne TurnOnRandomBeatWalkFollowB
     jsr VecSideOfPlayer
     and #$01
@@ -1139,10 +1139,10 @@ TurnOnRandomBeatWalkB:
     tay
     lda a:$C173,y
     sta a:OBJ_34B8,x
-    stz a:OBJ_3408,x
-    stz a:OBJ_3460,x
+    stz a:OBJ_ANIM_STEP,x
+    stz a:OBJ_ANIM_TIMER,x
     inc a:OBJ_3510,x
-    inc a:OBJ_2800,x
+    inc a:OBJ_SUBSTATE,x
     rts
 
 ; @routine 093D:17B TurnOnRandomBeatWalkFollowB
@@ -1161,8 +1161,8 @@ TurnOnRandomBeatWalkFollowB:
     jmp VecApplyVelocityX
 TurnOnRandomBeatWalkFollowB_done:
     lda #$05
-    sta a:OBJ_27A8,x
-    stz a:OBJ_2800,x
+    sta a:OBJ_STATE,x
+    stz a:OBJ_SUBSTATE,x
     rts
 
 ; @routine 093C:5C4 StartThenAnimateAndExpire
@@ -1175,7 +1175,7 @@ TurnOnRandomBeatWalkFollowB_done:
 ; WAITS: no.
 ; Entry: X object, D clear. Exit: as the last step that ran left them.
 StartThenAnimateAndExpire:
-    lda a:OBJ_27A8,x
+    lda a:OBJ_STATE,x
     bne StartThenAnimateAndExpire_at0
     jsr VecLoadObjectRecord
     lda a:OBJ_34B8,x
@@ -1231,16 +1231,16 @@ StartAndMakeNeighbour:
 ; Entry: X object, D clear. Exit: A the frame (the last byte copied), N, Z from it; C as the slot
 ; search left it; Y the slot; X kept.
 SpawnShotFromFrame:
-    lda a:OBJ_2A68,x
+    lda a:OBJ_FRAME,x
     cmp #$2B
     bcc SpawnShotFromFrame_at0
     jsr VecFindFreeSlotFrom30
     bcc SpawnShotFromFrame_at0
     lda #$35
     jsr VecStartObjectAtPlace
-    lda a:OBJ_2AC0,x
-    sta a:OBJ_2AC0,y
-    lda a:OBJ_2A68,x
+    lda a:OBJ_FACING_LEFT,x
+    sta a:OBJ_FACING_LEFT,y
+    lda a:OBJ_FRAME,x
     sta a:OBJ_34B8,y
 SpawnShotFromFrame_at0:
     rts
@@ -1256,12 +1256,12 @@ SpawnShotFromFrame_at0:
 ; Entry: X object, D clear. Exit: as the last call or test left them; Y the life_timer used as the
 ; table index.
 StartWithFrameAndFace:
-    lda a:OBJ_27A8,x
+    lda a:OBJ_STATE,x
     bne CountdownThenFallOrBecomeType9B
     jsr VecLoadObjectRecord
     ldy a:OBJ_34B8,x
     lda a:$C787,y
-    sta a:OBJ_2A68,x
+    sta a:OBJ_FRAME,x
     jsr VecSideOfPlayer
     and #$01
     beq StartWithFrameAndFace_at0
@@ -1286,7 +1286,7 @@ CountdownSoundThenNextState:
     sta a:OBJ_3510,x
     lda #$02
     sta a:OBJ_3250,x
-    inc a:OBJ_27A8,x
+    inc a:OBJ_STATE,x
 CountdownSoundThenNextState_at0:
     rts
 
@@ -1320,9 +1320,9 @@ CountdownSoundThenFollowParent:
     jsr VecSoundCommand
     lda #$02
     sta a:OBJ_3250,x
-    stz a:OBJ_3408,x
-    stz a:OBJ_3460,x
-    inc a:OBJ_27A8,x
+    stz a:OBJ_ANIM_STEP,x
+    stz a:OBJ_ANIM_TIMER,x
+    inc a:OBJ_STATE,x
 CountdownSoundThenFollowParent_at0:
     jmp FollowParentYAndLeave
 
@@ -1352,10 +1352,10 @@ AnimateThenNumberGroupAndLeave:
     lda a:OBJ_3828,x
     sta z:zTemp01
     inc z:zTemp01
-    lda a:OBJ_2750,y
+    lda a:OBJ_KIND,y
     cmp #$26
     bne AnimateThenNumberGroupAndLeave_at1
-    lda a:OBJ_27A8,y
+    lda a:OBJ_STATE,y
     cmp #$04
     bcs AnimateThenNumberGroupAndLeave_at1
     lda z:zTemp00
@@ -1399,9 +1399,9 @@ AnimateMoveThenSetUpAtRandom:
     clc
     adc #$18
     sta a:OBJ_36C8,x
-    stz a:OBJ_3408,x
-    stz a:OBJ_3460,x
-    inc a:OBJ_2800,x
+    stz a:OBJ_ANIM_STEP,x
+    stz a:OBJ_ANIM_TIMER,x
+    inc a:OBJ_SUBSTATE,x
 AnimateMoveThenSetUpAtRandom_at0:
     rts
 
@@ -1412,7 +1412,7 @@ AnimateMoveThenSetUpAtRandom_at0:
 ; WAITS: no.
 ; Entry, exit: as FollowPreviousPiece.
 FollowPreviousPieceB:
-    lda a:OBJ_27A8,x
+    lda a:OBJ_STATE,x
     bne FollowPreviousPieceB_at0
     jmp VecLoadObjectRecord
 FollowPreviousPieceB_at0:
@@ -1433,15 +1433,15 @@ FollowPreviousPieceB_at1:
     asl a
     tay
     lda a:$C71B,y
-    sta a:OBJ_3930,x
+    sta a:OBJ_HITBOX_DX,x
     lda a:$C71C,y
-    sta a:OBJ_39E0,x
+    sta a:OBJ_HITBOX_DY,x
     lda a:$C71D,y
-    sta a:OBJ_3988,x
+    sta a:OBJ_HITBOX_HALF_W,x
     lda a:$C71E,y
-    sta a:OBJ_3A38,x
+    sta a:OBJ_HITBOX_HALF_H,x
     lda a:$2ABF,x
-    sta a:OBJ_2AC0,x
+    sta a:OBJ_FACING_LEFT,x
     rts
 
 ; @routine 093C:417 StartSidewaysAndSpawn29
@@ -1458,7 +1458,7 @@ StartSidewaysAndSpawn29:
     jsr VecLoadObjectRecord
     lda #$28
     sta a:OBJ_3510,x
-    lda a:OBJ_2AC0,x
+    lda a:OBJ_FACING_LEFT,x
     beq StartSidewaysAndSpawn29_at0
     jsr VecNegateVelocityX
 StartSidewaysAndSpawn29_at0:
@@ -1468,7 +1468,7 @@ StartSidewaysAndSpawn29_at0:
     asl a
     asl a
     sta z:zTemp00
-    lda a:OBJ_2AC0,x
+    lda a:OBJ_FACING_LEFT,x
     asl a
     asl a
     clc
@@ -1505,7 +1505,7 @@ StartSidewaysAndSpawn29B:
     jsr VecLoadObjectRecord
     lda #$40
     sta a:OBJ_3510,x
-    lda a:OBJ_2AC0,x
+    lda a:OBJ_FACING_LEFT,x
     beq StartSidewaysAndSpawn29B_at0
     jsr VecNegateVelocityX
 StartSidewaysAndSpawn29B_at0:
@@ -1519,7 +1519,7 @@ StartSidewaysAndSpawn29B_at0:
     lda a:OBJ_3568,x
     sta a:OBJ_3568,y
 StartSidewaysAndSpawn29B_at1:
-    ldy a:OBJ_2AC0,x
+    ldy a:OBJ_FACING_LEFT,x
     lda a:$BD32,y
     sta a:OBJ_VX_HI,x
     jsr VecApplyVelocityX
@@ -1547,8 +1547,8 @@ BurstIntoEightPieces_at1:
     bcc BurstIntoEightPieces_at0
     lda #$34
     jsr VecStartObjectAtPlace
-    lda a:OBJ_2AC0,x
-    sta a:OBJ_2AC0,y
+    lda a:OBJ_FACING_LEFT,x
+    sta a:OBJ_FACING_LEFT,y
     stx z:zRichterObject
     lda z:zHitSlot
     asl a
@@ -1576,8 +1576,8 @@ BurstIntoEightPieces_at1:
     bcc BurstIntoEightPieces_at1
 BurstIntoEightPieces_at0:
     lda #$9C
-    sta a:OBJ_2750,x
-    stz a:OBJ_27A8,x
+    sta a:OBJ_KIND,x
+    stz a:OBJ_STATE,x
     rts
 
 ; @routine 093C:12E StartGroupThenThrow
@@ -1624,7 +1624,7 @@ StartGroupThenThrow_at0:
     sta a:OBJ_3040,x
     and #$01
     eor #$01
-    sta a:OBJ_2AC0,x
+    sta a:OBJ_FACING_LEFT,x
     jsr ThrowByNextKind
     jsr PickTimersAtRandom
     jsr PickAngleAtRandom

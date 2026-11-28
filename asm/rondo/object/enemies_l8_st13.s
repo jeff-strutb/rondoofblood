@@ -1,6 +1,6 @@
 ; @routine 025C:131 StepListThenStartChannel85
 ; @run 70:B931
-; WHAT IT DOES: Steps the animation list at $B6DA; when OBJ_3510 counts down to zero starts list $85 on channel 5, sets OBJ_3670 5, OBJ_3510 $7B, the byte before the frame $2F and goes to the next OBJ_2800.
+; WHAT IT DOES: Steps the animation list at $B6DA; when OBJ_3510 counts down to zero starts list $85 on channel 5, sets OBJ_3670 5, OBJ_3510 $7B, the byte before the frame $2F and goes to the next OBJ_SUBSTATE.
 ; HOW: StepObjectFrames, a memory decrement, StartListChannelKind2 between a PHX and a PLX, stores.
 ; WAITS: no.
 ; Entry: X object, Y kept unless the step sets it. Exit: as the last instruction that ran.
@@ -23,13 +23,13 @@ StepListThenStartChannel85:
     sta a:OBJ_3510,x
     lda #$2F
     sta a:$2A67,x
-    inc a:OBJ_2800,x
+    inc a:OBJ_SUBSTATE,x
 StepListThenStartChannel85_at0:
     rts
 
 ; @routine 025C:15D StepListThenStopAnimation
 ; @run 70:B95D
-; WHAT IT DOES: Steps the animation list at $B6DA; when OBJ_3510 counts down to zero clears OBJ_3670 and the animation step and timer and goes to the next OBJ_2800.
+; WHAT IT DOES: Steps the animation list at $B6DA; when OBJ_3510 counts down to zero clears OBJ_3670 and the animation step and timer and goes to the next OBJ_SUBSTATE.
 ; HOW: StepObjectFrames, a memory decrement, stores, an INC.
 ; WAITS: no.
 ; Entry: X object, Y kept unless the step sets it. Exit: as the last instruction that ran.
@@ -42,15 +42,15 @@ StepListThenStopAnimation:
     dec a:OBJ_3510,x
     bne StepListThenStopAnimation_at0
     stz a:OBJ_3670,x
-    stz a:OBJ_3408,x
-    stz a:OBJ_3460,x
-    inc a:OBJ_2800,x
+    stz a:OBJ_ANIM_STEP,x
+    stz a:OBJ_ANIM_TIMER,x
+    inc a:OBJ_SUBSTATE,x
 StepListThenStopAnimation_at0:
     rts
 
 ; @routine 025C:17A StepListB995ThenWait
 ; @run 70:B97A
-; WHAT IT DOES: Steps the animation list at $B995; when it ends sets OBJ_3670 6 and OBJ_3510 $3A and goes to the next OBJ_2800.
+; WHAT IT DOES: Steps the animation list at $B995; when it ends sets OBJ_3670 6 and OBJ_3510 $3A and goes to the next OBJ_SUBSTATE.
 ; HOW: StepObjectFrames, stores, an INC.
 ; WAITS: no.
 ; Entry: X object, Y kept unless the step sets it. Exit: as the last instruction that ran.
@@ -65,13 +65,13 @@ StepListB995ThenWait:
     sta a:OBJ_3670,x
     lda #$3A
     sta a:OBJ_3510,x
-    inc a:OBJ_2800,x
+    inc a:OBJ_SUBSTATE,x
 StepListB995ThenWait_at0:
     rts
 
 ; @routine 025C:19C StepListThenStartType2D
 ; @run 70:B99C
-; WHAT IT DOES: Steps the animation list at $B6DA; when OBJ_3510 counts down to zero clears slot $50, starts an object of type $2D there at the object's place, sets OBJ_3670 7 and OBJ_3510 $83 and goes to the next OBJ_2800.
+; WHAT IT DOES: Steps the animation list at $B6DA; when OBJ_3510 counts down to zero clears slot $50, starts an object of type $2D there at the object's place, sets OBJ_3670 7 and OBJ_3510 $83 and goes to the next OBJ_SUBSTATE.
 ; HOW: StepObjectFrames, a memory decrement, ClearObjectInY, StartObjectAtPlace, stores, an INC.
 ; WAITS: no.
 ; Entry: X object, Y kept unless the step sets it. Exit: as the last instruction that ran.
@@ -91,13 +91,13 @@ StepListThenStartType2D:
     sta a:OBJ_3670,x
     lda #$83
     sta a:OBJ_3510,x
-    inc a:OBJ_2800,x
+    inc a:OBJ_SUBSTATE,x
 StepListThenStartType2D_at0:
     rts
 
 ; @routine 025C:1C4 StepListThenClearAnimation
 ; @run 70:B9C4
-; WHAT IT DOES: Steps the animation list at $B6DA; when OBJ_3510 counts down to zero clears the animation step and timer and OBJ_3670 and goes to the next OBJ_2800.
+; WHAT IT DOES: Steps the animation list at $B6DA; when OBJ_3510 counts down to zero clears the animation step and timer and OBJ_3670 and goes to the next OBJ_SUBSTATE.
 ; HOW: StepObjectFrames, a memory decrement, stores, an INC.
 ; WAITS: no.
 ; Entry: X object, Y kept unless the step sets it. Exit: as the last instruction that ran.
@@ -109,16 +109,16 @@ StepListThenClearAnimation:
     jsr VecStepObjectFrames
     dec a:OBJ_3510,x
     bne StepListThenClearAnimation_at0
-    stz a:OBJ_3408,x
-    stz a:OBJ_3460,x
+    stz a:OBJ_ANIM_STEP,x
+    stz a:OBJ_ANIM_TIMER,x
     stz a:OBJ_3670,x
-    inc a:OBJ_2800,x
+    inc a:OBJ_SUBSTATE,x
 StepListThenClearAnimation_at0:
     rts
 
 ; @routine 025C:1E1 StepListThenStartType2E
 ; @run 70:B9E1
-; WHAT IT DOES: Steps the animation list at $BA0E; when it ends clears OBJ_3720, sets OBJ_3670 8, OBJ_34B8 1 and OBJ_3510 $80, goes to the next OBJ_2800, clears slot $30 and starts an object of type $2E there at the object's place.
+; WHAT IT DOES: Steps the animation list at $BA0E; when it ends clears OBJ_3720, sets OBJ_3670 8, OBJ_34B8 1 and OBJ_3510 $80, goes to the next OBJ_SUBSTATE, clears slot $30 and starts an object of type $2E there at the object's place.
 ; HOW: StepObjectFrames, stores, an INC, ClearObjectInY, StartObjectAtPlace.
 ; WAITS: no.
 ; Entry: X object, Y kept unless the step sets it. Exit: as the last instruction that ran.
@@ -136,7 +136,7 @@ StepListThenStartType2E:
     sta a:OBJ_34B8,x
     lda #$80
     sta a:OBJ_3510,x
-    inc a:OBJ_2800,x
+    inc a:OBJ_SUBSTATE,x
     ldy #$30
     jsr VecClearObjectInY
     lda #$2E
@@ -145,7 +145,7 @@ StepListThenStartType2E:
 
 ; @routine 025C:215 StepListThenSoundAndStartChannel86
 ; @run 70:BA15
-; WHAT IT DOES: Steps the animation list at $B6DA; when the 16-bit timer OBJ_34B8:OBJ_3510 counts down to zero starts list $86 on channel 5, plays sound $76, clears the animation, OBJ_35C0, OBJ_38D8 and OBJ_3670, sets OBJ_3880 2 and goes to the next OBJ_2800.
+; WHAT IT DOES: Steps the animation list at $B6DA; when the 16-bit timer OBJ_34B8:OBJ_3510 counts down to zero starts list $86 on channel 5, plays sound $76, clears the animation, OBJ_35C0, OBJ_38D8 and OBJ_3670, sets OBJ_3880 2 and goes to the next OBJ_SUBSTATE.
 ; HOW: StepObjectFrames, a 16-bit subtract in memory, StartListChannelKind2 between a PHX and a PLX, SoundCommand, stores.
 ; WAITS: no.
 ; Entry: X object, Y kept unless the step sets it. Exit: as the last instruction that ran.
@@ -171,20 +171,20 @@ StepListThenSoundAndStartChannel86:
     plx
     lda #$76
     jsr VecSoundCommand
-    stz a:OBJ_3408,x
-    stz a:OBJ_3460,x
+    stz a:OBJ_ANIM_STEP,x
+    stz a:OBJ_ANIM_TIMER,x
     stz a:OBJ_35C0,x
     lda #$02
     sta a:OBJ_3880,x
     stz a:OBJ_38D8,x
     stz a:OBJ_3670,x
-    inc a:OBJ_2800,x
+    inc a:OBJ_SUBSTATE,x
 StepListThenSoundAndStartChannel86_at0:
     rts
 
 ; @routine 025C:25C SpiralOutWhileStepping
 ; @run 70:BA5C
-; WHAT IT DOES: Steps the animation list at $BA9A while moving the object by the speed made from OBJ_35C0 and the radius OBJ_3880:OBJ_38D8; the radius shrinks by one and OBJ_35C0 turns on by 4; when OBJ_35C0 wraps it goes to the next OBJ_2800.
+; WHAT IT DOES: Steps the animation list at $BA9A while moving the object by the speed made from OBJ_35C0 and the radius OBJ_3880:OBJ_38D8; the radius shrinks by one and OBJ_35C0 turns on by 4; when OBJ_35C0 wraps it goes to the next OBJ_SUBSTATE.
 ; HOW: StepObjectFrames, SetVelocityFromAngle, ApplyVelocity, a 16-bit subtract in memory, an add.
 ; WAITS: no.
 ; Entry: X object, Y kept unless the step sets it. Exit: as the last instruction that ran.
@@ -213,13 +213,13 @@ SpiralOutWhileStepping:
     adc #$04
     sta a:OBJ_35C0,x
     bcc SpiralOutWhileStepping_at0
-    inc a:OBJ_2800,x
+    inc a:OBJ_SUBSTATE,x
 SpiralOutWhileStepping_at0:
     rts
 
 ; @routine 025C:2A7 MoveXUntilPastLeftEdge
 ; @run 70:BAA7
-; WHAT IT DOES: Moves the object along X by its speed; once its X high byte is not 0 and its low byte is below $80 sets OBJ_3510 $20 and goes to the next OBJ_2800.
+; WHAT IT DOES: Moves the object along X by its speed; once its X high byte is not 0 and its low byte is below $80 sets OBJ_3510 $20 and goes to the next OBJ_SUBSTATE.
 ; HOW: ApplyVelocityX, two tests, a store, an INC.
 ; WAITS: no.
 ; Entry: X object. Exit: as the last instruction that ran.
@@ -231,7 +231,7 @@ MoveXUntilPastLeftEdge:
     bpl RichterFloorOddScreen
     lda #$20
     sta a:OBJ_3510,x
-    inc a:OBJ_2800,x
+    inc a:OBJ_SUBSTATE,x
     rts
 
 ; @routine 025C:2BD CountDownThenClearAndAdvanceSlot10
@@ -255,7 +255,7 @@ CountDownThenClearAndAdvanceSlot10_at0:
 ; WAITS: no.
 ; Entry: X object, Y kept for the sound. Exit: as the last instruction that ran. The OBJ_3568 = 2 arm ran in no script; the draft stops there.
 SoundWhenHurtInStatesOneToThree:
-    lda a:OBJ_27A8,x
+    lda a:OBJ_STATE,x
     beq SoundWhenHurtInStatesOneToThree_at0
     cmp #$04
     bcs SoundWhenHurtInStatesOneToThree_at0
@@ -271,14 +271,14 @@ SoundWhenHurtInStatesOneToThree_at1:
     lda #$43
     jsr VecSoundCommand
     lda #$04
-    sta a:OBJ_27A8,x
+    sta a:OBJ_STATE,x
 SoundWhenHurtInStatesOneToThree_at0:
     rts
 SoundWhenHurtInStatesOneToThree_at2:
     lda #$43
     jsr VecSoundCommand
     lda #$05
-    sta a:OBJ_27A8,x
+    sta a:OBJ_STATE,x
     rts
 
 ; @routine 025C:31B LoadRecordAimAtPlayer
@@ -329,7 +329,7 @@ StepListThenCountdownNextState:
     bne StepListThenCountdownNextState_at0
     lda #$40
     sta a:OBJ_3510,x
-    inc a:OBJ_27A8,x
+    inc a:OBJ_STATE,x
 StepListThenCountdownNextState_at0:
     rts
 
@@ -349,7 +349,7 @@ StepListThenSound43AtZero:
     bne StepListThenSound43AtZero_at0
     lda #$43
     jsr VecSoundCommand
-    inc a:OBJ_27A8,x
+    inc a:OBJ_STATE,x
 StepListThenSound43AtZero_at0:
     rts
 
@@ -432,23 +432,23 @@ NearObject19_at1:
 
 ; @routine 025C:425 StartRiseAndSpawnRing
 ; @run 70:BC25
-; WHAT IT DOES: Starts the ring of seven objects (SpawnRingOfSeven), sets OBJ_37D0 of slot $19 to 1, clears the object's OBJ_3250, animation and X speed, gives it the Y speed -$0400 and goes to the next OBJ_2800.
+; WHAT IT DOES: Starts the ring of seven objects (SpawnRingOfSeven), sets OBJ_37D0 of slot $19 to 1, clears the object's OBJ_3250, animation and X speed, gives it the Y speed -$0400 and goes to the next OBJ_SUBSTATE.
 ; HOW: A call, stores, an INC.
 ; WAITS: no.
-; Entry: X object. Exit: A $FC, N and Z from the new OBJ_2800.
+; Entry: X object. Exit: A $FC, N and Z from the new OBJ_SUBSTATE.
 StartRiseAndSpawnRing:
     jsr SpawnRingOfSeven
     lda #$01
     sta a:$37E9
     stz a:OBJ_3250,x
-    stz a:OBJ_3408,x
-    stz a:OBJ_3460,x
+    stz a:OBJ_ANIM_STEP,x
+    stz a:OBJ_ANIM_TIMER,x
     stz a:OBJ_VX_HI,x
     stz a:OBJ_VX_LO,x
     lda #$FC
     sta a:OBJ_VY_HI,x
     stz a:OBJ_VY_LO,x
-    inc a:OBJ_2800,x
+    inc a:OBJ_SUBSTATE,x
     rts
 
 ; @routine 025C:448 SpawnRingOfSeven
@@ -474,7 +474,7 @@ SpawnRingOfSeven_at0:
 
 ; @routine 025C:461 FallAlongListUntilGround
 ; @run 70:BC61
-; WHAT IT DOES: Steps the animation list at $BC98 while the object falls (ApplyGravityUnlimited, ApplyVelocityY); once its Y low byte reaches $B8 it takes sprite set 3, frame 0, the speed X -$0400, Y -$0200, clears the animation and goes to the next OBJ_2800.
+; WHAT IT DOES: Steps the animation list at $BC98 while the object falls (ApplyGravityUnlimited, ApplyVelocityY); once its Y low byte reaches $B8 it takes sprite set 3, frame 0, the speed X -$0400, Y -$0200, clears the animation and goes to the next OBJ_SUBSTATE.
 ; HOW: StepObjectFrames, ApplyGravityUnlimited, ApplyVelocityY, stores, an INC.
 ; WAITS: no.
 ; Entry: X object, Y kept unless the step sets it. Exit: as the last instruction that ran.
@@ -491,15 +491,15 @@ FallAlongListUntilGround:
     bcc FallAlongListUntilGround_at0
     lda #$03
     sta a:OBJ_2A10,x
-    stz a:OBJ_2A68,x
+    stz a:OBJ_FRAME,x
     lda #$FC
     sta a:OBJ_VX_HI,x
     lda #$FE
     sta a:OBJ_VY_HI,x
     stz a:OBJ_VY_LO,x
-    stz a:OBJ_3408,x
-    stz a:OBJ_3460,x
-    inc a:OBJ_2800,x
+    stz a:OBJ_ANIM_STEP,x
+    stz a:OBJ_ANIM_TIMER,x
+    inc a:OBJ_SUBSTATE,x
 FallAlongListUntilGround_at0:
     rts
 
@@ -546,7 +546,7 @@ LoadRecordThrowByNumber:
     tya
     clc
     adc #$28
-    sta a:OBJ_2A68,x
+    sta a:OBJ_FRAME,x
     rts
 
 ; @routine 025C:58E FallThenTurnAtTimerEnd
@@ -562,15 +562,15 @@ FallThenTurnAtTimerEnd:
     bne FallThenTurnAtTimerEnd_at0
     lda #$03
     sta a:OBJ_2A10,x
-    stz a:OBJ_2A68,x
+    stz a:OBJ_FRAME,x
     lda #$FC
     sta a:OBJ_VX_HI,x
     lda #$FF
     sta a:OBJ_VY_HI,x
     stz a:OBJ_VY_LO,x
-    stz a:OBJ_3408,x
-    stz a:OBJ_3460,x
-    inc a:OBJ_27A8,x
+    stz a:OBJ_ANIM_STEP,x
+    stz a:OBJ_ANIM_TIMER,x
+    inc a:OBJ_STATE,x
 FallThenTurnAtTimerEnd_at0:
     rts
 
@@ -598,7 +598,7 @@ StepListCBThenMoveOrClear_at0:
 ; WAITS: no.
 ; Entry: X object, Y kept unless the step sets it. Exit: as the last instruction that ran.
 FollowObject19ThenStepListByMode:
-    lda a:OBJ_27A8,x
+    lda a:OBJ_STATE,x
     bne FollowObject19ThenStepListByMode_at0
     jmp VecLoadObjectRecord
 FollowObject19ThenStepListByMode_at0:
@@ -607,14 +607,14 @@ FollowObject19ThenStepListByMode_at0:
     lda a:$3689
     cmp a:OBJ_34B8,x
     beq FollowObject19ThenStepListByMode_at1
-    stz a:OBJ_3408,x
-    stz a:OBJ_3460,x
+    stz a:OBJ_ANIM_STEP,x
+    stz a:OBJ_ANIM_TIMER,x
 FollowObject19ThenStepListByMode_at1:
     sta a:OBJ_34B8,x
     ldy a:$3689
     lda a:$BE33,y
     bmi FollowObject19ThenStepListByMode_at2
-    sta a:OBJ_2A68,x
+    sta a:OBJ_FRAME,x
     rts
 FollowObject19ThenStepListByMode_at2:
     and #$0F
@@ -678,7 +678,7 @@ FollowObject19ThenLaunch:
     jsr VecSetVelocityFromAngle
     lda #$02
     sta a:OBJ_3250,x
-    inc a:OBJ_27A8,x
+    inc a:OBJ_STATE,x
 FollowObject19ThenLaunch_at0:
     rts
 
@@ -707,9 +707,9 @@ StepListThenSpawnUntilHurt:
     sta a:OBJ_VY_HI,x
     stz a:OBJ_VY_LO,x
     stz a:OBJ_3250,x
-    stz a:OBJ_3408,x
-    stz a:OBJ_3460,x
-    inc a:OBJ_27A8,x
+    stz a:OBJ_ANIM_STEP,x
+    stz a:OBJ_ANIM_TIMER,x
+    inc a:OBJ_STATE,x
 StepListThenSpawnUntilHurt_at0:
     rts
 

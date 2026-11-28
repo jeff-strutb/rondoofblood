@@ -47,7 +47,7 @@ StartRingOfPieces_at0:
 ; WAITS: no.
 ; Entry: X object. Exit: as the last instruction that ran.
 LoadRecordFlingThenFall:
-    lda a:OBJ_27A8,x
+    lda a:OBJ_STATE,x
     bne LoadRecordFlingThenFall_at0
     jsr VecLoadObjectRecord
     jsr VecApplyVelocity
@@ -62,7 +62,7 @@ LoadRecordFlingThenFall:
     lda a:OBJ_34B8,x
     clc
     adc #$12
-    sta a:OBJ_2A68,x
+    sta a:OBJ_FRAME,x
     rts
 LoadRecordFlingThenFall_at0:
     jsr VecApplyGravityUnlimited
@@ -77,9 +77,9 @@ LoadRecordFlingThenFall_at0:
 LoadRecordFacingLeftRising:
     jsr VecLoadObjectRecord
     lda #$01
-    sta a:OBJ_2AC0,x
+    sta a:OBJ_FACING_LEFT,x
     lda #$15
-    sta a:OBJ_2A68,x
+    sta a:OBJ_FRAME,x
     lda #$F0
     sta a:OBJ_VY_HI,x
     rts
@@ -96,7 +96,7 @@ SoundBAAtScreen2:
     bne SoundBAAtScreen2_at0
     lda #$BA
     jsr VecSoundCommand
-    inc a:OBJ_27A8,x
+    inc a:OBJ_STATE,x
 SoundBAAtScreen2_at0:
     rts
 
@@ -145,7 +145,7 @@ PulseWaterLevelAndScatter_at0:
 
 ; @routine 0B4A:58B LoadRecordThenDrawTileScript2
 ; @run 70:AD8B
-; WHAT IT DOES: When bit 0 of zField92 is set the object is cleared; otherwise it loads its record, sets its hit offset OBJ_39E0 $E8 and draws tile script 2.
+; WHAT IT DOES: When bit 0 of zField92 is set the object is cleared; otherwise it loads its record, sets its hit offset OBJ_HITBOX_DY $E8 and draws tile script 2.
 ; HOW: A test, a tail jump into ClearObject, LoadObjectRecord, DrawTileScript.
 ; WAITS: no.
 ; Entry: X object. Exit: as DrawTileScript, or the test when the object is cleared. The jump into ClearObject ran in no script.
@@ -157,7 +157,7 @@ LoadRecordThenDrawTileScript2:
 LoadRecordThenDrawTileScript2_at0:
     jsr VecLoadObjectRecord
     lda #$E8
-    sta a:OBJ_39E0,x
+    sta a:OBJ_HITBOX_DY,x
     lda #$02
     cly
     jsr VecDrawTileScript
@@ -165,7 +165,7 @@ LoadRecordThenDrawTileScript2_at0:
 
 ; @routine 0B4A:5A3 DrawTileScriptStepsThenScatter
 ; @run 70:ADA3
-; WHAT IT DOES: When the object's X high byte is not 0 draws tile script $02 plus OBJ_34B8. Otherwise, at 5 hits taken, it sets OBJ_3A90 $18, draws the next tile script, plays sound $19, scatters pieces (ScatterPiecesDownward) and advances OBJ_34B8; below 3 steps it takes OBJ_39E0 and the frame from the table at $AE02; at 3 it sets zField92 1, clears OBJ_39E0, sets the hit box $10 by $10 and frame $17 and goes to the next state.
+; WHAT IT DOES: When the object's X high byte is not 0 draws tile script $02 plus OBJ_34B8. Otherwise, at 5 hits taken, it sets OBJ_3A90 $18, draws the next tile script, plays sound $19, scatters pieces (ScatterPiecesDownward) and advances OBJ_34B8; below 3 steps it takes OBJ_HITBOX_DY and the frame from the table at $AE02; at 3 it sets zField92 1, clears OBJ_HITBOX_DY, sets the hit box $10 by $10 and frame $17 and goes to the next state.
 ; HOW: DrawTileScript, SoundCommand, ScatterPiecesDownward, table reads, stores.
 ; WAITS: no.
 ; Entry: X object, Y kept for the sound. Exit: as the last instruction that ran.
@@ -178,7 +178,7 @@ DrawTileScriptStepsThenScatter:
     cly
     jmp VecDrawTileScript
 DrawTileScriptStepsThenScatter_at0:
-    lda a:OBJ_33B0,x
+    lda a:OBJ_HIT_TAKEN,x
     cmp #$05
     bne DrawTileScriptStepsThenScatter_at1
     lda #$18
@@ -199,33 +199,33 @@ DrawTileScriptStepsThenScatter_at0:
     asl a
     tay
     lda a:$AE02,y
-    sta a:OBJ_39E0,x
+    sta a:OBJ_HITBOX_DY,x
     lda a:$AE03,y
-    sta a:OBJ_2A68,x
+    sta a:OBJ_FRAME,x
 DrawTileScriptStepsThenScatter_at1:
     rts
 DrawTileScriptStepsThenScatter_at2:
     lda #$01
     sta z:zField92
-    stz a:OBJ_39E0,x
+    stz a:OBJ_HITBOX_DY,x
     lda #$10
-    sta a:OBJ_3988,x
-    sta a:OBJ_3A38,x
+    sta a:OBJ_HITBOX_HALF_W,x
+    sta a:OBJ_HITBOX_HALF_H,x
     lda #$17
-    sta a:OBJ_2A68,x
-    inc a:OBJ_27A8,x
+    sta a:OBJ_FRAME,x
+    inc a:OBJ_STATE,x
     rts
 
 ; @routine 0B4A:608 ScatterPiecesDownward
 ; @run 70:AE08
-; WHAT IT DOES: Moves the object down by its hit offset OBJ_39E0, starts up to 8 objects of type $9A in free slots of $30 to $3F at its place, each with an X speed from the table at $AE4E by the parity of the count, moved once, OBJ_34B8 1 and OBJ_3510 the count less 1, then moves the object back.
-; HOW: An add and a subtract of OBJ_39E0 on OBJ_Y_LO, a loop of FindFreeSlotFrom30, StartObjectAtPlace and ApplyVelocityX with X and Y swapped, a counter in zTemp00. zD9 keeps its address form until it has a name.
+; WHAT IT DOES: Moves the object down by its hit offset OBJ_HITBOX_DY, starts up to 8 objects of type $9A in free slots of $30 to $3F at its place, each with an X speed from the table at $AE4E by the parity of the count, moved once, OBJ_34B8 1 and OBJ_3510 the count less 1, then moves the object back.
+; HOW: An add and a subtract of OBJ_HITBOX_DY on OBJ_Y_LO, a loop of FindFreeSlotFrom30, StartObjectAtPlace and ApplyVelocityX with X and Y swapped, a counter in zTemp00. zD9 keeps its address form until it has a name.
 ; WAITS: no.
 ; Entry: X object. Exit: as the last instruction that ran.
 ScatterPiecesDownward:
     lda a:OBJ_Y_LO,x
     clc
-    adc a:OBJ_39E0,x
+    adc a:OBJ_HITBOX_DY,x
     sta a:OBJ_Y_LO,x
     lda #$08
     sta z:zTemp00
@@ -254,7 +254,7 @@ ScatterPiecesDownward_at1:
 ScatterPiecesDownward_at0:
     lda a:OBJ_Y_LO,x
     sec
-    sbc a:OBJ_39E0,x
+    sbc a:OBJ_HITBOX_DY,x
     sta a:OBJ_Y_LO,x
     rts
 
@@ -265,7 +265,7 @@ ScatterPiecesDownward_at0:
 ; WAITS: no.
 ; Entry: X object, Y kept for the sound. Exit: as the last instruction that ran. The arm for health $5C ran in no script; the draft stops there.
 ClearWhenHurtThenWait:
-    lda a:OBJ_33B0,x
+    lda a:OBJ_HIT_TAKEN,x
     beq ClearWhenHurtThenWait_at0
     cmp #$05
     bcs ClearWhenHurtThenWait_at0
@@ -275,10 +275,10 @@ ClearWhenHurtThenWait:
     lda #$0B
     jsr VecSoundCommand
     lda #$9F
-    sta a:OBJ_2750,x
+    sta a:OBJ_KIND,x
     lda #$03
     sta a:OBJ_34B8,x
-    stz a:OBJ_27A8,x
+    stz a:OBJ_STATE,x
 ClearWhenHurtThenWait_at0:
     rts
 ClearWhenHurtThenWait_at1:
@@ -293,19 +293,19 @@ ClearWhenHurtThenWait_at1:
 ; WAITS: no.
 ; Entry: X object, Y kept unless the step sets it. Exit: as the last instruction that ran. Everything past state 0 ran in no script; the draft stops there and the arms are written from the decoded bytes.
 BossPhasesHurtFallAndTileWrites:
-    lda a:OBJ_27A8,x
+    lda a:OBJ_STATE,x
     bne BossPhasesHurtFallAndTileWrites_at0
     jmp VecLoadObjectRecord
 BossPhasesHurtFallAndTileWrites_at0:
     dec a
     bne BossPhasesHurtFallAndTileWrites_at1
-    lda a:OBJ_33B0,x
+    lda a:OBJ_HIT_TAKEN,x
     beq BossPhasesHurtFallAndTileWrites_at2
     cmp #$05
     bcs BossPhasesHurtFallAndTileWrites_at3
     jsr VecRecordObjectEvent
 BossPhasesHurtFallAndTileWrites_at4:
-    inc a:OBJ_27A8,x
+    inc a:OBJ_STATE,x
     rts
 BossPhasesHurtFallAndTileWrites_at3:
     jsr VecSideOfPlayer
@@ -318,7 +318,7 @@ BossPhasesHurtFallAndTileWrites_at3:
     jsr VecRecordObjectEvent
     inc a:OBJ_3568,x
     lda #$05
-    sta a:OBJ_27A8,x
+    sta a:OBJ_STATE,x
     rts
 BossPhasesHurtFallAndTileWrites_at1:
     dec a
@@ -329,7 +329,7 @@ BossPhasesHurtFallAndTileWrites_at1:
     sta z:zTemp10
     jsr VecStepObjectFrames
     bne BossPhasesHurtFallAndTileWrites_at2
-    inc a:OBJ_27A8,x
+    inc a:OBJ_STATE,x
     lda #$10
     sta a:OBJ_34B8,x
     phx
@@ -344,11 +344,11 @@ BossPhasesHurtFallAndTileWrites_at5:
     bne SetFrameThenCountToNext
     dec a:OBJ_34B8,x
     bne BossPhasesHurtFallAndTileWrites_at2
-    inc a:OBJ_27A8,x
+    inc a:OBJ_STATE,x
     lda #$40
     sta a:OBJ_34B8,x
     lda #$0F
-    sta a:OBJ_2A68,x
+    sta a:OBJ_FRAME,x
     rts
     dec a
     bne BossPhasesHurtFallAndTileWrites_at6
@@ -398,7 +398,7 @@ BossPhasesHurtFallAndTileWrites_at6:
     dec a:OBJ_34B8,x
     bne BossPhasesHurtFallAndTileWrites_at2
     lda #$02
-    sta a:OBJ_27A8,x
+    sta a:OBJ_STATE,x
     rts
 
 ; @routine 0B4A:79D LoadRecordThenWatchThenDropTwice
@@ -408,7 +408,7 @@ BossPhasesHurtFallAndTileWrites_at6:
 ; WAITS: no.
 ; Entry: X object, Y kept for the sound. Exit: as the last instruction that ran. Everything past state 0 ran in no script; the draft stops there and the arms are written from the decoded bytes.
 LoadRecordThenWatchThenDropTwice:
-    lda a:OBJ_27A8,x
+    lda a:OBJ_STATE,x
     bne LoadRecordThenWatchThenDropTwice_at0
     jmp VecLoadObjectRecord
 LoadRecordThenWatchThenDropTwice_at0:
@@ -416,7 +416,7 @@ LoadRecordThenWatchThenDropTwice_at0:
     bne LoadRecordThenWatchThenDropTwice_at1
     ldy #$10
 LoadRecordThenWatchThenDropTwice_at3:
-    lda a:OBJ_2750,y
+    lda a:OBJ_KIND,y
     cmp #$24
     beq LoadRecordThenWatchThenDropTwice_at2
     iny
@@ -443,7 +443,7 @@ LoadRecordThenWatchThenDropTwice_at5:
     sta a:OBJ_VY_HI,x
     lda #$2C
     jsr VecSoundCommand
-    inc a:OBJ_27A8,x
+    inc a:OBJ_STATE,x
     rts
 LoadRecordThenWatchThenDropTwice_at4:
     dec a
@@ -458,10 +458,10 @@ LoadRecordThenWatchThenDropTwice_at7:
     jsr VecApplyVelocity
     lda a:OBJ_Y_HI,x
     beq LoadRecordThenWatchThenDropTwice_at6
-    inc a:OBJ_27A8,x
+    inc a:OBJ_STATE,x
     rts
 LoadRecordThenWatchThenDropTwice_at2:
-    lda a:OBJ_2A68,y
+    lda a:OBJ_FRAME,y
     cmp #$11
     bne LoadRecordThenWatchThenDropTwice_at6
     lda a:OBJ_X_LO,y
@@ -472,5 +472,5 @@ LoadRecordThenWatchThenDropTwice_at2:
     lda a:OBJ_X_LO
     cmp #$C0
     bcc LoadRecordThenWatchThenDropTwice_at6
-    inc a:OBJ_27A8,x
+    inc a:OBJ_STATE,x
     rts

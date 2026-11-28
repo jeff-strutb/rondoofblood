@@ -1,12 +1,12 @@
 ; @routine 0F6B:07D LoadRecordSplitIntoFourAndClear
 ; @run 70:B07D
-; WHAT IT DOES: Sets OBJ_2FE8 of slot 0 to $C0, loads the record and records the event, starts four objects of type $A6 in the slots after this one at its place (the second and fourth with bit 7 of OBJ_X_LO set, the third and fourth one screen on in X) and clears itself.
+; WHAT IT DOES: Sets OBJ_SPRITE_FLIP of slot 0 to $C0, loads the record and records the event, starts four objects of type $A6 in the slots after this one at its place (the second and fourth with bit 7 of OBJ_X_LO set, the third and fourth one screen on in X) and clears itself.
 ; HOW: LoadObjectRecord, RecordObjectEvent, four StartObjectAtPlace calls, INCs and ORs with X and Y swapped, a tail jump into ClearObject.
 ; WAITS: no.
 ; Entry: X object. Exit: as the last instruction that ran.
 LoadRecordSplitIntoFourAndClear:
     lda #$C0
-    sta a:OBJ_2FE8
+    sta a:OBJ_SPRITE_FLIP
     jsr VecLoadObjectRecord
     jsr VecRecordObjectEvent
     txa
@@ -44,7 +44,7 @@ LoadRecordSplitIntoFourAndClear:
 ; WAITS: no.
 ; Entry: X object. Exit: as the last instruction that ran.
 LoadRecordThenFollowScroll:
-    lda a:OBJ_27A8,x
+    lda a:OBJ_STATE,x
     bne LoadRecordThenFollowScroll_at0
     jsr VecLoadObjectRecord
     lda a:OBJ_X_LO,x
@@ -81,25 +81,25 @@ LoadRecordThenFollowScroll_at0:
 ; WAITS: no.
 ; Entry: X object, Y kept for the sound. Exit: as the last instruction that ran.
 BreakIntoPiecesAtFifthHit:
-    lda a:OBJ_27A8,x
+    lda a:OBJ_STATE,x
     bne StepFacingAndJump
     jmp VecLoadObjectRecord
-    lda a:OBJ_33B0,x
+    lda a:OBJ_HIT_TAKEN,x
     cmp #$05
     bcc BreakIntoPiecesAtFifthHit_at0
     jsr VecRecordObjectEvent
     lda #$12
     jsr VecSoundCommand
     lda a:OBJ_3040,x
-    sta a:OBJ_2750,x
+    sta a:OBJ_KIND,x
     lda #$10
     sta a:OBJ_3A90,x
-    stz a:OBJ_27A8,x
+    stz a:OBJ_STATE,x
     lda a:OBJ_Y_LO,x
     clc
     adc #$D8
     sta a:OBJ_Y_LO,x
-    stz a:OBJ_2A68,x
+    stz a:OBJ_FRAME,x
     jsr VecFindFreeSlotFrom50
     bcc BreakIntoPiecesAtFifthHit_at0
     lda #$9B
@@ -156,16 +156,16 @@ StartPieceWithSpeedFromTable:
 ; WAITS: no.
 ; Entry: X object. Exit: as the last instruction that ran.
 LoadRecordFlipByPlayerThenFall:
-    lda a:OBJ_27A8,x
+    lda a:OBJ_STATE,x
     bne LoadRecordFlipByPlayerThenFall_at0
     jsr VecLoadObjectRecord
     lda a:OBJ_3040,x
-    sta a:OBJ_2A68,x
+    sta a:OBJ_FRAME,x
     jsr VecSideOfPlayer
     lsr a
     bcc LoadRecordFlipByPlayerThenFall_at1
     lda #$01
-    sta a:OBJ_2AC0,x
+    sta a:OBJ_FACING_LEFT,x
     lda a:OBJ_VX_LO,x
     eor #$FF
     sta a:OBJ_VX_LO,x
@@ -180,19 +180,19 @@ LoadRecordFlipByPlayerThenFall_at0:
 
 ; @routine 0F6B:1CA LoadRecordThenClearAtSubStep3
 ; @run 70:B1CA
-; WHAT IT DOES: In state 0 loads the record. Later, when the sub-mode's step is 3, clears OBJ_2FE8 of slot 0 and clears the object.
+; WHAT IT DOES: In state 0 loads the record. Later, when the sub-mode's step is 3, clears OBJ_SPRITE_FLIP of slot 0 and clears the object.
 ; HOW: LoadObjectRecord, a compare, a store, a tail jump into ClearObject.
 ; WAITS: no.
 ; Entry: X object. Exit: as the last instruction that ran.
 LoadRecordThenClearAtSubStep3:
-    lda a:OBJ_27A8,x
+    lda a:OBJ_STATE,x
     bne LoadRecordThenClearAtSubStep3_at0
     jmp VecLoadObjectRecord
 LoadRecordThenClearAtSubStep3_at0:
     lda z:zSubStep
     cmp #$03
     bne LoadRecordThenClearAtSubStep3_at1
-    stz a:OBJ_2FE8
+    stz a:OBJ_SPRITE_FLIP
     jmp VecClearObject
 LoadRecordThenClearAtSubStep3_at1:
     rts
@@ -207,7 +207,7 @@ SoundWhenHurtThenFlag:
     lda a:OBJ_31A0,x
     and #$80
     bne SoundWhenHurtThenFlag_at0
-    lda a:OBJ_33B0,x
+    lda a:OBJ_HIT_TAKEN,x
     cmp #$05
     bcc SoundWhenHurtThenFlag_at0
     lda #$D2
@@ -231,7 +231,7 @@ SoundWhenHurtThenFlag_at0:
 ; WAITS: no.
 ; Entry: X object, Y kept for the sound. Exit: as the last instruction that ran. The flagged arm ran in no script; the draft stops there.
 SoundAndState6WhenFlagged:
-    lda a:OBJ_27A8,x
+    lda a:OBJ_STATE,x
     cmp #$06
     beq SoundAndState6WhenFlagged_at0
     lda a:OBJ_31A0,x
@@ -240,8 +240,8 @@ SoundAndState6WhenFlagged:
     lda #$D3
     jsr VecSoundCommand
     lda #$06
-    sta a:OBJ_27A8,x
-    stz a:OBJ_2800,x
+    sta a:OBJ_STATE,x
+    stz a:OBJ_SUBSTATE,x
     stz a:OBJ_3250,x
     lda a:OBJ_3618,x
     sta a:OBJ_32A8,x
@@ -260,7 +260,7 @@ SoundAndState6WhenFlagged_at0:
 LoadRecordFrame0D:
     jsr VecLoadObjectRecord
     lda #$0D
-    sta a:OBJ_2A68,x
+    sta a:OBJ_FRAME,x
     rts
 
 ; @routine 0F6B:415 ClearFourAtScreen2
@@ -292,7 +292,7 @@ ClearFourAtScreen2:
     sta a:OBJ_VY_LO,x
     lda #$FF
     sta a:OBJ_VY_HI,x
-    inc a:OBJ_27A8,x
+    inc a:OBJ_STATE,x
 ClearFourAtScreen2_at0:
     rts
 
@@ -309,13 +309,13 @@ MoveUpUntilY40:
     bcs MoveUpUntilY40_at0
     lda #$02
     sta a:OBJ_34B8,x
-    inc a:OBJ_27A8,x
+    inc a:OBJ_STATE,x
 MoveUpUntilY40_at0:
     rts
 
 ; @routine 0F6B:50B CountDownThenCopyPhase
 ; @run 70:B50B
-; WHAT IT DOES: Counts OBJ_3510 down; when it is 0 (or reaches 0) sets OBJ_2800 from OBJ_38D8.
+; WHAT IT DOES: Counts OBJ_3510 down; when it is 0 (or reaches 0) sets OBJ_SUBSTATE from OBJ_38D8.
 ; HOW: A test, a memory decrement, a copy.
 ; WAITS: no.
 ; Entry: X object. Exit: as the last instruction that ran.
@@ -326,16 +326,16 @@ CountDownThenCopyPhase:
     bne CountDownThenCopyPhase_at1
 CountDownThenCopyPhase_at0:
     lda a:OBJ_38D8,x
-    sta a:OBJ_2800,x
+    sta a:OBJ_SUBSTATE,x
 CountDownThenCopyPhase_at1:
     rts
 
 ; @routine 0F6B:51C ResetPieceAndAdvance
 ; @run 70:B51C
-; WHAT IT DOES: Clears OBJ_3778, sets OBJ_37D0 $80 and OBJ_35C0 $E0 and goes to the next OBJ_2800.
+; WHAT IT DOES: Clears OBJ_3778, sets OBJ_37D0 $80 and OBJ_35C0 $E0 and goes to the next OBJ_SUBSTATE.
 ; HOW: Stores and an INC.
 ; WAITS: no.
-; Entry: X object. Exit: A $E0, N and Z from the new OBJ_2800.
+; Entry: X object. Exit: A $E0, N and Z from the new OBJ_SUBSTATE.
 ResetPieceAndAdvance:
     lda #$00
     sta a:OBJ_3778,x
@@ -343,5 +343,5 @@ ResetPieceAndAdvance:
     sta a:OBJ_37D0,x
     lda #$E0
     sta a:OBJ_35C0,x
-    inc a:OBJ_2800,x
+    inc a:OBJ_SUBSTATE,x
     rts

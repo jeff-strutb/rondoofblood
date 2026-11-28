@@ -10,7 +10,7 @@
 ; WAITS: no.
 ; Entry: X the object. Exit: as the last path left it.
 StageTriggerObject:
-    lda a:OBJ_27A8,x
+    lda a:OBJ_STATE,x
     bne StageTriggerObject_at0
     jsr VecLoadObjectRecord
     lda #$80
@@ -34,14 +34,14 @@ StageTriggerObject:
     and #$03
     sta a:OBJ_34B8,x
     rts
-    stz a:OBJ_33B0,x
+    stz a:OBJ_HIT_TAKEN,x
     rts
 StageTriggerObject_at0:
     stz a:OBJ_3A90,x
     ldy a:OBJ_34B8,x
     lda a:PadOverrides,y
     beq ClearHitsTaken
-    lda a:OBJ_33B0,x
+    lda a:OBJ_HIT_TAKEN,x
     beq ClearHitsTaken
     cmp #$05
     bcs ClearHitsTaken
@@ -78,7 +78,7 @@ ClearStageTimers:
 ; WAITS: no.
 ; Entry: X the object. Exit: as the last path left it.
 StageTriggerObjectB:
-    lda a:OBJ_27A8,x
+    lda a:OBJ_STATE,x
     bne StageTriggerObjectB_at0
     jsr VecLoadObjectRecord
     lda #$80
@@ -107,7 +107,7 @@ StageTriggerObjectB_at1:
     lda a:PlayerMayLeaveTop
     dec a
     beq StageTriggerObjectB_at2
-    lda a:OBJ_33B0,x
+    lda a:OBJ_HIT_TAKEN,x
     beq ClearHitsTaken
     cmp #$05
     bcs ClearHitsTaken

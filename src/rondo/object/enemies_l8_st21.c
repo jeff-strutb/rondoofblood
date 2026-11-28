@@ -31,7 +31,7 @@ enum { BR_LOADED, BR_FEW_HITS, BR_NO_SLOT, BR_BROKEN };
 /*
  * @routine 0F6B:07D LoadRecordSplitIntoFourAndClear
  * @run 70:B07D
- * WHAT IT DOES: Sets OBJ_2FE8 of slot 0 to $C0, loads the record and records the event, starts four objects of type $A6 in the slots after this one at its place (the second and fourth with bit 7 of OBJ_X_LO set, the third and fourth one screen on in X) and clears itself.
+ * WHAT IT DOES: Sets OBJ_SPRITE_FLIP of slot 0 to $C0, loads the record and records the event, starts four objects of type $A6 in the slots after this one at its place (the second and fourth with bit 7 of OBJ_X_LO set, the third and fourth one screen on in X) and clears itself.
  * HOW: LoadObjectRecord, RecordObjectEvent, four StartObjectAtPlace calls, INCs and ORs with X and Y swapped, a tail jump into ClearObject.
  * WAITS: no.
  * Entry: X object. Exit: as the last instruction that ran (l8_split_four_exit_shim).
@@ -285,7 +285,7 @@ void abi_LoadRecordFlipByPlayerThenFall(void)
 /*
  * @routine 0F6B:1CA LoadRecordThenClearAtSubStep3
  * @run 70:B1CA
- * WHAT IT DOES: In state 0 loads the record. Later, when the sub-mode's step is 3, clears OBJ_2FE8 of slot 0 and clears the object.
+ * WHAT IT DOES: In state 0 loads the record. Later, when the sub-mode's step is 3, clears OBJ_SPRITE_FLIP of slot 0 and clears the object.
  * HOW: LoadObjectRecord, a compare, a store, a tail jump into ClearObject.
  * WAITS: no.
  * Entry: X object. Exit: as the last instruction that ran (l8_clear_at_step3_exit_shim). The body returns the state (first) and the sub-mode step (second).
@@ -422,7 +422,7 @@ HurtSoundArm SoundAndState6WhenFlagged(uint8_t slot, uint8_t y_entry)
     r.call = SoundCommand(0xD3, slot, y_entry);
     jsr_pop();
     WR8(OBJ->state[slot], 6);
-    WR8(OBJ->f2800[slot], 0);
+    WR8(OBJ->substate[slot], 0);
     WR8(OBJ->hitbox_on[slot], 0);
     r.value = RD8(OBJ->f3618[slot]);
     WR8(OBJ->f32a8[slot], r.value);
@@ -590,7 +590,7 @@ void abi_MoveUpUntilY40(void)
 /*
  * @routine 0F6B:50B CountDownThenCopyPhase
  * @run 70:B50B
- * WHAT IT DOES: Counts OBJ_3510 down; when it is 0 (or reaches 0) sets OBJ_2800 from OBJ_38D8.
+ * WHAT IT DOES: Counts OBJ_3510 down; when it is 0 (or reaches 0) sets OBJ_SUBSTATE from OBJ_38D8.
  * HOW: A test, a memory decrement, a copy.
  * WAITS: no.
  * Entry: X object. Exit: as the last instruction that ran (l8_copy_phase_exit_shim). The body returns the count read (first), the count after the decrement (second) and the byte copied (third).
@@ -608,7 +608,7 @@ L8Arm CountDownThenCopyPhase(uint8_t slot)
         }
     }
     r.third = RD8(OBJ->f38d8[slot]);
-    WR8(OBJ->f2800[slot], r.third);
+    WR8(OBJ->substate[slot], r.third);
     r.arm = CC_COPIED;
     return r;
 }
@@ -634,17 +634,17 @@ void abi_CountDownThenCopyPhase(void)
 /*
  * @routine 0F6B:51C ResetPieceAndAdvance
  * @run 70:B51C
- * WHAT IT DOES: Clears OBJ_3778, sets OBJ_37D0 $80 and OBJ_35C0 $E0 and goes to the next OBJ_2800.
+ * WHAT IT DOES: Clears OBJ_3778, sets OBJ_37D0 $80 and OBJ_35C0 $E0 and goes to the next OBJ_SUBSTATE.
  * HOW: Stores and an INC.
  * WAITS: no.
- * Entry: X object. Exit: A $E0, N and Z from the new OBJ_2800 (l8_reset_piece_exit_shim; the body returns it).
+ * Entry: X object. Exit: A $E0, N and Z from the new OBJ_SUBSTATE (l8_reset_piece_exit_shim; the body returns it).
  */
 uint8_t ResetPieceAndAdvance(uint8_t slot)
 {
     WR8(OBJ->f3778[slot], 0);
     WR8(OBJ->f37d0[slot], 0x80);
     WR8(OBJ->f35c0[slot], 0xE0);
-    return INC8(OBJ->f2800[slot]);
+    return INC8(OBJ->substate[slot]);
 }
 
 static Ended l8_reset_piece_exit_shim(uint8_t phase)

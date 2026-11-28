@@ -22,10 +22,10 @@ LoadThenStartTwoScripts:
 
 ; @routine 10CB:2CB ClearSlot4EUnlessCamera18
 ; @run 70:B2CB
-; WHAT IT DOES: Unless the camera mode is $18, clears the object in slot $4E, sets OBJ_3510 to $40 and goes on to the next OBJ_2800.
+; WHAT IT DOES: Unless the camera mode is $18, clears the object in slot $4E, sets OBJ_3510 to $40 and goes on to the next OBJ_SUBSTATE.
 ; HOW: A compare, ClearObjectInY, a store, an INC.
 ; WAITS: no.
-; Entry: X object. Exit: the compare, or the new OBJ_2800's N and Z (A $40).
+; Entry: X object. Exit: the compare, or the new OBJ_SUBSTATE's N and Z (A $40).
 ClearSlot4EUnlessCamera18:
     lda a:CameraMode
     cmp #$18
@@ -34,13 +34,13 @@ ClearSlot4EUnlessCamera18:
     jsr VecClearObjectInY
     lda #$40
     sta a:OBJ_3510,x
-    inc a:OBJ_2800,x
+    inc a:OBJ_SUBSTATE,x
 ClearSlot4EUnlessCamera18_at0:
     rts
 
 ; @routine 10CB:2E0 CountThenSoleScriptAndSound
 ; @run 70:B2E0
-; WHAT IT DOES: Counts OBJ_3510 down; at zero it starts the sole script 0 in slot 3, sends sound $E4, sets its flags to $81, OBJ_3510 to $60 and zTemp $9E to 4 and goes on to the next OBJ_2800.
+; WHAT IT DOES: Counts OBJ_3510 down; at zero it starts the sole script 0 in slot 3, sends sound $E4, sets its flags to $81, OBJ_3510 to $60 and zTemp $9E to 4 and goes on to the next OBJ_SUBSTATE.
 ; HOW: DEC, StartSoleScriptSlot, SoundCommand, stores, an INC.
 ; WAITS: no.
 ; Entry: X object. Exit: see the wrapper.
@@ -60,16 +60,16 @@ CountThenSoleScriptAndSound:
     sta a:OBJ_3510,x
     lda #$04
     sta z:zRasterStage
-    inc a:OBJ_2800,x
+    inc a:OBJ_SUBSTATE,x
 CountThenSoleScriptAndSound_at0:
     rts
 
 ; @routine 10CB:3BE CountScriptsThenStepList
 ; @run 70:B3BE
-; WHAT IT DOES: Runs StartScriptWhenCountInTable, then steps the animation list at $B3D2; when it ends the object goes to the next OBJ_2800.
+; WHAT IT DOES: Runs StartScriptWhenCountInTable, then steps the animation list at $B3D2; when it ends the object goes to the next OBJ_SUBSTATE.
 ; HOW: StartScriptWhenCountInTable, StepObjectFrames, an INC.
 ; WAITS: no.
-; Entry: X object, Y kept unless a callee sets it. Exit: the step, or the new OBJ_2800's N and Z when the list ended.
+; Entry: X object, Y kept unless a callee sets it. Exit: the step, or the new OBJ_SUBSTATE's N and Z when the list ended.
 CountScriptsThenStepList:
     jsr StartScriptWhenCountInTable
     lda #$D2
@@ -78,7 +78,7 @@ CountScriptsThenStepList:
     sta z:zTemp11
     jsr VecStepObjectFrames
     bne CountScriptsThenStepList_at0
-    inc a:OBJ_2800,x
+    inc a:OBJ_SUBSTATE,x
 CountScriptsThenStepList_at0:
     rts
 
@@ -113,7 +113,7 @@ StartScriptWhenCountInTable_at1:
 
 ; @routine 10CB:415 RiseThenPlaceWithSound
 ; @run 70:B415
-; WHAT IT DOES: Moves the object along Y by its speed and takes $0010 off its Y speed. When its Y high byte is $FE it sends sound $E7, sets its flags to $81, frame $1D, puts it at X $0000, Y $FFE0, gives it X speed $0400 and Y speed $0600 (high bytes) and goes on to the next OBJ_2800.
+; WHAT IT DOES: Moves the object along Y by its speed and takes $0010 off its Y speed. When its Y high byte is $FE it sends sound $E7, sets its flags to $81, frame $1D, puts it at X $0000, Y $FFE0, gives it X speed $0400 and Y speed $0600 (high bytes) and goes on to the next OBJ_SUBSTATE.
 ; HOW: ApplyVelocityY, a 16-bit subtract, SoundCommand, stores, an INC.
 ; WAITS: no.
 ; Entry: X object, Y kept for the sound's push. Exit: see the wrapper.
@@ -134,7 +134,7 @@ RiseThenPlaceWithSound:
     lda #$80
     sta a:OBJ_FLAGS_2F38,x
     lda #$1D
-    sta a:OBJ_2A68,x
+    sta a:OBJ_FRAME,x
     stz a:OBJ_X_HI,x
     lda #$00
     sta a:OBJ_X_LO,x
@@ -146,13 +146,13 @@ RiseThenPlaceWithSound:
     sta a:OBJ_VY_HI,x
     lda #$04
     sta a:OBJ_VX_HI,x
-    inc a:OBJ_2800,x
+    inc a:OBJ_SUBSTATE,x
 RiseThenPlaceWithSound_at0:
     rts
 
 ; @routine 10CB:45F RiseThenCueMusic
 ; @run 70:B45F
-; WHAT IT DOES: Moves the object along Y and takes $0030 off its Y speed. Once the speed's high byte is negative it steps the animation list at $B4AA; when that ends it sets bit 4 of zField8E, sends sound $FF, clears bits 3 and 4, plays the music again (CdPlayAgain), sets bit 2, clears zTemp $9E and OBJ_3250 to 2, clears its animation step and timer, goes on to the next state and clears OBJ_2800.
+; WHAT IT DOES: Moves the object along Y and takes $0030 off its Y speed. Once the speed's high byte is negative it steps the animation list at $B4AA; when that ends it sets bit 4 of zField8E, sends sound $FF, clears bits 3 and 4, plays the music again (CdPlayAgain), sets bit 2, clears zTemp $9E and OBJ_3250 to 2, clears its animation step and timer, goes on to the next state and clears OBJ_SUBSTATE.
 ; HOW: ApplyVelocity, a 16-bit subtract, StepObjectFrames, SoundCommand, CdPlayAgain, stores.
 ; WAITS: no.
 ; Entry: X object, Y kept unless the step sets it. Exit: see the wrapper.
@@ -184,10 +184,10 @@ RiseThenCueMusic:
     stz z:zRasterStage
     lda #$02
     sta a:OBJ_3250,x
-    stz a:OBJ_3408,x
-    stz a:OBJ_3460,x
-    inc a:OBJ_27A8,x
-    stz a:OBJ_2800,x
+    stz a:OBJ_ANIM_STEP,x
+    stz a:OBJ_ANIM_TIMER,x
+    inc a:OBJ_STATE,x
+    stz a:OBJ_SUBSTATE,x
 RiseThenCueMusic_at0:
     rts
 
@@ -206,7 +206,7 @@ SpawnInFreeSlotEvery30_at0:
     lda #$1E
     sta a:OBJ_37D0,x
     ldy #$18
-    lda a:OBJ_2750,y
+    lda a:OBJ_KIND,y
     beq SpawnInFreeSlotEvery30_at1
     iny
     cpy #$20
@@ -220,10 +220,10 @@ SpawnInFreeSlotEvery30_at1:
 
 ; @routine 10CB:680 StepListB697ThenStopY
 ; @run 70:B680
-; WHAT IT DOES: Steps the animation list at $B697; when it ends, the object's Y speed is cleared and it goes to the next OBJ_2800.
+; WHAT IT DOES: Steps the animation list at $B697; when it ends, the object's Y speed is cleared and it goes to the next OBJ_SUBSTATE.
 ; HOW: StepObjectFrames, then stores and an increment.
 ; WAITS: no.
-; Entry: X object, Y kept unless the step sets it. Exit: the step, or the new OBJ_2800's N and Z when the list ended.
+; Entry: X object, Y kept unless the step sets it. Exit: the step, or the new OBJ_SUBSTATE's N and Z when the list ended.
 StepListB697ThenStopY:
     lda #$97
     sta z:zTemp10
@@ -233,16 +233,16 @@ StepListB697ThenStopY:
     bne StepListB697ThenStopY_at0
     stz a:OBJ_VY_HI,x
     stz a:OBJ_VY_LO,x
-    inc a:OBJ_2800,x
+    inc a:OBJ_SUBSTATE,x
 StepListB697ThenStopY_at0:
     rts
 
 ; @routine 10CB:6B6 RiseThenPlaceAndDrop
 ; @run 70:B6B6
-; WHAT IT DOES: Moves the object along Y by its speed and takes $0018 off its Y speed. When its Y high byte is $FE it puts the object at X $0070, Y $FFC0, gives it X speed $0030 and Y speed $0400, sets its flags to $81 and zTemp $9E to 4 and goes on to the next OBJ_2800.
+; WHAT IT DOES: Moves the object along Y by its speed and takes $0018 off its Y speed. When its Y high byte is $FE it puts the object at X $0070, Y $FFC0, gives it X speed $0030 and Y speed $0400, sets its flags to $81 and zTemp $9E to 4 and goes on to the next OBJ_SUBSTATE.
 ; HOW: ApplyVelocityY, a 16-bit subtract, stores, an INC.
 ; WAITS: no.
-; Entry: X object. Exit: the compare, or the new OBJ_2800's N and Z (A 4).
+; Entry: X object. Exit: the compare, or the new OBJ_SUBSTATE's N and Z (A 4).
 RiseThenPlaceAndDrop:
     jsr VecApplyVelocityY
     lda a:OBJ_VY_LO,x
@@ -273,16 +273,16 @@ RiseThenPlaceAndDrop:
     lda #$04
     sta a:OBJ_VY_HI,x
     stz a:OBJ_VY_LO,x
-    inc a:OBJ_2800,x
+    inc a:OBJ_SUBSTATE,x
 RiseThenPlaceAndDrop_at0:
     rts
 
 ; @routine 10CB:702 StepListB728ThenRiseSlowly
 ; @run 70:B702
-; WHAT IT DOES: Steps the animation list at $B728; while it runs the object moves and its Y speed loses $0010 a frame; when it ends the object goes to the next OBJ_2800.
+; WHAT IT DOES: Steps the animation list at $B728; while it runs the object moves and its Y speed loses $0010 a frame; when it ends the object goes to the next OBJ_SUBSTATE.
 ; HOW: StepObjectFrames, ApplyVelocity, a 16-bit subtract, an INC.
 ; WAITS: no.
-; Entry: X object, Y kept unless the step sets it. Exit: the subtract's, or the new OBJ_2800's N and Z.
+; Entry: X object, Y kept unless the step sets it. Exit: the subtract's, or the new OBJ_SUBSTATE's N and Z.
 StepListB728ThenRiseSlowly:
     lda #$28
     sta z:zTemp10
@@ -300,7 +300,7 @@ StepListB728ThenRiseSlowly:
     sta a:OBJ_VY_HI,x
     rts
 StepListB728ThenRiseSlowly_at0:
-    inc a:OBJ_2800,x
+    inc a:OBJ_SUBSTATE,x
     rts
 
 ; @routine 10CC:74F LoadThenFallAndFlash
@@ -310,13 +310,13 @@ StepListB728ThenRiseSlowly_at0:
 ; WAITS: no.
 ; Entry: X object. Exit: the record's registers and A $34 in state 0; else the count.
 LoadThenFallAndFlash:
-    lda a:OBJ_27A8,x
+    lda a:OBJ_STATE,x
     bne StartDriftingPiece
     jsr VecLoadObjectRecord
     lda #$01
     sta a:OBJ_FLAGS_2F38,x
     lda #$59
-    sta a:OBJ_2A68,x
+    sta a:OBJ_FRAME,x
     lda #$00
     sta a:OBJ_VX_HI,x
     lda #$C0
@@ -381,7 +381,7 @@ StepListC103ThenPickAim_at2:
     stz a:OBJ_3568,x
     lda #$02
     sta a:OBJ_3250,x
-    inc a:OBJ_27A8,x
+    inc a:OBJ_STATE,x
 StepListC103ThenPickAim_at0:
     rts
 
@@ -418,9 +418,9 @@ StepListC170ThenMoveAlongAngle:
     and #$80
     beq StepListC170ThenMoveAlongAngle_at0
     stz a:VDC_DATA_LO,x
-    stz a:OBJ_3408,x
-    stz a:OBJ_3460,x
-    inc a:OBJ_27A8,x
+    stz a:OBJ_ANIM_STEP,x
+    stz a:OBJ_ANIM_TIMER,x
+    inc a:OBJ_STATE,x
 StepListC170ThenMoveAlongAngle_at0:
     rts
 
@@ -441,7 +441,7 @@ StepListC192ThenClear:
     rts
 ; @routine 10CD:334 StartFirstObjectWhenCamera2
 ; @run 71:C334
-; WHAT IT DOES: When the level's Y high byte is 2, the scroll Y low is under $30 and the first object's state and OBJ_2800 are both 0, it sets that object's OBJ_3510 to $40 and OBJ_3568 to $10 and this object goes to the next state.
+; WHAT IT DOES: When the level's Y high byte is 2, the scroll Y low is under $30 and the first object's state and OBJ_SUBSTATE are both 0, it sets that object's OBJ_3510 to $40 and OBJ_3568 to $10 and this object goes to the next state.
 ; HOW: Compares and stores, an INC.
 ; WAITS: no.
 ; Entry: X object. Exit: the last compare or load, or the new state's N and Z (A $10).
@@ -452,13 +452,13 @@ StartFirstObjectWhenCamera2:
     lda a:ScrollYLo
     cmp #$30
     bcs StartFirstObjectWhenCamera2_at0
-    lda a:OBJ_27A8
-    ora a:OBJ_2800
+    lda a:OBJ_STATE
+    ora a:OBJ_SUBSTATE
     bne StartFirstObjectWhenCamera2_at0
     lda #$40
     sta a:OBJ_3510
     lda #$10
     sta a:OBJ_3568
-    inc a:OBJ_27A8,x
+    inc a:OBJ_STATE,x
 StartFirstObjectWhenCamera2_at0:
     rts

@@ -11,7 +11,7 @@ HitDamage0519:
     asl a
     asl a
     sta z:zTemp00
-    lda a:OBJ_33B0,x
+    lda a:OBJ_HIT_TAKEN,x
     clc
     adc z:zTemp00
     tay
@@ -32,7 +32,7 @@ HitDamage05C9:
     asl a
     asl a
     sta z:zTemp00
-    lda a:OBJ_33B0,x
+    lda a:OBJ_HIT_TAKEN,x
     clc
     adc z:zTemp00
     tay
@@ -53,7 +53,7 @@ HitDamage0729:
     asl a
     asl a
     sta z:zTemp00
-    lda a:OBJ_33B0,x
+    lda a:OBJ_HIT_TAKEN,x
     clc
     adc z:zTemp00
     tay
@@ -74,7 +74,7 @@ HitDamage07D9:
     asl a
     asl a
     sta z:zTemp00
-    lda a:OBJ_33B0,x
+    lda a:OBJ_HIT_TAKEN,x
     clc
     adc z:zTemp00
     tay
@@ -95,7 +95,7 @@ HitDamage0889:
     asl a
     asl a
     sta z:zTemp00
-    lda a:OBJ_33B0,x
+    lda a:OBJ_HIT_TAKEN,x
     clc
     adc z:zTemp00
     tay
@@ -116,7 +116,7 @@ HitDamage0939:
     asl a
     asl a
     sta z:zTemp00
-    lda a:OBJ_33B0,x
+    lda a:OBJ_HIT_TAKEN,x
     clc
     adc z:zTemp00
     tay
@@ -137,7 +137,7 @@ HitDamage0A99:
     asl a
     asl a
     sta z:zTemp00
-    lda a:OBJ_33B0,x
+    lda a:OBJ_HIT_TAKEN,x
     clc
     adc z:zTemp00
     tay
@@ -158,7 +158,7 @@ HitDamage0B49:
     asl a
     asl a
     sta z:zTemp00
-    lda a:OBJ_33B0,x
+    lda a:OBJ_HIT_TAKEN,x
     clc
     adc z:zTemp00
     tay
@@ -179,7 +179,7 @@ HitDamage0BF9:
     asl a
     asl a
     sta z:zTemp00
-    lda a:OBJ_33B0,x
+    lda a:OBJ_HIT_TAKEN,x
     clc
     adc z:zTemp00
     tay
@@ -200,7 +200,7 @@ HitDamage0CA9:
     asl a
     asl a
     sta z:zTemp00
-    lda a:OBJ_33B0,x
+    lda a:OBJ_HIT_TAKEN,x
     clc
     adc z:zTemp00
     tay
@@ -221,7 +221,7 @@ HitDamage0D59:
     asl a
     asl a
     sta z:zTemp00
-    lda a:OBJ_33B0,x
+    lda a:OBJ_HIT_TAKEN,x
     clc
     adc z:zTemp00
     tay
@@ -242,7 +242,7 @@ HitDamage0E09:
     asl a
     asl a
     sta z:zTemp00
-    lda a:OBJ_33B0,x
+    lda a:OBJ_HIT_TAKEN,x
     clc
     adc z:zTemp00
     tay
@@ -263,7 +263,7 @@ HitDamage0EB9:
     asl a
     asl a
     sta z:zTemp00
-    lda a:OBJ_33B0,x
+    lda a:OBJ_HIT_TAKEN,x
     clc
     adc z:zTemp00
     tay
@@ -284,7 +284,7 @@ HitDamage1019:
     asl a
     asl a
     sta z:zTemp00
-    lda a:OBJ_33B0,x
+    lda a:OBJ_HIT_TAKEN,x
     clc
     adc z:zTemp00
     tay
@@ -305,7 +305,7 @@ HitDamage10C9:
     asl a
     asl a
     sta z:zTemp00
-    lda a:OBJ_33B0,x
+    lda a:OBJ_HIT_TAKEN,x
     clc
     adc z:zTemp00
     tay
@@ -326,7 +326,7 @@ HitDamage1179:
     asl a
     asl a
     sta z:zTemp00
-    lda a:OBJ_33B0,x
+    lda a:OBJ_HIT_TAKEN,x
     clc
     adc z:zTemp00
     tay
@@ -347,7 +347,7 @@ HitDamage16C9:
     asl a
     asl a
     sta z:zTemp00
-    lda a:OBJ_33B0,x
+    lda a:OBJ_HIT_TAKEN,x
     clc
     adc z:zTemp00
     tay
@@ -369,7 +369,7 @@ HitDamage0F69:
     asl a
     asl a
     sta z:zTemp00
-    lda a:OBJ_33B0,x
+    lda a:OBJ_HIT_TAKEN,x
     clc
     adc z:zTemp00
     tay
@@ -390,7 +390,7 @@ HitDamage12D9:
     asl a
     asl a
     sta z:zTemp00
-    lda a:OBJ_33B0,x
+    lda a:OBJ_HIT_TAKEN,x
     clc
     adc z:zTemp00
     tay
@@ -411,7 +411,7 @@ HitDamage13F9:
     asl a
     asl a
     sta z:zTemp00
-    lda a:OBJ_33B0,x
+    lda a:OBJ_HIT_TAKEN,x
     clc
     adc z:zTemp00
     tay
@@ -432,7 +432,7 @@ HitDamage1619:
     asl a
     asl a
     sta z:zTemp00
-    lda a:OBJ_33B0,x
+    lda a:OBJ_HIT_TAKEN,x
     clc
     adc z:zTemp00
     tay
@@ -453,7 +453,7 @@ HitDamage18D9:
     asl a
     asl a
     sta z:zTemp00
-    lda a:OBJ_33B0,x
+    lda a:OBJ_HIT_TAKEN,x
     clc
     adc z:zTemp00
     tay

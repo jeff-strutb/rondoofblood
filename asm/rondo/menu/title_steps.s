@@ -107,10 +107,10 @@ TitleScreenStep:
 ; Entry: X the doubled sub-mode and Y kept (ClearScreenState saves them). Exit: A and Y 3, X 0, N and Z from the new sub-mode; C and V kept.
 TitleScreenBegin:
     jsr VecClearScreenState
-    stz a:OBJ_2A68
+    stz a:OBJ_FRAME
     stz a:$2A8A
     stz a:$2A8B
-    stz a:OBJ_2A68+8
+    stz a:OBJ_FRAME+8
     stz a:$2A71
     lda #$01
     jsr VecStartListChannel0Kind2
@@ -224,8 +224,8 @@ AttractStartCheck:
     lda #$80
     sta z:zWaitTimer3
     stz z:zWaitTimer4
-    stz a:OBJ_2750+8
-    stz a:OBJ_2A68+8
+    stz a:OBJ_KIND+8
+    stz a:OBJ_FRAME+8
     stz a:$2759
     stz a:$2A71
     lda #$05
@@ -250,9 +250,9 @@ AttractBlink:
     bne AttractBlink_at0
     lda z:zWaitTimer4
     bne AttractBlink_at0
-    lda a:OBJ_2A68
+    lda a:OBJ_FRAME
     eor #$3F
-    sta a:OBJ_2A68
+    sta a:OBJ_FRAME
 AttractBlink_at0:
     dec z:zWaitTimer3
     bne $8791
@@ -267,7 +267,7 @@ AttractBlink_at0:
 AttractBlink_at1:
     lda #$40
     sta z:zWaitTimer3
-    stz a:OBJ_2A68
+    stz a:OBJ_FRAME
     lda #$08
     jmp VecStartScriptSlot0Kind2
 AttractBlink_at2:

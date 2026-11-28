@@ -823,9 +823,9 @@ static inline ObjArm hop_from_index(uint8_t slot, uint8_t index, uint16_t table,
     WR8(OBJ->vy_lo[slot], 0);
     WR8(OBJ->frame[slot], frame);
     WR8(OBJ->f35c0[slot], 8);
-    step = RD8(OBJ->f2800[slot]);
+    step = RD8(OBJ->substate[slot]);
     step = (uint8_t)(step + 1);
-    WR8(OBJ->f2800[slot], step);
+    WR8(OBJ->substate[slot], step);
     r.first = step;
     r.second = facing;
     return r;
@@ -882,7 +882,7 @@ static inline ObjArm pick_state_by_distance(uint8_t slot, bool carry_in, uint16_
     ObjArm r = { 0 };
     uint8_t high, y, value;
 
-    WR8(OBJ->f2800[slot], 0);
+    WR8(OBJ->substate[slot], 0);
     high = RD8(OBJ->x_hi[slot]);
     if (high != 0) {
         WR8(OBJ->state[slot], 3);
@@ -1040,7 +1040,7 @@ static inline ObjArm walk_on_random_beat_first(uint8_t slot, uint16_t base, uint
     WR8(OBJ->anim_step[slot], 0);
     WR8(OBJ->anim_timer[slot], 0);
     INC8(OBJ->f3510[slot]);
-    r.first = INC8(OBJ->f2800[slot]);
+    r.first = INC8(OBJ->substate[slot]);
     r.second = value;
     r.y = y;
     return r;
@@ -1070,7 +1070,7 @@ static inline ObjArm walk_on_random_beat_follow(uint8_t slot, uint16_t ret_step,
         return r;
     }
     WR8(OBJ->state[slot], 5);
-    WR8(OBJ->f2800[slot], 0);
+    WR8(OBJ->substate[slot], 0);
     r.arm = WF_DONE;
     return r;
 }

@@ -253,7 +253,7 @@ void abi_SoundBAAtScreen2(void)
 /*
  * @routine 0B4A:58B LoadRecordThenDrawTileScript2
  * @run 70:AD8B
- * WHAT IT DOES: When bit 0 of zField92 is set the object is cleared; otherwise it loads its record, sets its hit offset OBJ_39E0 $E8 and draws tile script 2.
+ * WHAT IT DOES: When bit 0 of zField92 is set the object is cleared; otherwise it loads its record, sets its hit offset OBJ_HITBOX_DY $E8 and draws tile script 2.
  * HOW: A test, a tail jump into ClearObject, LoadObjectRecord, DrawTileScript.
  * WAITS: no.
  * Entry: X object. Exit: as DrawTileScript, or the test when the object is cleared (l8_draw_tile2_exit_shim). The jump into ClearObject ran in no script.
@@ -295,8 +295,8 @@ void abi_LoadRecordThenDrawTileScript2(void)
 /*
  * @routine 0B4A:608 ScatterPiecesDownward
  * @run 70:AE08
- * WHAT IT DOES: Moves the object down by its hit offset OBJ_39E0, starts up to 8 objects of type $9A in free slots of $30 to $3F at its place, each with an X speed from the table at $AE4E by the parity of the count, moved once, OBJ_34B8 1 and OBJ_3510 the count less 1, then moves the object back.
- * HOW: An add and a subtract of OBJ_39E0 on OBJ_Y_LO, a loop of FindFreeSlotFrom30, StartObjectAtPlace and ApplyVelocityX with X and Y swapped, a counter in zTemp00. zD9 keeps its address form until it has a name.
+ * WHAT IT DOES: Moves the object down by its hit offset OBJ_HITBOX_DY, starts up to 8 objects of type $9A in free slots of $30 to $3F at its place, each with an X speed from the table at $AE4E by the parity of the count, moved once, OBJ_34B8 1 and OBJ_3510 the count less 1, then moves the object back.
+ * HOW: An add and a subtract of OBJ_HITBOX_DY on OBJ_Y_LO, a loop of FindFreeSlotFrom30, StartObjectAtPlace and ApplyVelocityX with X and Y swapped, a counter in zTemp00. zD9 keeps its address form until it has a name.
  * WAITS: no.
  * Entry: X object. Exit: as the last instruction that ran (l8_scatter_exit_shim).
  */
@@ -453,7 +453,7 @@ void abi_ClearWhenHurtThenWait(void)
 /*
  * @routine 0B4A:5A3 DrawTileScriptStepsThenScatter
  * @run 70:ADA3
- * WHAT IT DOES: When the object's X high byte is not 0 draws tile script $02 plus OBJ_34B8. Otherwise, at 5 hits taken, it sets OBJ_3A90 $18, draws the next tile script, plays sound $19, scatters pieces (ScatterPiecesDownward) and advances OBJ_34B8; below 3 steps it takes OBJ_39E0 and the frame from the table at $AE02; at 3 it sets zField92 1, clears OBJ_39E0, sets the hit box $10 by $10 and frame $17 and goes to the next state.
+ * WHAT IT DOES: When the object's X high byte is not 0 draws tile script $02 plus OBJ_34B8. Otherwise, at 5 hits taken, it sets OBJ_3A90 $18, draws the next tile script, plays sound $19, scatters pieces (ScatterPiecesDownward) and advances OBJ_34B8; below 3 steps it takes OBJ_HITBOX_DY and the frame from the table at $AE02; at 3 it sets zField92 1, clears OBJ_HITBOX_DY, sets the hit box $10 by $10 and frame $17 and goes to the next state.
  * HOW: DrawTileScript, SoundCommand, ScatterPiecesDownward, table reads, stores.
  * WAITS: no.
  * Entry: X object, Y kept for the sound. Exit: as the last instruction that ran (l8_steps_scatter_exit_shim).

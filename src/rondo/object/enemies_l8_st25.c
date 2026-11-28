@@ -307,7 +307,7 @@ void abi_CountDownThenClearOnTimer(void)
 /*
  * @routine 0F6C:3F0 FlashWhenHurtThenSound
  * @run 70:BBF0
- * WHAT IT DOES: Unless bit 7 of OBJ_31A0 is set, in the states the table at $BBB0 marks it clears its flash flags, sets them $10 when OBJ_3A90 is not 0, copies OBJ_32A8 to slot $10's, and at 5 hits plays sound $D6, doubles OBJ_3A90 twice, goes to state $0D and clears OBJ_2800.
+ * WHAT IT DOES: Unless bit 7 of OBJ_31A0 is set, in the states the table at $BBB0 marks it clears its flash flags, sets them $10 when OBJ_3A90 is not 0, copies OBJ_32A8 to slot $10's, and at 5 hits plays sound $D6, doubles OBJ_3A90 twice, goes to state $0D and clears OBJ_SUBSTATE.
  * HOW: Tests, a table read by the state, stores, SoundCommand, two ASLs in memory.
  * WAITS: no.
  * Entry: X object, Y kept for the sound. Exit: as the last instruction that ran (l8_flash_hurt_exit_shim). The arm past the table test ran in no script; the draft stops there.
@@ -347,7 +347,7 @@ L8FlashHurtArm FlashWhenHurtThenSound(uint8_t slot, uint8_t y_entry)
     ASL8(OBJ->timer[slot]);
     r.shifted = ASL8(OBJ->timer[slot]);
     WR8(OBJ->state[slot], 0x0D);
-    WR8(OBJ->f2800[slot], 0);
+    WR8(OBJ->substate[slot], 0);
     r.arm = ST25_HURT_SOUNDED;
     return r;
 }
@@ -394,7 +394,7 @@ void abi_FlashWhenHurtThenSound(void)
 /*
  * @routine 0F6C:42D EnterState0EWhenFlagged
  * @run 70:BC2D
- * WHAT IT DOES: When bit 7 of OBJ_31A0 is set and the state is not $0E, copies OBJ_32A8 to slot $10's, clears OBJ_3250, goes to state $0E and clears OBJ_2800.
+ * WHAT IT DOES: When bit 7 of OBJ_31A0 is set and the state is not $0E, copies OBJ_32A8 to slot $10's, clears OBJ_3250, goes to state $0E and clears OBJ_SUBSTATE.
  * HOW: Two tests, stores.
  * WAITS: no.
  * Entry: X object. Exit: as the last instruction that ran (l8_enter_0e_exit_shim). The arm past the flag test ran in no script; the draft stops there.
@@ -418,7 +418,7 @@ L8Arm EnterState0EWhenFlagged(uint8_t slot)
     WR8(OBJ->f32a8[0x10], value);
     WR8(OBJ->hitbox_on[slot], 0);
     WR8(OBJ->state[slot], 0x0E);
-    WR8(OBJ->f2800[slot], 0);
+    WR8(OBJ->substate[slot], 0);
     r.arm = ST25_ENTER_ENTERED;
     return r;
 }
@@ -743,7 +743,7 @@ void abi_StartLeapWhenHurtAnswerYes(void)
 /*
  * @routine 0EBE:768 StepListByPhaseThenLand
  * @run 71:CF68
- * WHAT IT DOES: Steps the animation list that the table at $CFA7 names for OBJ_3568 and asks StopOnLanding with a probe height of 8; while it falls the Y speed loses $0014 a frame; on landing it clears the animation, sets frame $45 and OBJ_3510 8 and goes to the next OBJ_2800.
+ * WHAT IT DOES: Steps the animation list that the table at $CFA7 names for OBJ_3568 and asks StopOnLanding with a probe height of 8; while it falls the Y speed loses $0014 a frame; on landing it clears the animation, sets frame $45 and OBJ_3510 8 and goes to the next OBJ_SUBSTATE.
  * HOW: StepObjectFrames, StopOnLanding, a 16-bit subtract in memory, stores, an INC.
  * WAITS: no.
  * Entry: X object, Y the probe's column unless the step sets it, C passed on (StepObjectFrames sets it: C 1 when the frame changed). Exit: the mover's registers, then the landing's or the subtract's (l8_phase_land_exit_shim).
@@ -781,7 +781,7 @@ L8PhaseLandArm StepListByPhaseThenLand(uint8_t slot, uint8_t y_entry, bool carry
     WR8(OBJ->anim_timer[slot], 0);
     WR8(OBJ->frame[slot], 0x45);
     WR8(OBJ->f3510[slot], 8);
-    r.count = INC8(OBJ->f2800[slot]);
+    r.count = INC8(OBJ->substate[slot]);
     r.landed = true;
     return r;
 }

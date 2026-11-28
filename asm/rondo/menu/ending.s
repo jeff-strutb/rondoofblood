@@ -167,7 +167,7 @@ EndingCommandPlaceKind:
     jsr EndingPlaceObject
     iny
     lda (zScriptPtr),y
-    sta a:OBJ_2750,x
+    sta a:OBJ_KIND,x
     jmp EndingScriptAdvance
 
 ; @routine 010D:0DC EndingCommandPlaceNext
@@ -187,7 +187,7 @@ EndingCommandPlaceNext:
     lda (zScriptPtr),y
     sta a:OBJ_2A10,x
     lda #$02
-    sta a:OBJ_2750,x
+    sta a:OBJ_KIND,x
     jmp EndingScriptAdvance
 
 ; @routine 010D:0F6 EndingCommandPlaceFrame
@@ -202,7 +202,7 @@ EndingCommandPlaceFrame:
     jsr EndingPlaceObject
     iny
     lda (zScriptPtr),y
-    sta a:OBJ_2A68,x
+    sta a:OBJ_FRAME,x
     iny
     lda (zScriptPtr),y
     sta a:OBJ_2A10,x
@@ -220,7 +220,7 @@ EndingCommandPlaceTimed:
     jsr EndingPlaceObject
     iny
     lda (zScriptPtr),y
-    sta a:OBJ_2A68,x
+    sta a:OBJ_FRAME,x
     iny
     lda (zScriptPtr),y
     sta a:OBJ_2A10,x
@@ -231,7 +231,7 @@ EndingCommandPlaceTimed:
     lda (zScriptPtr),y
     sta a:OBJ_34B8,x
     lda #$03
-    sta a:OBJ_2750,x
+    sta a:OBJ_KIND,x
     jmp EndingScriptAdvance
 
 ; @routine 010D:131 EndingClearObjects
@@ -321,7 +321,7 @@ EndingCommandLoadBanks_at0:
 EndingObjectsStep:
     clx
 EndingObjectsStep_at1:
-    lda a:OBJ_2750,x
+    lda a:OBJ_KIND,x
     beq EndingObjectsStep_at0
     jsr EndingDispatchKind
 EndingObjectsStep_at0:
@@ -366,7 +366,7 @@ EndingCreditScrollStart:
     ldx #$07
     jsr VecStartListChannelKind2
     plx
-    lda a:OBJ_27A8,x
+    lda a:OBJ_STATE,x
     bne ModeDoneAdd
     phx
     lda #$1A
@@ -377,12 +377,12 @@ EndingCreditScrollStart:
     inc a:ScrollXHi
     inc a:ScrollYHi
     dec a:ScrollYLo
-    inc a:OBJ_27A8,x
+    inc a:OBJ_STATE,x
     rts
     cmp #$0A
     beq EndingCreditScrollStart_at0
     jsr EndingHoldTimer
-    lda a:OBJ_27A8,x
+    lda a:OBJ_STATE,x
     asl a
     tay
     lda a:$8284,y
@@ -391,7 +391,7 @@ EndingCreditScrollStart:
     sta a:ScrollYHi
     lda #$06
     sta a:OBJ_34B8,x
-    inc a:OBJ_27A8,x
+    inc a:OBJ_STATE,x
 EndingCreditScrollStart_at0:
     rts
 
@@ -404,7 +404,7 @@ EndingCreditScrollStart_at0:
 ; WAITS: no.
 ; Entry: X the object. Exit: as the last test left them.
 EndingFallingPiece:
-    lda a:OBJ_27A8,x
+    lda a:OBJ_STATE,x
     bne EndingFallingPiece_at0
     lda a:$82D5,x
     sta a:OBJ_VY_HI,x
@@ -413,8 +413,8 @@ EndingFallingPiece:
     txa
     clc
     adc #$72
-    sta a:OBJ_2A68,x
-    inc a:OBJ_27A8,x
+    sta a:OBJ_FRAME,x
+    inc a:OBJ_STATE,x
     rts
 EndingFallingPiece_at0:
     txa
@@ -465,14 +465,14 @@ EndingClearAfterScrollY:
 ; WAITS: no.
 ; Entry: X the object. Exit: as the last test left them.
 EndingPieceSpawn:
-    lda a:OBJ_27A8,x
+    lda a:OBJ_STATE,x
     bne EndingPieceSpawn_at0
     lda a:OBJ_X_HI+1
     bne EndingPieceSpawn_at1
     lda a:OBJ_X_LO+1
     cmp #$78
     bne EndingPieceSpawn_at1
-    inc a:OBJ_27A8,x
+    inc a:OBJ_STATE,x
 EndingPieceSpawn_at1:
     rts
 EndingPieceSpawn_at0:
@@ -483,11 +483,11 @@ EndingPieceSpawn_at2:
     lda #$03
     sta a:OBJ_2A10,x
     lda #$1A
-    sta a:OBJ_2750,x
+    sta a:OBJ_KIND,x
     txa
     clc
     adc #$40
-    sta a:OBJ_2A68,x
+    sta a:OBJ_FRAME,x
     lda a:$831C,x
     sta a:OBJ_X_LO,x
     lda a:$833B,x
@@ -496,7 +496,7 @@ EndingPieceSpawn_at2:
     cpx #$2F
     bne EndingPieceSpawn_at2
     plx
-    stz a:OBJ_2A68+1
+    stz a:OBJ_FRAME+1
     jmp VecClearObject
 
 ; @routine 010D:36A EndingAimAtPlace
@@ -507,7 +507,7 @@ EndingPieceSpawn_at2:
 ; WAITS: no.
 ; Entry: X the object. Exit: as the last test left them.
 EndingAimAtPlace:
-    lda a:OBJ_27A8,x
+    lda a:OBJ_STATE,x
     bne EndingAimAtPlace_at0
     lda a:OBJ_X_LO,x
     sec
@@ -535,7 +535,7 @@ EndingAimAtPlace:
     rol a:OBJ_VX_HI,x
     asl a:OBJ_VY_LO,x
     rol a:OBJ_VY_HI,x
-    inc a:OBJ_27A8,x
+    inc a:OBJ_STATE,x
     rts
 EndingAimAtPlace_at0:
     dec a
@@ -560,11 +560,11 @@ EndingAimAtPlace_at1:
 ; WAITS: no.
 ; Entry: X the object. Exit: as the last test left them.
 EndingScrollPull:
-    lda a:OBJ_27A8,x
+    lda a:OBJ_STATE,x
     bne EndingScrollPull_at0
     lda #$80
     sta a:ScrollXLo
-    inc a:OBJ_27A8,x
+    inc a:OBJ_STATE,x
     rts
 EndingScrollPull_at0:
     dec a
@@ -584,7 +584,7 @@ EndingScrollPull_at2:
 EndingScrollPull_at3:
     dec a:ScrollXLo
     bne EndingScrollPull_at1
-    inc a:OBJ_27A8,x
+    inc a:OBJ_STATE,x
 EndingScrollPull_at1:
     rts
 
@@ -596,13 +596,13 @@ EndingScrollPull_at1:
 ; WAITS: no.
 ; Entry: X the object. Exit: as the last test left them.
 EndingScrollRunUp:
-    lda a:OBJ_27A8,x
+    lda a:OBJ_STATE,x
     bne EndingScrollRunUp_at0
     inc a:ScrollXLo
     lda a:ScrollXLo
     cmp #$80
     bne EndingScrollRunUp_at0
-    inc a:OBJ_27A8,x
+    inc a:OBJ_STATE,x
 EndingScrollRunUp_at0:
     rts
 
@@ -614,11 +614,11 @@ EndingScrollRunUp_at0:
 ; WAITS: no.
 ; Entry: X the object. Exit: as the last test left them.
 EndingPlayList10:
-    lda a:OBJ_27A8,x
+    lda a:OBJ_STATE,x
     bne EndingPlayList10_at0
     lda #$03
     sta a:OBJ_2A10,x
-    inc a:OBJ_27A8,x
+    inc a:OBJ_STATE,x
     rts
 EndingPlayList10_at0:
     dec a
@@ -631,7 +631,7 @@ EndingPlayList10_at1:
     lda #$10
     jsr EndingFrameList
     bne EndingPlayList10_at2
-    inc a:OBJ_27A8,x
+    inc a:OBJ_STATE,x
     rts
 
 ; @routine 010D:438 EndingScrollWindowSteps
@@ -645,7 +645,7 @@ EndingPlayList10_at1:
 ; Entry: X the object. Exit: as the last test left them.
 ; not checked: the hold timer's early return drops the caller's frame; the draft goes on regardless (FRAME DROPPED), so only the arm where the timer has run out is compared.
 EndingScrollWindowSteps:
-    lda a:OBJ_27A8,x
+    lda a:OBJ_STATE,x
     bne EndingScrollWindowSteps_at0
     lda #$13
     sta z:zRasterEffect
@@ -657,18 +657,18 @@ EndingScrollWindowSteps:
     sta a:ScrollYLo+2
     lda #$20
     sta a:OBJ_34B8,x
-    inc a:OBJ_27A8,x
+    inc a:OBJ_STATE,x
     rts
 EndingScrollWindowSteps_at0:
     dec a
     bne EndingScrollWindowSteps_at1
     jsr EndingHoldTimer
-    inc a:OBJ_27A8,x
+    inc a:OBJ_STATE,x
     rts
 EndingScrollWindowSteps_at1:
     dec a
     bne EndingScrollWindowSteps_at2
-    inc a:OBJ_27A8,x
+    inc a:OBJ_STATE,x
     rts
 EndingScrollWindowSteps_at2:
     dec a
@@ -678,9 +678,9 @@ EndingScrollWindowSteps_at2:
     adc #$04
     sta a:ScrollXLo+1
     bne EndingScrollWindowSteps_at4
-    inc a:OBJ_27A8
+    inc a:OBJ_STATE
     inc a:ScrollXHi+1
-    inc a:OBJ_27A8,x
+    inc a:OBJ_STATE,x
 EndingScrollWindowSteps_at4:
     rts
 EndingScrollWindowSteps_at3:
@@ -694,7 +694,7 @@ EndingScrollWindowSteps_at3:
 ; WAITS: no.
 ; Entry: X the object. Exit: as the last test left them.
 EndingScrollWindowA:
-    lda a:OBJ_27A8,x
+    lda a:OBJ_STATE,x
     bne EndingScrollWindowA_at0
     lda #$13
     sta z:zRasterEffect
@@ -704,7 +704,7 @@ EndingScrollWindowA:
     lda #$BF
     sta a:ScrollYLo+6
     sta a:ScrollYLo+2
-    inc a:OBJ_27A8,x
+    inc a:OBJ_STATE,x
 EndingScrollWindowA_at0:
     rts
 
@@ -715,7 +715,7 @@ EndingScrollWindowA_at0:
 ; WAITS: no.
 ; Entry: X the object. Exit: as the last test left them.
 EndingScrollWindowB:
-    lda a:OBJ_27A8,x
+    lda a:OBJ_STATE,x
     bne EndingScrollWindowA_at0
     lda #$13
     sta z:zRasterEffect
@@ -725,7 +725,7 @@ EndingScrollWindowB:
     lda #$C7
     sta a:ScrollYLo+6
     sta a:ScrollYLo+2
-    inc a:OBJ_27A8,x
+    inc a:OBJ_STATE,x
     rts
 
 ; @routine 010D:4BE EndingPlayList0F
@@ -735,11 +735,11 @@ EndingScrollWindowB:
 ; WAITS: no.
 ; Entry: X the object. Exit: as the last test left them.
 EndingPlayList0F:
-    lda a:OBJ_27A8,x
+    lda a:OBJ_STATE,x
     bne EndingPlayList0F_at0
     lda #$03
     sta a:OBJ_2A10,x
-    inc a:OBJ_27A8,x
+    inc a:OBJ_STATE,x
     rts
 EndingPlayList0F_at0:
     dec a
@@ -752,7 +752,7 @@ EndingPlayList0F_at1:
     lda #$0F
     jsr EndingFrameList
     bne EndingPlayList0F_at2
-    inc a:OBJ_27A8,x
+    inc a:OBJ_STATE,x
     rts
 
 ; @routine 010D:4DE EndingRiseToY40
@@ -763,11 +763,11 @@ EndingPlayList0F_at1:
 ; WAITS: no.
 ; Entry: X the object. Exit: as the last test left them.
 EndingRiseToY40:
-    lda a:OBJ_27A8,x
+    lda a:OBJ_STATE,x
     bne EndingRiseToY40_at0
     lda #$03
     sta a:OBJ_2A10,x
-    inc a:OBJ_27A8,x
+    inc a:OBJ_STATE,x
     rts
 EndingRiseToY40_at0:
     dec a
@@ -778,14 +778,14 @@ EndingRiseToY40_at1:
     dec a
     bne EndingRiseToY40_at2
     lda #$0D
-    sta a:OBJ_2A68,x
+    sta a:OBJ_FRAME,x
     dec a:OBJ_Y_LO,x
     lda a:OBJ_Y_LO,x
     cmp #$40
     bne EndingRiseToY40_at3
     lda #$8D
     sta a:OBJ_2B18,x
-    inc a:OBJ_27A8,x
+    inc a:OBJ_STATE,x
     rts
 EndingRiseToY40_at2:
     rts
@@ -798,11 +798,11 @@ EndingRiseToY40_at2:
 ; WAITS: no.
 ; Entry: X the object. Exit: as the last test left them.
 EndingPlayList0EThenClear:
-    lda a:OBJ_27A8,x
+    lda a:OBJ_STATE,x
     bne EndingPlayList0EThenClear_at0
     lda #$03
     sta a:OBJ_2A10,x
-    inc a:OBJ_27A8,x
+    inc a:OBJ_STATE,x
     rts
 EndingPlayList0EThenClear_at0:
     dec a
@@ -833,7 +833,7 @@ EndingScrollWindowHold:
     sta a:ScrollYLo+2
     lda #$40
     sta a:OBJ_34B8,x
-    inc a:OBJ_27A8,x
+    inc a:OBJ_STATE,x
     rts
 
 ; @routine 010D:565 EndingStartList3
@@ -855,7 +855,7 @@ EndingStartList3_at0:
     plx
     lda #$20
     sta a:OBJ_34B8,x
-    inc a:OBJ_27A8,x
+    inc a:OBJ_STATE,x
     rts
 
 ; @routine 010D:579 EndingStartScript18
@@ -874,12 +874,12 @@ EndingStartScript18:
     ldx #$07
     jsr VecStartScriptSlotKind1
     plx
-    inc a:OBJ_2A68+2
+    inc a:OBJ_FRAME+2
     inc a:OBJ_X_LO+3
     inc a:OBJ_X_LO+3
     inc a:ScrollXHi+2
     dec a:ScrollXLo+2
-    inc a:OBJ_27A8,x
+    inc a:OBJ_STATE,x
     rts
 
 ; @routine 010D:598 EndingScrollSlide
@@ -899,14 +899,14 @@ EndingScrollSlide:
     inc a:ScrollYHi+6
     lda #$30
     sta a:OBJ_34B8,x
-    inc a:OBJ_27A8+4
+    inc a:OBJ_STATE+4
     phx
     lda #$17
     ldx #$07
     jsr VecStartScriptSlotKind1
     plx
     lda #$80
-    inc a:OBJ_27A8,x
+    inc a:OBJ_STATE,x
 EndingScrollSlide_at0:
     sta a:ScrollXLo+2
     rts
@@ -931,8 +931,8 @@ EndingSplitScrolls:
     stz a:ScrollXLo+2
     lda #$20
     sta a:OBJ_34B8,x
-    inc a:OBJ_27A8+1
-    inc a:OBJ_27A8,x
+    inc a:OBJ_STATE+1
+    inc a:OBJ_STATE,x
     rts
 
 ; @routine 010D:5E2 EndingScrollsOn
@@ -947,8 +947,8 @@ EndingScrollsOn:
     jsr EndingHoldTimer
     inc a:ScrollYHi+6
     inc a:ScrollXHi+2
-    inc a:OBJ_27A8+6
-    inc a:OBJ_27A8,x
+    inc a:OBJ_STATE+6
+    inc a:OBJ_STATE,x
     rts
 
 ; @routine 010D:5F2 EndingNothing
@@ -988,11 +988,11 @@ EndingHoldTimer_at0:
 ; WAITS: no.
 ; Entry: X the object. Exit: as the last test left them.
 EndingScrollSteps:
-    lda a:OBJ_27A8,x
+    lda a:OBJ_STATE,x
     bne EndingScrollSteps_at0
     inc a:ScrollXHi
     inc a:ScrollYHi
-    inc a:OBJ_27A8,x
+    inc a:OBJ_STATE,x
 EndingScrollSteps_at2:
     rts
 EndingScrollSteps_at0:
@@ -1002,7 +1002,7 @@ EndingScrollSteps_at0:
     cmp #$F8
     bne EndingScrollSteps_at2
     stz a:ScrollXHi
-    inc a:OBJ_27A8,x
+    inc a:OBJ_STATE,x
     rts
 EndingScrollSteps_at1:
     dec a
@@ -1015,7 +1015,7 @@ EndingScrollSteps_at1:
     lda #$0D
     jsr VecStartListChannelKind2
     plx
-    inc a:OBJ_27A8,x
+    inc a:OBJ_STATE,x
     rts
 EndingScrollSteps_at3:
     dec a
@@ -1024,7 +1024,7 @@ EndingScrollSteps_at3:
     cmp #$F8
     bne EndingScrollSteps_at2
     inc a:ScrollYHi
-    inc a:OBJ_27A8,x
+    inc a:OBJ_STATE,x
     rts
 EndingScrollSteps_at4:
     dec a
@@ -1037,7 +1037,7 @@ EndingScrollSteps_at4:
     inc a:OBJ_X_HI+1
     jsr EndingScrollBack8
     bne EndingScrollSteps_at2
-    inc a:OBJ_27A8,x
+    inc a:OBJ_STATE,x
     rts
 
 ; @routine 010D:65E EndingScrollBack8
@@ -1062,7 +1062,7 @@ EndingScrollBack8:
 ; WAITS: no.
 ; Entry: X the object. Exit: as the last test left them.
 EndingScrollRight6:
-    lda a:OBJ_27A8,x
+    lda a:OBJ_STATE,x
     bne EndingScrollRight6_at0
     lda a:ScrollXLo
     clc
@@ -1070,7 +1070,7 @@ EndingScrollRight6:
     sta a:ScrollXLo
     bcc EndingScrollRight6_at1
     inc a:ScrollYHi
-    inc a:OBJ_27A8,x
+    inc a:OBJ_STATE,x
 EndingScrollRight6_at1:
     rts
 EndingScrollRight6_at0:
@@ -1084,7 +1084,7 @@ EndingScrollRight6_at0:
     bcc EndingScrollRight6_at1
     inc a:ScrollXHi
     stz a:ScrollXLo
-    inc a:OBJ_27A8,x
+    inc a:OBJ_STATE,x
     rts
 
 ; @routine 010D:69A EndingScrollDown
@@ -1097,7 +1097,7 @@ EndingScrollRight6_at0:
 ; WAITS: no.
 ; Entry: X the object. Exit: as the last test left them.
 EndingScrollDown:
-    lda a:OBJ_27A8,x
+    lda a:OBJ_STATE,x
     bne EndingScrollDown_at0
     lda #$13
     sta z:zRasterEffect
@@ -1109,7 +1109,7 @@ EndingScrollDown:
     lda #$BF
     sta a:ScrollYLo+6
     inc a:ScrollXHi+2
-    inc a:OBJ_27A8,x
+    inc a:OBJ_STATE,x
 EndingScrollDown_at2:
     rts
 EndingScrollDown_at0:
@@ -1124,8 +1124,8 @@ EndingScrollDown_at0:
     lda a:ScrollYLo+1
     cmp #$1F
     bne EndingScrollDown_at2
-    inc a:OBJ_27A8,x
-    stz a:OBJ_2A68+2,x
+    inc a:OBJ_STATE,x
+    stz a:OBJ_FRAME+2,x
     rts
 EndingScrollDown_at1:
     inx
@@ -1143,7 +1143,7 @@ EndingScrollDown_at1:
 ; WAITS: no.
 ; Entry: X the object. Exit: as the last test left them.
 EndingScrollUp:
-    lda a:OBJ_27A8,x
+    lda a:OBJ_STATE,x
     bne EndingScrollUp_at0
     lda #$13
     sta z:zRasterEffect
@@ -1155,7 +1155,7 @@ EndingScrollUp:
     lda #$BF
     sta a:ScrollYLo+6
     inc a:ScrollXHi+2
-    inc a:OBJ_27A8,x
+    inc a:OBJ_STATE,x
     rts
 EndingScrollUp_at0:
     dec a
@@ -1169,7 +1169,7 @@ EndingScrollUp_at2:
     lda a:ScrollYLo+1
     cmp #$2F
     bne EndingScrollUp_at1
-    inc a:OBJ_27A8,x
+    inc a:OBJ_STATE,x
 EndingScrollUp_at1:
     rts
 
@@ -1182,23 +1182,23 @@ EndingScrollUp_at1:
 ; Entry: X the object. Exit: as the last test left them.
 ; not checked: the hold timer's early return drops the caller's frame; the draft goes on regardless (FRAME DROPPED), so only the arm where the timer has run out is compared.
 EndingRiseFrame31:
-    lda a:OBJ_27A8,x
+    lda a:OBJ_STATE,x
     bne EndingRiseFrame31_at0
     lda #$03
     sta a:OBJ_2A10,x
     lda #$31
-    sta a:OBJ_2A68,x
+    sta a:OBJ_FRAME,x
     dec a:OBJ_VY_HI,x
     dec a:OBJ_VY_HI,x
     lda #$B0
     sta a:OBJ_34B8,x
-    inc a:OBJ_27A8,x
+    inc a:OBJ_STATE,x
     rts
 EndingRiseFrame31_at0:
     dec a
     bne EndingRiseFrame31_at1
     jsr EndingHoldTimer
-    inc a:OBJ_27A8,x
+    inc a:OBJ_STATE,x
     rts
 EndingRiseFrame31_at1:
     dec a
@@ -1207,7 +1207,7 @@ EndingRiseFrame31_at1:
     lda a:OBJ_Y_LO,x
     cmp #$48
     bne EndingRiseFrame31_at2
-    inc a:OBJ_27A8,x
+    inc a:OBJ_STATE,x
 EndingRiseFrame31_at2:
     rts
 
@@ -1221,7 +1221,7 @@ EndingRiseFrame31_at2:
 ; Entry: X the object. Exit: as the last test left them.
 ; not checked: the hold timer's early return drops the caller's frame; the draft goes on regardless (FRAME DROPPED), so only the arm where the timer has run out is compared.
 EndingRiseFrame32A:
-    lda a:OBJ_27A8,x
+    lda a:OBJ_STATE,x
     bne EndingRiseFrame32A_at0
     lda #$03
     sta a:OBJ_2A10,x
@@ -1235,15 +1235,15 @@ EndingRiseFrame32A:
     clc
     adc #$10
     sta a:$345F,x
-    inc a:OBJ_27A8,x
+    inc a:OBJ_STATE,x
     rts
 EndingRiseFrame32A_at0:
     dec a
     bne EndingRiseFrame32A_at1
     jsr EndingHoldTimer
     lda #$32
-    sta a:OBJ_2A68,x
-    inc a:OBJ_27A8,x
+    sta a:OBJ_FRAME,x
+    inc a:OBJ_STATE,x
     rts
 EndingRiseFrame32A_at1:
     dec a
@@ -1252,7 +1252,7 @@ EndingRiseFrame32A_at1:
     lda a:OBJ_Y_LO,x
     cmp #$60
     bne $8758
-    inc a:OBJ_27A8,x
+    inc a:OBJ_STATE,x
 EndingRiseFrame32A_at2:
     rts
 
@@ -1265,20 +1265,20 @@ EndingRiseFrame32A_at2:
 ; Entry: X the object. Exit: as the last test left them.
 ; not checked: the hold timer's early return drops the caller's frame; the draft goes on regardless (FRAME DROPPED), so only the arm where the timer has run out is compared.
 EndingRiseWithList:
-    lda a:OBJ_27A8,x
+    lda a:OBJ_STATE,x
     bne EndingRiseWithList_at0
     lda #$03
     sta a:OBJ_2A10,x
     dec a:OBJ_VY_HI,x
     lda #$80
     sta a:OBJ_34B8,x
-    inc a:OBJ_27A8,x
+    inc a:OBJ_STATE,x
     rts
 EndingRiseWithList_at0:
     dec a
     bne EndingRiseWithList_at1
     jsr EndingHoldTimer
-    inc a:OBJ_27A8,x
+    inc a:OBJ_STATE,x
     rts
 EndingRiseWithList_at1:
     dec a
@@ -1289,7 +1289,7 @@ EndingRiseWithList_at1:
     lda a:OBJ_Y_LO,x
     cmp #$68
     bne $8758
-    inc a:OBJ_27A8,x
+    inc a:OBJ_STATE,x
 EndingRiseWithList_at2:
     rts
 
@@ -1301,7 +1301,7 @@ EndingRiseWithList_at2:
 ; Entry: X the object. Exit: as the last test left them.
 ; not checked: the hold timer's early return drops the caller's frame; the draft goes on regardless (FRAME DROPPED), so only the arm where the timer has run out is compared.
 EndingRiseFrame32B:
-    lda a:OBJ_27A8,x
+    lda a:OBJ_STATE,x
     bne EndingRiseFrame32B_at0
     lda #$03
     sta a:OBJ_2A10,x
@@ -1315,15 +1315,15 @@ EndingRiseFrame32B:
     clc
     adc #$20
     sta a:$345F,x
-    inc a:OBJ_27A8,x
+    inc a:OBJ_STATE,x
     rts
 EndingRiseFrame32B_at0:
     dec a
     bne EndingRiseFrame32B_at1
     jsr EndingHoldTimer
     lda #$32
-    sta a:OBJ_2A68,x
-    inc a:OBJ_27A8,x
+    sta a:OBJ_FRAME,x
+    inc a:OBJ_STATE,x
     rts
 EndingRiseFrame32B_at1:
     dec a
@@ -1332,7 +1332,7 @@ EndingRiseFrame32B_at1:
     lda a:OBJ_Y_LO,x
     cmp #$60
     bne EndingRiseFrame32B_at2
-    inc a:OBJ_27A8,x
+    inc a:OBJ_STATE,x
 EndingRiseFrame32B_at2:
     rts
 
@@ -1346,7 +1346,7 @@ EndingRiseFrame32B_at2:
 ; Entry: X the object. Exit: as the last test left them.
 ; not checked: the hold timer's early return drops the caller's frame; the draft goes on regardless (FRAME DROPPED), so only the arm where the timer has run out is compared.
 EndingHoldThenScript19:
-    lda a:OBJ_27A8,x
+    lda a:OBJ_STATE,x
     bne EndingHoldThenScript19_at0
     lda #$13
     sta z:zRasterEffect
@@ -1358,7 +1358,7 @@ EndingHoldThenScript19:
     sta a:ScrollYLo+6
     lda #$40
     sta a:OBJ_34B8,x
-    inc a:OBJ_27A8,x
+    inc a:OBJ_STATE,x
     rts
 EndingHoldThenScript19_at0:
     dec a
@@ -1369,7 +1369,7 @@ EndingHoldThenScript19_at0:
     ldx #$07
     jsr VecStartScriptSlotKind1
     plx
-    inc a:OBJ_27A8,x
+    inc a:OBJ_STATE,x
     rts
     rts
 
@@ -1381,16 +1381,16 @@ EndingHoldThenScript19_at0:
 ; WAITS: no.
 ; Entry: X the object. Exit: as the last test left them.
 EndingLinkAnimationA:
-    lda a:OBJ_27A8,x
+    lda a:OBJ_STATE,x
     bne EndingLinkAnimationA_at0
     lda #$03
     sta a:OBJ_2A10,x
-    inc a:OBJ_27A8,x
+    inc a:OBJ_STATE,x
 EndingLinkAnimationA_at0:
     lda #$04
     jsr EndingFrameList
     bcc EndingLinkAnimationA_at1
-    lda a:OBJ_2A68,x
+    lda a:OBJ_FRAME,x
     beq EndingLinkAnimationA_at1
     phx
     ldx #$01
@@ -1407,11 +1407,11 @@ EndingLinkAnimationA_at1:
 ; WAITS: no.
 ; Entry: X the object. Exit: as the last test left them.
 EndingLinkAnimationB:
-    lda a:OBJ_27A8,x
+    lda a:OBJ_STATE,x
     bne EndingLinkAnimationB_at0
     lda #$03
     sta a:OBJ_2A10,x
-    inc a:OBJ_27A8,x
+    inc a:OBJ_STATE,x
 EndingLinkAnimationB_at0:
     lda #$05
     bra $8862
@@ -1425,7 +1425,7 @@ EndingLinkAnimationB_at0:
 ; WAITS: no.
 ; Entry: X the object. Exit: as the last test left them.
 EndingScrollSqueeze:
-    lda a:OBJ_27A8,x
+    lda a:OBJ_STATE,x
     bne EndingScrollSqueeze_at0
     lda #$14
     sta z:zRasterEffect
@@ -1442,7 +1442,7 @@ EndingScrollSqueeze:
     sta a:ScrollYLo+4
     lda #$40
     sta a:OBJ_34B8,x
-    inc a:OBJ_27A8,x
+    inc a:OBJ_STATE,x
 EndingScrollSqueeze_at2:
     rts
 EndingScrollSqueeze_at0:
@@ -1450,7 +1450,7 @@ EndingScrollSqueeze_at0:
     bne EndingScrollSqueeze_at1
     dec a:OBJ_34B8,x
     bne EndingScrollSqueeze_at2
-    inc a:OBJ_27A8,x
+    inc a:OBJ_STATE,x
     rts
 EndingScrollSqueeze_at1:
     dec a
@@ -1462,7 +1462,7 @@ EndingScrollSqueeze_at1:
     lda a:ScrollYLo+5
     cmp #$78
     bne EndingScrollSqueeze_at3
-    inc a:OBJ_27A8,x
+    inc a:OBJ_STATE,x
 EndingScrollSqueeze_at3:
     lda a:ScrollYLo+5
     sta a:ScrollYLo+1
@@ -1502,7 +1502,7 @@ EndingScrollSlots:
 ; WAITS: no.
 ; Entry: X the object. Exit: as the last test left them.
 EndingDropAndBounce:
-    lda a:OBJ_27A8,x
+    lda a:OBJ_STATE,x
     bne EndingDropAndBounce_at0
     lda #$13
     sta z:zRasterEffect
@@ -1516,11 +1516,11 @@ EndingDropAndBounce:
     lda #$03
     sta a:OBJ_2A10,x
     lda #$01
-    sta a:OBJ_2A68,x
+    sta a:OBJ_FRAME,x
     lda #$C0
     sta a:OBJ_VX_LO,x
 EndingDropAndBounce_at3:
-    inc a:OBJ_27A8,x
+    inc a:OBJ_STATE,x
     rts
 EndingDropAndBounce_at0:
     dec a
@@ -1570,7 +1570,7 @@ EndingDropAndBounce_at2:
 EndingDropAndBounce_at4:
     lda #$60
     sta a:OBJ_Y_LO,x
-    inc a:OBJ_27A8,x
+    inc a:OBJ_STATE,x
     lda #$2F
     sta a:ScrollYLo+1
     lda #$AF
@@ -1585,14 +1585,14 @@ EndingDropAndBounce_at4:
 ; WAITS: no.
 ; Entry: X the object. Exit: as the last test left them.
 EndingWaitForList:
-    lda a:OBJ_27A8,x
+    lda a:OBJ_STATE,x
     bne EndingWaitForList_at0
     lda a:OBJ_3040,x
     jsr EndingFrameList
     bne EndingWaitForList_at0
     lda a:OBJ_3040,x
     bmi EndingWaitForList_at0
-    inc a:OBJ_27A8,x
+    inc a:OBJ_STATE,x
 EndingWaitForList_at0:
     rts
 
@@ -1604,7 +1604,7 @@ EndingWaitForList_at0:
 ; WAITS: no.
 ; Entry: X the object. Exit: as the last test left them.
 EndingFlyOff:
-    lda a:OBJ_27A8,x
+    lda a:OBJ_STATE,x
     bne EndingFlyOff_at0
     ldy a:OBJ_3040,x
     lda a:$89E2,y
@@ -1616,7 +1616,7 @@ EndingFlyOff:
     lda a:$89F1,y
     sta a:OBJ_VY_HI,x
 EndingFlyOff_at2:
-    inc a:OBJ_27A8,x
+    inc a:OBJ_STATE,x
     rts
 EndingFlyOff_at0:
     dec a

@@ -170,7 +170,7 @@ SetPhase4_at0:
 ; Entry: X object. Exit: A the last byte loaded; N, Z from the new state; C and V from the add
 ; of the block start; Y the entry's offset; X kept. Clobbers zTemp00.
 SetSpeedFromPhaseTable:
-    ldy a:OBJ_2AC0,x
+    ldy a:OBJ_FACING_LEFT,x
     lda a:$B23F,y
     sta z:zTemp00
     lda a:OBJ_34B8,x
@@ -187,7 +187,7 @@ SetSpeedFromPhaseTable:
     sta a:OBJ_VY_HI,x
     lda a:$B243,y
     sta a:OBJ_VY_LO,x
-    inc a:OBJ_27A8,x
+    inc a:OBJ_STATE,x
     rts
 
 ; @routine 0D5E:14F EnterState6IfFlaggedB
@@ -202,7 +202,7 @@ EnterState6IfFlaggedB:
     and #$80
     beq EnterState6IfFlaggedB_at0
     lda #$06
-    sta a:OBJ_27A8,x
+    sta a:OBJ_STATE,x
 EnterState6IfFlaggedB_at0:
     rts
 
@@ -213,7 +213,7 @@ EnterState6IfFlaggedB_at0:
 ; WAITS: no.
 ; Entry: X object. Exit: N, Z from the new state; A, X, Y, C and V kept.
 AdvanceState:
-    inc a:OBJ_27A8,x
+    inc a:OBJ_STATE,x
     rts
 
 ; @routine 0D5E:6A6 EnterState3WithTallHitbox
@@ -227,14 +227,14 @@ EnterState3WithTallHitbox:
     lda #$02
     sta a:OBJ_3358,x
     lda #$06
-    sta a:OBJ_3988,x
+    sta a:OBJ_HITBOX_HALF_W,x
     lda #$18
-    sta a:OBJ_3A38,x
-    stz a:OBJ_3930,x
-    stz a:OBJ_39E0,x
+    sta a:OBJ_HITBOX_HALF_H,x
+    stz a:OBJ_HITBOX_DX,x
+    stz a:OBJ_HITBOX_DY,x
     lda #$03
-    sta a:OBJ_27A8,x
-    stz a:OBJ_2800,x
+    sta a:OBJ_STATE,x
+    stz a:OBJ_SUBSTATE,x
     rts
 
 ; @routine 0D5E:6EE SetHitboxFromFrameRowsB
@@ -247,7 +247,7 @@ EnterState3WithTallHitbox:
 ; it; C clear when under, else bit 6 of the row number; V from the subtract; Y the row's offset
 ; when read; X kept.
 SetHitboxFromFrameRowsB:
-    lda a:OBJ_2A68,x
+    lda a:OBJ_FRAME,x
     sec
     sbc #$5A
     bcc SetHitboxFromFrameRowsB_at0
@@ -255,13 +255,13 @@ SetHitboxFromFrameRowsB:
     asl a
     tay
     lda a:$CF12,y
-    sta a:OBJ_3930,x
+    sta a:OBJ_HITBOX_DX,x
     lda a:$CF13,y
-    sta a:OBJ_39E0,x
+    sta a:OBJ_HITBOX_DY,x
     lda a:$CF14,y
-    sta a:OBJ_3988,x
+    sta a:OBJ_HITBOX_HALF_W,x
     lda a:$CF15,y
-    sta a:OBJ_3A38,x
+    sta a:OBJ_HITBOX_HALF_H,x
 SetHitboxFromFrameRowsB_at0:
     rts
 
@@ -278,7 +278,7 @@ StartFacingPlayerThenCheck:
     jsr VecLoadObjectRecord
     jsr VecSideOfPlayer
     and #$01
-    sta a:OBJ_2AC0,x
+    sta a:OBJ_FACING_LEFT,x
     lda #$18
     sta a:OBJ_3510,x
     lda a:OBJ_3040,x
@@ -290,7 +290,7 @@ StartFacingPlayerThenCheck:
     jmp VecClearObject
 StartFacingPlayerThenCheck_at1:
     lda #$06
-    sta a:OBJ_27A8,x
+    sta a:OBJ_STATE,x
 StartFacingPlayerThenCheck_at0:
     rts
 
@@ -320,7 +320,7 @@ AnimateThenCountToState3:
     dec a:OBJ_3510,x
     bne AnimateThenCountToState3_at0
     lda #$03
-    sta a:OBJ_27A8,x
+    sta a:OBJ_STATE,x
 AnimateThenCountToState3_at0:
     rts
 
@@ -363,8 +363,8 @@ PickPhaseAtRandomB:
     beq SetPhase2
     cmp #$02
     beq PickPhaseAtRandomA_at0
-    lda a:OBJ_2AC0,x
-    eor a:OBJ_2AC0
+    lda a:OBJ_FACING_LEFT,x
+    eor a:OBJ_FACING_LEFT
     bne PickPhaseAtRandomA_at0
 PickPhaseAtRandomB_at0:
     lda #$01
@@ -416,7 +416,7 @@ WalkWhileFrameChangesC_at0:
 StepFramesFacingPlayerE:
     jsr VecSideOfPlayer
     and #$01
-    sta a:OBJ_2AC0,x
+    sta a:OBJ_FACING_LEFT,x
     lda a:$C9B9,y
     sta z:zTemp10
     lda a:$C9BA,y
@@ -441,7 +441,7 @@ StartWithFrameByNextKind:
     and #$01
     tay
     lda a:$CCC7,y
-    sta a:OBJ_2A68,x
+    sta a:OBJ_FRAME,x
     rts
 
 ; @routine 0D5E:4EC AnimateByKindThenNextState
@@ -470,7 +470,7 @@ AnimateByKindThenNextState:
     bne AnimateByKindThenNextState_at0
     lda #$02
     sta a:OBJ_3250,x
-    inc a:OBJ_27A8,x
+    inc a:OBJ_STATE,x
 AnimateByKindThenNextState_at0:
     rts
 
@@ -495,7 +495,7 @@ AnimateAndSpawnThenPause_at0:
     jsr StepFramesFacingPlayerE
     beq AnimateAndSpawnThenPause_at1
     bcc AnimateAndSpawnThenPause_at2
-    lda a:OBJ_2A68,x
+    lda a:OBJ_FRAME,x
     cmp #$6B
     bne AnimateAndSpawnThenPause_at2
     jsr VecFindFreeSlotFrom30
@@ -503,10 +503,10 @@ AnimateAndSpawnThenPause_at0:
     lda #$41
     jmp VecStartObjectAtPlace
 AnimateAndSpawnThenPause_at1:
-    stz a:OBJ_3408,x
-    stz a:OBJ_3460,x
+    stz a:OBJ_ANIM_STEP,x
+    stz a:OBJ_ANIM_TIMER,x
     lda #$03
-    sta a:OBJ_27A8,x
+    sta a:OBJ_STATE,x
     inc a:OBJ_3568,x
     lda a:OBJ_3568,x
     and #$03
@@ -524,7 +524,7 @@ AnimateAndSpawnThenPause_at2:
 ; WAITS: no.
 ; Entry, exit: as StartLobTowardPlayer.
 StartLobTowardPlayerB:
-    lda a:OBJ_27A8,x
+    lda a:OBJ_STATE,x
     bne StepLobArcB
     jsr VecLoadObjectRecord
     lda #$F0

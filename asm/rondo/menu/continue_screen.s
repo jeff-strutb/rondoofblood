@@ -63,7 +63,7 @@ ContinueStartRichter_at0:
     txa
     clc
     adc #$0D
-    sta a:OBJ_2A68,x
+    sta a:OBJ_FRAME,x
     lda #$05
     sta a:OBJ_2A10,x
     lda #$48
@@ -133,11 +133,11 @@ ContinueWaitRichter_at2:
 ; V from its add, N and Z from the count's DEC; started, 16 steps or more: A the count, N, Z and C from CMP #$10;
 ; writing: as the last WriteLetterColumn, N and Z from the count's INC. X kept; Y kept but where it writes.
 RichterLetterStep:
-    lda a:OBJ_27A8,x
+    lda a:OBJ_STATE,x
     bne RichterLetterStep_at1
     lda a:OBJ_34B8,x
     bne RichterLetterStep_at2
-    inc a:OBJ_27A8,x
+    inc a:OBJ_STATE,x
     rts
 RichterLetterStep_at2:
     lda a:OBJ_X_LO,x
@@ -256,7 +256,7 @@ ContinueStartMaria_at0:
     txa
     clc
     adc #$0D
-    sta a:OBJ_2A68,x
+    sta a:OBJ_FRAME,x
     txa
     asl a
     asl a
@@ -277,7 +277,7 @@ ContinueStartMaria_at0:
     sta a:OBJ_3568
     lda #$10
     sta a:OBJ_3510
-    inc a:OBJ_27A8
+    inc a:OBJ_STATE
     inc z:zGameSubMode
     rts
 
@@ -296,7 +296,7 @@ ContinueWaitMaria:
     lda a:BiosJoyTrigger
     and #$08
     beq ContinueWaitMaria_at0
-    lda a:OBJ_27A8+7
+    lda a:OBJ_STATE+7
     cmp #$02
     bne ContinueWaitMaria_at1
     stz z:zField80
@@ -334,7 +334,7 @@ ContinueWaitMaria_at2:
     inc z:zGameSubMode
     rts
 ContinueWaitMaria_at0:
-    lda a:OBJ_27A8+7
+    lda a:OBJ_STATE+7
     cmp #$02
     bne ContinueWaitMaria_at4
     jmp ContinueWaitRichter_at3
@@ -357,7 +357,7 @@ ContinueWaitMaria_at6:
 ; turning: A the count, N, Z and C from CMP #$20, Y and V as MariaLetterReveal left them; done: A $20, C 1, N and Z
 ; from the next letter's INC. X kept.
 MariaLetterStep:
-    lda a:OBJ_27A8,x
+    lda a:OBJ_STATE,x
     beq ContinueWaitMaria_at6
     dec a
     bne ContinueWaitMaria_at6
@@ -373,8 +373,8 @@ MariaLetterStep:
     lda a:OBJ_34B8,x
     cmp #$20
     bne ContinueWaitMaria_at6
-    inc a:OBJ_27A8,x
-    inc a:OBJ_27A8+1,x
+    inc a:OBJ_STATE,x
+    inc a:OBJ_STATE+1,x
     rts
 
 ; @routine 004D:208 MariaLetterReveal
@@ -804,7 +804,7 @@ ContinueClear_at1:
     lda #$6C
     jsr VecStartListChannel0Kind2
     lda #$04
-    sta a:OBJ_2A68+8
+    sta a:OBJ_FRAME+8
     lda #$03
     sta a:OBJ_2A10+8
     lda #$4F

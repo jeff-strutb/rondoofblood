@@ -6,13 +6,13 @@
 ; Entry: X object. Exit: A $06, Y the facing doubled, C and V from the move.
 LoadRecordLaunchByFacing:
     jsr VecLoadObjectRecord
-    ldy a:OBJ_2AC0,x
+    ldy a:OBJ_FACING_LEFT,x
     lda a:$B92E,y
     sta a:OBJ_VX_HI,x
     lda #$08
     sta a:OBJ_VY_HI,x
     jsr VecApplyVelocity
-    lda a:OBJ_2AC0,x
+    lda a:OBJ_FACING_LEFT,x
     asl a
     tay
     lda a:$B931,y
@@ -57,9 +57,9 @@ StepListBounceOffFloorAtRandom:
     sta a:OBJ_VY_HI,x
     lda a:$B9A9,y
     sta a:OBJ_VY_LO,x
-    stz a:OBJ_3408,x
-    stz a:OBJ_3460,x
-    inc a:OBJ_27A8,x
+    stz a:OBJ_ANIM_STEP,x
+    stz a:OBJ_ANIM_TIMER,x
+    inc a:OBJ_STATE,x
 StepListBounceOffFloorAtRandom_at0:
     rts
 
@@ -92,9 +92,9 @@ StepListFallThenLandOrClear:
     lda #$C4
     sta a:OBJ_Y_LO,x
     stz a:OBJ_3250,x
-    stz a:OBJ_3408,x
-    stz a:OBJ_3460,x
-    inc a:OBJ_27A8,x
+    stz a:OBJ_ANIM_STEP,x
+    stz a:OBJ_ANIM_TIMER,x
+    inc a:OBJ_STATE,x
 StepListFallThenLandOrClear_at0:
     rts
 
@@ -116,12 +116,12 @@ StepListThenClearWhenEnded:
 
 ; @routine 05CC:282 LoadRecordThenFollowOrHomeIn
 ; @run 70:BA82
-; WHAT IT DOES: In state 0 loads the record and sets the Y speed $1A. Later (unless the game's sub-mode is 4) it takes the place of slot $10 and moves by an X speed from the table at $BA90 by its number and slot $10's facing. While OBJ_34B8 is 0 and slot $10 is in state 4 with OBJ_2800 of 2 or 3 it waits for a hit of 1 to 4, then takes the distance to the player as its aim (OBJ_3510, OBJ_3568) and sets OBJ_34B8 1. While OBJ_34B8 is not 0 it homes in: it puts slot 0 at its place and moves it by the aim (turned on a step by the sign of each part), restores the speed of slot $10 and ends.
+; WHAT IT DOES: In state 0 loads the record and sets the Y speed $1A. Later (unless the game's sub-mode is 4) it takes the place of slot $10 and moves by an X speed from the table at $BA90 by its number and slot $10's facing. While OBJ_34B8 is 0 and slot $10 is in state 4 with OBJ_SUBSTATE of 2 or 3 it waits for a hit of 1 to 4, then takes the distance to the player as its aim (OBJ_3510, OBJ_3568) and sets OBJ_34B8 1. While OBJ_34B8 is not 0 it homes in: it puts slot 0 at its place and moves it by the aim (turned on a step by the sign of each part), restores the speed of slot $10 and ends.
 ; HOW: LoadObjectRecord, CopyObjectPlaceBack, ApplyVelocity, CopyObjectPlace, ApplyVelocity with X and Y swapped, compares, table reads, stores.
 ; WAITS: no.
 ; Entry: X object. Exit: as the last instruction that ran. The arm that takes the aim and the whole of the homing arm ran in no script (the draft stops there); the code at $BB62 that the homing arm calls has no row and is written here as inside_edge_band.
 LoadRecordThenFollowOrHomeIn:
-    lda a:OBJ_27A8,x
+    lda a:OBJ_STATE,x
     bne $BA94
     jsr VecLoadObjectRecord
     lda #$1A
@@ -158,7 +158,7 @@ LoadRecordThenFollowOrHomeIn:
 LoadRecordThenFollowOrHomeIn_at2:
     lda #$02
     sta a:OBJ_3250,x
-    lda a:OBJ_33B0,x
+    lda a:OBJ_HIT_TAKEN,x
     beq LoadRecordThenFollowOrHomeIn_at1
     cmp #$05
     bcs LoadRecordThenFollowOrHomeIn_at1
@@ -235,7 +235,7 @@ LoadRecordThenFollowOrHomeIn_at5:
 ; Entry: X object. Exit: as the code jumped to; A the high byte, Y the doubled state.
 CountFramesThenRunByState:
     inc a:OBJ_34B8,x
-    lda a:OBJ_27A8,x
+    lda a:OBJ_STATE,x
     asl a
     tay
     lda a:$BB8B,y
@@ -252,7 +252,7 @@ CountFramesThenRunByState:
 ; Entry: X object. Exit: A $04, Y the facing, C and V from the move.
 LoadRecordLaunchSideways:
     jsr VecLoadObjectRecord
-    ldy a:OBJ_2AC0,x
+    ldy a:OBJ_FACING_LEFT,x
     lda a:$BBB6,y
     sta a:OBJ_VX_HI,x
     lda #$08
@@ -284,7 +284,7 @@ StepListFallThenTurnToPlayer:
     bcc StepListFallThenTurnToPlayer_at0
     jsr VecSideOfPlayer
     and #$01
-    sta a:OBJ_2AC0,x
+    sta a:OBJ_FACING_LEFT,x
     asl a
     tay
     lda a:$BBF7,y
@@ -293,8 +293,8 @@ StepListFallThenTurnToPlayer:
     sta a:OBJ_VX_LO,x
     lda #$C7
     sta a:OBJ_Y_LO,x
-    stz a:OBJ_2A68,x
-    inc a:OBJ_27A8,x
+    stz a:OBJ_FRAME,x
+    inc a:OBJ_STATE,x
 StepListFallThenTurnToPlayer_at0:
     rts
 
@@ -345,14 +345,14 @@ SoundAndSpawnEveryFourthFrame_at0:
 ; WAITS: no.
 ; Entry: X object. Exit: as the last instruction that ran. OBJ_Y_LO of slot 11 is written because LoadObjectRecord leaves Y 11.
 LoadRecordRandomFlingOrFall:
-    lda a:OBJ_27A8,x
+    lda a:OBJ_STATE,x
     bne ClearIfAboveOrFall
     jsr VecLoadObjectRecord
     jsr VecNextRandom
     and #$01
     clc
     adc #$23
-    sta a:OBJ_2A68,x
+    sta a:OBJ_FRAME,x
     lda #$BE
     sta a:OBJ_Y_LO,y
     jsr VecNextRandom
@@ -391,7 +391,7 @@ ClearIfAboveOrFall_at0:
 ; WAITS: no.
 ; Entry: X object, Y kept for the sound. Exit: as the last instruction that ran.
 LoadRecordThenClearEnemiesAtScreen2:
-    lda a:OBJ_27A8,x
+    lda a:OBJ_STATE,x
     bne LoadRecordThenClearEnemiesAtScreen2_at0
     jmp VecLoadObjectRecord
 LoadRecordThenClearEnemiesAtScreen2_at0:
@@ -405,7 +405,7 @@ LoadRecordThenClearEnemiesAtScreen2_at1:
     phx
     ldx #$10
 LoadRecordThenClearEnemiesAtScreen2_at3:
-    lda a:OBJ_2750,x
+    lda a:OBJ_KIND,x
     cmp #$A0
     bne LoadRecordThenClearEnemiesAtScreen2_at2
     lda a:OBJ_FLAGS_2F38,x

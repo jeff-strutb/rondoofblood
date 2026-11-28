@@ -213,7 +213,7 @@ ObjArm EnterState6WhenHitHard(uint8_t slot)
         return r;
     }
     WR8(OBJ->state[slot], 6);
-    WR8(OBJ->f2800[slot], 0);
+    WR8(OBJ->substate[slot], 0);
     r.arm = BB_E6_ENTERED;
     return r;
 }
@@ -389,15 +389,15 @@ void abi_StepFramesFacingPlayerD(void)
 ObjArm WaitThenState2C(uint8_t slot)
 {
     ObjArm r = { 0 };
-    uint8_t step = RD8(OBJ->f2800[slot]);
+    uint8_t step = RD8(OBJ->substate[slot]);
     uint8_t left;
     ObjArm frames;
 
     if (step == 0) {
         WR8(OBJ->life_timer[slot], 0x1C);
-        step = RD8(OBJ->f2800[slot]);
+        step = RD8(OBJ->substate[slot]);
         step = (uint8_t)(step + 1);
-        WR8(OBJ->f2800[slot], step);
+        WR8(OBJ->substate[slot], step);
         r.arm = WT_START;
         r.first = step;
         return r;
@@ -688,7 +688,7 @@ void abi_PickSpeedAndTurnFromTable(void)
 ObjArm TurnOnRandomBeatWalkC(uint8_t slot)
 {
     ObjArm r = { 0 };
-    uint8_t phase = RD8(OBJ->f2800[slot]);
+    uint8_t phase = RD8(OBJ->substate[slot]);
 
     if (phase != 0) {
         r.arm = TW_FOLLOW;
@@ -1542,7 +1542,7 @@ ObjArm AnimateMoveThenSetUpNextStepB(uint8_t slot, bool carry_in)
     WR8(OBJ->f36c8[slot], (uint8_t)(r.second + 0x58));
     WR8(OBJ->anim_step[slot], 0);
     WR8(OBJ->anim_timer[slot], 0);
-    r.third = INC8(OBJ->f2800[slot]);
+    r.third = INC8(OBJ->substate[slot]);
     r.arm = AN_DONE;
     return r;
 }
@@ -1634,7 +1634,7 @@ ObjArm LoadObjectRecordFromTable(uint8_t slot)
     WR8(OBJ->status_flags[slot], byte);
     byte = RD8_PTR_Y(ZP->temp10, 11);
     r.first = byte;
-    WR8(OBJ->f31f8[slot], byte);
+    WR8(OBJ->hit_reaction[slot], byte);
     WR8(OBJ->hitbox_dx[slot], 0);
     WR8(OBJ->hitbox_dy[slot], 0);
     r.second = INC8(OBJ->state[slot]);
@@ -1931,7 +1931,7 @@ ObjArm ChargeWhenPlayerNearB(uint8_t slot)
     r.third = (uint8_t)(sum.value & 0x1F);
     WR8(OBJ->f36c8[slot], (uint8_t)(r.third + 0x48));
     WR8(OBJ->state[slot], 4);
-    WR8(OBJ->f2800[slot], 2);
+    WR8(OBJ->substate[slot], 2);
     r.second = facing;
     r.arm = CB_CHARGED;
     return r;

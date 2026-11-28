@@ -5,7 +5,7 @@
 ; WAITS: no.
 ; Entry: X object, Y kept unless the step sets it. Exit: as the last instruction that ran.
 LoadRecordFlashByNumberThenMoveOrClear:
-    lda a:OBJ_27A8,x
+    lda a:OBJ_STATE,x
     bne LoadRecordFlashByNumberThenMoveOrClear_at0
     jsr VecLoadObjectRecord
     lda #$FE
@@ -37,7 +37,7 @@ LoadRecordFlashByNumberThenMoveOrClear_at1:
 ; WAITS: no.
 ; Entry: X object, Y kept unless the step sets it. Exit: as the last instruction that ran.
 LoadRecordRandomLiftThenMoveOrClear:
-    lda a:OBJ_27A8,x
+    lda a:OBJ_STATE,x
     bne LoadRecordRandomLiftThenMoveOrClear_at0
     jsr VecLoadObjectRecord
     jsr VecNextRandom

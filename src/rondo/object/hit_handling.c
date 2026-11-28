@@ -184,12 +184,12 @@ HitArm ObjectHit(uint8_t slot, uint8_t y)
     status = (uint8_t)(status & 0x9F);
     WR8(OBJ->status_flags[slot], status);
     r->bytes[OH_STATUS1] = status;
-    bits = RD8(OBJ->f31f8[slot]);
+    bits = RD8(OBJ->hit_reaction[slot]);
     bits = (uint8_t)(bits & 0x03);
     r->bytes[OH_BITS] = bits;
     if (bits != 0) {
-        r->bytes[OH_BITS2] = DEC8(OBJ->f31f8[slot]);
-        bits = RD8(OBJ->f31f8[slot]);
+        r->bytes[OH_BITS2] = DEC8(OBJ->hit_reaction[slot]);
+        bits = RD8(OBJ->hit_reaction[slot]);
         bits = (uint8_t)(bits & 0x03);
         r->bytes[OH_BITS3] = bits;
         if (bits == 0) {
@@ -265,9 +265,9 @@ HitArm ObjectHit(uint8_t slot, uint8_t y)
         r->bytes[OH_FLASH] = RD8(OBJ->flash_flags[slot]);
         WR8_IDX(0x3AE8, slot, r->bytes[OH_FLASH]);
         WR8(OBJ->flash_flags[slot], 0x86);
-        flags = RD8(OBJ->f31f8[slot]);
+        flags = RD8(OBJ->hit_reaction[slot]);
         flags = (uint8_t)(flags | 0x03);
-        WR8(OBJ->f31f8[slot], flags);
+        WR8(OBJ->hit_reaction[slot], flags);
         r->bytes[OH_FLAGS3] = flags;
         hp = RD8(OBJ->f32a8[slot]);
         damage = RD8(ZP->temp00);

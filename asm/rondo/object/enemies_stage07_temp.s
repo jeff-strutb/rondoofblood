@@ -119,7 +119,7 @@ EnterState4IfFlagged:
     and #$80
     beq EnterState4IfFlagged_at0
     lda #$04
-    sta a:OBJ_27A8,x
+    sta a:OBJ_STATE,x
 EnterState4IfFlagged_at0:
     rts
 
@@ -165,20 +165,20 @@ ScrollNotAtRightEnd_clear:
 ; Entry: X object. Exit: A the last byte loaded; N, Z from it; C bit 7 of the frame minus $2A
 ; (the shift); V from the subtract; Y the row's offset; X kept.
 SetHitboxSizeFromFrame:
-    lda a:OBJ_2A68,x
+    lda a:OBJ_FRAME,x
     beq SetHitboxSizeFromFrame_clear
     sec
     sbc #$2A
     asl a
     tay
     lda a:$BAC9,y
-    sta a:OBJ_3988,x
+    sta a:OBJ_HITBOX_HALF_W,x
     lda a:$BACA,y
-    sta a:OBJ_3A38,x
+    sta a:OBJ_HITBOX_HALF_H,x
     rts
 SetHitboxSizeFromFrame_clear:
-    stz a:OBJ_3988,x
-    stz a:OBJ_3A38,x
+    stz a:OBJ_HITBOX_HALF_W,x
+    stz a:OBJ_HITBOX_HALF_H,x
     rts
 
 ; @routine 0BFC:3B3 ChangeToType9C
@@ -189,9 +189,9 @@ SetHitboxSizeFromFrame_clear:
 ; Entry: X object. Exit: A $9C, N set, Z clear; X, Y and C kept.
 ChangeToType9C:
     lda #$9C
-    sta a:OBJ_2750,x
+    sta a:OBJ_KIND,x
 ChangeToType9C_at0:
-    stz a:OBJ_27A8,x
+    stz a:OBJ_STATE,x
     rts
 
 ; @routine 0BFB:3E9 EnterNextStateWhenPlayerNear
@@ -210,7 +210,7 @@ EnterNextStateWhenPlayerNear:
     sta a:OBJ_3250,x
     lda #$20
     sta a:OBJ_34B8,x
-    inc a:OBJ_27A8,x
+    inc a:OBJ_STATE,x
 EnterNextStateWhenPlayerNear_at0:
     rts
 
@@ -264,7 +264,7 @@ AnimateThenFrameRecord:
     sta a:OBJ_3358,x
     lda #$0E
     sta a:OBJ_3300,x
-    inc a:OBJ_27A8,x
+    inc a:OBJ_STATE,x
 AnimateThenFrameRecord_at0:
     rts
 
@@ -277,7 +277,7 @@ AnimateThenFrameRecord_at0:
 ; Entry: X object, D clear. Exit: as StepObjectFrames (Y 11 from the record start when the
 ; animation does not change it); X and V kept. (A JSR then RTS, not a tail jump.) Clobbers zTemp10-11.
 StartThenAnimate:
-    lda a:OBJ_27A8,x
+    lda a:OBJ_STATE,x
     bne StartThenAnimate_at0
     jsr VecLoadObjectRecord
     lda #$06
@@ -301,7 +301,7 @@ StartThenAnimate_at0:
 RemoveFirstFreeSlotFrom1C:
     ldy #$1C
 RemoveFirstFreeSlotFrom1C_at1:
-    lda a:OBJ_2750,y
+    lda a:OBJ_KIND,y
     beq RemoveFirstFreeSlotFrom1C_at0
     iny
     cpy #$20
@@ -322,14 +322,14 @@ RemoveFirstFreeSlotFrom1C_at0:
 ; Entry: X object, D clear. Exit: A 4 and N, Z clear, C, V and Y as the spawn left them; or A, N,
 ; Z from the failing test.
 SpawnPiecesWhenFlaggedHit:
-    lda a:OBJ_27A8,x
+    lda a:OBJ_STATE,x
     beq SpawnPiecesWhenFlaggedHit_at0
     lda a:OBJ_31A0,x
     and #$80
     beq SpawnPiecesWhenFlaggedHit_at0
     jsr SpawnEightPiecesType37
     lda #$04
-    sta a:OBJ_27A8,x
+    sta a:OBJ_STATE,x
 SpawnPiecesWhenFlaggedHit_at0:
     rts
 
@@ -388,7 +388,7 @@ AnimateThenRemove_at0:
 ; Entry: X object, D clear. Exit: A the last row byte, N, Z from it, C and V from ApplyVelocityY,
 ; Y the row offset; past state 0 as FallAndLeaveWhenLow.
 StartWithRecordTableRow:
-    lda a:OBJ_27A8,x
+    lda a:OBJ_STATE,x
     bne FallAndLeaveWhenLow
     jsr VecLoadObjectRecord
     lda a:OBJ_34B8,x
@@ -402,7 +402,7 @@ StartWithRecordTableRow:
     jsr VecApplyVelocityY
     ply
     lda a:$BBF6,y
-    sta a:OBJ_2A68,x
+    sta a:OBJ_FRAME,x
     lda a:$BBF8,y
     sta a:OBJ_VX_HI,x
     lda a:$BBF7,y
@@ -442,7 +442,7 @@ FallAndLeaveWhenLow_at0:
 ; the borrow subtract; when none of the four slots is empty, as RemoveFirstFreeSlotFrom1C; otherwise A the low
 ; byte set, N, Z from it, C and V from the sum, Y the table index.
 CountTimerPairDownThenSpawn36:
-    lda a:OBJ_27A8,x
+    lda a:OBJ_STATE,x
     bne CountTimerPairDownThenSpawn36_at0
     jmp VecLoadObjectRecord
 CountTimerPairDownThenSpawn36_at0:
@@ -504,7 +504,7 @@ StartAtRandomSpeedTowardPlayer:
     sta a:OBJ_VX_LO,x
     jsr VecSideOfPlayer
     and #$01
-    sta a:OBJ_2AC0,x
+    sta a:OBJ_FACING_LEFT,x
     beq StartAtRandomSpeedTowardPlayer_at0
     jsr VecNegateVelocityX
 StartAtRandomSpeedTowardPlayer_at0:
@@ -529,11 +529,11 @@ StartFromScreenEdgeByScroll:
     bcs StartFromScreenEdgeByScroll_at1
     bsr ScrollNotAtRightEnd
     bcc StartFromScreenEdgeByScroll_at1
-    lda a:OBJ_2AC0
+    lda a:OBJ_FACING_LEFT
     beq StartFromScreenEdgeByScroll_at0
 StartFromScreenEdgeByScroll_at1:
     lda #$01
-    sta a:OBJ_2AC0,x
+    sta a:OBJ_FACING_LEFT,x
     lda #$FF
     sta a:OBJ_X_HI,x
     lda #$E0

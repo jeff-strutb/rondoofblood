@@ -12,7 +12,7 @@ RecordEventWhenSlot10InState0F:
     ldy a:OBJ_3040,x
     lda a:$C0C0,y
     sta a:OBJ_34B8,x
-    inc a:OBJ_27A8,x
+    inc a:OBJ_STATE,x
 RecordEventWhenSlot10InState0F_at0:
     rts
 
@@ -26,26 +26,26 @@ FaceThePlayerByStateTableB:
     lda a:OBJ_3568,x
     and #$07
     bne FaceThePlayerByStateTableB_at0
-    ldy a:OBJ_27A8,x
+    ldy a:OBJ_STATE,x
     lda a:$B089,y
     beq FaceThePlayerByStateTableB_at0
     jsr VecSideOfPlayer
     and #$01
-    sta a:OBJ_2AC0,x
+    sta a:OBJ_FACING_LEFT,x
 FaceThePlayerByStateTableB_at0:
     rts
 
 ; @routine 0EB9:2C5 MaybeDropItemByPlayerDistance
 ; @run 70:A2C5
-; WHAT IT DOES: An object with 5 or more hits whose OBJ_31F8 bits 2 to 4 are not 0 draws a random number against the table at $AC70 by those bits; when the number is below it, it picks an item from the table at $AC78 by the player's distance and starts it in a free slot of $30 to $3F at its place.
+; WHAT IT DOES: An object with 5 or more hits whose OBJ_HIT_REACTION bits 2 to 4 are not 0 draws a random number against the table at $AC70 by those bits; when the number is below it, it picks an item from the table at $AC78 by the player's distance and starts it in a free slot of $30 to $3F at its place.
 ; HOW: NextRandom, PlayerDistanceSum, a table read, FindFreeSlotFrom30, StartObjectAtPlace.
 ; WAITS: no.
 ; Entry: X object. Exit: as the last instruction that ran. The drop arm ran in no script; the draft stops there.
 MaybeDropItemByPlayerDistance:
-    lda a:OBJ_33B0,x
+    lda a:OBJ_HIT_TAKEN,x
     cmp #$05
     bcc RichterStandStep1
-    lda a:OBJ_31F8,x
+    lda a:OBJ_HIT_REACTION,x
     lsr a
     lsr a
     and #$07
@@ -80,7 +80,7 @@ MaybeDropItemByPlayerDistance:
 ; WAITS: no.
 ; Entry: X object. Exit: as the last instruction that ran. Everything past state 0 ran in no script; the draft stops there and the arms are written from the decoded bytes.
 SpawnerByKindAndScreen:
-    lda a:OBJ_27A8,x
+    lda a:OBJ_STATE,x
     bne SpawnerByKindAndScreen_at0
     jmp VecLoadObjectRecord
 SpawnerByKindAndScreen_at0:
@@ -104,7 +104,7 @@ SpawnerByKindAndScreen_at2:
     bcs SpawnerByKindAndScreen_at1
     ldy #$1A
 SpawnerByKindAndScreen_at5:
-    lda a:OBJ_2750,y
+    lda a:OBJ_KIND,y
     beq SpawnerByKindAndScreen_at4
     iny
     iny
@@ -128,10 +128,10 @@ SpawnerByKindAndScreen_at3:
     bcs SpawnerByKindAndScreen_at7
     ldy #$20
 SpawnerByKindAndScreen_at9:
-    lda a:OBJ_2750,y
-    ora a:OBJ_2750+1,y
-    ora a:OBJ_2750+2,y
-    ora a:OBJ_2750+3,y
+    lda a:OBJ_KIND,y
+    ora a:OBJ_KIND+1,y
+    ora a:OBJ_KIND+2,y
+    ora a:OBJ_KIND+3,y
     beq SpawnerByKindAndScreen_at8
     iny
     iny
@@ -176,12 +176,12 @@ SpawnerByKindAndScreen_at11:
 
 ; @routine 0EBE:66D HitBoxByFrameTableCE8F
 ; @run 71:CE6D
-; WHAT IT DOES: Takes the hit box (OBJ_3930, OBJ_39E0, OBJ_3988, OBJ_3A38) from a four byte row of the table at $CE8F picked by the frame less $45.
+; WHAT IT DOES: Takes the hit box (OBJ_HITBOX_DX, OBJ_HITBOX_DY, OBJ_HITBOX_HALF_W, OBJ_HITBOX_HALF_H) from a four byte row of the table at $CE8F picked by the frame less $45.
 ; HOW: A subtract, two shifts, four table reads, stores.
 ; WAITS: no.
 ; Entry: X object. Exit: A the last byte, Y the row, C from the shift.
 HitBoxByFrameTableCE8F:
-    lda a:OBJ_2A68,x
+    lda a:OBJ_FRAME,x
     sec
     sbc #$45
 HitBoxByFrameTableCE8F_at0:
@@ -189,13 +189,13 @@ HitBoxByFrameTableCE8F_at0:
     asl a
     tay
     lda a:$CE8F,y
-    sta a:OBJ_3930,x
+    sta a:OBJ_HITBOX_DX,x
     lda a:$CE90,y
-    sta a:OBJ_39E0,x
+    sta a:OBJ_HITBOX_DY,x
     lda a:$CE91,y
-    sta a:OBJ_3988,x
+    sta a:OBJ_HITBOX_HALF_W,x
     lda a:$CE92,y
-    sta a:OBJ_3A38,x
+    sta a:OBJ_HITBOX_HALF_H,x
     rts
 
 ; @routine 0EBE:6AB StepListFacePlayerUntilNear
@@ -212,37 +212,37 @@ StepListFacePlayerUntilNear:
     jsr VecStepObjectFrames
     jsr VecSideOfPlayer
     and #$01
-    sta a:OBJ_2AC0,x
+    sta a:OBJ_FACING_LEFT,x
     jsr VecDistanceXToPlayer
     cmp #$60
     bcs StepListFacePlayerUntilNear_at0
-    stz a:OBJ_3408,x
-    stz a:OBJ_3460,x
-    inc a:OBJ_27A8,x
+    stz a:OBJ_ANIM_STEP,x
+    stz a:OBJ_ANIM_TIMER,x
+    inc a:OBJ_STATE,x
 StepListFacePlayerUntilNear_at0:
     rts
 
 ; @routine 0EBE:6F6 FacePlayerThenPickPhase
 ; @run 71:CEF6
-; WHAT IT DOES: Takes the facing of the player's side and sets OBJ_2800 from the table at $CF0E by the low four bits of OBJ_34B8, which then counts up.
+; WHAT IT DOES: Takes the facing of the player's side and sets OBJ_SUBSTATE from the table at $CF0E by the low four bits of OBJ_34B8, which then counts up.
 ; HOW: SideOfPlayer, a table read, stores, an INC.
 ; WAITS: no.
 ; Entry: X object. Exit: A the table byte, Y the index, N and Z from the new OBJ_34B8.
 FacePlayerThenPickPhase:
     jsr VecSideOfPlayer
     and #$01
-    sta a:OBJ_2AC0,x
+    sta a:OBJ_FACING_LEFT,x
     lda a:OBJ_34B8,x
     and #$0F
     tay
     lda a:$CF0E,y
-    sta a:OBJ_2800,x
+    sta a:OBJ_SUBSTATE,x
     inc a:OBJ_34B8,x
     rts
 
 ; @routine 0EBE:71E LeapByPlayerDistance
 ; @run 71:CF1E
-; WHAT IT DOES: When the player is $40 or more away in X clears OBJ_3568 and gives the object the speed X -$01C0, Y -$00C0; when nearer plays sound $C6, sets OBJ_3568 1 and the speed X -$00E0, Y -$0400. Goes to the next OBJ_2800 and, facing left, reverses the X speed.
+; WHAT IT DOES: When the player is $40 or more away in X clears OBJ_3568 and gives the object the speed X -$01C0, Y -$00C0; when nearer plays sound $C6, sets OBJ_3568 1 and the speed X -$00E0, Y -$0400. Goes to the next OBJ_SUBSTATE and, facing left, reverses the X speed.
 ; HOW: DistanceXToPlayer, SoundCommand, stores, an INC, NegateVelocityX.
 ; WAITS: no.
 ; Entry: X object, Y kept for the sound. Exit: as the last instruction that ran. The near arm and the reverse ran in no script; the draft stops there.
@@ -274,8 +274,8 @@ LeapByPlayerDistance_at0:
     lda #$00
     sta a:OBJ_VY_LO,x
 LeapByPlayerDistance_at1:
-    inc a:OBJ_2800,x
-    lda a:OBJ_2AC0,x
+    inc a:OBJ_SUBSTATE,x
+    lda a:OBJ_FACING_LEFT,x
     beq LeapByPlayerDistance_at2
     jsr VecNegateVelocityX
 LeapByPlayerDistance_at2:
@@ -283,14 +283,14 @@ LeapByPlayerDistance_at2:
 
 ; @routine 0EBE:7B9 CountDownThenClearPhase
 ; @run 71:CFB9
-; WHAT IT DOES: Counts OBJ_3510 down; at zero clears OBJ_2800.
+; WHAT IT DOES: Counts OBJ_3510 down; at zero clears OBJ_SUBSTATE.
 ; HOW: A memory decrement and a store.
 ; WAITS: no.
 ; Entry: X object. Exit: the decrement's N and Z. The store ran in no script; the draft stops there.
 CountDownThenClearPhase:
     dec a:OBJ_3510,x
     bne CountDownThenClearPhase_at0
-    stz a:OBJ_2800,x
+    stz a:OBJ_SUBSTATE,x
 CountDownThenClearPhase_at0:
     rts
 
@@ -302,12 +302,12 @@ CountDownThenClearPhase_at0:
 ; Entry: X object, Y kept unless the step sets it. Exit: as the last instruction that ran.
 HopBetweenSidesWithBox:
     jsr HitBoxByFrameTableCE8F
-    lda a:OBJ_27A8,x
+    lda a:OBJ_STATE,x
     bne HopBetweenSidesWithBox_at0
     jsr VecLoadObjectRecord
     jsr VecNextRandom
     and #$01
-    sta a:OBJ_2AC0,x
+    sta a:OBJ_FACING_LEFT,x
     asl a
     tay
     lda a:$D0BD,y
@@ -330,7 +330,7 @@ HopBetweenSidesWithBox_at5:
     sta a:OBJ_VY_HI,x
     lda #$E0
     sta a:OBJ_VY_LO,x
-    lda a:OBJ_2AC0,x
+    lda a:OBJ_FACING_LEFT,x
     bne HopBetweenSidesWithBox_at1
     rts
 HopBetweenSidesWithBox_at1:
@@ -347,7 +347,7 @@ HopBetweenSidesWithBox_at0:
     jsr VecApplyVelocityX
     lda a:OBJ_VX_HI,x
     sta z:zTemp00
-    lda a:OBJ_2AC0,x
+    lda a:OBJ_FACING_LEFT,x
     asl a
     tay
     lda a:OBJ_VX_LO,x
@@ -368,7 +368,7 @@ HopBetweenSidesWithBox_at0:
     sta a:OBJ_VY_LO,x
     lda #$10
     sta a:OBJ_34B8,x
-    inc a:OBJ_27A8,x
+    inc a:OBJ_STATE,x
 HopBetweenSidesWithBox_at3:
     rts
 HopBetweenSidesWithBox_at2:
@@ -377,7 +377,7 @@ HopBetweenSidesWithBox_at2:
     jmp VecApplyVelocityY
 HopBetweenSidesWithBox_at4:
     lda #$01
-    sta a:OBJ_27A8,x
-    stz a:OBJ_3460,x
-    stz a:OBJ_3408,x
+    sta a:OBJ_STATE,x
+    stz a:OBJ_ANIM_TIMER,x
+    stz a:OBJ_ANIM_STEP,x
     jmp HopBetweenSidesWithBox_at5

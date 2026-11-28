@@ -467,7 +467,7 @@ RunStreamRecord_at0:
 StreamSpawnIfFree:
     phx
     ldx z:zTemp0B
-    lda a:OBJ_2750,x
+    lda a:OBJ_KIND,x
     beq StreamPlaceObject
     jmp StreamSpawnEnd
 
@@ -480,7 +480,7 @@ StreamSpawnIfFree:
 StreamPlaceObject:
     jsr VecClearObject
     lda z:zTemp0C
-    sta a:OBJ_2750,x
+    sta a:OBJ_KIND,x
     lda a:LevelAxis
     cmp #$01
     beq StreamPlaceObject_at0
@@ -635,7 +635,7 @@ StreamClearObject:
 StreamSpawnIfOther:
     phx
     ldx z:zTemp0B
-    lda a:OBJ_2750,x
+    lda a:OBJ_KIND,x
     bne StreamSpawnIfOther_at0
     jmp StreamPlaceObject
 StreamSpawnIfOther_at0:

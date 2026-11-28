@@ -361,7 +361,7 @@ GlideCursorObject:
     rol a
     tay
     lda a:$9D55,y
-    sta a:OBJ_2A68,x
+    sta a:OBJ_FRAME,x
     lda a:OBJ_X_LO,x
     cmp a:OBJ_3568,x
     bne GlideCursorObject_at0
@@ -370,7 +370,7 @@ GlideCursorObject:
     bne GlideCursorObject_at0
     stz a:OBJ_3510,x
 GlideCursorObject_at0:
-    lda a:OBJ_2A68,x
+    lda a:OBJ_FRAME,x
     dec a
     cmp #$08
     bcs GlideCursorObject_at1
@@ -509,7 +509,7 @@ ObjectFrameFromTick:
     lsr a
     and #$07
     inc a
-    sta a:OBJ_2A68,x
+    sta a:OBJ_FRAME,x
     rts
 
 ; @routine 00C4:602 MenuPageAdvance
@@ -584,7 +584,7 @@ ClearVramBlock_at0:
     dec z:zTemp00
     bne ClearVramBlock_at0
     plx
-    inc a:OBJ_27A8,x
+    inc a:OBJ_STATE,x
     rts
 
 ; @routine 00DD:0DC GlyphPassByStep
@@ -812,7 +812,7 @@ GlideObjectUp:
 GlideObjectUp_at0:
     dec a:OBJ_35C0,x
     bne GlideObjectUp_at1
-    inc a:OBJ_27A8,x
+    inc a:OBJ_STATE,x
 GlideObjectUp_at1:
     rts
 
@@ -877,7 +877,7 @@ PlaceObjectList_at0:
     sta a:OBJ_Y_LO,x
     iny
     lda (zTemp00),y
-    sta a:OBJ_2A68,x
+    sta a:OBJ_FRAME,x
     lda #$04
     sta a:OBJ_2A10,x
     lda z:zTemp00

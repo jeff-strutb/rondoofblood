@@ -39,7 +39,7 @@ static DropArm drop_item_with_tables(uint8_t slot, uint16_t thresholds, uint16_t
         r.arm = DROP_FEW_HITS;
         return r;
     }
-    raw = RD8(OBJ->f31f8[slot]);
+    raw = RD8(OBJ->hit_reaction[slot]);
     r.bits = (uint8_t)((raw >> 2) & 0x07);
     r.bit1 = ((raw >> 1) & 0x01) != 0;
     if (r.bits == 0) {

@@ -460,7 +460,7 @@ void abi_LoadRecordSinkThenStepListByKind(void)
  * @routine 025B:266 StateMachineWithSoundAndList
  * @run 70:B266
  * WHAT IT DOES: An object of several phases. State 0 loads the record. State 1 waits on the state of slot $10 (3 or 6): it steps the animation list at $B2FA or $B2FF, plays sound $72 when the scroll byte ScrollXLo+1 is clear, and at state 6 goes on. State 2 counts OBJ_3510 down and goes on. Later states fall, and once off screen to the left start a list channel and clear the object.
- * HOW: Compares of OBJ_27A8 and slot $10's state, SoundCommand, StepObjectFrames, StartListChannelKind2 between a PHX and a PLX, a tail jump into ClearObject.
+ * HOW: Compares of OBJ_STATE and slot $10's state, SoundCommand, StepObjectFrames, StartListChannelKind2 between a PHX and a PLX, a tail jump into ClearObject.
  * WAITS: no.
  * Entry: X object, Y kept unless a step sets it. Exit: as the last instruction that ran (l8_phases_exit_shim).
  */
@@ -1015,7 +1015,7 @@ void abi_HitSoundThenSpawnPieces(void)
 /*
  * @routine 025B:52E EnterState0BWhenFlagged
  * @run 70:B52E
- * WHAT IT DOES: When bit 7 of OBJ_31A0 is set and the state is below $0B, sets the state $0B and OBJ_2800 0.
+ * WHAT IT DOES: When bit 7 of OBJ_31A0 is set and the state is below $0B, sets the state $0B and OBJ_SUBSTATE 0.
  * HOW: Two tests, two stores.
  * WAITS: no.
  * Entry: X object. Exit: as the last instruction that ran (l8_enter_state0b_exit_shim). The stores ran in no script; the draft stops there.
@@ -1035,7 +1035,7 @@ L8Arm EnterState0BWhenFlagged(uint8_t slot)
         return r;
     }
     WR8(OBJ->state[slot], 0x0B);
-    WR8(OBJ->f2800[slot], 0);
+    WR8(OBJ->substate[slot], 0);
     r.arm = S0B_ENTERED;
     return r;
 }
@@ -1491,7 +1491,7 @@ void abi_StepListThenBurstAtFrame18(void)
 /*
  * @routine 025B:7F5 HomeOnPointThenRingAndSound
  * @run 70:B7F5
- * WHAT IT DOES: Steps the animation list at $B6DA while it flies toward the point X $00E0, Y $0030 on a circle of radius $0100; once on it (within 3) plays sound $73, sets OBJ_3670 4 and OBJ_3510 $B0, starts list $83 on channel 5, restarts the animation, and goes to state $0B with OBJ_2800 2.
+ * WHAT IT DOES: Steps the animation list at $B6DA while it flies toward the point X $00E0, Y $0030 on a circle of radius $0100; once on it (within 3) plays sound $73, sets OBJ_3670 4 and OBJ_3510 $B0, starts list $83 on channel 5, restarts the animation, and goes to state $0B with OBJ_SUBSTATE 2.
  * HOW: StepObjectFrames, AngleToPoint, SetVelocityFromAngle, ApplyVelocity, two range tests, SoundCommand, StartListChannelKind2.
  * WAITS: no.
  * Entry: X object, Y kept unless the step sets it. Exit: as the last instruction that ran (l8_home_exit_shim).
@@ -1555,7 +1555,7 @@ L8St12HomeArm HomeOnPointThenRingAndSound(uint8_t slot, uint8_t y_entry)
     WR8(OBJ->anim_step[slot], 0);
     WR8(OBJ->anim_timer[slot], 0);
     WR8(OBJ->state[slot], 0x0B);
-    WR8(OBJ->f2800[slot], 2);
+    WR8(OBJ->substate[slot], 2);
     r.arm = HOME_ARRIVED;
     return r;
 }

@@ -15,7 +15,7 @@ HitTestAllObjects_at1:
     jsr HitTestObject
     lda a:OBJ_3A90,x
     beq HitTestAllObjects_at0
-    stz a:OBJ_33B0,x
+    stz a:OBJ_HIT_TAKEN,x
     dec a:OBJ_3A90,x
 HitTestAllObjects_at0:
     dex
@@ -36,19 +36,19 @@ HitTestAllObjects_at0:
 ; WAITS: no.
 ; Entry: X the object. Exit: with no hit A the last value, Y $FF, N set; with one, as the handler.
 HitTestObject:
-    stz a:OBJ_33B0,x
+    stz a:OBJ_HIT_TAKEN,x
     lda a:OBJ_3250,x
     bne HitTestObject_at0
     jmp HitTestObject_at1
 HitTestObject_at0:
-    lda a:OBJ_3988,x
-    ora a:OBJ_3A38,x
+    lda a:OBJ_HITBOX_HALF_W,x
+    ora a:OBJ_HITBOX_HALF_H,x
     bne HitTestObject_at2
     jmp HitTestObject_at1
 HitTestObject_at2:
-    lda a:OBJ_3930,x
+    lda a:OBJ_HITBOX_DX,x
     sta z:zTemp01
-    lda a:OBJ_2AC0,x
+    lda a:OBJ_FACING_LEFT,x
     beq HitTestObject_at3
     lda z:zTemp01
     eor #$FF
@@ -67,7 +67,7 @@ HitTestObject_at4:
     adc z:zTemp00
     bne HitTestObject_at1
     stz z:zTemp00
-    lda a:OBJ_39E0,x
+    lda a:OBJ_HITBOX_DY,x
     bpl HitTestObject_at5
     dec z:zTemp00
 HitTestObject_at5:
@@ -88,13 +88,13 @@ HitTestObject_at7:
     beq HitTestObject_at8
     lda a:HitboxHi,y
     bne HitTestObject_at8
-    lda a:OBJ_3988,x
+    lda a:OBJ_HITBOX_HALF_W,x
     clc
-    adc a:OBJ_3988,y
+    adc a:OBJ_HITBOX_HALF_W,y
     sta a:StreamStepLo
-    lda a:OBJ_3A38,x
+    lda a:OBJ_HITBOX_HALF_H,x
     clc
-    adc a:OBJ_3A38,y
+    adc a:OBJ_HITBOX_HALF_H,y
     sta a:StreamStepHi
     lda a:WorkByteA
     sec
@@ -146,11 +146,11 @@ HitTestObject_at11:
 ; Entry: X the object, Y the hit slot. Exit: A the last byte loaded, N and Z from it. C and V kept.
 HitStoreHandler:
     lda a:OBJ_3828,y
-    sta a:OBJ_33B0,x
-    lda a:OBJ_33B0
+    sta a:OBJ_HIT_TAKEN,x
+    lda a:OBJ_HIT_TAKEN
     bne HitStoreHandler_at0
     lda a:OBJ_3358,x
-    sta a:OBJ_33B0
+    sta a:OBJ_HIT_TAKEN
     lda a:OBJ_3300,x
     sta a:OBJ_32A8
 HitStoreHandler_at0:
@@ -175,7 +175,7 @@ HitReportHandler:
     lda a:HitboxYLo+3
     sta a:StageHitReport+3
     lda a:OBJ_3828,y
-    sta a:OBJ_33B0,x
+    sta a:OBJ_HIT_TAKEN,x
     rts
 
 ; @routine 05BF:70A HitTestAllObjectsLong
@@ -192,7 +192,7 @@ HitTestAllObjectsLong_at1:
     jsr HitTestObjectLong
     lda a:OBJ_3A90,x
     beq HitTestAllObjectsLong_at0
-    stz a:OBJ_33B0,x
+    stz a:OBJ_HIT_TAKEN,x
     dec a:OBJ_3A90,x
 HitTestAllObjectsLong_at0:
     dex
@@ -210,19 +210,19 @@ HitTestAllObjectsLong_at0:
 ; WAITS: no.
 ; Entry, exit: as HitTestObject.
 HitTestObjectLong:
-    stz a:OBJ_33B0,x
+    stz a:OBJ_HIT_TAKEN,x
     lda a:OBJ_3250,x
     bne HitTestObjectLong_at0
     jmp HitTestObjectLong_at1
 HitTestObjectLong_at0:
-    lda a:OBJ_3988,x
-    ora a:OBJ_3A38,x
+    lda a:OBJ_HITBOX_HALF_W,x
+    ora a:OBJ_HITBOX_HALF_H,x
     bne HitTestObjectLong_at2
     jmp HitTestObjectLong_at1
 HitTestObjectLong_at2:
-    lda a:OBJ_3930,x
+    lda a:OBJ_HITBOX_DX,x
     sta z:zTemp01
-    lda a:OBJ_2AC0,x
+    lda a:OBJ_FACING_LEFT,x
     beq HitTestObjectLong_at3
     lda z:zTemp01
     eor #$FF
@@ -241,7 +241,7 @@ HitTestObjectLong_at4:
     adc z:zTemp00
     bne HitTestObjectLong_at1
     stz z:zTemp00
-    lda a:OBJ_39E0,x
+    lda a:OBJ_HITBOX_DY,x
     bpl HitTestObjectLong_at5
     dec z:zTemp00
 HitTestObjectLong_at5:
@@ -262,13 +262,13 @@ HitTestObjectLong_at7:
     beq HitTestObjectLong_at8
     lda a:HitboxHi,y
     bne HitTestObjectLong_at8
-    lda a:OBJ_3988,x
+    lda a:OBJ_HITBOX_HALF_W,x
     clc
-    adc a:OBJ_3988,y
+    adc a:OBJ_HITBOX_HALF_W,y
     sta a:StreamStepLo
-    lda a:OBJ_3A38,x
+    lda a:OBJ_HITBOX_HALF_H,x
     clc
-    adc a:OBJ_3A38,y
+    adc a:OBJ_HITBOX_HALF_H,y
     sta a:StreamStepHi
     lda a:WorkByteA
     sec
@@ -318,19 +318,19 @@ HitTestObjectLong_at11:
 ; WAITS: no.
 ; Entry, exit: as HitTestObject.
 HitTestObjectLongB:
-    stz a:OBJ_33B0,x
+    stz a:OBJ_HIT_TAKEN,x
     lda a:OBJ_3250,x
     bne HitTestObjectLongB_at0
     jmp HitTestObjectLongB_at1
 HitTestObjectLongB_at0:
-    lda a:OBJ_3988,x
-    ora a:OBJ_3A38,x
+    lda a:OBJ_HITBOX_HALF_W,x
+    ora a:OBJ_HITBOX_HALF_H,x
     bne HitTestObjectLongB_at2
     jmp HitTestObjectLongB_at1
 HitTestObjectLongB_at2:
-    lda a:OBJ_3930,x
+    lda a:OBJ_HITBOX_DX,x
     sta z:zTemp01
-    lda a:OBJ_2AC0,x
+    lda a:OBJ_FACING_LEFT,x
     beq HitTestObjectLongB_at3
     lda z:zTemp01
     eor #$FF
@@ -349,7 +349,7 @@ HitTestObjectLongB_at4:
     adc z:zTemp00
     bne HitTestObjectLongB_at1
     stz z:zTemp00
-    lda a:OBJ_39E0,x
+    lda a:OBJ_HITBOX_DY,x
     bpl HitTestObjectLongB_at5
     dec z:zTemp00
 HitTestObjectLongB_at5:
@@ -370,13 +370,13 @@ HitTestObjectLongB_at7:
     beq HitTestObjectLongB_at8
     lda a:HitboxHi,y
     bne HitTestObjectLongB_at8
-    lda a:OBJ_3988,x
+    lda a:OBJ_HITBOX_HALF_W,x
     clc
-    adc a:OBJ_3988,y
+    adc a:OBJ_HITBOX_HALF_W,y
     sta a:StreamStepLo
-    lda a:OBJ_3A38,x
+    lda a:OBJ_HITBOX_HALF_H,x
     clc
-    adc a:OBJ_3A38,y
+    adc a:OBJ_HITBOX_HALF_H,y
     sta a:StreamStepHi
     lda a:WorkByteA
     sec
@@ -427,11 +427,11 @@ HitTestObjectLongB_at11:
 ; Entry: X the object, Y the hit slot. Exit: as HitStoreHandler.
 HitStoreHandlerLong:
     lda a:OBJ_3828,y
-    sta a:OBJ_33B0,x
-    lda a:OBJ_33B0
+    sta a:OBJ_HIT_TAKEN,x
+    lda a:OBJ_HIT_TAKEN
     bne HitStoreHandlerLong_at0
     lda a:OBJ_3358,x
-    sta a:OBJ_33B0
+    sta a:OBJ_HIT_TAKEN
     lda a:OBJ_3300,x
     sta a:OBJ_32A8
 HitStoreHandlerLong_at0:
@@ -454,5 +454,5 @@ HitReportHandlerLong:
     lda a:HitboxYLo+3
     sta a:StageHitReport+3
     lda a:OBJ_3828,y
-    sta a:OBJ_33B0,x
+    sta a:OBJ_HIT_TAKEN,x
     rts

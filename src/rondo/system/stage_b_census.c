@@ -1015,7 +1015,7 @@ static Regs respawn(Regs r, uint16_t ret)
     WR8(ZP->game_sub_mode, 1);
     r = loaded(r, 0x18);
     WR8(OBJ->f3300[16], 0x18);
-    facing = (uint8_t)(RD8(OBJ->f2800[24]) & 0x01);
+    facing = (uint8_t)(RD8(OBJ->substate[24]) & 0x01);
     r.x = facing;
     r = loaded(r, rd8((uint16_t)(FACING_SPEEDS + facing)));
     WR8(OBJ->f3358[0], r.a);
@@ -1828,7 +1828,7 @@ StageRegs StageBossWaitDoor152D(StageRegs r)
     r = map_banks_5_6(r, 0x847F);
     r = orig_shim(r, 0x8482, 0xA009);
     CALL(0x8485, StageOverlayFrame152D(r));
-    r = loaded(r, RD8(OBJ->f2800[58]));
+    r = loaded(r, RD8(OBJ->substate[58]));
     r = compared(r, 0x04);
     if (r.nz != 0) {
         return r;
@@ -2734,7 +2734,7 @@ StageRegs StageLoadScreen152D(StageRegs r)
         WR8(OBJ->flash_flags[24], 0);
         r = loaded(r, RD8(ZP->character));
         if (r.a != 0) {
-            r = loaded(r, RD8(OBJ->f2800[24]));
+            r = loaded(r, RD8(OBJ->substate[24]));
             r = compared(r, 0x05);
             if (r.c) {
                 sum = sub_bytes(r.a, 0x05, true);
@@ -2958,7 +2958,7 @@ static Regs take_door(Regs r, bool by_pad)
  */
 StageRegs DoorHandler152D(StageRegs r)
 {
-    r = loaded(r, RD8(OBJ->f2800[24 + r.x]));
+    r = loaded(r, RD8(OBJ->substate[24 + r.x]));
     if (r.a == 0) {
         return unpack_door(r, 0x8783, true);
     }
@@ -2990,7 +2990,7 @@ void abi_DoorHandler152D(void)
  */
 StageRegs DoorHandlerB152D(StageRegs r)
 {
-    r = loaded(r, RD8(OBJ->f2800[24 + r.x]));
+    r = loaded(r, RD8(OBJ->substate[24 + r.x]));
     if (r.a == 0) {
         return unpack_door(r, 0x87CE, false);
     }
@@ -4871,11 +4871,11 @@ StageRegs ContinueRowStep152D(StageRegs r)
     Sum sum;
     uint8_t row = r.x, value, old;
 
-    r = loaded(r, RD8(OBJ->f2800[24 + row]));
+    r = loaded(r, RD8(OBJ->substate[24 + row]));
     if (r.a == 0) {
         r = loaded(r, RD8(OBJ->f32a8[32 + row]));
         if (r.a == 0) {
-            r.nz = INC8(OBJ->f2800[24 + row]);
+            r.nz = INC8(OBJ->substate[24 + row]);
             return r;
         }
         value = RD8(OBJ->x_hi[8 + row]);
@@ -7166,7 +7166,7 @@ StageRegs GateObjectStep152D(StageRegs r)
     uint8_t step, index;
     uint16_t handler;
 
-    step = RD8(OBJ->f2800[24 + r.x]);
+    step = RD8(OBJ->substate[24 + r.x]);
     index = (uint8_t)(step << 1);
     r.c = (step & 0x80) != 0;
     r.y = index;
@@ -7283,7 +7283,7 @@ StageRegs GateWaitPlayer152D(StageRegs r)
     WR8(ZP->field8c, r.a);
     r = loaded(r, 0x03);
     WR8(ZP->sub_step, 0x03);
-    r.nz = INC8(OBJ->f2800[24 + r.x]);
+    r.nz = INC8(OBJ->substate[24 + r.x]);
     WR8(OBJ->f3300[16 + r.x], 0);
     r = loaded(r, 0x04);
     WR8(OBJ->f32a8[32 + r.x], 0x04);
@@ -7336,7 +7336,7 @@ StageRegs GateWaitStep152D(StageRegs r)
     if (r.nz != 0) {
         return r;
     }
-    r.nz = INC8(OBJ->f2800[24 + r.x]);
+    r.nz = INC8(OBJ->substate[24 + r.x]);
     return r;
 }
 
@@ -7402,7 +7402,7 @@ StageRegs GateOpen152D(StageRegs r)
     if (r.nz != 0) {
         return gate_frame(r, 0x99BC);
     }
-    r.nz = INC8(OBJ->f2800[24 + r.x]);
+    r.nz = INC8(OBJ->substate[24 + r.x]);
     r = loaded(r, (uint8_t)(RD8(ZP->field8c) | 0x80));
     WR8(ZP->field8c, r.a);
     r = loaded(r, 0x3A);
@@ -7436,7 +7436,7 @@ StageRegs GateWaitClear152D(StageRegs r)
     if ((r.a & 0x80) != 0) {
         return r;
     }
-    r.nz = INC8(OBJ->f2800[24 + r.x]);
+    r.nz = INC8(OBJ->substate[24 + r.x]);
     r = loaded(r, 0x04);
     WR8(OBJ->f32a8[32 + r.x], 0x04);
     return r;
@@ -7474,7 +7474,7 @@ StageRegs GateClose152D(StageRegs r)
     if ((r.nz & 0x80) == 0) {
         return gate_frame(r, 0x99FC);
     }
-    r.nz = INC8(OBJ->f2800[24 + r.x]);
+    r.nz = INC8(OBJ->substate[24 + r.x]);
     r = loaded(r, 0x3A);
     return orig_tail_shim(r, SOUND_HOOK);
 }

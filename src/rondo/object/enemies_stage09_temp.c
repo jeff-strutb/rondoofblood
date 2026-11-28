@@ -953,7 +953,7 @@ static ObjArm splitter_start(uint8_t slot, uint8_t carry_in, uint8_t y_low, uint
     WR8(OBJ->y_lo[slot], y_low);
     r.second = y_low;
     WR8(OBJ->f3670[slot], 0);
-    r.third = INC8(OBJ->f2800[slot]);
+    r.third = INC8(OBJ->substate[slot]);
     jsr_push(ret_side);
     r.side = SideOfPlayer(slot);
     jsr_pop();
@@ -987,7 +987,7 @@ static Ended splitter_start_exit_shim(ObjArm r)
  * @routine 09EB:196 StartSplitterHigh
  * @run 70:B196
  * WHAT IT DOES: Starts a falling splitter at Y low $48: its X speed is picked from a table at $B1BF by two bits of the
- * player's distance sum, OBJ_3670 is cleared, OBJ_2800 moves on, and when the object is on the player's left its X speed is
+ * player's distance sum, OBJ_3670 is cleared, OBJ_SUBSTATE moves on, and when the object is on the player's left its X speed is
  * reversed.
  * HOW: PlayerDistanceSum, SideOfPlayer, NegateVelocityX.
  * Untraced: the reversal (B1BB).
@@ -2423,7 +2423,7 @@ void abi_StepShootOnCue(void)
  * @routine 09EA:5CB AdvanceByHealth
  * @run 70:ADCB
  * WHAT IT DOES: An object with a state moves to its next phase (OBJ_3618) when its health OBJ_32A8 falls below the limit a table at $AE09 gives for the phase (phase 2 moves on
- * when bit 7 of the health is set): its state becomes the byte a table at $AE0B gives, the phase goes up, the animation and OBJ_2800 are reset, and from phase 2 its OBJ_3148 loses
+ * when bit 7 of the health is set): its state becomes the byte a table at $AE0B gives, the phase goes up, the animation and OBJ_SUBSTATE are reset, and from phase 2 its OBJ_3148 loses
  * bits 3 to 6.
  * HOW: Table reads (bank 70).
  * Untraced: the phase 2 test (ADD7) and the OBJ_3148 mask (AE00).
@@ -2460,7 +2460,7 @@ ObjArm AdvanceByHealth(uint8_t slot)
     INC8(OBJ->f3618[slot]);
     WR8(OBJ->anim_step[slot], 0);
     WR8(OBJ->anim_timer[slot], 0);
-    WR8(OBJ->f2800[slot], 0);
+    WR8(OBJ->substate[slot], 0);
     r.sixth = RD8(OBJ->f3618[slot]);
     r.arm = AH_ADVANCED;
     if (r.sixth < 2) {
@@ -2506,7 +2506,7 @@ void abi_AdvanceByHealth(void)
 /*
  * @routine 09EB:14D PickGroundSpeedInWindow
  * @run 70:B14D
- * WHAT IT DOES: When the object is inside the window (InWindowRange), OBJ_2800 takes a byte of a sixteen-byte table at $B15F picked at random.
+ * WHAT IT DOES: When the object is inside the window (InWindowRange), OBJ_SUBSTATE takes a byte of a sixteen-byte table at $B15F picked at random.
  * HOW: InWindowRange, NextRandom, a table read (bank 70).
  * WAITS: no.
  * Entry: X object. Exit: outside: the window test's flags; inside: A the table byte, Y the pick, C and V from the random.
@@ -2529,7 +2529,7 @@ ObjArm PickGroundSpeedInWindow(uint8_t slot)
     jsr_pop();
     r.first = (uint8_t)(r.random.value & 0x0F);
     r.second = rd8((uint16_t)(0xB15F + r.first));
-    WR8(OBJ->f2800[slot], r.second);
+    WR8(OBJ->substate[slot], r.second);
     r.arm = PG_PICKED;
     return r;
 }
@@ -3342,7 +3342,7 @@ void abi_JumpByStateTableF(void)
 /*
  * @routine 09E9:28D HitRowByKindAndHits
  * @run 70:A28D
- * WHAT IT DOES: Puts the byte of a table at $AB9F picked by 16 times OBJ_2EE0 plus the hits taken (OBJ_33B0) into zTemp00.
+ * WHAT IT DOES: Puts the byte of a table at $AB9F picked by 16 times OBJ_2EE0 plus the hits taken (OBJ_HIT_TAKEN) into zTemp00.
  * HOW: Four shifts, an add, a table read (bank 70).
  * WAITS: no.
  * Entry: X object. Exit: A the table byte, Y its index, C and V from the add.
@@ -3380,10 +3380,10 @@ void abi_HitRowByKindAndHits(void)
 /*
  * @routine 09EB:108 StepFacingAndJump
  * @run 70:B108
- * WHAT IT DOES: Steps the animation list at $B13B, sets the facing flag OBJ_2AC0 from the sign of the X speed's high byte (1 when it is not negative) and goes on to the code a table at $B131 names for OBJ_2800.
+ * WHAT IT DOES: Steps the animation list at $B13B, sets the facing flag OBJ_FACING_LEFT from the sign of the X speed's high byte (1 when it is not negative) and goes on to the code a table at $B131 names for OBJ_SUBSTATE.
  * HOW: StepObjectFrames, two rotates through the carry the step leaves, a table jump.
  * WAITS: no.
- * Entry: X object. Exit: as the code jumped to; A the high byte, Y the doubled OBJ_2800.
+ * Entry: X object. Exit: as the code jumped to; A the high byte, Y the doubled OBJ_SUBSTATE.
  */
 ObjArm StepFacingAndJump(uint8_t slot)
 {
@@ -3399,7 +3399,7 @@ ObjArm StepFacingAndJump(uint8_t slot)
     r.first = RD8(OBJ->vx_hi[slot]);
     r.second = (uint8_t)(((r.first >> 7) ^ 1) & 1);
     WR8(OBJ->facing_left[slot], r.second);
-    r.third = RD8(OBJ->f2800[slot]);
+    r.third = RD8(OBJ->substate[slot]);
     r.fourth = (uint8_t)(r.third << 1);
     low = rd8((uint16_t)(0xB131 + r.fourth));
     WR8(ZP->temp00, low);
@@ -3498,7 +3498,7 @@ void abi_PickWaterOnTenth(void)
  * @routine 09EA:588 SwitchStateOnHitRow
  * @run 70:AD88
  * WHAT IT DOES: For a state that a table at $ADB0 gives a row number, looks up the hit row (HitRowByKindAndHits); when that is not 0 the object takes the state a table at $ADC8 gives for the row,
- * plays sound $9F and clears OBJ_2800, OBJ_3408 and OBJ_3460.
+ * plays sound $9F and clears OBJ_SUBSTATE, OBJ_ANIM_STEP and OBJ_ANIM_TIMER.
  * HOW: HitRowByKindAndHits, SoundCommand, table reads (bank 70).
  * WAITS: no.
  * Entry: X object. Exit: see abi_sound_end.
@@ -3531,7 +3531,7 @@ ObjArm SwitchStateOnHitRow(uint8_t slot)
     jsr_push(0xADA6);
     r.call = SoundCommand(0x9F, slot, r.fourth);
     jsr_pop();
-    WR8(OBJ->f2800[slot], 0);
+    WR8(OBJ->substate[slot], 0);
     WR8(OBJ->f3408[slot], 0);
     WR8(OBJ->f3460[slot], 0);
     return r;

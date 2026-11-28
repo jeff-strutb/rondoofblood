@@ -323,7 +323,7 @@ void abi_SpinThenCountPhaseDown(void)
 /*
  * @routine 025B:7C7 SpinThenCountWordDown
  * @run 70:B7C7
- * WHAT IT DOES: Steps the animation list at $B6DA, runs SpinOnCircle and counts the 16-bit timer OBJ_34B8:OBJ_3510 down; at zero clears OBJ_3250, goes to the next state and clears OBJ_2800.
+ * WHAT IT DOES: Steps the animation list at $B6DA, runs SpinOnCircle and counts the 16-bit timer OBJ_34B8:OBJ_3510 down; at zero clears OBJ_3250, goes to the next state and clears OBJ_SUBSTATE.
  * HOW: StepObjectFrames, SpinOnCircle, a 16-bit subtract in memory, an ORA, stores, an INC.
  * WAITS: no.
  * Entry: X object, Y kept unless the step sets it. Exit: as the last instruction that ran (spin_word_exit_shim).
@@ -352,7 +352,7 @@ L8St24SpinArm SpinThenCountWordDown(uint8_t slot, uint8_t y_entry)
     }
     WR8(OBJ->hitbox_on[slot], 0);
     r.state = INC8(OBJ->state[slot]);
-    WR8(OBJ->f2800[slot], 0);
+    WR8(OBJ->substate[slot], 0);
     r.arm = ST24_SPIN_DONE;
     return r;
 }

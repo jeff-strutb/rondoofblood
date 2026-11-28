@@ -304,7 +304,7 @@ void abi_CountThenNextStateF3510(void)
 /*
  * @routine 088A:724 SetFrameThenCountToNext
  * @run 70:AF24
- * WHAT IT DOES: Sets the object's frame (OBJ_2A68) to $0C and counts OBJ_3568 down; at zero it sets it to $10 and goes on to the next state.
+ * WHAT IT DOES: Sets the object's frame (OBJ_FRAME) to $0C and counts OBJ_3568 down; at zero it sets it to $10 and goes on to the next state.
  * HOW: A store, DEC, a store, INC.
  * WAITS: no.
  * Entry: X object. Exit: the count, or the new state's N and Z (A $10).
@@ -374,10 +374,10 @@ void abi_StartListSoundThenSpawn20(void)
 /*
  * @routine 088B:084 StartFallWithFrame21
  * @run 70:B084
- * WHAT IT DOES: Zeroes the object's X speed, sets its Y speed high to $FD and its frame to $21 and goes on to the next OBJ_2800.
+ * WHAT IT DOES: Zeroes the object's X speed, sets its Y speed high to $FD and its frame to $21 and goes on to the next OBJ_SUBSTATE.
  * HOW: Stores and an INC.
  * WAITS: no.
- * Entry: X object. Exit: A $21, N and Z from the new OBJ_2800.
+ * Entry: X object. Exit: A $21, N and Z from the new OBJ_SUBSTATE.
  */
 ObjArm StartFallWithFrame21(uint8_t slot)
 {
@@ -387,7 +387,7 @@ ObjArm StartFallWithFrame21(uint8_t slot)
     WR8(OBJ->vx_lo[slot], 0);
     WR8(OBJ->vy_hi[slot], 0xFD);
     WR8(OBJ->frame[slot], 0x21);
-    r.first = INC8(OBJ->f2800[slot]);
+    r.first = INC8(OBJ->substate[slot]);
     return r;
 }
 
@@ -939,7 +939,7 @@ void abi_LoadThenStartFiveFromTable(void)
 /*
  * @routine 088B:098 FallThenSoundAtPeak
  * @run 70:B098
- * WHAT IT DOES: Applies gravity and moves the object; once its Y speed high byte is not negative it sends sound $9A and goes on to the next OBJ_2800.
+ * WHAT IT DOES: Applies gravity and moves the object; once its Y speed high byte is not negative it sends sound $9A and goes on to the next OBJ_SUBSTATE.
  * HOW: ApplyGravity, ApplyVelocity, SoundCommand, an INC.
  * WAITS: no.
  * Entry: X object, Y kept for the sound's push. Exit: see the wrapper.
@@ -963,7 +963,7 @@ ObjArm FallThenSoundAtPeak(uint8_t slot, uint8_t y_entry)
     jsr_push(0xB0A8);
     r.call = SoundCommand(0x9A, slot, y_entry);
     jsr_pop();
-    r.second = INC8(OBJ->f2800[slot]);
+    r.second = INC8(OBJ->substate[slot]);
     return r;
 }
 
@@ -1032,7 +1032,7 @@ void abi_SpeedFromRandomRow(void)
 /*
  * @routine 088A:63F SetHitBoxFromFrameTable
  * @run 70:AE3F
- * WHAT IT DOES: Takes the object's hit box (OBJ_3930, OBJ_39E0, OBJ_3988, OBJ_3A38) from the four-byte row of the table at $B8F7 that its frame less one names.
+ * WHAT IT DOES: Takes the object's hit box (OBJ_HITBOX_DX, OBJ_HITBOX_DY, OBJ_HITBOX_HALF_W, OBJ_HITBOX_HALF_H) from the four-byte row of the table at $B8F7 that its frame less one names.
  * HOW: Table reads (bank 70).
  * WAITS: no.
  * Entry: X object. Exit: A the last byte read, Y the row offset.
@@ -1143,7 +1143,7 @@ void abi_FollowSlot10WithHitBox(void)
 /*
  * @routine 088B:285 SoundThenAimRandomLength
  * @run 70:B285
- * WHAT IT DOES: Sends sound $2B, then sets the object's speed along the angle to the player with a length from a table at $B2A7 by a random 0 to 3, and goes on to the next OBJ_2800.
+ * WHAT IT DOES: Sends sound $2B, then sets the object's speed along the angle to the player with a length from a table at $B2A7 by a random 0 to 3, and goes on to the next OBJ_SUBSTATE.
  * HOW: SoundCommand, AngleToPlayer, NextRandom, SetVelocityFromAngle, an INC.
  * WAITS: no.
  * Entry: X object, Y kept for the sound's push. Exit: see the wrapper.
@@ -1174,7 +1174,7 @@ ObjArm SoundThenAimRandomLength(uint8_t slot, uint8_t y_entry)
     jsr_push(0xB2A3);
     r.scale = SetVelocityFromAngle(angle, slot);
     jsr_pop();
-    r.first = INC8(OBJ->f2800[slot]);
+    r.first = INC8(OBJ->substate[slot]);
     return r;
 }
 
@@ -1350,7 +1350,7 @@ void abi_StepListIndex0AThenSpawn(void)
 /*
  * @routine 088B:044 CheckPlayerThenStepListIndex08
  * @run 70:B044
- * WHAT IT DOES: With OBJ_2800 0 it goes on to OBJ_2800 1 and, when the player is $50 or more away along X, goes to state 6. Later it steps the animation list StepListByIndex088A gives for index 8 and when that ends clears its animation step and timer and goes to state 5. (The state 6 arm ran in no script; it is written from the decoded bytes.)
+ * WHAT IT DOES: With OBJ_SUBSTATE 0 it goes on to OBJ_SUBSTATE 1 and, when the player is $50 or more away along X, goes to state 6. Later it steps the animation list StepListByIndex088A gives for index 8 and when that ends clears its animation step and timer and goes to state 5. (The state 6 arm ran in no script; it is written from the decoded bytes.)
  * HOW: DistanceXToPlayer, StepListByIndex088A, stores.
  * WAITS: no.
  * Entry: X object. Exit: the compare, the step's, or A 5 / 6.
@@ -1360,9 +1360,9 @@ ObjArm CheckPlayerThenStepListIndex08(uint8_t slot)
     ObjArm r = { 0 };
     ObjArm step;
 
-    r.first = RD8(OBJ->f2800[slot]);
+    r.first = RD8(OBJ->substate[slot]);
     if (r.first == 0) {
-        r.second = INC8(OBJ->f2800[slot]);
+        r.second = INC8(OBJ->substate[slot]);
         jsr_push(0xB04F);
         r.distance = DistanceXToPlayer(slot);
         jsr_pop();

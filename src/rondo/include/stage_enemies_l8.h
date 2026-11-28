@@ -1033,7 +1033,7 @@ typedef struct {
     bool entered;
 } L8St19HopArm;
 
-/* StepListFallThenSoundAtGround: the list step, the fall, and when it landed the sound call and the OBJ_2800 after the INC. */
+/* StepListFallThenSoundAtGround: the list step, the fall, and when it landed the sound call and the OBJ_SUBSTATE after the INC. */
 typedef struct {
     L8Step step;
     L8St19FallArm fall;
@@ -1048,7 +1048,7 @@ typedef struct {
     L8SpawnFiveArm five;
 } L8St19TileSpawnArm;
 
-/* WaitThenStepListWithSoundAndBounce: the OBJ_2800, the distance of the first arm, the list step, the frame, the sound call, the facing, the table byte and the bounce. */
+/* WaitThenStepListWithSoundAndBounce: the OBJ_SUBSTATE, the distance of the first arm, the list step, the frame, the sound call, the facing, the table byte and the bounce. */
 typedef struct {
     int arm;
     uint8_t phase, inc, frame, facing, value;

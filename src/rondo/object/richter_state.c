@@ -1,8 +1,8 @@
 /*
  * Richter's overlay, loaded at $A000 from sector $1B9; Maria has her own at the same
  * addresses, from $1DD. Its jump table is what the kernel and the stage call. Each frame
- * reads the pad, handles damage and runs the handler for the state in OBJ_27A8, whose step
- * is in OBJ_2800.
+ * reads the pad, handles damage and runs the handler for the state in OBJ_STATE, whose step
+ * is in OBJ_SUBSTATE.
  *
  * Almost every routine here leaves what the next call sees in A and the flags, so all
  * carry them in an Alu, and X and Y go straight to cpu where the assembly loads them.
@@ -338,7 +338,7 @@ typedef struct {
     uint8_t hit_timer, timer_left, blink_flags;
     bool timer_script;            /* the hit timer ran out with no blink: script 9 */
     bool hit_looked;
-    uint8_t hit, hit_kind, leave_top;   /* OBJ_33B0 twice, and PlayerMayLeaveTop for a hit of kind 5 */
+    uint8_t hit, hit_kind, leave_top;   /* OBJ_HIT_TAKEN twice, and PlayerMayLeaveTop for a hit of kind 5 */
     bool paid;
     Sum health;                   /* the hit's damage taken off the health */
     bool out_of_health;
@@ -403,15 +403,15 @@ static Alu animation(Alu r, uint8_t id)
 /* The state and the step to go with it. */
 static void set_state(uint8_t state, uint8_t step)
 {
-    wr8(OBJ_27A8, state);
-    wr8(OBJ_2800, step);
+    wr8(OBJ_STATE, state);
+    wr8(OBJ_SUBSTATE, step);
 }
 
 /* LDA, then the state and the step to go with it. */
 static void set_state_alu(Alu *r, uint8_t state, uint8_t step)
 {
-    alu_put(r, OBJ_27A8, state);
-    alu_put(r, OBJ_2800, step);
+    alu_put(r, OBJ_STATE, state);
+    alu_put(r, OBJ_SUBSTATE, step);
 }
 
 /* Jump table of the overlay: each is one JMP. */
@@ -799,7 +799,7 @@ Frame RichterFrame(uint8_t x, uint8_t y)
     pressed |= rd8(zPadPressed);
     pressed |= rd8(PadForcedPressB);
     wr8(zPadPressed, pressed);
-    before = rd8(OBJ_2A68);
+    before = rd8(OBJ_FRAME);
     push8(before);
     jsr_push(0xA077);
     RichterClearPadOverrides();
@@ -819,19 +819,19 @@ Frame RichterFrame(uint8_t x, uint8_t y)
     RichterCheckItemHearts();
     jsr_pop();
     before = pull8();
-    frame.sounded = rd8(OBJ_2A68) != before;
+    frame.sounded = rd8(OBJ_FRAME) != before;
     if (frame.sounded) {
         jsr_push(0xA08C);
         frame.animation = RichterAnimationSound();
         jsr_pop();
     }
-    frame.index = rd8((uint16_t)(AnimationHitboxIndex + rd8(OBJ_2A68)));
+    frame.index = rd8((uint16_t)(AnimationHitboxIndex + rd8(OBJ_FRAME)));
     hitbox = (uint16_t)(AnimationHitbox + (uint8_t)(frame.index << 2));
-    wr8(OBJ_3930, rd8(hitbox));
-    wr8(OBJ_39E0, rd8((uint16_t)(hitbox + 1)));
-    wr8(OBJ_3988, rd8((uint16_t)(hitbox + 2)));
+    wr8(OBJ_HITBOX_DX, rd8(hitbox));
+    wr8(OBJ_HITBOX_DY, rd8((uint16_t)(hitbox + 1)));
+    wr8(OBJ_HITBOX_HALF_W, rd8((uint16_t)(hitbox + 2)));
     frame.last = rd8((uint16_t)(hitbox + 3));
-    wr8(OBJ_3A38, frame.last);
+    wr8(OBJ_HITBOX_HALF_H, frame.last);
     return frame;
 }
 
@@ -856,7 +856,7 @@ void abi_RichterFrame(void)
  * HOW: RichterSpikeBelow, then the hit's fields; the state back to standing.
  * WAITS: no.
  * Entry: nothing. Exit: camera mode $18, A $18, Z and C set. Not pushed, A the camera mode, Z
- * set, N and V the push's bits 7 and 6, C from comparing the mode with $18. Held, A OBJ_3460
+ * set, N and V the push's bits 7 and 6, C from comparing the mode with $18. Held, A OBJ_ANIM_TIMER
  * or PlayerMayLeaveTop, N and Z from it, C as before, V the push's bit 6. No spike, as
  * RichterSpikeBelow. A spike, as RichterSpikeBelow found it, but A $10 with N and Z from it.
  */
@@ -871,7 +871,7 @@ PushHit RichterHitWhilePushed(void)
     hit.how = PUSH_HIT_NOT_PUSHED;
     if (!(hit.push & PUSH_ON_FLOOR))
         return hit;
-    hit.held = (uint8_t)(rd8(OBJ_3460) | rd8(PlayerMayLeaveTop));
+    hit.held = (uint8_t)(rd8(OBJ_ANIM_TIMER) | rd8(PlayerMayLeaveTop));
     hit.how = PUSH_HIT_HELD;
     if (hit.held != 0)
         return hit;
@@ -881,9 +881,9 @@ PushHit RichterHitWhilePushed(void)
     hit.how = PUSH_HIT_NO_SPIKE;
     if (!hit.spike.found)
         return hit;
-    wr8(OBJ_33B0, HIT_KIND_SPIKE);
+    wr8(OBJ_HIT_TAKEN, HIT_KIND_SPIKE);
     wr8(OBJ_32A8, SPIKE_HIT_TIMER);
-    wr8(OBJ_27A8, STATE_STAND);
+    wr8(OBJ_STATE, STATE_STAND);
     hit.how = PUSH_HIT_SPIKE;
     return hit;
 }
@@ -1249,7 +1249,7 @@ void abi_RichterStartStand(void)
  */
 uint8_t RichterAnimationSound(void)
 {
-    uint8_t animation = rd8(OBJ_2A68);
+    uint8_t animation = rd8(OBJ_FRAME);
 
     StartListChannelKind2(rd8((uint16_t)(AnimationSounds + animation)), LIST_CHANNEL_PLAYER);
     return animation;
@@ -1280,10 +1280,10 @@ void abi_RichterAnimationSound(void)
  * @run 6D:A17A
  * WHAT IT DOES: The death's wait: holds the player still, and when the timer ends clears
  * the objects from 1 up, stopping at one still live, and ends the mode.
- * HOW: OBJ_2750 not zero is live. zSubStep 5 ends it.
+ * HOW: OBJ_KIND not zero is live. zSubStep 5 ends it.
  * WAITS: no.
  * Entry: nothing. Exit: still dying, N and Z from the timer, A, X, Y, C and V kept. An object
- * still out, A its OBJ_2750 and X its slot, N and Z from it, C clear past slot 1. Over, as
+ * still out, A its OBJ_KIND and X its slot, N and Z from it, C clear past slot 1. Over, as
  * RichterStartHitScript with script 9, and C set.
  */
 DyingStep RichterDyingStep(void)
@@ -1293,13 +1293,13 @@ DyingStep RichterDyingStep(void)
     jsr_push(0xA17D);
     RichterStopX();
     jsr_pop();
-    wr8(OBJ_2A68, 0);
+    wr8(OBJ_FRAME, 0);
     step.value = (uint8_t)(rd8(PlayerDyingTimer) - 1);
     wr8(PlayerDyingTimer, step.value);
     if (step.value != 0)
         return step;
     for (step.object = OBJECT_FIRST_OTHER; step.object < OBJECT_END; step.object++) {
-        step.value = rd8((uint16_t)(OBJ_2750 + step.object));
+        step.value = rd8((uint16_t)(OBJ_KIND + step.object));
         if (step.value != 0) {
             step.how = DYING_OBJECT_LEFT;
             return step;
@@ -1538,7 +1538,7 @@ static void after_hit(StateFrame *f)
     f->after_hit = true;
     f->blinking = rd8(PlayerByte3BE2);
     if (f->blinking != 0) {
-        f->state = rd8(OBJ_27A8);
+        f->state = rd8(OBJ_STATE);
         if (f->state != STATE_DYING) {
             f->count = rd8(PlayerByte3BE3);
             if (f->count == 0) {
@@ -1569,7 +1569,7 @@ static void after_hit(StateFrame *f)
         wr8(zPadHeld, (uint8_t)(rd8(zPadHeld) & PAD_DIRECTIONS));
         wr8(zPadPressed, (uint8_t)(rd8(zPadPressed) & PAD_DIRECTIONS));
     }
-    f->handler_state = rd8(OBJ_27A8);
+    f->handler_state = rd8(OBJ_STATE);
     entry = (uint16_t)(PlayerStateHandlers + (uint8_t)(f->handler_state << 1));
     f->how = FRAME_HANDLER;
     state_handler_shim(f, (uint16_t)(rd8(entry) | (rd8((uint16_t)(entry + 1)) << 8)));
@@ -1578,14 +1578,14 @@ static void after_hit(StateFrame *f)
 /* A hit paid for in health: the hit timer, then the blink's own script or the reaction. */
 static void hit_taken(StateFrame *f)
 {
-    wr8(OBJ_3460, HIT_TIMER_TAKEN);
+    wr8(OBJ_ANIM_TIMER, HIT_TIMER_TAKEN);
     f->taken = true;
     f->blinking_hit = rd8(PlayerByte3BE2);
     if (f->blinking_hit != 0) {
         jsr_push(0xA22C);
         RichterStartHitScript(SCRIPT_BLINK_HIT);
         jsr_pop();
-        wr8(OBJ_33B0, 0);
+        wr8(OBJ_HIT_TAKEN, 0);
     } else {
         jsr_push(0xA234);
         RichterHitReact();
@@ -1615,11 +1615,11 @@ static void out_of_health(StateFrame *f, uint8_t x, uint8_t y)
  * @routine 01B9:1BE RichterStateFrame
  * @run 6D:A1BE
  * WHAT IT DOES: The state's frame: the death; falling off the map's bottom is death; the
- * potion's invincibility; the hit timer; a hit in OBJ_33B0 taken off the health; the blink a
+ * potion's invincibility; the hit timer; a hit in OBJ_HIT_TAKEN taken off the health; the blink a
  * hit can leave, which presses shake off; then the state's handler.
  * HOW: Y high 1 or $FF low is below the map. A hit of kind 5 is ignored unless
  * PlayerMayLeaveTop is set. Health gone goes to RichterOutOfHealth. Above the map the pad's
- * buttons are dropped. The handler from PlayerStateHandlers by OBJ_27A8.
+ * buttons are dropped. The handler from PlayerStateHandlers by OBJ_STATE.
  * WAITS: no.
  * Entry: nothing. Exit: dying, as RichterDyingStep. Falling off, as RichterDie. The life
  * lost, as SoundCommand with $64. Blinking with no press, A 0, Z set; with a press short of
@@ -1647,11 +1647,11 @@ StateFrame RichterStateFrame(uint8_t x, uint8_t y)
     jsr_push(0xA1D5);
     f.tick = RichterInvincibleTick(x, y);
     jsr_pop();
-    f.hit_timer = rd8(OBJ_3460);
+    f.hit_timer = rd8(OBJ_ANIM_TIMER);
     if (f.hit_timer != 0) {
-        wr8(OBJ_33B0, 0);
-        f.timer_left = (uint8_t)(rd8(OBJ_3460) - 1);
-        wr8(OBJ_3460, f.timer_left);
+        wr8(OBJ_HIT_TAKEN, 0);
+        f.timer_left = (uint8_t)(rd8(OBJ_ANIM_TIMER) - 1);
+        wr8(OBJ_ANIM_TIMER, f.timer_left);
         if (f.timer_left != 0) {
             after_hit(&f);
             return f;
@@ -1665,16 +1665,16 @@ StateFrame RichterStateFrame(uint8_t x, uint8_t y)
         }
     }
     f.hit_looked = true;
-    f.hit = rd8(OBJ_33B0);
+    f.hit = rd8(OBJ_HIT_TAKEN);
     if (f.hit == 0) {
         after_hit(&f);
         return f;
     }
-    f.hit_kind = rd8(OBJ_33B0);   /* LDA again, then AND #7 */
+    f.hit_kind = rd8(OBJ_HIT_TAKEN);   /* LDA again, then AND #7 */
     if ((f.hit_kind & HIT_KINDS) == HIT_KIND_IGNORED) {
         f.leave_top = rd8(PlayerMayLeaveTop);
         if (f.leave_top == 0) {
-            wr8(OBJ_33B0, 0);
+            wr8(OBJ_HIT_TAKEN, 0);
             after_hit(&f);
             return f;
         }
@@ -1758,12 +1758,12 @@ void RichterHitReact(void)
     jsr_push(0xA2B5);
     RichterPadOverridesOff();
     jsr_pop();
-    kind = (uint8_t)(rd8(OBJ_33B0) & HIT_KINDS);
-    wr8(OBJ_3460, rd8((uint16_t)(HitInvulnerableFrames + kind)));
-    wr8(OBJ_35C0, rd8(OBJ_27A8));
-    wr8(OBJ_3618, rd8(OBJ_2800));
-    wr8(OBJ_27A8, STATE_DYING);
-    wr8(OBJ_2800, 0);
+    kind = (uint8_t)(rd8(OBJ_HIT_TAKEN) & HIT_KINDS);
+    wr8(OBJ_ANIM_TIMER, rd8((uint16_t)(HitInvulnerableFrames + kind)));
+    wr8(OBJ_35C0, rd8(OBJ_STATE));
+    wr8(OBJ_3618, rd8(OBJ_SUBSTATE));
+    wr8(OBJ_STATE, STATE_DYING);
+    wr8(OBJ_SUBSTATE, 0);
     RichterStartHitScript(SCRIPT_HIT);
 }
 
@@ -1832,7 +1832,7 @@ void abi_MariaStartHitScript(void)
  * @routine 01B9:2E4 RichterTurnOnPress
  * @run 6D:A2E4
  * WHAT IT DOES: Turns the player to face the way just pressed.
- * HOW: OBJ_2AC0 is the facing, 0 right, 1 left.
+ * HOW: OBJ_FACING_LEFT is the facing, 0 right, 1 left.
  * WAITS: no.
  * Entry: nothing. Exit: N and V bits 7 and 6 of the presses, Z set if it did not turn; A the
  * facing, or 1 and N and Z from it when it turned left. X, Y and C kept.
@@ -1841,11 +1841,11 @@ TurnPress RichterTurnOnPress(void)
 {
     TurnPress turn;
 
-    turn.facing = rd8(OBJ_2AC0);
+    turn.facing = rd8(OBJ_FACING_LEFT);
     turn.pressed = rd8(zPadPressed);
     turn.turned = (turn.pressed & (turn.facing == 0 ? PAD_LEFT : PAD_RIGHT)) != 0;
     if (turn.turned)
-        wr8(OBJ_2AC0, turn.facing == 0 ? FACING_LEFT : FACING_RIGHT);
+        wr8(OBJ_FACING_LEFT, turn.facing == 0 ? FACING_LEFT : FACING_RIGHT);
     return turn;
 }
 
@@ -1946,7 +1946,7 @@ AttackStand RichterStandStep1(void)
     }
     st.mark = rd8(PlayerByte3BD5);
     if (st.mark == 0) {
-        st.whip = rd8((uint16_t)(OBJ_2750 + OBJECT_WHIP));
+        st.whip = rd8((uint16_t)(OBJ_KIND + OBJECT_WHIP));
         if (st.whip == WHIP_OUT) {
             st.late = rd8(OBJ_FLAGS_2F38);
             if (st.late >= CROUCH_PROGRESS) {
@@ -1960,7 +1960,7 @@ AttackStand RichterStandStep1(void)
                     jsr_push(0xA33D);
                     st.tick = RichterAnimationTick();
                     jsr_pop();
-                    wr8(OBJ_27A8, STATE_CROUCH);
+                    wr8(OBJ_STATE, STATE_CROUCH);
                     st.how = ATTACK_STAND_CROUCHED;
                     return st;
                 }
@@ -2042,7 +2042,7 @@ void abi_RichterOrphanClearWhipAir(void)
 }
 
 /* The registers each step of the item crash's stand left, in order, up to the one it reached. */
-/* LDA OBJ_27A8 and CMP #0. */
+/* LDA OBJ_STATE and CMP #0. */
 static void state_compare_shim(uint8_t state)
 {
     cpu.a = state;
@@ -2097,24 +2097,24 @@ static void crash_stand_replay_shim(const CrashStand *st)
  * the crash's states goes up the ledge by the first table below state 7, the second from it.
  * WAITS: no.
  * Entry: nothing. Exit: as the transition taken, after what the steps before it left. Spawned,
- * A $0C, Y the slot, N clear, Z clear. No free slot, A the last slot's OBJ_2750, Y $10, Z and
+ * A $0C, Y the slot, N clear, Z clear. No free slot, A the last slot's OBJ_KIND, Y $10, Z and
  * C set, N clear.
  */
 CrashStand RichterStandStep2(void)
 {
     CrashStand st = { 0 };
 
-    st.facing = rd8(OBJ_2AC0);
+    st.facing = rd8(OBJ_FACING_LEFT);
     st.held = rd8(zPadHeld);
     if (st.facing == FACING_RIGHT && (st.held & PAD_LEFT))
-        wr8(OBJ_2AC0, FACING_LEFT);
+        wr8(OBJ_FACING_LEFT, FACING_LEFT);
     else if (st.facing != FACING_RIGHT && (st.held & PAD_RIGHT))
-        wr8(OBJ_2AC0, FACING_RIGHT);
+        wr8(OBJ_FACING_LEFT, FACING_RIGHT);
     st.timer = rd8(OBJ_30F0);
     if (st.timer == 0) {
         st.bumped = (uint8_t)(rd8(PlayerByte3BD6) + 1);
         wr8(PlayerByte3BD6, st.bumped);
-        st.state = rd8(OBJ_27A8);
+        st.state = rd8(OBJ_STATE);
         if (st.state == STATE_STAND) {
             st.how = CRASH_STAND_STOOD;
             st.stand = RichterStand();
@@ -2125,7 +2125,7 @@ CrashStand RichterStandStep2(void)
         return st;
     }
     wr8(OBJ_30F0, (uint8_t)(rd8(OBJ_30F0) - 1));
-    st.state = rd8(OBJ_27A8);
+    st.state = rd8(OBJ_STATE);
     if (st.state == STATE_STAND) {
         jsr_push(0xA383);
         st.columns = RichterReadColumns();
@@ -2147,7 +2147,7 @@ CrashStand RichterStandStep2(void)
     if (st.jump) {
         st.bumped = (uint8_t)(rd8(PlayerByte3BD6) + 1);
         wr8(PlayerByte3BD6, st.bumped);
-        st.state = rd8(OBJ_27A8);
+        st.state = rd8(OBJ_STATE);
         if (st.state == STATE_STAND) {
             st.how = CRASH_STAND_JUMPED;
             st.air = RichterToAir();
@@ -2162,9 +2162,9 @@ CrashStand RichterStandStep2(void)
     jsr_pop();
     st.how = CRASH_STAND_NO_SLOT;
     for (st.slot = CRASH_FIRST_SLOT; st.slot < OBJECT_END; st.slot++) {
-        st.seen = rd8((uint16_t)(OBJ_2750 + st.slot));
+        st.seen = rd8((uint16_t)(OBJ_KIND + st.slot));
         if (st.seen == 0) {
-            wr8((uint16_t)(OBJ_2750 + st.slot), CRASH_OBJECT);
+            wr8((uint16_t)(OBJ_KIND + st.slot), CRASH_OBJECT);
             st.how = CRASH_STAND_SPAWNED;
             break;
         }
@@ -2216,13 +2216,13 @@ void abi_RichterStandStep2(void)
  * @routine 01B9:3D0 RichterStepIndex
  * @run 6D:A3D0
  * WHAT IT DOES: Gives the state's step, for its caller to index a table of words by.
- * HOW: OBJ_2800, which the wrapper leaves doubled in A and X.
+ * HOW: OBJ_SUBSTATE, which the wrapper leaves doubled in A and X.
  * WAITS: no.
  * Entry: nothing. Exit: A and X the offset, N and Z from it, C the step's bit 7. Y, V kept.
  */
 static uint8_t step_index_body(void)
 {
-    return rd8(OBJ_2800);
+    return rd8(OBJ_SUBSTATE);
 }
 
 uint8_t RichterStepIndex(void)
@@ -2465,11 +2465,11 @@ StandStep RichterStandStep0(void)
     st.held = rd8(zPadHeld);
     st.reached = STAND_LOOK;
     if (st.held & PAD_DOWN) {
-        wr8(OBJ_2A68, ANIM_LOOK_DOWN);
+        wr8(OBJ_FRAME, ANIM_LOOK_DOWN);
     } else {
         st.look_flag = rd8(PlayerByte3BF0);
         if (st.look_flag != 0) {
-            wr8(OBJ_2A68, ANIM_LOOK_DOWN);
+            wr8(OBJ_FRAME, ANIM_LOOK_DOWN);
         } else {
             st.ticked = true;
             jsr_push(0xA432);
@@ -2548,7 +2548,7 @@ WalkStart RichterStartWalk(uint8_t facing)
     RichterPadOverridesOff();
     jsr_pop();
     if (!(rd8(zPadHeld) & PAD_JUMP))
-        wr8(OBJ_2AC0, facing);
+        wr8(OBJ_FACING_LEFT, facing);
     walk.held = rd8(zPadHeld);
     if (walk.held & PAD_ATTACK)
         return walk;
@@ -2584,7 +2584,7 @@ static FacingSpeed speed_by_facing(uint16_t table)
     FacingSpeed set;
     uint8_t offset;
 
-    set.facing = rd8(OBJ_2AC0);
+    set.facing = rd8(OBJ_FACING_LEFT);
     offset = (uint8_t)(set.facing << 1);
     wr8(OBJ_VX_LO, rd8((uint16_t)(table + offset)));
     set.high = rd8((uint16_t)(table + offset + 1));
@@ -2731,27 +2731,27 @@ static AttackStart attack_with_animation(uint8_t animation)
     jsr_push(0xA4E7);
     attack.animation = RichterSetAnimation(animation);
     jsr_pop();
-    wr8(OBJ_2800, 1);
+    wr8(OBJ_SUBSTATE, 1);
     attack.kind = rd8(PlayerByte3BD5);
     if (attack.kind == 0) {
         jsr_push(0xA4F4);
         RichterClearWhip();
         jsr_pop();
-        wr8(OBJ_2750 + OBJECT_WHIP, 1);
+        wr8(OBJ_KIND + OBJECT_WHIP, 1);
         attack.sound = SoundCommand(SOUND_WHIP, OBJECT_WHIP, attack.animation.y);
         return attack;
     }
     attack.item = rd8(zField93);
-    attack.tested_b = rd8(OBJ_2750 + ITEM_SLOT_A);
+    attack.tested_b = rd8(OBJ_KIND + ITEM_SLOT_A);
     attack.slot = ITEM_SLOT_A;
     if (attack.tested_b != 0) {
-        attack.tested_b = rd8(OBJ_2750 + ITEM_SLOT_B);
+        attack.tested_b = rd8(OBJ_KIND + ITEM_SLOT_B);
         attack.slot = attack.tested_b == 0 ? ITEM_SLOT_B : ITEM_SLOT_C;
     }
     jsr_push(0xA50B);
     ClearObject(attack.slot);
     jsr_pop();
-    wr8((uint16_t)(OBJ_2750 + attack.slot), attack.item);
+    wr8((uint16_t)(OBJ_KIND + attack.slot), attack.item);
     return attack;
 }
 
@@ -2872,7 +2872,7 @@ static Alu item_crash(Alu r, uint8_t id)
 {
     r = animation(r, id);
     RichterStopMoving();
-    alu_put(&r, OBJ_2800, 5);
+    alu_put(&r, OBJ_SUBSTATE, 5);
     alu_put(&r, OBJ_30F0, 0x60);
     return r;
 }
@@ -2897,7 +2897,7 @@ LedgeHurt RichterLedgeHurtA(void)
     if (hurt.crash) {
         hurt.animation = RichterSetAnimation(ANIM_LEDGE_CRASH_A);
         RichterStopMoving();
-        wr8(OBJ_2800, LEDGE_CRASH_STEP);
+        wr8(OBJ_SUBSTATE, LEDGE_CRASH_STEP);
         wr8(OBJ_30F0, CRASH_FIVE_TIMER);
         return hurt;
     }
@@ -2937,7 +2937,7 @@ LedgeHurt RichterLedgeHurtB(void)
         jsr_push(0xA571);
         RichterStopMoving();
         jsr_pop();
-        wr8(OBJ_2800, LEDGE_CRASH_STEP);
+        wr8(OBJ_SUBSTATE, LEDGE_CRASH_STEP);
         wr8(OBJ_30F0, CRASH_FIVE_TIMER);
         return hurt;
     }
@@ -2958,7 +2958,7 @@ static Nudge nudge_by_facing(uint16_t table)
 {
     Nudge nudge;
 
-    nudge.facing = rd8(OBJ_2AC0);
+    nudge.facing = rd8(OBJ_FACING_LEFT);
     nudge.step = rd8((uint16_t)(table + nudge.facing));
     nudge.was = rd8(OBJ_X_LO);
     wr8(OBJ_X_LO, (uint8_t)(nudge.step + nudge.was));
@@ -3165,7 +3165,7 @@ void abi_RichterUpWhipRight(void)
 static void react_fill_slots(uint8_t kind)
 {
     for (uint8_t slot = ITEM_SLOT_A; slot < OBJECT_END; slot++)
-        wr8((uint16_t)(OBJ_2750 + slot), kind);
+        wr8((uint16_t)(OBJ_KIND + slot), kind);
 }
 
 /* A, Y $10 and the flags of the loop's last compare. */
@@ -3180,7 +3180,7 @@ static void abi_exit_filled(uint8_t kind)
 /* One object put in slot 5. */
 static void react_slot_5(uint8_t kind)
 {
-    wr8(OBJ_2750 + ITEM_SLOT_A, kind);
+    wr8(OBJ_KIND + ITEM_SLOT_A, kind);
 }
 
 /*
@@ -3212,7 +3212,7 @@ HurtAir RichterToHurtAir(uint8_t x, uint8_t y)
     jsr_push(0xA608);
     hurt.lift = RichterJumpSpeed();
     jsr_pop();
-    wr8(OBJ_3460, HURT_TIMER);
+    wr8(OBJ_ANIM_TIMER, HURT_TIMER);
     wr8(OBJ_3250, 0);
     jsr_push(0xA615);
     hurt.animation = RichterSetAnimation(ANIM_HURT_AIR);
@@ -3397,7 +3397,7 @@ void RichterReact11(void)
 {
     react_slot_5(REACT_11);
     wr8(OBJ_3250, 1);
-    wr8(OBJ_3460, REACT_11_TIMER);
+    wr8(OBJ_ANIM_TIMER, REACT_11_TIMER);
 }
 
 void abi_RichterReact11(void)
@@ -3542,9 +3542,9 @@ AirStart RichterToAir(void)
         return air;
     }
     air.moving = true;
-    facing = rd8(OBJ_2AC0);
+    facing = rd8(OBJ_FACING_LEFT);
     push8(facing);
-    wr8(OBJ_2AC0, way);
+    wr8(OBJ_FACING_LEFT, way);
     jsr_push(0xA6F2);
     RichterSetAnimation(ANIM_AIR_MOVING);
     jsr_pop();
@@ -3552,8 +3552,8 @@ AirStart RichterToAir(void)
     air.speed = RichterSpeedJump();
     jsr_pop();
     facing = pull8();
-    air.same_way = facing == rd8(OBJ_2AC0);
-    wr8(OBJ_2AC0, facing);
+    air.same_way = facing == rd8(OBJ_FACING_LEFT);
+    wr8(OBJ_FACING_LEFT, facing);
     if (air.same_way) {
         wr8(PlayerByte3BF1, AIR_SAME_WAY);
         return air;
@@ -3773,7 +3773,7 @@ WalkStep RichterStateWalk(void)
     w.tick = RichterAnimationTick();
     jsr_pop();
     w.reached = STAND_LOOK;
-    w.facing = rd8(OBJ_2AC0);
+    w.facing = rd8(OBJ_FACING_LEFT);
     w.held = rd8(zPadHeld);
     if (w.held & (w.facing == FACING_RIGHT ? PAD_RIGHT : PAD_LEFT)) {
         wr8(OBJ_FIELDS_2EE0, 0);
@@ -3786,7 +3786,7 @@ WalkStep RichterStateWalk(void)
     if (w.jump_held & PAD_JUMP) {
         uint8_t back;
 
-        w.back_facing = rd8(OBJ_2AC0);
+        w.back_facing = rd8(OBJ_FACING_LEFT);
         back = rd8(zPadHeld);
         if (back & (w.back_facing == FACING_RIGHT ? PAD_LEFT : PAD_RIGHT)) {
             wr8(OBJ_FIELDS_2EE0, BACKSTEP_FIELD);
@@ -3956,15 +3956,15 @@ ClimbStart RichterClimbStart(uint8_t column)
     }
     climb.index = offset.index;
     wr8(PlayerClimbReach, climb.reach.value);
-    climb.was = rd8(OBJ_27A8);
+    climb.was = rd8(OBJ_STATE);
     if (climb.was != STATE_WALKING) {
         climb.animated = true;
         jsr_push(0xA80B);
         climb.animation = RichterSetAnimation(ANIM_WALK);
         jsr_pop();
     }
-    wr8(OBJ_2800, CLIMB_STEP);
-    wr8(OBJ_27A8, climb.state);
+    wr8(OBJ_SUBSTATE, CLIMB_STEP);
+    wr8(OBJ_STATE, climb.state);
     RichterStopMoving();
     return climb;
 }
@@ -4285,13 +4285,13 @@ CrouchStep RichterCrouchStep0(void)
         jsr_push(0xA8B0);
         c.animation = RichterSetAnimation(ANIM_RISE);
         jsr_pop();
-        wr8(OBJ_2800, CROUCH_RISE_STEP);
+        wr8(OBJ_SUBSTATE, CROUCH_RISE_STEP);
         return c;
     }
     c.how = CROUCH_HELD;
     c.bits = (uint8_t)(rd8(zPadPressed) & (PAD_LEFT | PAD_RIGHT));
     if (c.bits != 0 && c.bits != (PAD_LEFT | PAD_RIGHT))
-        wr8(OBJ_2AC0, c.bits == PAD_RIGHT ? FACING_RIGHT : FACING_LEFT);
+        wr8(OBJ_FACING_LEFT, c.bits == PAD_RIGHT ? FACING_RIGHT : FACING_LEFT);
     return c;
 }
 
@@ -4351,7 +4351,7 @@ CrouchStep RichterCrouchStep1(void)
     if (check_progress_below(&c.log, TURN_PROGRESS))
         check_turn(&c.log, 0xA8DF);
     if (check_progress_below(&c.log, CROUCH_PROGRESS) && !check_up(&c.log, 0xA8E9)) {
-        wr8(OBJ_27A8, STATE_STAND);
+        wr8(OBJ_STATE, STATE_STAND);
         wr8(OBJ_FIELDS_2EE0, ATTACK_STAND_FIELD);
         c.how = CROUCH_STOOD_TICK;
         c.animation = RichterAnimationTick();
@@ -4363,8 +4363,8 @@ CrouchStep RichterCrouchStep1(void)
         return c;
     }
     wr8(PlayerByte3BD5, 0);
-    wr8(OBJ_2A68, ANIM_CROUCHED);
-    wr8(OBJ_2800, 0);
+    wr8(OBJ_FRAME, ANIM_CROUCHED);
+    wr8(OBJ_SUBSTATE, 0);
     c.how = CROUCH_DOWN_AGAIN;
     return c;
 }
@@ -4402,7 +4402,7 @@ CrouchStep RichterCrouchStep3(void)
         c.return_high = CROUCH_END_RETURN_HIGH;
         return c;
     }
-    wr8(OBJ_2800, 0);
+    wr8(OBJ_SUBSTATE, 0);
     c.how = CROUCH_STEP_BACK;
     return c;
 }
@@ -4525,12 +4525,12 @@ CrashEnd RichterEndItemCrash(void)
     CrashEnd end;
 
     wr8(PlayerByte3BD5, 0);
-    end.state = rd8(OBJ_27A8);
+    end.state = rd8(OBJ_STATE);
     end.index = (uint8_t)((uint8_t)(end.state - CRASH_FIRST_STATE) >> 1);
-    wr8(OBJ_2A68, rd8((uint16_t)(RichterCrashEndFrames + end.index)));
+    wr8(OBJ_FRAME, rd8((uint16_t)(RichterCrashEndFrames + end.index)));
     wr8(OBJ_FIELDS_2EE0, rd8((uint16_t)(RichterCrashEndAnimations + end.index)));
     wr8(OBJ_2F90, 0xFF);
-    wr8(OBJ_2800, 0);
+    wr8(OBJ_SUBSTATE, 0);
     return end;
 }
 
@@ -4554,12 +4554,12 @@ void abi_RichterEndItemCrash(void)
  * @routine 01BD:023 RichterLeapClearingOthers
  * @run 6D:C023
  * WHAT IT DOES: Clears every object but him, starts sound list $60 and script 1, and script $0B
- * unless PlayerByte3BE2 is set or bit 5 of his OBJ_33B0 is; then leaps up and back: Y speed
- * $FE80, X speed by facing from RichterLeapSpeeds, animation $22, state 0, OBJ_2750 1.
+ * unless PlayerByte3BE2 is set or bit 5 of his OBJ_HIT_TAKEN is; then leaps up and back: Y speed
+ * $FE80, X speed by facing from RichterLeapSpeeds, animation $22, state 0, OBJ_KIND 1.
  * HOW: ClearObject on 1 to 15, StartListChannelKind2 on channel 6, RichterStartHitScript.
  * WAITS: no.
  * Entry: nothing. Exit: A 1, N and Z from it; X 7; Y twice the facing, C the facing's bit 7; V
- * bit 6 of OBJ_33B0 if it was tested, else kept.
+ * bit 6 of OBJ_HIT_TAKEN if it was tested, else kept.
  */
 Leap RichterLeapClearingOthers(void)
 {
@@ -4578,7 +4578,7 @@ Leap RichterLeapClearingOthers(void)
     jsr_pop();
     if (rd8(PlayerByte3BE2) == 0) {
         leap.tested = true;
-        leap.hit = rd8(OBJ_33B0);
+        leap.hit = rd8(OBJ_HIT_TAKEN);
         if (!(leap.hit & LEAP_HIT_KEEPS)) {
             jsr_push(0xC049);
             RichterStartHitScript(LEAP_SCRIPT_UNLESS_HELD);
@@ -4591,8 +4591,8 @@ Leap RichterLeapClearingOthers(void)
     RichterSetAnimation(ANIM_LEAP);
     jsr_pop();
     leap.speed = speed_by_facing(RichterLeapSpeeds);
-    wr8(OBJ_27A8, STATE_STAND);
-    wr8(OBJ_2750, 1);
+    wr8(OBJ_STATE, STATE_STAND);
+    wr8(OBJ_KIND, 1);
     return leap;
 }
 
@@ -4611,11 +4611,11 @@ void abi_RichterLeapClearingOthers(void)
 /*
  * @routine 01BE:61D RichterClearOthersKeepWhip
  * @run 6D:CE1D
- * WHAT IT DOES: Clears every object but him, and the whip when its OBJ_2750 is 1; drops the
+ * WHAT IT DOES: Clears every object but him, and the whip when its OBJ_KIND is 1; drops the
  * forced presses and PlayerByte3BD8.
  * HOW: ClearObject on 1 to 15, passing over 3 when it is kept.
  * WAITS: no.
- * Entry: nothing. Exit: A the whip's OBJ_2750; X $10; Z and C set, N clear. Y and V kept.
+ * Entry: nothing. Exit: A the whip's OBJ_KIND; X $10; Z and C set, N clear. Y and V kept.
  */
 OthersCleared RichterClearOthersKeepWhip(void)
 {
@@ -4623,7 +4623,7 @@ OthersCleared RichterClearOthersKeepWhip(void)
 
     for (uint8_t object = OBJECT_FIRST_OTHER; object < OBJECT_END; object++) {
         if (object == OBJECT_WHIP) {
-            cleared.whip = rd8((uint16_t)(OBJ_2750 + OBJECT_WHIP));
+            cleared.whip = rd8((uint16_t)(OBJ_KIND + OBJECT_WHIP));
             if (cleared.whip == WHIP_KEPT)
                 continue;
         }
@@ -4810,7 +4810,7 @@ void abi_MariaFallGravity(void)
 CrashFrame RichterCrashFrame(void)
 {
     CrashFrame frame;
-    uint8_t pair = (uint8_t)(((uint8_t)(rd8(OBJ_27A8) - CRASH_FIRST_STATE) & 0xFE) << 1);
+    uint8_t pair = (uint8_t)(((uint8_t)(rd8(OBJ_STATE) - CRASH_FIRST_STATE) & 0xFE) << 1);
 
     frame.entry = add_bytes(pair, rd8(PlayerByte3BD5), false);
     frame.frame = rd8((uint16_t)(RichterCrashFrames + frame.entry.value));
@@ -4832,7 +4832,7 @@ void abi_RichterCrashFrame(void)
  * @routine 01BA:62F RichterMoveStopped
  * @run 6D:AE2F
  * WHAT IT DOES: Moves him along X, stops his animation and sets the state's step back to 0.
- * HOW: A added to OBJ_X_LO; OBJ_2F90 $FF; OBJ_2800 0.
+ * HOW: A added to OBJ_X_LO; OBJ_2F90 $FF; OBJ_SUBSTATE 0.
  * WAITS: no.
  * Entry: A the move. Exit: A $FF, X the facing, N and Z from it, C and V from the add. Y kept.
  */
@@ -4842,7 +4842,7 @@ Sum RichterMoveStopped(uint8_t move)
 
     wr8(OBJ_X_LO, moved.value);
     wr8(OBJ_2F90, 0xFF);
-    wr8(OBJ_2800, 0);
+    wr8(OBJ_SUBSTATE, 0);
     return moved;
 }
 
@@ -4851,7 +4851,7 @@ void abi_RichterMoveStopped(void)
     Sum moved = RichterMoveStopped(cpu.a);
 
     cpu.a = 0xFF;
-    cpu.x = rd8(OBJ_2AC0);
+    cpu.x = rd8(OBJ_FACING_LEFT);
     abi_nz(cpu.x);
     abi_flag(P_C, moved.carry);
     abi_flag(P_V, moved.overflow);
@@ -4864,7 +4864,7 @@ void abi_RichterMoveStopped(void)
  * he is kept unhittable and the timer counts down, with a sound as it starts and another as it
  * wears off, the flashing scripts at set marks, and his hit timer and flash back to 1 at the end.
  * HOW: PlayerInvincibleTimer; zWaveCounter's low two bits pick the frame. The marks and their
- * scripts are two tables of six. OBJ_3460 $80 holds hits off; OBJ_3828 2 while it runs.
+ * scripts are two tables of six. OBJ_ANIM_TIMER $80 holds hits off; OBJ_3828 2 while it runs.
  * WAITS: no.
  * Entry: nothing. Exit: off, A 0, Z set. Not this frame, A the frame's bits, N and Z from them.
  * Otherwise X, Y, C and V as a sound command left them, C from comparing A with $10 when the
@@ -4891,7 +4891,7 @@ static InvincibleTick invincible_tick(uint8_t x, uint8_t y, const InvincibleLayo
     tick.how = INVINCIBLE_OFF_FRAME;
     if (tick.value != 0)
         return tick;
-    wr8(OBJ_3460, INVINCIBLE_HIT_TIMER);
+    wr8(OBJ_ANIM_TIMER, INVINCIBLE_HIT_TIMER);
     /* The second sound is asked of what the first one's call leaves, not of the timer. */
     tick.compared = rd8(PlayerInvincibleTimer);
     if (tick.compared == INVINCIBLE_START) {
@@ -4910,7 +4910,7 @@ static InvincibleTick invincible_tick(uint8_t x, uint8_t y, const InvincibleLayo
     tick.value = (uint8_t)(rd8(PlayerInvincibleTimer) - 1);
     wr8(PlayerInvincibleTimer, tick.value);
     if (tick.value == 0) {
-        wr8(OBJ_3460, 1);
+        wr8(OBJ_ANIM_TIMER, 1);
         wr8(OBJ_3828, 1);
         tick.how = INVINCIBLE_ENDED;
         return tick;
@@ -5041,7 +5041,7 @@ static Ended maria_speed_by_facing(uint16_t table)
  * @run 6D:A943
  * WHAT IT DOES: A press of the way she faces sets her walking speed; a press of the other way turns her round
  * first, counting the turn in zFieldC6.
- * HOW: Bits 5 (right) and 7 (left) of zPadPressed by OBJ_2AC0; the speed from her table at $A9C5.
+ * HOW: Bits 5 (right) and 7 (left) of zPadPressed by OBJ_FACING_LEFT; the speed from her table at $A9C5.
  * WAITS: no.
  * Entry: nothing. Exit: no press, A the facing, Z set, N clear, V bit 6 of the pad; otherwise A the speed's high
  * byte, N and Z from it, Y twice the facing, C clear, V bit 6 of the pad. X kept.

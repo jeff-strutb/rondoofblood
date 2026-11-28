@@ -76,7 +76,7 @@ void abi_LoadRecordA06(void)
 /*
  * @routine 092E:2D1 ClearHitsTaken
  * @run 6B:8AD1
- * WHAT IT DOES: Sets the object's hits taken (OBJ_33B0) to 0.
+ * WHAT IT DOES: Sets the object's hits taken (OBJ_HIT_TAKEN) to 0.
  * HOW: A store.
  * WAITS: no.
  * Entry: X object. Exit: all kept.
@@ -133,10 +133,10 @@ void abi_RandomTimerC0(void)
 /*
  * @routine 0E0B:5DD NextPhaseUnlessKind25
  * @run 70:B5DD
- * WHAT IT DOES: Goes on to the next OBJ_2800 unless the object in slot $50 is of kind $25.
+ * WHAT IT DOES: Goes on to the next OBJ_SUBSTATE unless the object in slot $50 is of kind $25.
  * HOW: A compare and an INC.
  * WAITS: no.
- * Entry: X object. Exit: the compare, or the new OBJ_2800's N and Z.
+ * Entry: X object. Exit: the compare, or the new OBJ_SUBSTATE's N and Z.
  */
 ObjArm NextPhaseUnlessKind25(uint8_t slot)
 {
@@ -147,7 +147,7 @@ ObjArm NextPhaseUnlessKind25(uint8_t slot)
     if (r.first == 0x25) {
         return r;
     }
-    r.second = INC8(OBJ->f2800[slot]);
+    r.second = INC8(OBJ->substate[slot]);
     r.arm = M6_NP_NEXT;
     return r;
 }
@@ -252,7 +252,7 @@ void abi_LoadThenSpawn24(void)
 /*
  * @routine 0E0B:5E8 StepListB5FEToState4
  * @run 70:B5E8
- * WHAT IT DOES: Steps the animation list at $B5FE; when it ends, the object goes to state 4 and OBJ_2800 0.
+ * WHAT IT DOES: Steps the animation list at $B5FE; when it ends, the object goes to state 4 and OBJ_SUBSTATE 0.
  * HOW: StepObjectFrames, then stores and an increment.
  * WAITS: no.
  * Entry: X object, Y kept unless the step sets it. Exit: the step, or A 4 when the list ended.
@@ -273,7 +273,7 @@ ObjArm StepListB5FEToState4(uint8_t slot, uint8_t y_entry)
         return r;
     }
     WR8(OBJ->state[slot], 4);
-    WR8(OBJ->f2800[slot], 0);
+    WR8(OBJ->substate[slot], 0);
     r.arm = M6_B5_ENDED;
     return r;
 }
@@ -297,10 +297,10 @@ void abi_StepListB5FEToState4(void)
  * @routine 0E0B:184 FallThenStopForRaster
  * @run 70:B184
  * WHAT IT DOES: Moves the object along Y by its speed and counts OBJ_34B8 down; at zero it clears the raster effect and its argument, clears the object's Y speed and goes
- * on to the next OBJ_2800.
+ * on to the next OBJ_SUBSTATE.
  * HOW: ApplyVelocityY, DEC, stores, INC.
  * WAITS: no.
- * Entry: X object. Exit: the count, or the new OBJ_2800's N and Z.
+ * Entry: X object. Exit: the count, or the new OBJ_SUBSTATE's N and Z.
  */
 ObjArm FallThenStopForRaster(uint8_t slot)
 {
@@ -318,7 +318,7 @@ ObjArm FallThenStopForRaster(uint8_t slot)
     WR8(ZP->raster_effect, 0);
     WR8(OBJ->vy_hi[slot], 0);
     WR8(OBJ->vy_lo[slot], 0);
-    r.second = INC8(OBJ->f2800[slot]);
+    r.second = INC8(OBJ->substate[slot]);
     r.arm = M6_FR_STOPPED;
     return r;
 }
@@ -378,7 +378,7 @@ void abi_LoadThenRiseFast(void)
 /*
  * @routine 0E0B:34D CountDownThenState6
  * @run 70:B34D
- * WHAT IT DOES: Counts OBJ_3618 down; at zero the object goes to state 6, clears OBJ_2800 and takes a new OBJ_3618 from a table at $B36B by the low two bits of OBJ_35C0.
+ * WHAT IT DOES: Counts OBJ_3618 down; at zero the object goes to state 6, clears OBJ_SUBSTATE and takes a new OBJ_3618 from a table at $B36B by the low two bits of OBJ_35C0.
  * HOW: DEC, stores, a table read (bank 70).
  * WAITS: no.
  * Entry: X object. Exit: the count; at zero, the table byte as loaded (Y its index).
@@ -394,7 +394,7 @@ ObjArm CountDownThenState6(uint8_t slot)
         return r;
     }
     WR8(OBJ->state[slot], 6);
-    WR8(OBJ->f2800[slot], 0);
+    WR8(OBJ->substate[slot], 0);
     r.third = (uint8_t)(RD8(OBJ->angle_lo[slot]) & 0x03);
     r.fourth = rd8((uint16_t)(0xB36B + r.third));
     WR8(OBJ->f3618[slot], r.fourth);
@@ -602,7 +602,7 @@ void abi_TurnTowardPlayerOrStepList(void)
 /*
  * @routine 0E0B:0C2 SetHitBoxFromTable
  * @run 70:B0C2
- * WHAT IT DOES: When OBJ_3250 is not zero, takes the object's hit box (four bytes: OBJ_3930, OBJ_39E0, OBJ_3988, OBJ_3A38) from the table at $BEEC, four bytes a row, the row being the frame less one.
+ * WHAT IT DOES: When OBJ_3250 is not zero, takes the object's hit box (four bytes: OBJ_HITBOX_DX, OBJ_HITBOX_DY, OBJ_HITBOX_HALF_W, OBJ_HITBOX_HALF_H) from the table at $BEEC, four bytes a row, the row being the frame less one.
  * HOW: A pointer built in zTemp00-01 by two adds of twice the row, four reads through it.
  * WAITS: no.
  * Entry: X object. Exit: A the last byte read, Y 3; or the test of OBJ_3250.
@@ -739,7 +739,7 @@ void abi_CopyPlaceAndHitBoxOfSlot10(void)
 /*
  * @routine 0E0B:19A StepListB1BAThenSound
  * @run 70:B19A
- * WHAT IT DOES: Steps the animation list at $B1BA; when it ends it sends sound $46, sets sprite set 4 and frame 1 and goes on to the next OBJ_2800.
+ * WHAT IT DOES: Steps the animation list at $B1BA; when it ends it sends sound $46, sets sprite set 4 and frame 1 and goes on to the next OBJ_SUBSTATE.
  * HOW: StepObjectFrames, SoundCommand, stores, an INC.
  * WAITS: no.
  * Entry: X object, Y kept unless the step sets it. Exit: see the wrapper.
@@ -766,7 +766,7 @@ ObjArm StepListB1BAThenSound(uint8_t slot, uint8_t y_entry)
     jsr_pop();
     WR8(OBJ->sprite_set[slot], 4);
     WR8(OBJ->frame[slot], 1);
-    r.first = INC8(OBJ->f2800[slot]);
+    r.first = INC8(OBJ->substate[slot]);
     r.arm = M6_B1_SOUNDED;
     return r;
 }
@@ -796,7 +796,7 @@ void abi_StepListB1BAThenSound(void)
 /*
  * @routine 0E0B:51C StepListB53CToState5
  * @run 70:B51C
- * WHAT IT DOES: Steps the animation list at $B53C; when it ends it clears the raster effect and its argument and the animation step and timer, and the object goes to state 5 with OBJ_2800 0.
+ * WHAT IT DOES: Steps the animation list at $B53C; when it ends it clears the raster effect and its argument and the animation step and timer, and the object goes to state 5 with OBJ_SUBSTATE 0.
  * HOW: StepObjectFrames, stores.
  * WAITS: no.
  * Entry: X object, Y kept unless the step sets it. Exit: the step, or A 5 when the list ended.
@@ -821,7 +821,7 @@ ObjArm StepListB53CToState5(uint8_t slot, uint8_t y_entry)
     WR8(OBJ->anim_step[slot], 0);
     WR8(OBJ->anim_timer[slot], 0);
     WR8(OBJ->state[slot], 5);
-    WR8(OBJ->f2800[slot], 0);
+    WR8(OBJ->substate[slot], 0);
     r.arm = M6_B5C_ENDED;
     return r;
 }
@@ -936,7 +936,7 @@ void abi_TurnTowardPlayerAndMove(void)
 /*
  * @routine 051F:454 WaitForPressThenAnimate
  * @run 71:D454
- * WHAT IT DOES: In state 0 loads the object's record and sets sprite set 6. Later, with OBJ_2800 0, it waits until the first object is at Y low $AA and X low $CC to $D3 and the pad's new presses have bit 4; then it moves to the next OBJ_2800, clears its animation step and timer and takes the first object's X low and Y low plus $D8 as its place. With OBJ_2800 not 0 it sets the first object's OBJ_3510 to $C0 and OBJ_3568 to $10 and steps the animation list at $D443; sound $3B when a frame changes; when the list ends it clears OBJ_2800, its frame and the first object's OBJ_3510.
+ * WHAT IT DOES: In state 0 loads the object's record and sets sprite set 6. Later, with OBJ_SUBSTATE 0, it waits until the first object is at Y low $AA and X low $CC to $D3 and the pad's new presses have bit 4; then it moves to the next OBJ_SUBSTATE, clears its animation step and timer and takes the first object's X low and Y low plus $D8 as its place. With OBJ_SUBSTATE not 0 it sets the first object's OBJ_3510 to $C0 and OBJ_3568 to $10 and steps the animation list at $D443; sound $3B when a frame changes; when the list ends it clears OBJ_SUBSTATE, its frame and the first object's OBJ_3510.
  * HOW: LoadObjectRecord, StepObjectFrames, SoundCommand, stores.
  * WAITS: no.
  * Entry: X object, Y kept unless the step sets it. Exit: see the wrapper.
@@ -955,7 +955,7 @@ ObjArm WaitForPressThenAnimate(uint8_t slot, uint8_t y_entry)
         WR8(OBJ->sprite_set[slot], 6);
         return r;
     }
-    r.third = RD8(OBJ->f2800[slot]);
+    r.third = RD8(OBJ->substate[slot]);
     if (r.third == 0) {
         r.fourth = RD8(OBJ->y_lo[0]);
         r.arm = M6_WP_Y;
@@ -977,7 +977,7 @@ ObjArm WaitForPressThenAnimate(uint8_t slot, uint8_t y_entry)
         if (r.seventh == 0) {
             return r;
         }
-        INC8(OBJ->f2800[slot]);
+        INC8(OBJ->substate[slot]);
         WR8(OBJ->anim_step[slot], 0);
         WR8(OBJ->anim_timer[slot], 0);
         r.eighth = RD8(OBJ->x_lo[0]);
@@ -997,7 +997,7 @@ ObjArm WaitForPressThenAnimate(uint8_t slot, uint8_t y_entry)
     r.y = y;
     r.arm = M6_WP_HELD;
     if (r.step == FRAME_LIST_ENDED) {
-        WR8(OBJ->f2800[slot], 0);
+        WR8(OBJ->substate[slot], 0);
         WR8(OBJ->frame[slot], 0);
         WR8(OBJ->f3510[0], 0);
         r.arm = M6_WP_ENDED;
@@ -1074,7 +1074,7 @@ void abi_WaitForPressThenAnimate(void)
 /*
  * @routine 0E0B:0AB StateSevenOnStatusBit7
  * @run 70:B0AB
- * WHAT IT DOES: An object in a state under 7 whose OBJ_31A0 has bit 7 set goes to state 7 and clears OBJ_2800. (The part after the test ran in no script; it is written from the bytes.)
+ * WHAT IT DOES: An object in a state under 7 whose OBJ_31A0 has bit 7 set goes to state 7 and clears OBJ_SUBSTATE. (The part after the test ran in no script; it is written from the bytes.)
  * HOW: A test, a compare, two stores.
  * WAITS: no.
  * Entry: X object. Exit: the test, the compare, or A 7.
@@ -1094,7 +1094,7 @@ ObjArm StateSevenOnStatusBit7(uint8_t slot)
         return r;
     }
     WR8(OBJ->state[slot], 7);
-    WR8(OBJ->f2800[slot], 0);
+    WR8(OBJ->substate[slot], 0);
     r.arm = M6_S7_ENTERED;
     return r;
 }
@@ -1121,7 +1121,7 @@ void abi_StateSevenOnStatusBit7(void)
 /*
  * @routine 0E0B:579 SpawnOnTimerInTable
  * @run 70:B579
- * WHAT IT DOES: When OBJ_3408 is 6 and OBJ_3460 equals one of the three bytes at $B5A5 it finds a free slot from $30, sends sound $48 and starts a kind $27 object there at its place with its facing.
+ * WHAT IT DOES: When OBJ_ANIM_STEP is 6 and OBJ_ANIM_TIMER equals one of the three bytes at $B5A5 it finds a free slot from $30, sends sound $48 and starts a kind $27 object there at its place with its facing.
  * HOW: A search loop, FindFreeSlotFrom30, SoundCommand, StartObjectAtPlace.
  * WAITS: no.
  * Entry: X object, Y kept for the sound's push only when the search ran. Exit: see the wrapper.
@@ -1216,7 +1216,7 @@ void abi_SpawnOnTimerInTable(void)
 /*
  * @routine 0E0B:543 SetRasterSpawnThenStepList
  * @run 70:B543
- * WHAT IT DOES: Sets the raster effect to $0B with argument $BF, runs SpawnOnTimerInTable, then steps the animation list at $B568; when it ends it clears the raster effect and its argument, goes to state 4 and clears OBJ_2800.
+ * WHAT IT DOES: Sets the raster effect to $0B with argument $BF, runs SpawnOnTimerInTable, then steps the animation list at $B568; when it ends it clears the raster effect and its argument, goes to state 4 and clears OBJ_SUBSTATE.
  * HOW: SpawnOnTimerInTable, StepObjectFrames, stores.
  * WAITS: no.
  * Entry: X object, Y kept unless a callee sets it. Exit: see the wrapper.
@@ -1253,7 +1253,7 @@ ObjArm SetRasterSpawnThenStepList(uint8_t slot, uint8_t y_entry)
     WR8(ZP->raster_arg, 0);
     WR8(ZP->raster_effect, 0);
     WR8(OBJ->state[slot], 4);
-    WR8(OBJ->f2800[slot], 0);
+    WR8(OBJ->substate[slot], 0);
     r.arm = M6_SR_ENDED;
     return r;
 }

@@ -24,7 +24,7 @@ void ClearObjectExceptPlace(uint8_t object)
 
     WR8(OBJ->facing_left[object], 0);
     WR8(OBJ->flash_flags[object], 0);
-    WR8(OBJ->f2800[object], 0);
+    WR8(OBJ->substate[object], 0);
     for (; column <= last; column += OBJ_STRIDE) {
         WR8_IDX(column, object, 0);
     }

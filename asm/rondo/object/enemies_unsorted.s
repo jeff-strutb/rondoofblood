@@ -9,31 +9,31 @@
 ; Entry: X object. Exit: A and flags as the last compare, AND or load left them. X and Y kept.
 ; D clear.
 EnterStateFourOnFlag:
-    lda a:OBJ_27A8,x
+    lda a:OBJ_STATE,x
     cmp #$04
     beq EnterStateFourOnFlag_out
     lda a:OBJ_31A0,x
     and #$80
     beq EnterStateFourOnFlag_out
-    stz a:OBJ_3408,x
-    stz a:OBJ_3460,x
+    stz a:OBJ_ANIM_STEP,x
+    stz a:OBJ_ANIM_TIMER,x
     lda #$04
-    sta a:OBJ_27A8,x
+    sta a:OBJ_STATE,x
 EnterStateFourOnFlag_out:
     rts
 
 ; @routine 0CAB:260 SetHitboxFromFrame
 ; @run 70:B260
-; WHAT IT DOES: Loads an object's hitbox (dx, dy, half width, half height: OBJ_3930, OBJ_39E0, OBJ_3988, OBJ_3A38)
+; WHAT IT DOES: Loads an object's hitbox (dx, dy, half width, half height: OBJ_HITBOX_DX, OBJ_HITBOX_DY, OBJ_HITBOX_HALF_W, OBJ_HITBOX_HALF_H)
 ; from a four-byte row of a table, picked by the object's animation frame through a second table
 ; of row numbers; no frame, or a row number 0, clears the last two.
-; HOW: Reads the frame (OBJ_2A68), the row number at $B292 + frame - 1, then the four bytes at
+; HOW: Reads the frame (OBJ_FRAME), the row number at $B292 + frame - 1, then the four bytes at
 ; $BA2E + 4 * (row - 1).
 ; WAITS: no.
 ; Entry: X object. Exit: A the last byte loaded (0 when cleared), N and Z from it, Y the
 ; table offset, C the last shift's carry. X kept. D clear.
 SetHitboxFromFrame:
-    lda a:OBJ_2A68,x
+    lda a:OBJ_FRAME,x
     beq SetHitboxFromFrame_none
     sec
     sbc #$01
@@ -45,17 +45,17 @@ SetHitboxFromFrame:
     asl a
     tay
     lda a:$BA2E,y
-    sta a:OBJ_3930,x
+    sta a:OBJ_HITBOX_DX,x
     lda a:$BA2F,y
-    sta a:OBJ_39E0,x
+    sta a:OBJ_HITBOX_DY,x
     lda a:$BA30,y
-    sta a:OBJ_3988,x
+    sta a:OBJ_HITBOX_HALF_W,x
     lda a:$BA31,y
-    sta a:OBJ_3A38,x
+    sta a:OBJ_HITBOX_HALF_H,x
     rts
 SetHitboxFromFrame_none:
-    stz a:OBJ_3988,x
-    stz a:OBJ_3A38,x
+    stz a:OBJ_HITBOX_HALF_W,x
+    stz a:OBJ_HITBOX_HALF_H,x
     rts
 
 ; @routine 0CAB:3B9 TurnAngleBack
@@ -80,10 +80,10 @@ TurnAngleBack:
     ora #$04
     sta z:zField8E
     lda #$01
-    sta a:OBJ_2A68,x
+    sta a:OBJ_FRAME,x
     lda #$02
     sta a:OBJ_3250,x
-    inc a:OBJ_27A8,x
+    inc a:OBJ_STATE,x
 TurnAngleBack_out:
     rts
 
@@ -112,7 +112,7 @@ AdvanceOnTimer:
     sta a:OBJ_35C0,x
     lda a:$B617,y
     sta a:OBJ_3618,x
-    inc a:OBJ_27A8,x
+    inc a:OBJ_STATE,x
 AdvanceOnTimer_out:
     rts
 
@@ -132,7 +132,7 @@ LaunchOnTimer:
     lda a:OBJ_3040,x
     clc
     adc #$12
-    sta a:OBJ_2A68,x
+    sta a:OBJ_FRAME,x
     lda a:OBJ_3040,x
     asl a
     tay
@@ -140,62 +140,62 @@ LaunchOnTimer:
     sta a:OBJ_VX_HI,x
     lda a:$B59C,y
     sta a:OBJ_VY_HI,x
-    inc a:OBJ_27A8,x
+    inc a:OBJ_STATE,x
 LaunchOnTimer_out:
     rts
 
 ; @routine 09EA:60E SetHitboxFromFrameFive
 ; @run 70:AE0E
-; WHAT IT DOES: Loads an object's hitbox (OBJ_3930, OBJ_39E0, OBJ_3988, OBJ_3A38) from the
+; WHAT IT DOES: Loads an object's hitbox (OBJ_HITBOX_DX, OBJ_HITBOX_DY, OBJ_HITBOX_HALF_W, OBJ_HITBOX_HALF_H) from the
 ; four-byte row at $BC13 picked by its frame less 5.
 ; HOW: Four loads from the row.
 ; WAITS: no.
 ; Entry: X object. Exit: A the last byte, N and Z from it, Y the row offset, C the last shift's
 ; carry, V from the frame subtract. X kept. D clear.
 SetHitboxFromFrameFive:
-    lda a:OBJ_2A68,x
+    lda a:OBJ_FRAME,x
     sec
     sbc #$05
     asl a
     asl a
     tay
     lda a:$BC13,y
-    sta a:OBJ_3930,x
+    sta a:OBJ_HITBOX_DX,x
     lda a:$BC14,y
-    sta a:OBJ_39E0,x
+    sta a:OBJ_HITBOX_DY,x
     lda a:$BC15,y
-    sta a:OBJ_3988,x
+    sta a:OBJ_HITBOX_HALF_W,x
     lda a:$BC16,y
-    sta a:OBJ_3A38,x
+    sta a:OBJ_HITBOX_HALF_H,x
     rts
 
 ; @routine 0CAB:240 EnterStateFiveOnPlayerState9
 ; @run 70:B240
 ; WHAT IT DOES: When the player (slot 0) is in state 9 and the object is in state 3, turns the
-; object to face right, restarts its frame list, clears OBJ_2800 and moves it to state 5.
+; object to face right, restarts its frame list, clears OBJ_SUBSTATE and moves it to state 5.
 ; HOW: Two compares, then the stores.
 ; WAITS: no.
 ; Entry: X object. Exit: A and flags as the last compare or load left them. X and Y kept.
 ; D clear.
 EnterStateFiveOnPlayerState9:
-    lda a:OBJ_27A8
+    lda a:OBJ_STATE
     cmp #$09
     bne EnterStateFiveOnPlayerState9_out
-    lda a:OBJ_27A8,x
+    lda a:OBJ_STATE,x
     cmp #$03
     bne EnterStateFiveOnPlayerState9_out
-    stz a:OBJ_2AC0,x
-    stz a:OBJ_3408,x
-    stz a:OBJ_3460,x
+    stz a:OBJ_FACING_LEFT,x
+    stz a:OBJ_ANIM_STEP,x
+    stz a:OBJ_ANIM_TIMER,x
     lda #$05
-    sta a:OBJ_27A8,x
-    stz a:OBJ_2800,x
+    sta a:OBJ_STATE,x
+    stz a:OBJ_SUBSTATE,x
 EnterStateFiveOnPlayerState9_out:
     rts
 
 ; @routine 072C:02C StopAndPickPhase
 ; @run 70:B82C
-; WHAT IT DOES: Stops an object (clears OBJ_3670 and its four speed bytes), then sets OBJ_2800
+; WHAT IT DOES: Stops an object (clears OBJ_3670 and its four speed bytes), then sets OBJ_SUBSTATE
 ; from a table of eight bytes at $B84B picked by the low three bits of a counter, OBJ_3720,
 ; which it then advances.
 ; HOW: Five clears, a table read, an INC in memory.
@@ -212,6 +212,6 @@ StopAndPickPhase:
     and #$07
     tay
     lda a:$B84B,y
-    sta a:OBJ_2800,x
+    sta a:OBJ_SUBSTATE,x
     inc a:OBJ_3720,x
     rts

@@ -12,11 +12,11 @@ ObjectHit:
     lda a:OBJ_31A0,x
     and #$9F
     sta a:OBJ_31A0,x
-    lda a:OBJ_31F8,x
+    lda a:OBJ_HIT_REACTION,x
     and #$03
     beq ObjectHit_at0
-    dec a:OBJ_31F8,x
-    lda a:OBJ_31F8,x
+    dec a:OBJ_HIT_REACTION,x
+    lda a:OBJ_HIT_REACTION,x
     and #$03
     bne ObjectHit_at0
     lda a:OBJ_3AE8,x
@@ -49,14 +49,14 @@ ObjectHit_at3:
 ObjectHit_at5:
     lda a:OBJ_32A8,x
     bmi ObjectHit_at2
-    lda a:OBJ_33B0,x
+    lda a:OBJ_HIT_TAKEN,x
     beq ObjectHit_at2
     jsr HitDamage
     lda z:zTemp00
     bne ObjectHit_at6
     rts
 ObjectHit_at6:
-    ldy a:OBJ_33B0,x
+    ldy a:OBJ_HIT_TAKEN,x
     lda a:$A26D,y
     sta a:OBJ_3A90,x
     lda a:$A27D,y
@@ -65,9 +65,9 @@ ObjectHit_at6:
     sta a:OBJ_3AE8,x
     lda #$86
     sta a:OBJ_2B18,x
-    lda a:OBJ_31F8,x
+    lda a:OBJ_HIT_REACTION,x
     ora #$03
-    sta a:OBJ_31F8,x
+    sta a:OBJ_HIT_REACTION,x
     lda a:OBJ_32A8,x
     sec
     sbc z:zTemp00
@@ -96,8 +96,8 @@ ObjectHit_at8:
     dec a
     clc
     adc #$9B
-    sta a:OBJ_2750,x
-    stz a:OBJ_27A8,x
+    sta a:OBJ_KIND,x
+    stz a:OBJ_STATE,x
 ObjectHit_at2:
     rts
 ObjectHit_at7:
@@ -126,7 +126,7 @@ HitDamage:
     asl a
     asl a
     sta z:zTemp00
-    lda a:OBJ_33B0,x
+    lda a:OBJ_HIT_TAKEN,x
     clc
     adc z:zTemp00
     tay
@@ -146,7 +146,7 @@ ScoreForKind:
     lda a:HitAttackFlags
     and #$01
     bne ScoreForKind_at0
-    lda a:OBJ_2750,x
+    lda a:OBJ_KIND,x
     sec
     sbc #$20
     asl a

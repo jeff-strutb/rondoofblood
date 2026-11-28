@@ -79,7 +79,7 @@ void abi_CountDownOrPickNextTimer(void)
 /*
  * @routine 0B4C:051 StepListThenPickStateByLuck
  * @run 70:B851
- * WHAT IT DOES: In state 0, when the frame is 4, advances OBJ_2800; otherwise (and in later states when the animation list at $B8D2 ends) it takes frame 2, the facing of the player's side, clears the animation timer and picks the next state and OBJ_2800 from the tables at $B8A2 and $B89D by OBJ_32A8 and a random number.
+ * WHAT IT DOES: In state 0, when the frame is 4, advances OBJ_SUBSTATE; otherwise (and in later states when the animation list at $B8D2 ends) it takes frame 2, the facing of the player's side, clears the animation timer and picks the next state and OBJ_SUBSTATE from the tables at $B8A2 and $B89D by OBJ_32A8 and a random number.
  * HOW: StepObjectFrames, SideOfPlayer, NextRandom, table reads, stores.
  * WAITS: no.
  * Entry: X object, Y kept unless the step sets it. Exit: as the last instruction that ran (l8_luck_exit_shim). The state 0 arm ran in no script; the draft stops there.
@@ -92,7 +92,7 @@ L8LuckArm StepListThenPickStateByLuck(uint8_t slot, uint8_t y_entry)
     if (r.state == 0) {
         r.frame = RD8(OBJ->frame[slot]);
         if (r.frame == 4) {
-            r.count = INC8(OBJ->f2800[slot]);
+            r.count = INC8(OBJ->substate[slot]);
             r.arm = ST18_LUCK_COUNTED;
             return r;
         }
@@ -123,7 +123,7 @@ L8LuckArm StepListThenPickStateByLuck(uint8_t slot, uint8_t y_entry)
     r.index = rd8((uint16_t)(0xB8A2 + r.sum.value));
     r.value = rd8((uint16_t)(0xB89D + r.index));
     WR8(OBJ->state[slot], r.value);
-    WR8(OBJ->f2800[slot], 0);
+    WR8(OBJ->substate[slot], 0);
     return r;
 }
 
@@ -163,7 +163,7 @@ void abi_StepListThenPickStateByLuck(void)
 /*
  * @routine 0B4C:0EF StepListThenLeapByDistance
  * @run 70:B8EF
- * WHAT IT DOES: Steps the animation list at $B936; when it ends plays sound $B5, clears the animation, and from the distance to the player in X (eight steps) sets the speed from the table at $B93F, goes to the next OBJ_2800 and, when facing left, reverses the X speed.
+ * WHAT IT DOES: Steps the animation list at $B936; when it ends plays sound $B5, clears the animation, and from the distance to the player in X (eight steps) sets the speed from the table at $B93F, goes to the next OBJ_SUBSTATE and, when facing left, reverses the X speed.
  * HOW: StepObjectFrames, SoundCommand, DistanceXToPlayer, table reads, stores, NegateVelocityX.
  * WAITS: no.
  * Entry: X object, Y kept unless the step sets it. Exit: as the last instruction that ran (l8_leap_distance_exit_shim). Reversing the speed ran in no script; the draft stops there.
@@ -195,7 +195,7 @@ L8LeapDistanceArm StepListThenLeapByDistance(uint8_t slot, uint8_t y_entry)
     WR8(OBJ->vy_hi[slot], value);
     r.value = rd8((uint16_t)(0xB941 + r.index));
     WR8(OBJ->vy_lo[slot], r.value);
-    r.count = INC8(OBJ->f2800[slot]);
+    r.count = INC8(OBJ->substate[slot]);
     r.facing = RD8(OBJ->facing_left[slot]);
     if (r.facing != 0) {
         jsr_push(0xB935);
@@ -473,7 +473,7 @@ void abi_StepListThenState5(void)
 /*
  * @routine 0B4C:447 SoundThenLeapByFacing
  * @run 70:BC47
- * WHAT IT DOES: Plays sound $B8, gives the object the X speed from the table at $BC6B by its facing and the Y speed -$0340 (high $FC, low $C0) and goes to the next OBJ_2800.
+ * WHAT IT DOES: Plays sound $B8, gives the object the X speed from the table at $BC6B by its facing and the Y speed -$0340 (high $FC, low $C0) and goes to the next OBJ_SUBSTATE.
  * HOW: SoundCommand, table reads, stores, an INC.
  * WAITS: no.
  * Entry: X object, Y kept for the sound. Exit: as the last instruction that ran (l8_leap_facing_exit_shim).
@@ -494,7 +494,7 @@ L8LeapFacingArm SoundThenLeapByFacing(uint8_t slot, uint8_t y_entry)
     WR8(OBJ->vx_lo[slot], value);
     WR8(OBJ->vy_hi[slot], 0xFC);
     WR8(OBJ->vy_lo[slot], 0xC0);
-    r.count = INC8(OBJ->f2800[slot]);
+    r.count = INC8(OBJ->substate[slot]);
     return r;
 }
 

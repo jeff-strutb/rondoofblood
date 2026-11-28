@@ -9,7 +9,7 @@ ScoreForKind0519:
     lda a:HitAttackFlags
     and #$01
     bne ScoreForKind0519_at0
-    lda a:OBJ_2750,x
+    lda a:OBJ_KIND,x
     sec
     sbc #$20
     asl a
@@ -32,10 +32,10 @@ ScoreForKind0519_at0:
 ; WAITS: no.
 ; Entry: X object. Exit: as DropItemWhenHitF (drop_item_when_hit_exit_shim).
 DropItemWhenHit0519:
-    lda a:OBJ_33B0,x
+    lda a:OBJ_HIT_TAKEN,x
     cmp #$05
     bcc DropItemWhenHit0519_ret
-    lda a:OBJ_31F8,x
+    lda a:OBJ_HIT_REACTION,x
     lsr a
     lsr a
     and #$07
@@ -75,7 +75,7 @@ ScoreForKind05C9:
     lda a:HitAttackFlags
     and #$01
     bne ScoreForKind05C9_at0
-    lda a:OBJ_2750,x
+    lda a:OBJ_KIND,x
     sec
     sbc #$20
     asl a
@@ -98,10 +98,10 @@ ScoreForKind05C9_at0:
 ; WAITS: no.
 ; Entry: X object. Exit: as DropItemWhenHitF (drop_item_when_hit_exit_shim).
 DropItemWhenHit05C9:
-    lda a:OBJ_33B0,x
+    lda a:OBJ_HIT_TAKEN,x
     cmp #$05
     bcc DropItemWhenHit05C9_ret
-    lda a:OBJ_31F8,x
+    lda a:OBJ_HIT_REACTION,x
     lsr a
     lsr a
     and #$07
@@ -138,7 +138,7 @@ DropItemWhenHit05C9_ret:
 ; WAITS: no.
 ; Entry: X object, D clear. Exit: as PlayHitSoundA (play_hit_sound_exit_shim).
 PlayHitSound05C9:
-    lda a:OBJ_31F8,x
+    lda a:OBJ_HIT_REACTION,x
     lsr a
     lsr a
     lsr a
@@ -164,7 +164,7 @@ ScoreForKind0729:
     lda a:HitAttackFlags
     and #$01
     bne ScoreForKind0729_at0
-    lda a:OBJ_2750,x
+    lda a:OBJ_KIND,x
     sec
     sbc #$20
     asl a
@@ -187,10 +187,10 @@ ScoreForKind0729_at0:
 ; WAITS: no.
 ; Entry: X object. Exit: as DropItemWhenHitF (drop_item_when_hit_exit_shim).
 DropItemWhenHit0729:
-    lda a:OBJ_33B0,x
+    lda a:OBJ_HIT_TAKEN,x
     cmp #$05
     bcc DropItemWhenHit0729_ret
-    lda a:OBJ_31F8,x
+    lda a:OBJ_HIT_REACTION,x
     lsr a
     lsr a
     and #$07
@@ -227,7 +227,7 @@ DropItemWhenHit0729_ret:
 ; WAITS: no.
 ; Entry: X object, D clear. Exit: as PlayHitSoundA (play_hit_sound_exit_shim).
 PlayHitSound0729:
-    lda a:OBJ_31F8,x
+    lda a:OBJ_HIT_REACTION,x
     lsr a
     lsr a
     lsr a
@@ -253,7 +253,7 @@ ScoreForKind07D9:
     lda a:HitAttackFlags
     and #$01
     bne ScoreForKind07D9_at0
-    lda a:OBJ_2750,x
+    lda a:OBJ_KIND,x
     sec
     sbc #$20
     asl a
@@ -279,7 +279,7 @@ ScoreForKind0889:
     lda a:HitAttackFlags
     and #$01
     bne ScoreForKind0889_at0
-    lda a:OBJ_2750,x
+    lda a:OBJ_KIND,x
     sec
     sbc #$20
     asl a
@@ -302,10 +302,10 @@ ScoreForKind0889_at0:
 ; WAITS: no.
 ; Entry: X object. Exit: as DropItemWhenHitF (drop_item_when_hit_exit_shim).
 DropItemWhenHit0889:
-    lda a:OBJ_33B0,x
+    lda a:OBJ_HIT_TAKEN,x
     cmp #$05
     bcc DropItemWhenHit0889_ret
-    lda a:OBJ_31F8,x
+    lda a:OBJ_HIT_REACTION,x
     lsr a
     lsr a
     and #$07
@@ -342,7 +342,7 @@ DropItemWhenHit0889_ret:
 ; WAITS: no.
 ; Entry: X object, D clear. Exit: as PlayHitSoundA (play_hit_sound_exit_shim).
 PlayHitSound0889:
-    lda a:OBJ_31F8,x
+    lda a:OBJ_HIT_REACTION,x
     lsr a
     lsr a
     lsr a
@@ -368,7 +368,7 @@ ScoreForKind0939:
     lda a:HitAttackFlags
     and #$01
     bne ScoreForKind0939_at0
-    lda a:OBJ_2750,x
+    lda a:OBJ_KIND,x
     sec
     sbc #$20
     asl a
@@ -394,7 +394,7 @@ ScoreForKind09E9:
     lda a:HitAttackFlags
     and #$01
     bne ScoreForKind09E9_at0
-    lda a:OBJ_2750,x
+    lda a:OBJ_KIND,x
     sec
     sbc #$20
     asl a
@@ -420,7 +420,7 @@ ScoreForKind0A99:
     lda a:HitAttackFlags
     and #$01
     bne ScoreForKind0A99_at0
-    lda a:OBJ_2750,x
+    lda a:OBJ_KIND,x
     sec
     sbc #$20
     asl a
@@ -446,7 +446,7 @@ ScoreForKind0B49:
     lda a:HitAttackFlags
     and #$01
     bne ScoreForKind0B49_at0
-    lda a:OBJ_2750,x
+    lda a:OBJ_KIND,x
     sec
     sbc #$20
     asl a
@@ -469,10 +469,10 @@ ScoreForKind0B49_at0:
 ; WAITS: no.
 ; Entry: X object. Exit: as DropItemWhenHitF (drop_item_when_hit_exit_shim).
 DropItemWhenHit0B49:
-    lda a:OBJ_33B0,x
+    lda a:OBJ_HIT_TAKEN,x
     cmp #$05
     bcc DropItemWhenHit0B49_ret
-    lda a:OBJ_31F8,x
+    lda a:OBJ_HIT_REACTION,x
     lsr a
     lsr a
     and #$07
@@ -509,7 +509,7 @@ DropItemWhenHit0B49_ret:
 ; WAITS: no.
 ; Entry: X object, D clear. Exit: as PlayHitSoundA (play_hit_sound_exit_shim).
 PlayHitSound0B49:
-    lda a:OBJ_31F8,x
+    lda a:OBJ_HIT_REACTION,x
     lsr a
     lsr a
     lsr a
@@ -535,7 +535,7 @@ ScoreForKind0BF9:
     lda a:HitAttackFlags
     and #$01
     bne ScoreForKind0BF9_at0
-    lda a:OBJ_2750,x
+    lda a:OBJ_KIND,x
     sec
     sbc #$20
     asl a
@@ -561,7 +561,7 @@ ScoreForKind0CA9:
     lda a:HitAttackFlags
     and #$01
     bne ScoreForKind0CA9_at0
-    lda a:OBJ_2750,x
+    lda a:OBJ_KIND,x
     sec
     sbc #$20
     asl a
@@ -587,7 +587,7 @@ ScoreForKind0D59:
     lda a:HitAttackFlags
     and #$01
     bne ScoreForKind0D59_at0
-    lda a:OBJ_2750,x
+    lda a:OBJ_KIND,x
     sec
     sbc #$20
     asl a
@@ -613,7 +613,7 @@ ScoreForKind0E09:
     lda a:HitAttackFlags
     and #$01
     bne ScoreForKind0E09_at0
-    lda a:OBJ_2750,x
+    lda a:OBJ_KIND,x
     sec
     sbc #$20
     asl a
@@ -636,10 +636,10 @@ ScoreForKind0E09_at0:
 ; WAITS: no.
 ; Entry: X object. Exit: as DropItemWhenHitF (drop_item_when_hit_exit_shim).
 DropItemWhenHit0E09:
-    lda a:OBJ_33B0,x
+    lda a:OBJ_HIT_TAKEN,x
     cmp #$05
     bcc DropItemWhenHit0E09_ret
-    lda a:OBJ_31F8,x
+    lda a:OBJ_HIT_REACTION,x
     lsr a
     lsr a
     and #$07
@@ -676,7 +676,7 @@ DropItemWhenHit0E09_ret:
 ; WAITS: no.
 ; Entry: X object, D clear. Exit: as PlayHitSoundA (play_hit_sound_exit_shim).
 PlayHitSound0E09:
-    lda a:OBJ_31F8,x
+    lda a:OBJ_HIT_REACTION,x
     lsr a
     lsr a
     lsr a
@@ -702,7 +702,7 @@ ScoreForKind0EB9:
     lda a:HitAttackFlags
     and #$01
     bne ScoreForKind0EB9_at0
-    lda a:OBJ_2750,x
+    lda a:OBJ_KIND,x
     sec
     sbc #$20
     asl a
@@ -728,7 +728,7 @@ ScoreForKind0F69:
     lda a:HitAttackFlags
     and #$01
     bne ScoreForKind0F69_at0
-    lda a:OBJ_2750,x
+    lda a:OBJ_KIND,x
     sec
     sbc #$20
     asl a
@@ -751,10 +751,10 @@ ScoreForKind0F69_at0:
 ; WAITS: no.
 ; Entry: X object. Exit: as DropItemWhenHitF (drop_item_when_hit_exit_shim).
 DropItemWhenHit0F69:
-    lda a:OBJ_33B0,x
+    lda a:OBJ_HIT_TAKEN,x
     cmp #$05
     bcc DropItemWhenHit0F69_ret
-    lda a:OBJ_31F8,x
+    lda a:OBJ_HIT_REACTION,x
     lsr a
     lsr a
     and #$07
@@ -791,7 +791,7 @@ DropItemWhenHit0F69_ret:
 ; WAITS: no.
 ; Entry: X object, D clear. Exit: as PlayHitSoundA (play_hit_sound_exit_shim).
 PlayHitSound0F69:
-    lda a:OBJ_31F8,x
+    lda a:OBJ_HIT_REACTION,x
     lsr a
     lsr a
     lsr a
@@ -817,7 +817,7 @@ ScoreForKind1019:
     lda a:HitAttackFlags
     and #$01
     bne ScoreForKind1019_at0
-    lda a:OBJ_2750,x
+    lda a:OBJ_KIND,x
     sec
     sbc #$20
     asl a
@@ -843,7 +843,7 @@ ScoreForKind10C9:
     lda a:HitAttackFlags
     and #$01
     bne ScoreForKind10C9_at0
-    lda a:OBJ_2750,x
+    lda a:OBJ_KIND,x
     sec
     sbc #$20
     asl a
@@ -866,10 +866,10 @@ ScoreForKind10C9_at0:
 ; WAITS: no.
 ; Entry: X object. Exit: as DropItemWhenHitF (drop_item_when_hit_exit_shim).
 DropItemWhenHit10C9:
-    lda a:OBJ_33B0,x
+    lda a:OBJ_HIT_TAKEN,x
     cmp #$05
     bcc DropItemWhenHit10C9_ret
-    lda a:OBJ_31F8,x
+    lda a:OBJ_HIT_REACTION,x
     lsr a
     lsr a
     and #$07
@@ -906,7 +906,7 @@ DropItemWhenHit10C9_ret:
 ; WAITS: no.
 ; Entry: X object, D clear. Exit: as PlayHitSoundA (play_hit_sound_exit_shim).
 PlayHitSound10C9:
-    lda a:OBJ_31F8,x
+    lda a:OBJ_HIT_REACTION,x
     lsr a
     lsr a
     lsr a
@@ -932,7 +932,7 @@ ScoreForKind1179:
     lda a:HitAttackFlags
     and #$01
     bne ScoreForKind1179_at0
-    lda a:OBJ_2750,x
+    lda a:OBJ_KIND,x
     sec
     sbc #$20
     asl a
@@ -958,7 +958,7 @@ ScoreForKind12D9:
     lda a:HitAttackFlags
     and #$01
     bne ScoreForKind12D9_at0
-    lda a:OBJ_2750,x
+    lda a:OBJ_KIND,x
     sec
     sbc #$20
     asl a
@@ -981,10 +981,10 @@ ScoreForKind12D9_at0:
 ; WAITS: no.
 ; Entry: X object. Exit: as DropItemWhenHitF (drop_item_when_hit_exit_shim).
 DropItemWhenHit12D9:
-    lda a:OBJ_33B0,x
+    lda a:OBJ_HIT_TAKEN,x
     cmp #$05
     bcc DropItemWhenHit12D9_ret
-    lda a:OBJ_31F8,x
+    lda a:OBJ_HIT_REACTION,x
     lsr a
     lsr a
     and #$07
@@ -1021,7 +1021,7 @@ DropItemWhenHit12D9_ret:
 ; WAITS: no.
 ; Entry: X object, D clear. Exit: as PlayHitSoundA (play_hit_sound_exit_shim).
 PlayHitSound12D9:
-    lda a:OBJ_31F8,x
+    lda a:OBJ_HIT_REACTION,x
     lsr a
     lsr a
     lsr a
@@ -1047,7 +1047,7 @@ ScoreForKind13F9:
     lda a:HitAttackFlags
     and #$01
     bne ScoreForKind13F9_at0
-    lda a:OBJ_2750,x
+    lda a:OBJ_KIND,x
     sec
     sbc #$20
     asl a
@@ -1070,10 +1070,10 @@ ScoreForKind13F9_at0:
 ; WAITS: no.
 ; Entry: X object. Exit: as DropItemWhenHitF (drop_item_when_hit_exit_shim).
 DropItemWhenHit13F9:
-    lda a:OBJ_33B0,x
+    lda a:OBJ_HIT_TAKEN,x
     cmp #$05
     bcc DropItemWhenHit13F9_ret
-    lda a:OBJ_31F8,x
+    lda a:OBJ_HIT_REACTION,x
     lsr a
     lsr a
     and #$07
@@ -1110,7 +1110,7 @@ DropItemWhenHit13F9_ret:
 ; WAITS: no.
 ; Entry: X object, D clear. Exit: as PlayHitSoundA (play_hit_sound_exit_shim).
 PlayHitSound13F9:
-    lda a:OBJ_31F8,x
+    lda a:OBJ_HIT_REACTION,x
     lsr a
     lsr a
     lsr a
@@ -1136,7 +1136,7 @@ ScoreForKind1619:
     lda a:HitAttackFlags
     and #$01
     bne ScoreForKind1619_at0
-    lda a:OBJ_2750,x
+    lda a:OBJ_KIND,x
     sec
     sbc #$20
     asl a
@@ -1159,10 +1159,10 @@ ScoreForKind1619_at0:
 ; WAITS: no.
 ; Entry: X object. Exit: as DropItemWhenHitF (drop_item_when_hit_exit_shim).
 DropItemWhenHit1619:
-    lda a:OBJ_33B0,x
+    lda a:OBJ_HIT_TAKEN,x
     cmp #$05
     bcc DropItemWhenHit1619_ret
-    lda a:OBJ_31F8,x
+    lda a:OBJ_HIT_REACTION,x
     lsr a
     lsr a
     and #$07
@@ -1199,7 +1199,7 @@ DropItemWhenHit1619_ret:
 ; WAITS: no.
 ; Entry: X object, D clear. Exit: as PlayHitSoundA (play_hit_sound_exit_shim).
 PlayHitSound1619:
-    lda a:OBJ_31F8,x
+    lda a:OBJ_HIT_REACTION,x
     lsr a
     lsr a
     lsr a
@@ -1225,7 +1225,7 @@ ScoreForKind16C9:
     lda a:HitAttackFlags
     and #$01
     bne ScoreForKind16C9_at0
-    lda a:OBJ_2750,x
+    lda a:OBJ_KIND,x
     sec
     sbc #$20
     asl a
@@ -1248,10 +1248,10 @@ ScoreForKind16C9_at0:
 ; WAITS: no.
 ; Entry: X object. Exit: as DropItemWhenHitF (drop_item_when_hit_exit_shim).
 DropItemWhenHit16C9:
-    lda a:OBJ_33B0,x
+    lda a:OBJ_HIT_TAKEN,x
     cmp #$05
     bcc DropItemWhenHit16C9_ret
-    lda a:OBJ_31F8,x
+    lda a:OBJ_HIT_REACTION,x
     lsr a
     lsr a
     and #$07
@@ -1291,7 +1291,7 @@ ScoreForKind18D9:
     lda a:HitAttackFlags
     and #$01
     bne ScoreForKind18D9_at0
-    lda a:OBJ_2750,x
+    lda a:OBJ_KIND,x
     sec
     sbc #$20
     asl a
@@ -1314,10 +1314,10 @@ ScoreForKind18D9_at0:
 ; WAITS: no.
 ; Entry: X object. Exit: as DropItemWhenHitF (drop_item_when_hit_exit_shim).
 DropItemWhenHit18D9:
-    lda a:OBJ_33B0,x
+    lda a:OBJ_HIT_TAKEN,x
     cmp #$05
     bcc DropItemWhenHit18D9_ret
-    lda a:OBJ_31F8,x
+    lda a:OBJ_HIT_REACTION,x
     lsr a
     lsr a
     and #$07
@@ -1354,7 +1354,7 @@ DropItemWhenHit18D9_ret:
 ; WAITS: no.
 ; Entry: X object, D clear. Exit: as PlayHitSoundA (play_hit_sound_exit_shim).
 PlayHitSound18D9:
-    lda a:OBJ_31F8,x
+    lda a:OBJ_HIT_REACTION,x
     lsr a
     lsr a
     lsr a

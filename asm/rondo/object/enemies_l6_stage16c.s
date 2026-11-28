@@ -46,6 +46,6 @@ StepListBC5CThenAimAtPlayer:
     sta a:OBJ_3510,x
     lda #$00
     sta a:OBJ_34B8,x
-    inc a:OBJ_27A8,x
+    inc a:OBJ_STATE,x
 StepListBC5CThenAimAtPlayer_at0:
     rts

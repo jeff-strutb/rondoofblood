@@ -71,11 +71,11 @@
 #define VCE_DATA_HI 0x0405 /* VCE colour data high */
 #define BiosScreenLo 0x2214 /* the card's RAM: written once at start */
 #define BiosScreenHi 0x2215 /* the card's RAM: written once at start */
-#define BiosE05D 0xE05D /* sets an interrupt handler: A which, X and Y its address */
-#define BiosE063 0xE063 /* called every frame */
-#define BiosE06C 0xE06C /* called once at start */
-#define BiosE06F 0xE06F /* called once at start */
-#define BiosE0A2 0xE0A2 /* called once at start */
+#define BiosExSetvec 0xE05D /* "ex_setvec: sets an interrupt handler: A which, X and Y its address", X and Y its address */
+#define BiosExJoysns 0xE063 /* ex_joysns: reads the pads; called every frame */
+#define BiosExDotmod 0xE06C /* ex_dotmod: sets the dot clock; called once at start */
+#define BiosExScrmod 0xE06F /* ex_scrmod: sets the screen mode; called once at start */
+#define BiosExSatclr 0xE0A2 /* ex_satclr: clears the sprite table; called once at start */
 #define SoundCommandIn 0x22D0 /* the sound driver: the command it is taking; also the first byte of low game RAM the start clears */
 #define LevelStreamLo 0x26D0 /* the object stream's position low */
 #define LevelStreamHi 0x26D1 /* the object stream's position high */
@@ -96,12 +96,12 @@
 #define HitboxHi 0x2730 /* per slot of 16: the high bytes: X high plus the sign of the X offset, ORed with Y high plus the sign of the Y offset */
 #define LevelFullWalk 0x2744 /* set during a whole-screen stream walk */
 #define Field2742 0x2742 /* a stage overlay byte (six uses in 024F:67F); no meaning found yet */
-#define OBJ_2750 0x2750 /* object field not yet identified */
-#define OBJ_27A8 0x27A8 /* object field not yet identified */
-#define OBJ_2800 0x2800 /* object field not yet identified */
+#define OBJ_KIND 0x2750 /* "the object's kind: 0 an empty slot; it picks the object's code (RunObjects, DispatchByKind)" */
+#define OBJ_STATE 0x27A8 /* "the object's state: stepped with INC, compared, and doubled to pick its handler from a table" */
+#define OBJ_SUBSTATE 0x2800 /* "the object's step within its state: cleared when the state changes, stepped with INC, doubled to pick a handler" */
 #define OBJ_2A10 0x2A10 /* object field not yet identified */
-#define OBJ_2A68 0x2A68 /* object field not yet identified */
-#define OBJ_2AC0 0x2AC0 /* object field not yet identified */
+#define OBJ_FRAME 0x2A68 /* the object's animation frame */
+#define OBJ_FACING_LEFT 0x2AC0 /* "1 when the object faces left, 0 right; turned with EOR #1" */
 #define OBJ_2B18 0x2B18 /* object field not yet identified */
 #define OBJ_X_HI 0x2B70 /* object X position high */
 #define OBJ_X_LO 0x2BC8 /* object X position low */
@@ -117,19 +117,19 @@
 #define OBJ_FLAGS_2F38 0x2F38 /* bit 7: records an event when told to */
 #define OBJ_EVENT_ID 0x3098 /* event this object records */
 #define OBJ_2F90 0x2F90 /* object field not yet identified */
-#define OBJ_2FE8 0x2FE8 /* object field not yet identified */
+#define OBJ_SPRITE_FLIP 0x2FE8 /* "the object's sprite flip bits ($80, $C0) for its attribute word" */
 #define OBJ_3040 0x3040 /* object field not yet identified */
 #define OBJ_30F0 0x30F0 /* object field not yet identified */
 #define OBJ_3148 0x3148 /* object field not yet identified */
 #define OBJ_31A0 0x31A0 /* object field not yet identified */
-#define OBJ_31F8 0x31F8 /* object field not yet identified */
+#define OBJ_HIT_REACTION 0x31F8 /* "what a hit does: bits 2 to 4 the item it may drop (DropItemWhenHit), bits 5 to 7 the sound it plays (PlayHitSound)" */
 #define OBJ_3250 0x3250 /* object field not yet identified */
 #define OBJ_32A8 0x32A8 /* object field not yet identified */
 #define OBJ_3300 0x3300 /* object field not yet identified */
 #define OBJ_3358 0x3358 /* object field not yet identified */
-#define OBJ_33B0 0x33B0 /* object field not yet identified */
-#define OBJ_3408 0x3408 /* object field not yet identified */
-#define OBJ_3460 0x3460 /* object field not yet identified */
+#define OBJ_HIT_TAKEN 0x33B0 /* the hit the object has taken this frame; 5 or more is a damaging hit */
+#define OBJ_ANIM_STEP 0x3408 /* the step in the object's frame list; cleared with the timer when a list starts */
+#define OBJ_ANIM_TIMER 0x3460 /* frames left on the object's current animation step */
 #define OBJ_34B8 0x34B8 /* object field not yet identified */
 #define OBJ_3510 0x3510 /* object field not yet identified */
 #define OBJ_3568 0x3568 /* object field not yet identified */
@@ -143,10 +143,10 @@
 #define OBJ_3828 0x3828 /* object field not yet identified */
 #define OBJ_3880 0x3880 /* object field not yet identified */
 #define OBJ_38D8 0x38D8 /* object field not yet identified */
-#define OBJ_3930 0x3930 /* object field not yet identified */
-#define OBJ_3988 0x3988 /* object field not yet identified */
-#define OBJ_39E0 0x39E0 /* object field not yet identified */
-#define OBJ_3A38 0x3A38 /* object field not yet identified */
+#define OBJ_HITBOX_DX 0x3930 /* "the hitbox's centre, X offset from the object" */
+#define OBJ_HITBOX_HALF_W 0x3988 /* the hitbox's half width; 0 with the half height: no hitbox */
+#define OBJ_HITBOX_DY 0x39E0 /* "the hitbox's centre, Y offset from the object" */
+#define OBJ_HITBOX_HALF_H 0x3A38 /* the hitbox's half height */
 #define OBJ_3A90 0x3A90 /* object field not yet identified */
 #define OBJ_3AE8 0x3AE8 /* object field not yet identified */
 #define ScriptSlotKind 0x3C00 /* script slot kind by slot */

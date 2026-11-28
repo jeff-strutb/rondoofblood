@@ -78,7 +78,7 @@ RichterAnimationRunning:
 ; @run 6D:B669
 ; WHAT IT DOES: Counts down the frame on show; at zero moves to the next step of the list.
 ; A timer of $FF means the animation has stopped.
-; HOW: The timer in OBJ_2F90, the step in OBJ_FLAGS_2F38, the frame shown in OBJ_2A68.
+; HOW: The timer in OBJ_2F90, the step in OBJ_FLAGS_2F38, the frame shown in OBJ_FRAME.
 ; WAITS: no.
 ; Entry: nothing. Exit: A the frame or $FF; Y twice the step, plus one with a frame; C and N, Z
 ; from what was read. X and V kept. Clobbers zTemp00-01.
@@ -116,7 +116,7 @@ RichterSetAnimation_at0:
 RichterSetAnimation_at1:
     iny
     lda (zTemp00),y
-    sta a:OBJ_2A68
+    sta a:OBJ_FRAME
     rts
 
 ; @routine 01BB:69C RichterAnimationPoint
@@ -148,14 +148,14 @@ RichterAnimationPoint:
 ; C and V kept.
 RichterCheckTurnWindow:
     stz a:PlayerByte3BD7
-    lda a:OBJ_2800
+    lda a:OBJ_SUBSTATE
     beq RichterCheckTurnWindow_at0
     rts
 RichterCheckTurnWindow_at0:
-    ldx a:OBJ_27A8
+    ldx a:OBJ_STATE
     lda a:RichterTurnStates,x
     sta a:PlayerByte3BD7
-    lda a:OBJ_2AC0
+    lda a:OBJ_FACING_LEFT
     bne RichterCheckTurnWindow_at1
     lda a:OBJ_X_LO
     bmi RichterCheckTurnWindow_at2
@@ -171,7 +171,7 @@ RichterCheckTurnWindow_at2:
 ; @routine 01BB:7CA RichterFaceByPad
 ; @run 6D:B7CA
 ; WHAT IT DOES: Turns him to face the way the pad holds, left or right; with neither, as he is.
-; HOW: Bits 7 and 5 of zPadHeld, and facing in OBJ_2AC0: 0 for right, 1 for left.
+; HOW: Bits 7 and 5 of zPadHeld, and facing in OBJ_FACING_LEFT: 0 for right, 1 for left.
 ; WAITS: no.
 ; Entry: nothing. Exit: A the bits looked at last; N and Z from them, or from the facing when it
 ; turns left. X, Y, C and V kept.
@@ -181,12 +181,12 @@ RichterFaceByPad:
     bne RichterFaceByPad_at0
     rts
 RichterFaceByPad_at0:
-    stz a:OBJ_2AC0
+    stz a:OBJ_FACING_LEFT
     and #$20
     beq RichterFaceByPad_at1
     rts
 RichterFaceByPad_at1:
-    inc a:OBJ_2AC0
+    inc a:OBJ_FACING_LEFT
     rts
 
 ; @routine 01BB:7DD RichterNoteItemPress
@@ -229,19 +229,19 @@ RichterCheckItemHearts_at0:
 ; WHAT IT DOES: The item crash: on a press of the item button with no item of his out, clears
 ; the item slots and, if he has the hearts the crash costs, starts its sound and its script and
 ; pays the hearts. Says whether it started; when it does not, the forced press is dropped.
-; HOW: Bit 2 of zPadPressed; OBJ_2750 of slots 3 to 15 all empty; RichterItemCosts in BCD, then
+; HOW: Bit 2 of zPadPressed; OBJ_KIND of slots 3 to 15 all empty; RichterItemCosts in BCD, then
 ; RichterItemCrashLists and RichterItemCrashScripts by item, 0 for none, on channel and slot 6.
 ; WAITS: no.
 ; Entry: nothing. Exit: V bit 6 of the presses. Started: C set, A the hearts left, N and Z from
 ; them, X the item, Y the script if one started. Not started, C clear and: no press, N bit 7 of
-; the presses, Z set, A, X, Y kept; an item out, A its OBJ_2750, N and Z from it, X its slot;
+; the presses, Z set, A, X, Y kept; an item out, A its OBJ_KIND, N and Z from it, X its slot;
 ; too few hearts, A the hearts, N and Z from comparing them with the cost, X the item. Y kept.
 RichterTryItemCrash:
     tst #$04,z:zPadPressed
     beq RichterTryItemCrash_at0
     ldx #$03
 RichterTryItemCrash_at1:
-    lda a:OBJ_2750,x
+    lda a:OBJ_KIND,x
     bne RichterTryItemCrash_at0
     inx
     cpx #$10
@@ -366,13 +366,13 @@ RichterUseThrownItem:
     jsr VecStartScriptSlotKind1
 RichterUseThrownItem_at0:
     ldx z:zField93
-    lda a:OBJ_2750+5
+    lda a:OBJ_KIND+5
     beq RichterUseThrownItem_at1
     ldx z:zField93
     lda z:zField94
     cmp a:RichterItemSecondCosts,x
     bcc $B93D
-    lda a:OBJ_2750+8
+    lda a:OBJ_KIND+8
     beq RichterUseThrownItem_at1
     lda z:zField94
     cmp a:RichterItemThirdCosts,x
@@ -418,13 +418,13 @@ RichterUseItemSix_at0:
 ; @run 6D:B9CD
 ; WHAT IT DOES: Item 7: used while one of slots 5, 8 and 11 is free; then the item's attack, and
 ; its hearts paid. With all three taken, the whip.
-; HOW: OBJ_2750 of each slot in turn.
+; HOW: OBJ_KIND of each slot in turn.
 ; WAITS: no.
 ; Entry: X twice the item. Exit: as RichterUseItem.
 RichterUseItemSeven:
-    lda a:OBJ_2750+5
+    lda a:OBJ_KIND+5
     beq $B99D
-    lda a:OBJ_2750+8
+    lda a:OBJ_KIND+8
     beq $B99D
     lda a:$275B
     beq $B99D
@@ -433,13 +433,13 @@ RichterUseItemSeven:
 ; @routine 01BC:1DF RichterFindItemOut
 ; @run 6D:B9DF
 ; WHAT IT DOES: Finds the first of slots 5 to 15 with an object in it.
-; HOW: OBJ_2750 of each.
+; HOW: OBJ_KIND of each.
 ; WAITS: no.
-; Entry: nothing. Exit: Y the slot, or $10; A its OBJ_2750, or 0. Found: N and Z from A, C kept
+; Entry: nothing. Exit: Y the slot, or $10; A its OBJ_KIND, or 0. Found: N and Z from A, C kept
 ; if it was slot 5, else clear. None: Z and C set, N clear. X and V kept.
 RichterFindItemOut:
     ldy #$05
-    lda a:OBJ_2750,y
+    lda a:OBJ_KIND,y
     bne RichterFindItemOut_at0
     iny
     cpy #$10
@@ -504,7 +504,7 @@ MariaPadSequence:
     lda a:PlayerByte3BE3+2
     asl a
     clc
-    adc a:OBJ_2AC0
+    adc a:OBJ_FACING_LEFT
     tax
     lda z:zPadHeld
     and #$F0
@@ -608,7 +608,7 @@ MariaSetAnimation_at3:
 MariaSetAnimation_at1:
     iny
     lda (zTemp00),y
-    sta a:OBJ_2A68
+    sta a:OBJ_FRAME
     rts
 
 ; @routine 01E0:306 MariaNoteItemPress
@@ -653,14 +653,14 @@ MariaAnimationPoint:
 ; Entry, exit: as RichterCheckTurnWindow.
 MariaCheckTurnWindow:
     stz a:PlayerByte3BD7
-    lda a:OBJ_2800
+    lda a:OBJ_SUBSTATE
     beq MariaCheckTurnWindow_at0
     rts
 MariaCheckTurnWindow_at0:
-    ldx a:OBJ_27A8
+    ldx a:OBJ_STATE
     lda a:RichterTurnStates+$327,x
     sta a:PlayerByte3BD7
-    lda a:OBJ_2AC0
+    lda a:OBJ_FACING_LEFT
     bne MariaCheckTurnWindow_at1
     lda a:OBJ_X_LO
     bmi MariaCheckTurnWindow_at2
@@ -725,7 +725,7 @@ MariaUseItem_at0:
     clc
     rts
 MariaUseItem_at1:
-    lda a:OBJ_27A8
+    lda a:OBJ_STATE
     cmp #$05
     bcs MariaUseItem_at2
     lda a:PlayerByte3BE3+4
@@ -767,13 +767,13 @@ MariaUseItem_at6:
     jsr VecStartScriptSlotKind1
 MariaUseItem_at5:
     ldx z:zField93
-    lda a:OBJ_2750+5
+    lda a:OBJ_KIND+5
     beq MariaUseItem_at7
     ldx z:zField93
     lda z:zField94
     cmp a:MariaUseItem+$93,x
     bcc MariaUseItem_at3
-    lda a:OBJ_2750+8
+    lda a:OBJ_KIND+8
     bne MariaUseItem_at3
 MariaUseItem_at7:
     lda #$01
@@ -789,7 +789,7 @@ MariaUseItem_at7:
 ; @routine 01E0:4C3 MariaFindLiveObject
 ; @run 6D:BCC3
 ; WHAT IT DOES: Looks for an object alive in slots 5 to 14, other than one of kind $18.
-; HOW: OBJ_2750 by Y.
+; HOW: OBJ_KIND by Y.
 ; Untraced: all of it; only MariaUseItem calls it, past its own untraced test.
 ; WAITS: no.
 ; Entry: nothing. Exit: found, Y the slot, A its kind, N, Z and C from comparing it with $18; else Y $0F, A the
@@ -797,7 +797,7 @@ MariaUseItem_at7:
 MariaFindLiveObject:
     ldy #$05
 MariaFindLiveObject_at1:
-    lda a:OBJ_2750,y
+    lda a:OBJ_KIND,y
     bne MariaFindLiveObject_at0
 MariaFindLiveObject_at2:
     iny
@@ -822,7 +822,7 @@ MariaTryItemCrash:
     beq MariaTryItemCrash_at5
     ldx #$03
 MariaTryItemCrash_at0:
-    lda a:OBJ_2750,x
+    lda a:OBJ_KIND,x
     bne MariaTryItemCrash_at5
     inx
     cpx #$0F

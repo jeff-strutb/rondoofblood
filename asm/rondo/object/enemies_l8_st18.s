@@ -10,10 +10,10 @@ CountDownOrPickNextTimer:
     dec a:OBJ_34B8,x
     clc
     rts
-    stz a:OBJ_3408,x
-    stz a:OBJ_3460,x
+    stz a:OBJ_ANIM_STEP,x
+    stz a:OBJ_ANIM_TIMER,x
     lda #$07
-    sta a:OBJ_27A8,x
+    sta a:OBJ_STATE,x
     stz a:OBJ_3778,x
     inc a:OBJ_35C0,x
     lda a:OBJ_35C0,x
@@ -26,17 +26,17 @@ CountDownOrPickNextTimer:
 
 ; @routine 0B4C:051 StepListThenPickStateByLuck
 ; @run 70:B851
-; WHAT IT DOES: In state 0, when the frame is 4, advances OBJ_2800; otherwise (and in later states when the animation list at $B8D2 ends) it takes frame 2, the facing of the player's side, clears the animation timer and picks the next state and OBJ_2800 from the tables at $B8A2 and $B89D by OBJ_32A8 and a random number.
+; WHAT IT DOES: In state 0, when the frame is 4, advances OBJ_SUBSTATE; otherwise (and in later states when the animation list at $B8D2 ends) it takes frame 2, the facing of the player's side, clears the animation timer and picks the next state and OBJ_SUBSTATE from the tables at $B8A2 and $B89D by OBJ_32A8 and a random number.
 ; HOW: StepObjectFrames, SideOfPlayer, NextRandom, table reads, stores.
 ; WAITS: no.
 ; Entry: X object, Y kept unless the step sets it. Exit: as the last instruction that ran. The state 0 arm ran in no script; the draft stops there.
 StepListThenPickStateByLuck:
-    lda a:OBJ_27A8,x
+    lda a:OBJ_STATE,x
     bne StepListThenPickStateByLuck_at0
-    lda a:OBJ_2A68,x
+    lda a:OBJ_FRAME,x
     cmp #$04
     bne StepListThenPickStateByLuck_at1
-    inc a:OBJ_2800,x
+    inc a:OBJ_SUBSTATE,x
     rts
 StepListThenPickStateByLuck_at0:
     lda #$B8
@@ -47,11 +47,11 @@ StepListThenPickStateByLuck_at0:
     bne ChainSwings
 StepListThenPickStateByLuck_at1:
     lda #$02
-    sta a:OBJ_2A68,x
+    sta a:OBJ_FRAME,x
     jsr VecSideOfPlayer
     and #$01
-    sta a:OBJ_2AC0,x
-    stz a:OBJ_3460,x
+    sta a:OBJ_FACING_LEFT,x
+    stz a:OBJ_ANIM_TIMER,x
     lda a:OBJ_32A8,x
     lsr a
     and #$F0
@@ -64,13 +64,13 @@ StepListThenPickStateByLuck_at1:
     lda a:$B8A2,y
     tay
     lda a:$B89D,y
-    sta a:OBJ_27A8,x
-    stz a:OBJ_2800,x
+    sta a:OBJ_STATE,x
+    stz a:OBJ_SUBSTATE,x
     rts
 
 ; @routine 0B4C:0EF StepListThenLeapByDistance
 ; @run 70:B8EF
-; WHAT IT DOES: Steps the animation list at $B936; when it ends plays sound $B5, clears the animation, and from the distance to the player in X (eight steps) sets the speed from the table at $B93F, goes to the next OBJ_2800 and, when facing left, reverses the X speed.
+; WHAT IT DOES: Steps the animation list at $B936; when it ends plays sound $B5, clears the animation, and from the distance to the player in X (eight steps) sets the speed from the table at $B93F, goes to the next OBJ_SUBSTATE and, when facing left, reverses the X speed.
 ; HOW: StepObjectFrames, SoundCommand, DistanceXToPlayer, table reads, stores, NegateVelocityX.
 ; WAITS: no.
 ; Entry: X object, Y kept unless the step sets it. Exit: as the last instruction that ran. Reversing the speed ran in no script; the draft stops there.
@@ -83,8 +83,8 @@ StepListThenLeapByDistance:
     bne StepListThenLeapByDistance_at0
     lda #$B5
     jsr VecSoundCommand
-    stz a:OBJ_3408,x
-    stz a:OBJ_3460,x
+    stz a:OBJ_ANIM_STEP,x
+    stz a:OBJ_ANIM_TIMER,x
     jsr VecDistanceXToPlayer
     lsr a
     lsr a
@@ -102,8 +102,8 @@ StepListThenLeapByDistance:
     sta a:OBJ_VY_HI,x
     lda a:$B941,y
     sta a:OBJ_VY_LO,x
-    inc a:OBJ_2800,x
-    lda a:OBJ_2AC0,x
+    inc a:OBJ_SUBSTATE,x
+    lda a:OBJ_FACING_LEFT,x
     beq StepListThenLeapByDistance_at0
     jsr VecNegateVelocityX
 StepListThenLeapByDistance_at0:
@@ -118,10 +118,10 @@ StepListThenLeapByDistance_at0:
 CountDownThenState5:
     dec a:OBJ_3510,x
     bne CountDownThenState5_at0
-    stz a:OBJ_3408,x
-    stz a:OBJ_3460,x
+    stz a:OBJ_ANIM_STEP,x
+    stz a:OBJ_ANIM_TIMER,x
     lda #$05
-    sta a:OBJ_27A8,x
+    sta a:OBJ_STATE,x
 CountDownThenState5_at0:
     rts
 
@@ -132,7 +132,7 @@ CountDownThenState5_at0:
 ; WAITS: no.
 ; Entry: X object, Y kept for the sound. Exit: A $51, C from the last rotate, V from the subtract.
 SoundAndTileWriteAtFrame24:
-    lda a:OBJ_2A68,x
+    lda a:OBJ_FRAME,x
     cmp #$24
     bne SoundAndTileWriteAtFrame24_at0
     lda #$19
@@ -178,7 +178,7 @@ SoundAndTileWriteAtFrame24_at0:
 ; WAITS: no.
 ; Entry: X object, Y kept for the sound. Exit: as the last instruction that ran.
 SoundAndSpawnFiveAtFrame27:
-    lda a:OBJ_2A68,x
+    lda a:OBJ_FRAME,x
     cmp #$27
     bne SoundAndSpawnFiveAtFrame27_at0
     lda #$B5
@@ -188,8 +188,8 @@ SoundAndSpawnFiveAtFrame27:
     bcc SoundAndSpawnFiveAtFrame27_at0
     lda #$27
     jsr VecStartObjectAtPlace
-    lda a:OBJ_2AC0,x
-    sta a:OBJ_2AC0,y
+    lda a:OBJ_FACING_LEFT,x
+    sta a:OBJ_FACING_LEFT,y
     lda z:zTemp00
     sta a:OBJ_34B8,y
     cmp #$04
@@ -212,23 +212,23 @@ StepListThenState5:
     sta z:zTemp10
     jsr VecStepObjectFrames
     bne StepListThenState5_at0
-    stz a:OBJ_3408,x
-    stz a:OBJ_3460,x
+    stz a:OBJ_ANIM_STEP,x
+    stz a:OBJ_ANIM_TIMER,x
     lda #$05
-    sta a:OBJ_27A8,x
+    sta a:OBJ_STATE,x
 StepListThenState5_at0:
     rts
 
 ; @routine 0B4C:447 SoundThenLeapByFacing
 ; @run 70:BC47
-; WHAT IT DOES: Plays sound $B8, gives the object the X speed from the table at $BC6B by its facing and the Y speed -$0340 (high $FC, low $C0) and goes to the next OBJ_2800.
+; WHAT IT DOES: Plays sound $B8, gives the object the X speed from the table at $BC6B by its facing and the Y speed -$0340 (high $FC, low $C0) and goes to the next OBJ_SUBSTATE.
 ; HOW: SoundCommand, table reads, stores, an INC.
 ; WAITS: no.
 ; Entry: X object, Y kept for the sound. Exit: as the last instruction that ran.
 SoundThenLeapByFacing:
     lda #$B8
     jsr VecSoundCommand
-    lda a:OBJ_2AC0,x
+    lda a:OBJ_FACING_LEFT,x
     asl a
     tay
     lda a:$BC6C,y
@@ -239,7 +239,7 @@ SoundThenLeapByFacing:
     sta a:OBJ_VY_HI,x
     lda #$C0
     sta a:OBJ_VY_LO,x
-    inc a:OBJ_2800,x
+    inc a:OBJ_SUBSTATE,x
     rts
 
 ; @routine 0B4C:5BB MaybeSound19AndSpawnPiece
@@ -264,7 +264,7 @@ MaybeSound19AndSpawnPiece:
     jsr VecNextRandom
     and #$07
     clc
-    adc a:OBJ_2AC0,x
+    adc a:OBJ_FACING_LEFT,x
     sta a:OBJ_3510,y
 MaybeSound19AndSpawnPiece_at0:
     rts

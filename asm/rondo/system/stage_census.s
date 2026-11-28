@@ -28,7 +28,7 @@ InitStage026E:
 InitStage026E_at0:
     tai KernelZeros,ScrollXFrac,$0030
     tai KernelZeros,Scroll3E66,$0088
-    stz a:OBJ_2FE8
+    stz a:OBJ_SPRITE_FLIP
     lda z:zField8E
     pha
     bsr LoadStageEntry026E
@@ -153,7 +153,7 @@ LoadStageEntry026E_at3:
     stz a:OBJ_X_HI
     lda z:zCharacter
     beq LoadStageEntry026E_at1
-    lda a:OBJ_27A8
+    lda a:OBJ_STATE
     cmp #$05
     bcc LoadStageEntry026E_at1
     sec
@@ -173,7 +173,7 @@ LoadStageEntry026E_at1:
     lda (zTemp00),y
     bmi LoadStageEntry026E_at4
     iny
-    sta a:OBJ_2AC0
+    sta a:OBJ_FACING_LEFT
     bra LoadStageEntry026E_at5
 LoadStageEntry026E_at4:
     iny
@@ -429,7 +429,7 @@ InitStage031E:
 InitStage031E_at0:
     tai KernelZeros,ScrollXFrac,$0030
     tai KernelZeros,Scroll3E66,$0088
-    stz a:OBJ_2FE8
+    stz a:OBJ_SPRITE_FLIP
     lda z:zField8E
     pha
     bsr LoadStageEntry031E
@@ -554,7 +554,7 @@ LoadStageEntry031E_at3:
     stz a:OBJ_X_HI
     lda z:zCharacter
     beq LoadStageEntry031E_at1
-    lda a:OBJ_27A8
+    lda a:OBJ_STATE
     cmp #$05
     bcc LoadStageEntry031E_at1
     sec
@@ -574,7 +574,7 @@ LoadStageEntry031E_at1:
     lda (zTemp00),y
     bmi LoadStageEntry031E_at4
     iny
-    sta a:OBJ_2AC0
+    sta a:OBJ_FACING_LEFT
     bra LoadStageEntry031E_at5
 LoadStageEntry031E_at4:
     iny
@@ -830,7 +830,7 @@ InitStage043E:
 InitStage043E_at0:
     tai KernelZeros,ScrollXFrac,$0030
     tai KernelZeros,Scroll3E66,$0088
-    stz a:OBJ_2FE8
+    stz a:OBJ_SPRITE_FLIP
     lda z:zField8E
     pha
     bsr LoadStageEntry043E
@@ -955,7 +955,7 @@ LoadStageEntry043E_at3:
     stz a:OBJ_X_HI
     lda z:zCharacter
     beq LoadStageEntry043E_at1
-    lda a:OBJ_27A8
+    lda a:OBJ_STATE
     cmp #$05
     bcc LoadStageEntry043E_at1
     sec
@@ -975,7 +975,7 @@ LoadStageEntry043E_at1:
     lda (zTemp00),y
     bmi LoadStageEntry043E_at4
     iny
-    sta a:OBJ_2AC0
+    sta a:OBJ_FACING_LEFT
     bra LoadStageEntry043E_at5
 LoadStageEntry043E_at4:
     iny
@@ -1231,7 +1231,7 @@ InitStage064E:
 InitStage064E_at0:
     tai KernelZeros,ScrollXFrac,$0030
     tai KernelZeros,Scroll3E66,$0088
-    stz a:OBJ_2FE8
+    stz a:OBJ_SPRITE_FLIP
     lda z:zField8E
     pha
     bsr LoadStageEntry064E
@@ -1356,7 +1356,7 @@ LoadStageEntry064E_at3:
     stz a:OBJ_X_HI
     lda z:zCharacter
     beq LoadStageEntry064E_at1
-    lda a:OBJ_27A8
+    lda a:OBJ_STATE
     cmp #$05
     bcc LoadStageEntry064E_at1
     sec
@@ -1376,7 +1376,7 @@ LoadStageEntry064E_at1:
     lda (zTemp00),y
     bmi LoadStageEntry064E_at4
     iny
-    sta a:OBJ_2AC0
+    sta a:OBJ_FACING_LEFT
     bra LoadStageEntry064E_at5
 LoadStageEntry064E_at4:
     iny
@@ -1632,7 +1632,7 @@ InitStage10DE:
 InitStage10DE_at0:
     tai KernelZeros,ScrollXFrac,$0030
     tai KernelZeros,Scroll3E66,$0088
-    stz a:OBJ_2FE8
+    stz a:OBJ_SPRITE_FLIP
     lda z:zField8E
     pha
     bsr LoadStageEntry10DE
@@ -1757,7 +1757,7 @@ LoadStageEntry10DE_at3:
     stz a:OBJ_X_HI
     lda z:zCharacter
     beq LoadStageEntry10DE_at1
-    lda a:OBJ_27A8
+    lda a:OBJ_STATE
     cmp #$05
     bcc LoadStageEntry10DE_at1
     sec
@@ -1777,7 +1777,7 @@ LoadStageEntry10DE_at1:
     lda (zTemp00),y
     bmi LoadStageEntry10DE_at4
     iny
-    sta a:OBJ_2AC0
+    sta a:OBJ_FACING_LEFT
     bra LoadStageEntry10DE_at5
 LoadStageEntry10DE_at4:
     iny
@@ -2033,7 +2033,7 @@ InitStage122E:
 InitStage122E_at0:
     tai KernelZeros,ScrollXFrac,$0030
     tai KernelZeros,Scroll3E66,$0088
-    stz a:OBJ_2FE8
+    stz a:OBJ_SPRITE_FLIP
     lda z:zField8E
     pha
     bsr LoadStageEntry122E
@@ -2158,7 +2158,7 @@ LoadStageEntry122E_at3:
     stz a:OBJ_X_HI
     lda z:zCharacter
     beq LoadStageEntry122E_at1
-    lda a:OBJ_27A8
+    lda a:OBJ_STATE
     cmp #$05
     bcc LoadStageEntry122E_at1
     sec
@@ -2178,7 +2178,7 @@ LoadStageEntry122E_at1:
     lda (zTemp00),y
     bmi LoadStageEntry122E_at4
     iny
-    sta a:OBJ_2AC0
+    sta a:OBJ_FACING_LEFT
     bra LoadStageEntry122E_at5
 LoadStageEntry122E_at4:
     iny
@@ -2434,7 +2434,7 @@ InitStage1A2E:
 InitStage1A2E_at0:
     tai KernelZeros,ScrollXFrac,$0030
     tai KernelZeros,Scroll3E66,$0088
-    stz a:OBJ_2FE8
+    stz a:OBJ_SPRITE_FLIP
     lda z:zField8E
     pha
     bsr LoadStageEntry1A2E
@@ -2559,7 +2559,7 @@ LoadStageEntry1A2E_at3:
     stz a:OBJ_X_HI
     lda z:zCharacter
     beq LoadStageEntry1A2E_at1
-    lda a:OBJ_27A8
+    lda a:OBJ_STATE
     cmp #$05
     bcc LoadStageEntry1A2E_at1
     sec
@@ -2579,7 +2579,7 @@ LoadStageEntry1A2E_at1:
     lda (zTemp00),y
     bmi LoadStageEntry1A2E_at4
     iny
-    sta a:OBJ_2AC0
+    sta a:OBJ_FACING_LEFT
     bra LoadStageEntry1A2E_at5
 LoadStageEntry1A2E_at4:
     iny
@@ -2835,7 +2835,7 @@ InitStage1B8E:
 InitStage1B8E_at0:
     tai KernelZeros,ScrollXFrac,$0030
     tai KernelZeros,Scroll3E66,$0088
-    stz a:OBJ_2FE8
+    stz a:OBJ_SPRITE_FLIP
     lda z:zField8E
     pha
     bsr LoadStageEntry1B8E
@@ -2960,7 +2960,7 @@ LoadStageEntry1B8E_at3:
     stz a:OBJ_X_HI
     lda z:zCharacter
     beq LoadStageEntry1B8E_at1
-    lda a:OBJ_27A8
+    lda a:OBJ_STATE
     cmp #$05
     bcc LoadStageEntry1B8E_at1
     sec
@@ -2980,7 +2980,7 @@ LoadStageEntry1B8E_at1:
     lda (zTemp00),y
     bmi LoadStageEntry1B8E_at4
     iny
-    sta a:OBJ_2AC0
+    sta a:OBJ_FACING_LEFT
     bra LoadStageEntry1B8E_at5
 LoadStageEntry1B8E_at4:
     iny
@@ -3236,7 +3236,7 @@ InitStage1CEE:
 InitStage1CEE_at0:
     tai KernelZeros,ScrollXFrac,$0030
     tai KernelZeros,Scroll3E66,$0088
-    stz a:OBJ_2FE8
+    stz a:OBJ_SPRITE_FLIP
     lda z:zField8E
     pha
     bsr LoadStageEntry1CEE
@@ -3361,7 +3361,7 @@ LoadStageEntry1CEE_at3:
     stz a:OBJ_X_HI
     lda z:zCharacter
     beq LoadStageEntry1CEE_at1
-    lda a:OBJ_27A8
+    lda a:OBJ_STATE
     cmp #$05
     bcc LoadStageEntry1CEE_at1
     sec
@@ -3381,7 +3381,7 @@ LoadStageEntry1CEE_at1:
     lda (zTemp00),y
     bmi LoadStageEntry1CEE_at4
     iny
-    sta a:OBJ_2AC0
+    sta a:OBJ_FACING_LEFT
     bra LoadStageEntry1CEE_at5
 LoadStageEntry1CEE_at4:
     iny

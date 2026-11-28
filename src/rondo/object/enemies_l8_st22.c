@@ -75,7 +75,7 @@ static Ended st22_orbit_ended(L8OrbitEnd r)
 /*
  * @routine 0F6B:52F OrbitCosineSineThenSettle
  * @run 70:B52F
- * WHAT IT DOES: Moves the object on an ellipse: X speed from the cosine of OBJ_37D0 scaled by $0120, Y speed from the sine scaled by $0050; turns OBJ_37D0 on by -$0070 a frame (a 16-bit add with OBJ_3778); when OBJ_37D0 reaches $80 it is placed at Y $0040, X $B0 less the scroll and goes to the next OBJ_2800.
+ * WHAT IT DOES: Moves the object on an ellipse: X speed from the cosine of OBJ_37D0 scaled by $0120, Y speed from the sine scaled by $0050; turns OBJ_37D0 on by -$0070 a frame (a 16-bit add with OBJ_3778); when OBJ_37D0 reaches $80 it is placed at Y $0040, X $B0 less the scroll and goes to the next OBJ_SUBSTATE.
  * HOW: ScaleByCosine, ScaleBySine, ApplyVelocityX and Y, a 16-bit add in memory, two compares.
  * WAITS: no.
  * Entry: X object. Exit: as the last instruction that ran (l8_orbit_settle_exit_shim).
@@ -113,7 +113,7 @@ L8OrbitArm OrbitCosineSineThenSettle(uint8_t slot)
     jsr_pop();
     r.orbit = st22_orbit_step(slot);
     if (r.orbit.arm == L8_ORBIT_PLACED) {
-        r.count = INC8(OBJ->f2800[slot]);
+        r.count = INC8(OBJ->substate[slot]);
     }
     return r;
 }
@@ -145,20 +145,20 @@ void abi_OrbitCosineSineThenSettle(void)
 /*
  * @routine 0F6B:59E ResetOrbitAndAdvance
  * @run 70:B59E
- * WHAT IT DOES: Clears OBJ_3778, sets OBJ_37D0 and OBJ_35C0 $80 and goes to the next OBJ_2800.
+ * WHAT IT DOES: Clears OBJ_3778, sets OBJ_37D0 and OBJ_35C0 $80 and goes to the next OBJ_SUBSTATE.
  * HOW: Stores and an INC.
  * WAITS: no.
- * Entry: X object. Exit: A $80, N and Z from the new OBJ_2800 (l8_reset_orbit_exit_shim).
+ * Entry: X object. Exit: A $80, N and Z from the new OBJ_SUBSTATE (l8_reset_orbit_exit_shim).
  */
 uint8_t ResetOrbitAndAdvance(uint8_t slot)
 {
     WR8(OBJ->f3778[slot], 0);
     WR8(OBJ->f37d0[slot], 0x80);
     WR8(OBJ->f35c0[slot], 0x80);
-    return INC8(OBJ->f2800[slot]);
+    return INC8(OBJ->substate[slot]);
 }
 
-/* What ResetOrbitAndAdvance leaves: one path, the new OBJ_2800 behind N and Z. */
+/* What ResetOrbitAndAdvance leaves: one path, the new OBJ_SUBSTATE behind N and Z. */
 static Ended l8_reset_orbit_exit_shim(uint8_t count)
 {
     return then(ended_load(0x80), ended_nz(count));
@@ -172,7 +172,7 @@ void abi_ResetOrbitAndAdvance(void)
 /*
  * @routine 0F6B:5B1 OrbitWithRisingSineThenSettle
  * @run 70:B5B1
- * WHAT IT DOES: As OrbitCosineSineThenSettle, but the Y speed comes from the sine of OBJ_3828 scaled by $0100, which turns on by $01C0 a frame; at $80 the object goes to OBJ_2800 2.
+ * WHAT IT DOES: As OrbitCosineSineThenSettle, but the Y speed comes from the sine of OBJ_3828 scaled by $0100, which turns on by $01C0 a frame; at $80 the object goes to OBJ_SUBSTATE 2.
  * HOW: ScaleBySine, ScaleByCosine, ApplyVelocityY and X, two 16-bit adds in memory, two compares.
  * WAITS: no.
  * Entry: X object. Exit: as the last instruction that ran (l8_orbit_rising_exit_shim).
@@ -216,7 +216,7 @@ L8OrbitArm OrbitWithRisingSineThenSettle(uint8_t slot)
     jsr_pop();
     r.orbit = st22_orbit_step(slot);
     if (r.orbit.arm == L8_ORBIT_PLACED) {
-        WR8(OBJ->f2800[slot], 2);
+        WR8(OBJ->substate[slot], 2);
     }
     return r;
 }
@@ -509,10 +509,10 @@ void abi_StepListThenStartFivePieces(void)
 /*
  * @routine 0F6B:4C9 StepListThenRunPhaseTable
  * @run 70:B4C9
- * WHAT IT DOES: Runs StepListByNumberTable and counts OBJ_3568 down; at zero tries StartPieceABInFreeSlot and, when it started one, keeps OBJ_2800 in OBJ_38D8, clears it, sets OBJ_3510 $40 and takes OBJ_3568 from OBJ_35C0. Then runs the code the table at $B501 names for OBJ_2800 (50B, 51C, 52F, 59E, 5B1).
+ * WHAT IT DOES: Runs StepListByNumberTable and counts OBJ_3568 down; at zero tries StartPieceABInFreeSlot and, when it started one, keeps OBJ_SUBSTATE in OBJ_38D8, clears it, sets OBJ_3510 $40 and takes OBJ_3568 from OBJ_35C0. Then runs the code the table at $B501 names for OBJ_SUBSTATE (50B, 51C, 52F, 59E, 5B1).
  * HOW: Two calls, a table of two bytes to zTemp00-01, a jump through them.
  * WAITS: no.
- * Entry: X object, Y kept unless the step sets it. Exit: as the code jumped to; A the high byte, Y the doubled OBJ_2800 (l8_phase_table_exit_shim).
+ * Entry: X object, Y kept unless the step sets it. Exit: as the code jumped to; A the high byte, Y the doubled OBJ_SUBSTATE (l8_phase_table_exit_shim).
  */
 L8PhaseTableArm StepListThenRunPhaseTable(uint8_t slot, uint8_t y_entry)
 {
@@ -534,15 +534,15 @@ L8PhaseTableArm StepListThenRunPhaseTable(uint8_t slot, uint8_t y_entry)
         r.started = StartPieceABInFreeSlot(slot);
         jsr_pop();
         if (r.started.found.found) {
-            value = RD8(OBJ->f2800[slot]);
+            value = RD8(OBJ->substate[slot]);
             WR8(OBJ->f38d8[slot], value);
-            WR8(OBJ->f2800[slot], 0);
+            WR8(OBJ->substate[slot], 0);
             WR8(OBJ->f3510[slot], 0x40);
             r.value = RD8(OBJ->f35c0[slot]);
             WR8(OBJ->f3568[slot], r.value);
         }
     }
-    r.phase = RD8(OBJ->f2800[slot]);
+    r.phase = RD8(OBJ->substate[slot]);
     r.index = (uint8_t)(r.phase << 1);
     low = rd8((uint16_t)(0xB501 + r.index));
     WR8(ZP->temp00, low);

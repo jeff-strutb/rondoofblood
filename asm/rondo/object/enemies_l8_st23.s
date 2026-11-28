@@ -15,7 +15,7 @@ CountDownThenRestartMusicAndScript:
     sta a:OBJ_3568,x
     lda #$40
     sta a:OBJ_3510,x
-    inc a:OBJ_27A8,x
+    inc a:OBJ_STATE,x
     rmb3 z:zField8E
     rmb4 z:zField8E
     jsr VecCdPlayAgain
@@ -42,7 +42,7 @@ CountDownThenRestartMusicAndScript_at0:
 ; WAITS: no.
 ; Entry: X object, Y kept for the sound. Exit: as the last instruction that ran.
 ThrownPieceThenScatterAndLeave:
-    lda a:OBJ_27A8,x
+    lda a:OBJ_STATE,x
     bne ThrownPieceThenScatterAndLeave_at0
     jsr VecLoadObjectRecord
     lda #$08
@@ -68,8 +68,8 @@ ThrownPieceThenScatterAndLeave_at2:
     lda #$D0
     sta a:OBJ_Y_LO,x
     lda #$08
-    sta a:OBJ_3988,x
-    sta a:OBJ_3A38,x
+    sta a:OBJ_HITBOX_HALF_W,x
+    sta a:OBJ_HITBOX_HALF_H,x
     lda #$00
     sta z:zTemp00
 ThrownPieceThenScatterAndLeave_at3:
@@ -86,7 +86,7 @@ ThrownPieceThenScatterAndLeave_at3:
     bra ThrownPieceThenScatterAndLeave_at3
     lda #$26
     jsr VecSoundCommand
-    inc a:OBJ_27A8,x
+    inc a:OBJ_STATE,x
     inc a:OBJ_34B8,x
     jsr ClearAnimationThenStepListByNumber
     rts
@@ -94,7 +94,7 @@ ThrownPieceThenScatterAndLeave_at1:
     tst #$03,z:zWaveCounter
     bne ThrownPieceThenScatterAndLeave_at4
     ldy #$50
-    lda a:OBJ_2750,y
+    lda a:OBJ_KIND,y
     bne ThrownPieceThenScatterAndLeave_at5
     jsr VecClearObjectInY
     lda #$9B

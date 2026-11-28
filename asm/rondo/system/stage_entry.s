@@ -90,7 +90,7 @@ LoadStageEntry_at0:
     stz a:OBJ_X_HI
     lda z:zCharacter
     beq AnimateAndCueNine
-    lda a:OBJ_27A8
+    lda a:OBJ_STATE
     cmp #$05
     bcc AnimateAndCueNine
     sec
@@ -109,7 +109,7 @@ LoadStageEntry_at0:
     lda (zTemp00),y
     bmi LoadStageEntry_at1
     iny
-    sta a:OBJ_2AC0
+    sta a:OBJ_FACING_LEFT
     bra LoadStageEntry_at2
 LoadStageEntry_at1:
     iny
@@ -209,7 +209,7 @@ LoadStageEntryB_at0:
     stz a:OBJ_X_HI
     lda z:zCharacter
     beq AnimateAndCueNine
-    lda a:OBJ_27A8
+    lda a:OBJ_STATE
     cmp #$05
     bcc AnimateAndCueNine
     sec
@@ -228,7 +228,7 @@ LoadStageEntryB_at0:
     lda (zTemp00),y
     bmi LoadStageEntryB_at1
     iny
-    sta a:OBJ_2AC0
+    sta a:OBJ_FACING_LEFT
     bra LoadStageEntryB_at2
 LoadStageEntryB_at1:
     iny
@@ -328,7 +328,7 @@ LoadStageEntryC_at0:
     stz a:OBJ_X_HI
     lda z:zCharacter
     beq AnimateAndCueNine
-    lda a:OBJ_27A8
+    lda a:OBJ_STATE
     cmp #$05
     bcc AnimateAndCueNine
     sec
@@ -347,7 +347,7 @@ LoadStageEntryC_at0:
     lda (zTemp00),y
     bmi LoadStageEntryC_at1
     iny
-    sta a:OBJ_2AC0
+    sta a:OBJ_FACING_LEFT
     bra LoadStageEntryC_at2
 LoadStageEntryC_at1:
     iny
@@ -447,7 +447,7 @@ LoadStageEntryD_at0:
     stz a:OBJ_X_HI
     lda z:zCharacter
     beq AnimateAndCueNine
-    lda a:OBJ_27A8
+    lda a:OBJ_STATE
     cmp #$05
     bcc AnimateAndCueNine
     sec
@@ -466,7 +466,7 @@ LoadStageEntryD_at0:
     lda (zTemp00),y
     bmi LoadStageEntryD_at1
     iny
-    sta a:OBJ_2AC0
+    sta a:OBJ_FACING_LEFT
     bra LoadStageEntryD_at2
 LoadStageEntryD_at1:
     iny
@@ -566,7 +566,7 @@ LoadStageEntryE_at0:
     stz a:OBJ_X_HI
     lda z:zCharacter
     beq AnimateAndCueNine
-    lda a:OBJ_27A8
+    lda a:OBJ_STATE
     cmp #$05
     bcc AnimateAndCueNine
     sec
@@ -585,7 +585,7 @@ LoadStageEntryE_at0:
     lda (zTemp00),y
     bmi LoadStageEntryE_at1
     iny
-    sta a:OBJ_2AC0
+    sta a:OBJ_FACING_LEFT
     bra LoadStageEntryE_at2
 LoadStageEntryE_at1:
     iny
@@ -685,7 +685,7 @@ LoadStageEntryF_at0:
     stz a:OBJ_X_HI
     lda z:zCharacter
     beq AnimateAndCueNine
-    lda a:OBJ_27A8
+    lda a:OBJ_STATE
     cmp #$05
     bcc AnimateAndCueNine
     sec
@@ -704,7 +704,7 @@ LoadStageEntryF_at0:
     lda (zTemp00),y
     bmi LoadStageEntryF_at1
     iny
-    sta a:OBJ_2AC0
+    sta a:OBJ_FACING_LEFT
     bra LoadStageEntryF_at2
 LoadStageEntryF_at1:
     iny
@@ -804,7 +804,7 @@ LoadStageEntryG_at0:
     stz a:OBJ_X_HI
     lda z:zCharacter
     beq AnimateAndCueNine
-    lda a:OBJ_27A8
+    lda a:OBJ_STATE
     cmp #$05
     bcc AnimateAndCueNine
     sec
@@ -823,7 +823,7 @@ LoadStageEntryG_at0:
     lda (zTemp00),y
     bmi LoadStageEntryG_at1
     iny
-    sta a:OBJ_2AC0
+    sta a:OBJ_FACING_LEFT
     bra LoadStageEntryG_at2
 LoadStageEntryG_at1:
     iny
@@ -923,7 +923,7 @@ LoadStageEntryH_at0:
     stz a:OBJ_X_HI
     lda z:zCharacter
     beq AnimateAndCueNine
-    lda a:OBJ_27A8
+    lda a:OBJ_STATE
     cmp #$05
     bcc AnimateAndCueNine
     sec
@@ -942,7 +942,7 @@ LoadStageEntryH_at0:
     lda (zTemp00),y
     bmi LoadStageEntryH_at1
     iny
-    sta a:OBJ_2AC0
+    sta a:OBJ_FACING_LEFT
     bra LoadStageEntryH_at2
 LoadStageEntryH_at1:
     iny
@@ -1042,7 +1042,7 @@ LoadStageEntryI_at0:
     stz a:OBJ_X_HI
     lda z:zCharacter
     beq AnimateAndCueNine
-    lda a:OBJ_27A8
+    lda a:OBJ_STATE
     cmp #$05
     bcc AnimateAndCueNine
     sec
@@ -1061,7 +1061,7 @@ LoadStageEntryI_at0:
     lda (zTemp00),y
     bmi LoadStageEntryI_at1
     iny
-    sta a:OBJ_2AC0
+    sta a:OBJ_FACING_LEFT
     bra LoadStageEntryI_at2
 LoadStageEntryI_at1:
     iny
@@ -1161,7 +1161,7 @@ LoadStageEntryJ_at0:
     stz a:OBJ_X_HI
     lda z:zCharacter
     beq AnimateAndCueNine
-    lda a:OBJ_27A8
+    lda a:OBJ_STATE
     cmp #$05
     bcc AnimateAndCueNine
     sec
@@ -1180,7 +1180,7 @@ LoadStageEntryJ_at0:
     lda (zTemp00),y
     bmi LoadStageEntryJ_at1
     iny
-    sta a:OBJ_2AC0
+    sta a:OBJ_FACING_LEFT
     bra LoadStageEntryJ_at2
 LoadStageEntryJ_at1:
     iny
@@ -1280,7 +1280,7 @@ LoadStageEntryK_at0:
     stz a:OBJ_X_HI
     lda z:zCharacter
     beq AnimateAndCueNine
-    lda a:OBJ_27A8
+    lda a:OBJ_STATE
     cmp #$05
     bcc AnimateAndCueNine
     sec
@@ -1299,7 +1299,7 @@ LoadStageEntryK_at0:
     lda (zTemp00),y
     bmi LoadStageEntryK_at1
     iny
-    sta a:OBJ_2AC0
+    sta a:OBJ_FACING_LEFT
     bra LoadStageEntryK_at2
 LoadStageEntryK_at1:
     iny
@@ -1399,7 +1399,7 @@ LoadStageEntryL_at0:
     stz a:OBJ_X_HI
     lda z:zCharacter
     beq AnimateAndCueNine
-    lda a:OBJ_27A8
+    lda a:OBJ_STATE
     cmp #$05
     bcc AnimateAndCueNine
     sec
@@ -1418,7 +1418,7 @@ LoadStageEntryL_at0:
     lda (zTemp00),y
     bmi LoadStageEntryL_at1
     iny
-    sta a:OBJ_2AC0
+    sta a:OBJ_FACING_LEFT
     bra LoadStageEntryL_at2
 LoadStageEntryL_at1:
     iny
@@ -1518,7 +1518,7 @@ LoadStageEntryM_at0:
     stz a:OBJ_X_HI
     lda z:zCharacter
     beq AnimateAndCueNine
-    lda a:OBJ_27A8
+    lda a:OBJ_STATE
     cmp #$05
     bcc AnimateAndCueNine
     sec
@@ -1537,7 +1537,7 @@ LoadStageEntryM_at0:
     lda (zTemp00),y
     bmi LoadStageEntryM_at1
     iny
-    sta a:OBJ_2AC0
+    sta a:OBJ_FACING_LEFT
     bra LoadStageEntryM_at2
 LoadStageEntryM_at1:
     iny
@@ -1637,7 +1637,7 @@ LoadStageEntryN_at0:
     stz a:OBJ_X_HI
     lda z:zCharacter
     beq AnimateAndCueNine
-    lda a:OBJ_27A8
+    lda a:OBJ_STATE
     cmp #$05
     bcc AnimateAndCueNine
     sec
@@ -1656,7 +1656,7 @@ LoadStageEntryN_at0:
     lda (zTemp00),y
     bmi LoadStageEntryN_at1
     iny
-    sta a:OBJ_2AC0
+    sta a:OBJ_FACING_LEFT
     bra LoadStageEntryN_at2
 LoadStageEntryN_at1:
     iny
@@ -1756,7 +1756,7 @@ LoadStageEntryO_at0:
     stz a:OBJ_X_HI
     lda z:zCharacter
     beq AnimateAndCueNine
-    lda a:OBJ_27A8
+    lda a:OBJ_STATE
     cmp #$05
     bcc AnimateAndCueNine
     sec
@@ -1775,7 +1775,7 @@ LoadStageEntryO_at0:
     lda (zTemp00),y
     bmi LoadStageEntryO_at1
     iny
-    sta a:OBJ_2AC0
+    sta a:OBJ_FACING_LEFT
     bra LoadStageEntryO_at2
 LoadStageEntryO_at1:
     iny
@@ -1875,7 +1875,7 @@ LoadStageEntryP_at0:
     stz a:OBJ_X_HI
     lda z:zCharacter
     beq AnimateAndCueNine
-    lda a:OBJ_27A8
+    lda a:OBJ_STATE
     cmp #$05
     bcc AnimateAndCueNine
     sec
@@ -1894,7 +1894,7 @@ LoadStageEntryP_at0:
     lda (zTemp00),y
     bmi LoadStageEntryP_at1
     iny
-    sta a:OBJ_2AC0
+    sta a:OBJ_FACING_LEFT
     bra LoadStageEntryP_at2
 LoadStageEntryP_at1:
     iny
@@ -1994,7 +1994,7 @@ LoadStageEntryQ_at0:
     stz a:OBJ_X_HI
     lda z:zCharacter
     beq AnimateAndCueNine
-    lda a:OBJ_27A8
+    lda a:OBJ_STATE
     cmp #$05
     bcc AnimateAndCueNine
     sec
@@ -2013,7 +2013,7 @@ LoadStageEntryQ_at0:
     lda (zTemp00),y
     bmi LoadStageEntryQ_at1
     iny
-    sta a:OBJ_2AC0
+    sta a:OBJ_FACING_LEFT
     bra LoadStageEntryQ_at2
 LoadStageEntryQ_at1:
     iny
@@ -2113,7 +2113,7 @@ LoadStageEntryR_at0:
     stz a:OBJ_X_HI
     lda z:zCharacter
     beq AnimateAndCueNine
-    lda a:OBJ_27A8
+    lda a:OBJ_STATE
     cmp #$05
     bcc AnimateAndCueNine
     sec
@@ -2132,7 +2132,7 @@ LoadStageEntryR_at0:
     lda (zTemp00),y
     bmi LoadStageEntryR_at1
     iny
-    sta a:OBJ_2AC0
+    sta a:OBJ_FACING_LEFT
     bra LoadStageEntryR_at2
 LoadStageEntryR_at1:
     iny
@@ -2232,7 +2232,7 @@ LoadStageEntryS_at0:
     stz a:OBJ_X_HI
     lda z:zCharacter
     beq AnimateAndCueNine
-    lda a:OBJ_27A8
+    lda a:OBJ_STATE
     cmp #$05
     bcc AnimateAndCueNine
     sec
@@ -2251,7 +2251,7 @@ LoadStageEntryS_at0:
     lda (zTemp00),y
     bmi LoadStageEntryS_at1
     iny
-    sta a:OBJ_2AC0
+    sta a:OBJ_FACING_LEFT
     bra LoadStageEntryS_at2
 LoadStageEntryS_at1:
     iny
@@ -2351,7 +2351,7 @@ LoadStageEntryT_at0:
     stz a:OBJ_X_HI
     lda z:zCharacter
     beq AnimateAndCueNine
-    lda a:OBJ_27A8
+    lda a:OBJ_STATE
     cmp #$05
     bcc AnimateAndCueNine
     sec
@@ -2370,7 +2370,7 @@ LoadStageEntryT_at0:
     lda (zTemp00),y
     bmi LoadStageEntryT_at1
     iny
-    sta a:OBJ_2AC0
+    sta a:OBJ_FACING_LEFT
     bra LoadStageEntryT_at2
 LoadStageEntryT_at1:
     iny
@@ -2470,7 +2470,7 @@ LoadStageEntryU_at0:
     stz a:OBJ_X_HI
     lda z:zCharacter
     beq AnimateAndCueNine
-    lda a:OBJ_27A8
+    lda a:OBJ_STATE
     cmp #$05
     bcc AnimateAndCueNine
     sec
@@ -2489,7 +2489,7 @@ LoadStageEntryU_at0:
     lda (zTemp00),y
     bmi LoadStageEntryU_at1
     iny
-    sta a:OBJ_2AC0
+    sta a:OBJ_FACING_LEFT
     bra LoadStageEntryU_at2
 LoadStageEntryU_at1:
     iny
@@ -2589,7 +2589,7 @@ LoadStageEntryV_at0:
     stz a:OBJ_X_HI
     lda z:zCharacter
     beq AnimateAndCueNine
-    lda a:OBJ_27A8
+    lda a:OBJ_STATE
     cmp #$05
     bcc AnimateAndCueNine
     sec
@@ -2608,7 +2608,7 @@ LoadStageEntryV_at0:
     lda (zTemp00),y
     bmi LoadStageEntryV_at1
     iny
-    sta a:OBJ_2AC0
+    sta a:OBJ_FACING_LEFT
     bra LoadStageEntryV_at2
 LoadStageEntryV_at1:
     iny
@@ -2708,7 +2708,7 @@ LoadStageEntryW_at0:
     stz a:OBJ_X_HI
     lda z:zCharacter
     beq AnimateAndCueNine
-    lda a:OBJ_27A8
+    lda a:OBJ_STATE
     cmp #$05
     bcc AnimateAndCueNine
     sec
@@ -2727,7 +2727,7 @@ LoadStageEntryW_at0:
     lda (zTemp00),y
     bmi LoadStageEntryW_at1
     iny
-    sta a:OBJ_2AC0
+    sta a:OBJ_FACING_LEFT
     bra LoadStageEntryW_at2
 LoadStageEntryW_at1:
     iny

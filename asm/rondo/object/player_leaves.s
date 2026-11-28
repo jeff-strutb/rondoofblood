@@ -2,28 +2,28 @@
 ; @run 6D:B0A0
 ; WHAT IT DOES: Turns the player round when the pad says so: facing right and the pad's bit 7 held turns him left,
 ; facing left and bit 5 held turns him right; the state then takes the next one from a table.
-; HOW: OBJ_2AC0 is the facing; a TST of zPadHeld; the state less 5 indexes the table at $B03B.
+; HOW: OBJ_FACING_LEFT is the facing; a TST of zPadHeld; the state less 5 indexes the table at $B03B.
 ; WAITS: no.
 ; Entry: nothing. Exit: no turn: A the facing, N, V, Z from the TST. A turn: A the new state, N and Z from it, Y the
 ; old state less 5, C and V from that subtract.
 RichterTurnOnPad:
-    lda a:OBJ_2AC0
+    lda a:OBJ_FACING_LEFT
     bne RichterTurnOnPad_at0
     tst #$80,z:zPadHeld
     beq RichterTurnOnPad_at1
-    inc a:OBJ_2AC0
+    inc a:OBJ_FACING_LEFT
 RichterTurnOnPad_at2:
-    lda a:OBJ_27A8
+    lda a:OBJ_STATE
     sec
     sbc #$05
     tay
     lda a:$B03B,y
-    sta a:OBJ_27A8
+    sta a:OBJ_STATE
     rts
 RichterTurnOnPad_at0:
     tst #$20,z:zPadHeld
     beq RichterTurnOnPad_at1
-    stz a:OBJ_2AC0
+    stz a:OBJ_FACING_LEFT
     bra RichterTurnOnPad_at2
 RichterTurnOnPad_at1:
     rts
@@ -68,7 +68,7 @@ RichterReadAtOffset:
 ; Entry: nothing. Exit: A and X the doubled state, N and Z from it, C the state's bit 7. Y, V kept.
 RichterStateDoubled:
     ldx z:zRichterObject
-    lda a:OBJ_27A8,x
+    lda a:OBJ_STATE,x
     asl a
     tax
     rts
@@ -174,7 +174,7 @@ MoveObjectUpBySigned_at0:
 ; WAITS: no.
 ; Entry: X the object. Exit: facing zero: A zero, Z. Otherwise as NegateVelocityX.
 NegateVelocityXIfFacingLeft:
-    lda a:OBJ_2AC0,x
+    lda a:OBJ_FACING_LEFT,x
     bne NegateVelocityXIfFacingLeft_at0
     rts
 NegateVelocityXIfFacingLeft_at0:
@@ -289,7 +289,7 @@ ReportHitUnlessTwo:
     lda a:HitboxYLo+3
     sta a:StageHitReport+3
     lda a:OBJ_3828,y
-    sta a:OBJ_33B0,x
+    sta a:OBJ_HIT_TAKEN,x
 ReportHitUnlessTwo_at0:
     rts
 
@@ -319,7 +319,7 @@ LoadRecordThenFrameByKind:
     and #$01
     tay
     lda a:$9CFD,y
-    sta a:OBJ_2A68,x
+    sta a:OBJ_FRAME,x
 
 ; @routine 0720:4FC EmptyHandler9CFC
 ; @run 6B:9CFC
@@ -359,13 +359,13 @@ ReportHitToStage:
 
 ; @routine 0E00:092 StoreHitFromTable
 ; @run 6B:9892
-; WHAT IT DOES: Gives the object's hit timer OBJ_33B0 the byte of OBJ_3828 at the slot in Y.
+; WHAT IT DOES: Gives the object's hit timer OBJ_HIT_TAKEN the byte of OBJ_3828 at the slot in Y.
 ; HOW: One read, one write.
 ; WAITS: no.
 ; Entry: X object, Y the slot. Exit: A the byte, N and Z from it.
 StoreHitFromTable:
     lda a:OBJ_3828,y
-    sta a:OBJ_33B0,x
+    sta a:OBJ_HIT_TAKEN,x
     rts
 
 ; @routine 10C0:293 TileHalfStepAAt9A93
@@ -527,7 +527,7 @@ TileLift1At9CC3:
 ; Entry, exit: as RichterStateDoubled.
 MariaStateDoubled:
     ldx z:zRichterObject
-    lda a:OBJ_27A8,x
+    lda a:OBJ_STATE,x
     asl a
     tax
     rts

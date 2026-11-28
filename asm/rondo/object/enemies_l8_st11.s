@@ -5,7 +5,7 @@
 ; WAITS: no.
 ; Entry: X object. Exit: as LoadObjectRecord in state 0; otherwise the compare, A $BF when it was capped.
 LoadRecordOrCapPlayerX:
-    lda a:OBJ_27A8,x
+    lda a:OBJ_STATE,x
     bne LoadRecordOrCapPlayerX_at0
     jmp VecLoadObjectRecord
 LoadRecordOrCapPlayerX_at0:
@@ -24,13 +24,13 @@ LoadRecordOrCapPlayerX_at1:
 ; WAITS: no.
 ; Entry: X object. Exit: as ApplyVelocity, or A $E0 (N set, Z clear) with C and Y from LoadObjectRecord.
 StartAtX120OrApplyVelocity:
-    lda a:OBJ_27A8,x
+    lda a:OBJ_STATE,x
     beq StartAtX120OrApplyVelocity_at0
     jmp VecApplyVelocity
 StartAtX120OrApplyVelocity_at0:
     jsr VecLoadObjectRecord
     lda #$6F
-    sta a:OBJ_2A68,x
+    sta a:OBJ_FRAME,x
     lda #$01
     sta a:OBJ_X_HI,x
     lda #$20
@@ -53,7 +53,7 @@ StartAtX120OrApplyVelocity_at0:
 SetBossFixedFields:
     lda #$10
     sta a:OBJ_3510
-    stz a:OBJ_2A68
+    stz a:OBJ_FRAME
     lda #$40
     sta a:OBJ_3568
     rts
@@ -120,7 +120,7 @@ CountdownThenNextState:
 ; Entry: A the timer, X object. Exit: the new state's N and Z.
 SetTimerThenNextState:
     sta a:OBJ_34B8,x
-    inc a:OBJ_27A8,x
+    inc a:OBJ_STATE,x
     rts
 
 ; @routine 025A:786 SpawnPiece21Mask1F
@@ -196,14 +196,14 @@ HoldScrollStepThenNextState_at0:
 
 ; @routine 025A:7DE StepScrollThenMoveOrFadeOut
 ; @run 70:AFDE
-; WHAT IT DOES: Runs StepVerticalScrollTable. When slots 0's state and OBJ_2800 and Y speed high byte are all 0 and the byte at $3BC3 is not 0 it acts by OBJ_3670: at 0 it speeds up the object named by OBJ_3040 by $0010, sets ScrollStepXHi+1 to the negative of its X speed high byte, sets slot 0's OBJ_3510 $10 and OBJ_3568 0, hands slot 0's sprite set, frame and facing to the object named by OBJ_3040 and clears slot 0's frame; when ScrollXHi+1 is $FE it then sets the timer $40 and goes to the next state. At 1 it clears OBJ_3670, clears the object named by OBJ_3040, makes it kind $31, sets slot 0's OBJ_3510 $10 and OBJ_3568 0 and fades the CD with type $0C.
+; WHAT IT DOES: Runs StepVerticalScrollTable. When slots 0's state and OBJ_SUBSTATE and Y speed high byte are all 0 and the byte at $3BC3 is not 0 it acts by OBJ_3670: at 0 it speeds up the object named by OBJ_3040 by $0010, sets ScrollStepXHi+1 to the negative of its X speed high byte, sets slot 0's OBJ_3510 $10 and OBJ_3568 0, hands slot 0's sprite set, frame and facing to the object named by OBJ_3040 and clears slot 0's frame; when ScrollXHi+1 is $FE it then sets the timer $40 and goes to the next state. At 1 it clears OBJ_3670, clears the object named by OBJ_3040, makes it kind $31, sets slot 0's OBJ_3510 $10 and OBJ_3568 0 and fades the CD with type $0C.
 ; HOW: StepVerticalScrollTable, tests, 16-bit adds in memory, ClearObjectInY, cd_fade (the card's volume fade), a tail jump into SetTimerThenNextState.
 ; WAITS: no.
 ; Entry: X object. Exit: as the last instruction that ran; with the fade, as cd_fade leaves them. The byte at $3BC3 and $3BF0 keep their address form until they have names. The OBJ_3670 not 0 arm ran in no script; the draft stops there.
 StepScrollThenMoveOrFadeOut:
     jsr StepVerticalScrollTable
-    lda a:OBJ_27A8
-    ora a:OBJ_2800
+    lda a:OBJ_STATE
+    ora a:OBJ_SUBSTATE
     bne $AFDD
     lda a:OBJ_VY_HI
     bne $AFDD
@@ -234,11 +234,11 @@ StepScrollThenMoveOrFadeOut:
     ldy a:OBJ_3040,x
     lda a:OBJ_2A10
     sta a:OBJ_2A10,y
-    lda a:OBJ_2A68
-    sta a:OBJ_2A68,y
-    lda a:OBJ_2AC0
-    sta a:OBJ_2AC0,y
-    stz a:OBJ_2A68
+    lda a:OBJ_FRAME
+    sta a:OBJ_FRAME,y
+    lda a:OBJ_FACING_LEFT
+    sta a:OBJ_FACING_LEFT,y
+    stz a:OBJ_FRAME
     ldy a:ScrollXHi+1
     lda #$40
     iny
@@ -252,7 +252,7 @@ StepScrollThenMoveOrFadeOut_at0:
     ldy a:OBJ_3040,x
     jsr VecClearObjectInY
     lda #$31
-    sta a:OBJ_2750,y
+    sta a:OBJ_KIND,y
     lda #$10
     sta a:OBJ_3510
     lda #$02

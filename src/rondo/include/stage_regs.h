@@ -158,4 +158,11 @@ void blend_exit_shim(TileRowsExit out);
 TileRowsExit BlendStageRowPairAt(uint8_t x, uint8_t a, uint8_t y, uint16_t at,
                                  TileRowsExit (*tile_rows)(uint8_t, uint8_t, uint8_t));
 
+
+/* system/stage_tile_rows.c: BlendStageRowChanges (024F:236) run at `at`, with the C of its tile row blend, and what it
+ * leaves set on the registers. */
+RowChangesExit BlendStageRowChangesAt(uint8_t x, uint8_t new_byte, uint16_t at,
+                                      TileRowsExit (*tile_rows)(uint8_t, uint8_t, uint8_t));
+void row_changes_exit_shim(RowChangesExit out);
+
 #endif

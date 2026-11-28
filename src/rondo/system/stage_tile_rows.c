@@ -250,7 +250,9 @@ void abi_BlendStageRowPair(void)
  * C 1; Y 5 once a blend ran, else kept.
  */
 
-static RowChangesExit blend_changes(uint8_t x, uint8_t new_byte)
+/* The body, at the address it runs at (its JSRs return to at + $16 and + $2F), with the C of its tile row blend. */
+static RowChangesExit blend_changes(uint8_t x, uint8_t new_byte, uint16_t at,
+                                    TileRowsExit (*tile_rows)(uint8_t, uint8_t, uint8_t))
 {
     RowChangesExit out = { 0, 0, false, false, false };
     uint8_t old_low;
@@ -269,8 +271,8 @@ static RowChangesExit blend_changes(uint8_t x, uint8_t new_byte)
     old_low = RD8(ZP->bios_a.hi);
     if (low != old_low) {
         old_low = RD8(ZP->bios_a.hi);
-        jsr_push(0x924C);
-        blend = BlendStageTileRows(x, low, old_low);
+        jsr_push((uint16_t)(at + 0x16));
+        blend = tile_rows(x, low, old_low);
         jsr_pop();
         out.y_set = true;
         out.v_set = true;
@@ -288,8 +290,8 @@ static RowChangesExit blend_changes(uint8_t x, uint8_t new_byte)
     out.x = x;
     if (old_high != high) {
         high = RD8(ZP->bios_a.hi);
-        jsr_push(0x9265);
-        blend = BlendStageTileRows(x, old_high, high);
+        jsr_push((uint16_t)(at + 0x2F));
+        blend = tile_rows(x, old_high, high);
         jsr_pop();
         out.a = blend.a;
         out.x = blend.x;
@@ -302,13 +304,25 @@ static RowChangesExit blend_changes(uint8_t x, uint8_t new_byte)
 
 RowChangesExit BlendStageRowChanges(uint8_t x, uint8_t new_byte)
 {
-    return blend_changes(x, new_byte);
+    return blend_changes(x, new_byte, 0x9236, BlendStageTileRows);
+}
+
+/* BlendStageRowChanges' body for the builds of the overlay that hold it elsewhere (stage_programs_census.c): at the
+ * address their code runs at, with the C of their tile row blend. */
+RowChangesExit BlendStageRowChangesAt(uint8_t x, uint8_t new_byte, uint16_t at,
+                                      TileRowsExit (*tile_rows)(uint8_t, uint8_t, uint8_t))
+{
+    return blend_changes(x, new_byte, at, tile_rows);
 }
 
 void abi_BlendStageRowChanges(void)
 {
-    RowChangesExit out = blend_changes(cpu.x, cpu.a);
+    row_changes_exit_shim(blend_changes(cpu.x, cpu.a, 0x9236, BlendStageTileRows));
+}
 
+/* What BlendStageRowChanges leaves, set on the registers. */
+void row_changes_exit_shim(RowChangesExit out)
+{
     cpu.a = out.a;
     cpu.x = out.x;
     if (out.y_set) {

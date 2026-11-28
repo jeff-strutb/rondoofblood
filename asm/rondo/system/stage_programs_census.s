@@ -3114,3 +3114,86 @@ BlendStageRowPair031F:
     plx
     inx
     jmp BlendStageTileRows026E
+
+; @routine 026F:1F4 BlendStageRowChanges026F
+; @run 6B:91F4
+; WHAT IT DOES: Blends the rows a byte changed: for each nibble of the old byte (zBiosAl) that differs from the new (A), the old
+; nibble's row is blended in at the step X or the step after (as BlendStageRowChanges, 024F:236). Programs 064F, 122F, 1A2F, 1B8F and 1CEF hold the same bytes.
+; HOW: The low nibbles compared, BlendStageTileRows026E called when they differ; then the high nibbles one step on.
+; WAITS: no.
+; Entry: A the new byte, zBiosAl the old, X the step. Exit: as BlendStageRowChanges.
+; Nothing the game does loads this program (codemap.unloaded_programs), so nothing is known to reach it.
+BlendStageRowChanges026F:
+    phx
+    sta z:zBiosBl
+    lda z:zBiosAl
+    and #$0F
+    sta z:zBiosAh
+    lda z:zBiosBl
+    and #$0F
+    cmp z:zBiosAh
+    beq BlendStageRowChanges026F_at0
+    ldy z:zBiosAh
+    jsr BlendStageTileRows026E
+BlendStageRowChanges026F_at0:
+    lda z:zBiosAl
+    lsr a
+    lsr a
+    lsr a
+    lsr a
+    sta z:zBiosAh
+    lda z:zBiosBl
+    lsr a
+    lsr a
+    lsr a
+    lsr a
+    plx
+    inx
+    cmp z:zBiosAh
+    beq BlendStageRowChanges026F_at1
+    ldy z:zBiosAh
+    jsr BlendStageTileRows026E
+BlendStageRowChanges026F_at1:
+    rts
+
+; @routine 031F:1E8 BlendStageRowChanges031F
+; @run 6B:91E8
+; WHAT IT DOES: Blends the rows a byte changed: for each nibble of the old byte (zBiosAl) that differs from the new (A), the old
+; nibble's row is blended in at the step X or the step after (as BlendStageRowChanges, 024F:236). Programs 043F and 10DF hold the same bytes; these are 026F:1F4's at $91E8, filed again
+; because the JSRs' return addresses are their own.
+; HOW: The low nibbles compared, BlendStageTileRows026E called when they differ; then the high nibbles one step on.
+; WAITS: no.
+; Entry: A the new byte, zBiosAl the old, X the step. Exit: as BlendStageRowChanges.
+; Nothing the game does loads this program (codemap.unloaded_programs), so nothing is known to reach it.
+BlendStageRowChanges031F:
+    phx
+    sta z:zBiosBl
+    lda z:zBiosAl
+    and #$0F
+    sta z:zBiosAh
+    lda z:zBiosBl
+    and #$0F
+    cmp z:zBiosAh
+    beq BlendStageRowChanges031F_at0
+    ldy z:zBiosAh
+    jsr BlendStageTileRows026E
+BlendStageRowChanges031F_at0:
+    lda z:zBiosAl
+    lsr a
+    lsr a
+    lsr a
+    lsr a
+    sta z:zBiosAh
+    lda z:zBiosBl
+    lsr a
+    lsr a
+    lsr a
+    lsr a
+    plx
+    inx
+    cmp z:zBiosAh
+    beq BlendStageRowChanges031F_at1
+    ldy z:zBiosAh
+    jsr BlendStageTileRows026E
+BlendStageRowChanges031F_at1:
+    rts

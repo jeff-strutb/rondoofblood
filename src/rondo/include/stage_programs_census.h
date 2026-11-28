@@ -251,4 +251,10 @@ void abi_BlendStageRowPair026F(void);
 TileRowsExit BlendStageRowPair031F(uint8_t x, uint8_t a, uint8_t y);
 void abi_BlendStageRowPair031F(void);
 
+RowChangesExit BlendStageRowChanges026F(uint8_t x, uint8_t new_byte);
+void abi_BlendStageRowChanges026F(void);
+
+RowChangesExit BlendStageRowChanges031F(uint8_t x, uint8_t new_byte);
+void abi_BlendStageRowChanges031F(void);
+
 #endif

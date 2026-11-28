@@ -1142,3 +1142,585 @@ EffectColour16C1_at1:
     lda (zTemp00),y
     sta a:VCE_DATA_HI
     jmp ClearEffectSlot1A31
+
+; @routine 0251:362 EffectFade0251
+; @run 6C:8362
+; WHAT IT DOES: Kind 2 of the palette effects: fades palettes down a step a round; as EffectFade1A31 with the overlay at
+; sector 0251's table of lists for a negative list number ($89E5).
+; HOW: EffectFade1A31's body.
+; WAITS: no.
+; Entry: X the slot. Exit: as EffectFade1A31.
+EffectFade0251Lists = $89E5 ; kind 2's lists a negative list number picks, a word each
+EffectFade0251:
+    lda a:ScriptSlotTimer,x
+    beq EffectFade0251_at0
+    dec a:ScriptSlotTimer,x
+    rts
+EffectFade0251_at0:
+    inc a:ScriptSlotField24,x
+    lda a:ScriptSlotField24,x
+    cmp #$08
+    bcc EffectFade0251_at1
+    jmp ClearEffectSlot1A31
+EffectFade0251_at1:
+    lda a:ScriptSlotScript,x
+    asl a
+    tay
+    bcc EffectFade0251_at2
+    lda a:EffectFade0251Lists,y
+    sta z:zTemp00
+    lda a:EffectFade0251Lists+1,y
+    sta z:zTemp01
+    bra EffectFade0251_at3
+EffectFade0251_at2:
+    lda a:OverlayEffectFadeLists
+    sta z:zBiosAl
+    lda a:OverlayEffectFadeLists+1
+    sta z:zBiosAh
+    lda (zBiosAl),y
+    sta z:zTemp00
+    iny
+    lda (zBiosAl),y
+    sta z:zTemp01
+EffectFade0251_at3:
+    cly
+    lda (zTemp00),y
+    sta a:ScriptSlotTimer,x
+    iny
+EffectFade0251_at9:
+    lda (zTemp00),y
+    cmp #$FF
+    bne EffectFade0251_at4
+    rts
+EffectFade0251_at4:
+    sta z:zTemp08
+    sta a:VCE_ADDR_LO
+    iny
+    lda (zTemp00),y
+    sta z:zTemp09
+    sta a:VCE_ADDR_HI
+    iny
+    tai VCE_DATA_LO,SavedColoursLo,$0020
+    clx
+EffectFade0251_at8:
+    lda a:SavedColoursLo,x
+    and #$07
+    beq EffectFade0251_at5
+    dec a
+EffectFade0251_at5:
+    sta z:zTemp02
+    lda a:SavedColoursLo,x
+    and #$38
+    beq EffectFade0251_at6
+    sec
+    sbc #$08
+EffectFade0251_at6:
+    ora z:zTemp02
+    sta z:zTemp02
+    lda a:SavedColoursLo,x
+    lsr a:SavedColoursLo+1,x
+    ror a
+    and #$E0
+    beq EffectFade0251_at7
+    sec
+    sbc #$20
+EffectFade0251_at7:
+    asl a
+    rol a:SavedColoursLo+1,x
+    ora z:zTemp02
+    sta a:SavedColoursLo,x
+    inx
+    inx
+    cpx #$20
+    bcc EffectFade0251_at8
+    lda z:zTemp08
+    sta a:VCE_ADDR_LO
+    lda z:zTemp09
+    sta a:VCE_ADDR_HI
+    tia SavedColoursLo,VCE_DATA_LO,$0020
+    jmp EffectFade0251_at9
+
+; @routine 0511:362 EffectFade0511
+; @run 6C:8362
+; WHAT IT DOES: Kind 2 of the palette effects: fades palettes down a step a round; as EffectFade1A31 with the overlay at
+; sector 0511's table of lists for a negative list number ($89DB).
+; HOW: EffectFade1A31's body.
+; WAITS: no.
+; Entry: X the slot. Exit: as EffectFade1A31.
+EffectFade0511Lists = $89DB ; kind 2's lists a negative list number picks, a word each
+EffectFade0511:
+    lda a:ScriptSlotTimer,x
+    beq EffectFade0511_at0
+    dec a:ScriptSlotTimer,x
+    rts
+EffectFade0511_at0:
+    inc a:ScriptSlotField24,x
+    lda a:ScriptSlotField24,x
+    cmp #$08
+    bcc EffectFade0511_at1
+    jmp ClearEffectSlot1A31
+EffectFade0511_at1:
+    lda a:ScriptSlotScript,x
+    asl a
+    tay
+    bcc EffectFade0511_at2
+    lda a:EffectFade0511Lists,y
+    sta z:zTemp00
+    lda a:EffectFade0511Lists+1,y
+    sta z:zTemp01
+    bra EffectFade0511_at3
+EffectFade0511_at2:
+    lda a:OverlayEffectFadeLists
+    sta z:zBiosAl
+    lda a:OverlayEffectFadeLists+1
+    sta z:zBiosAh
+    lda (zBiosAl),y
+    sta z:zTemp00
+    iny
+    lda (zBiosAl),y
+    sta z:zTemp01
+EffectFade0511_at3:
+    cly
+    lda (zTemp00),y
+    sta a:ScriptSlotTimer,x
+    iny
+EffectFade0511_at9:
+    lda (zTemp00),y
+    cmp #$FF
+    bne EffectFade0511_at4
+    rts
+EffectFade0511_at4:
+    sta z:zTemp08
+    sta a:VCE_ADDR_LO
+    iny
+    lda (zTemp00),y
+    sta z:zTemp09
+    sta a:VCE_ADDR_HI
+    iny
+    tai VCE_DATA_LO,SavedColoursLo,$0020
+    clx
+EffectFade0511_at8:
+    lda a:SavedColoursLo,x
+    and #$07
+    beq EffectFade0511_at5
+    dec a
+EffectFade0511_at5:
+    sta z:zTemp02
+    lda a:SavedColoursLo,x
+    and #$38
+    beq EffectFade0511_at6
+    sec
+    sbc #$08
+EffectFade0511_at6:
+    ora z:zTemp02
+    sta z:zTemp02
+    lda a:SavedColoursLo,x
+    lsr a:SavedColoursLo+1,x
+    ror a
+    and #$E0
+    beq EffectFade0511_at7
+    sec
+    sbc #$20
+EffectFade0511_at7:
+    asl a
+    rol a:SavedColoursLo+1,x
+    ora z:zTemp02
+    sta a:SavedColoursLo,x
+    inx
+    inx
+    cpx #$20
+    bcc EffectFade0511_at8
+    lda z:zTemp08
+    sta a:VCE_ADDR_LO
+    lda z:zTemp09
+    sta a:VCE_ADDR_HI
+    tia SavedColoursLo,VCE_DATA_LO,$0020
+    jmp EffectFade0511_at9
+
+; @routine 07D1:362 EffectFade07D1
+; @run 6C:8362
+; WHAT IT DOES: Kind 2 of the palette effects: fades palettes down a step a round; as EffectFade1A31 with the overlay at
+; sector 07D1's table of lists for a negative list number ($89E3).
+; HOW: EffectFade1A31's body.
+; WAITS: no.
+; Entry: X the slot. Exit: as EffectFade1A31.
+EffectFade07D1Lists = $89E3 ; kind 2's lists a negative list number picks, a word each
+EffectFade07D1:
+    lda a:ScriptSlotTimer,x
+    beq EffectFade07D1_at0
+    dec a:ScriptSlotTimer,x
+    rts
+EffectFade07D1_at0:
+    inc a:ScriptSlotField24,x
+    lda a:ScriptSlotField24,x
+    cmp #$08
+    bcc EffectFade07D1_at1
+    jmp ClearEffectSlot1A31
+EffectFade07D1_at1:
+    lda a:ScriptSlotScript,x
+    asl a
+    tay
+    bcc EffectFade07D1_at2
+    lda a:EffectFade07D1Lists,y
+    sta z:zTemp00
+    lda a:EffectFade07D1Lists+1,y
+    sta z:zTemp01
+    bra EffectFade07D1_at3
+EffectFade07D1_at2:
+    lda a:OverlayEffectFadeLists
+    sta z:zBiosAl
+    lda a:OverlayEffectFadeLists+1
+    sta z:zBiosAh
+    lda (zBiosAl),y
+    sta z:zTemp00
+    iny
+    lda (zBiosAl),y
+    sta z:zTemp01
+EffectFade07D1_at3:
+    cly
+    lda (zTemp00),y
+    sta a:ScriptSlotTimer,x
+    iny
+EffectFade07D1_at9:
+    lda (zTemp00),y
+    cmp #$FF
+    bne EffectFade07D1_at4
+    rts
+EffectFade07D1_at4:
+    sta z:zTemp08
+    sta a:VCE_ADDR_LO
+    iny
+    lda (zTemp00),y
+    sta z:zTemp09
+    sta a:VCE_ADDR_HI
+    iny
+    tai VCE_DATA_LO,SavedColoursLo,$0020
+    clx
+EffectFade07D1_at8:
+    lda a:SavedColoursLo,x
+    and #$07
+    beq EffectFade07D1_at5
+    dec a
+EffectFade07D1_at5:
+    sta z:zTemp02
+    lda a:SavedColoursLo,x
+    and #$38
+    beq EffectFade07D1_at6
+    sec
+    sbc #$08
+EffectFade07D1_at6:
+    ora z:zTemp02
+    sta z:zTemp02
+    lda a:SavedColoursLo,x
+    lsr a:SavedColoursLo+1,x
+    ror a
+    and #$E0
+    beq EffectFade07D1_at7
+    sec
+    sbc #$20
+EffectFade07D1_at7:
+    asl a
+    rol a:SavedColoursLo+1,x
+    ora z:zTemp02
+    sta a:SavedColoursLo,x
+    inx
+    inx
+    cpx #$20
+    bcc EffectFade07D1_at8
+    lda z:zTemp08
+    sta a:VCE_ADDR_LO
+    lda z:zTemp09
+    sta a:VCE_ADDR_HI
+    tia SavedColoursLo,VCE_DATA_LO,$0020
+    jmp EffectFade07D1_at9
+
+; @routine 0931:362 EffectFade0931
+; @run 6C:8362
+; WHAT IT DOES: Kind 2 of the palette effects: fades palettes down a step a round; as EffectFade1A31 with the overlay at
+; sector 0931's table of lists for a negative list number ($89D7).
+; HOW: EffectFade1A31's body.
+; WAITS: no.
+; Entry: X the slot. Exit: as EffectFade1A31.
+EffectFade0931Lists = $89D7 ; kind 2's lists a negative list number picks, a word each
+EffectFade0931:
+    lda a:ScriptSlotTimer,x
+    beq EffectFade0931_at0
+    dec a:ScriptSlotTimer,x
+    rts
+EffectFade0931_at0:
+    inc a:ScriptSlotField24,x
+    lda a:ScriptSlotField24,x
+    cmp #$08
+    bcc EffectFade0931_at1
+    jmp ClearEffectSlot1A31
+EffectFade0931_at1:
+    lda a:ScriptSlotScript,x
+    asl a
+    tay
+    bcc EffectFade0931_at2
+    lda a:EffectFade0931Lists,y
+    sta z:zTemp00
+    lda a:EffectFade0931Lists+1,y
+    sta z:zTemp01
+    bra EffectFade0931_at3
+EffectFade0931_at2:
+    lda a:OverlayEffectFadeLists
+    sta z:zBiosAl
+    lda a:OverlayEffectFadeLists+1
+    sta z:zBiosAh
+    lda (zBiosAl),y
+    sta z:zTemp00
+    iny
+    lda (zBiosAl),y
+    sta z:zTemp01
+EffectFade0931_at3:
+    cly
+    lda (zTemp00),y
+    sta a:ScriptSlotTimer,x
+    iny
+EffectFade0931_at9:
+    lda (zTemp00),y
+    cmp #$FF
+    bne EffectFade0931_at4
+    rts
+EffectFade0931_at4:
+    sta z:zTemp08
+    sta a:VCE_ADDR_LO
+    iny
+    lda (zTemp00),y
+    sta z:zTemp09
+    sta a:VCE_ADDR_HI
+    iny
+    tai VCE_DATA_LO,SavedColoursLo,$0020
+    clx
+EffectFade0931_at8:
+    lda a:SavedColoursLo,x
+    and #$07
+    beq EffectFade0931_at5
+    dec a
+EffectFade0931_at5:
+    sta z:zTemp02
+    lda a:SavedColoursLo,x
+    and #$38
+    beq EffectFade0931_at6
+    sec
+    sbc #$08
+EffectFade0931_at6:
+    ora z:zTemp02
+    sta z:zTemp02
+    lda a:SavedColoursLo,x
+    lsr a:SavedColoursLo+1,x
+    ror a
+    and #$E0
+    beq EffectFade0931_at7
+    sec
+    sbc #$20
+EffectFade0931_at7:
+    asl a
+    rol a:SavedColoursLo+1,x
+    ora z:zTemp02
+    sta a:SavedColoursLo,x
+    inx
+    inx
+    cpx #$20
+    bcc EffectFade0931_at8
+    lda z:zTemp08
+    sta a:VCE_ADDR_LO
+    lda z:zTemp09
+    sta a:VCE_ADDR_HI
+    tia SavedColoursLo,VCE_DATA_LO,$0020
+    jmp EffectFade0931_at9
+
+; @routine 0BF1:362 EffectFade0BF1
+; @run 6C:8362
+; WHAT IT DOES: Kind 2 of the palette effects: fades palettes down a step a round; as EffectFade1A31 with the overlay at
+; sector 0BF1's table of lists for a negative list number ($89C7).
+; HOW: EffectFade1A31's body.
+; WAITS: no.
+; Entry: X the slot. Exit: as EffectFade1A31.
+EffectFade0BF1Lists = $89C7 ; kind 2's lists a negative list number picks, a word each
+EffectFade0BF1:
+    lda a:ScriptSlotTimer,x
+    beq EffectFade0BF1_at0
+    dec a:ScriptSlotTimer,x
+    rts
+EffectFade0BF1_at0:
+    inc a:ScriptSlotField24,x
+    lda a:ScriptSlotField24,x
+    cmp #$08
+    bcc EffectFade0BF1_at1
+    jmp ClearEffectSlot1A31
+EffectFade0BF1_at1:
+    lda a:ScriptSlotScript,x
+    asl a
+    tay
+    bcc EffectFade0BF1_at2
+    lda a:EffectFade0BF1Lists,y
+    sta z:zTemp00
+    lda a:EffectFade0BF1Lists+1,y
+    sta z:zTemp01
+    bra EffectFade0BF1_at3
+EffectFade0BF1_at2:
+    lda a:OverlayEffectFadeLists
+    sta z:zBiosAl
+    lda a:OverlayEffectFadeLists+1
+    sta z:zBiosAh
+    lda (zBiosAl),y
+    sta z:zTemp00
+    iny
+    lda (zBiosAl),y
+    sta z:zTemp01
+EffectFade0BF1_at3:
+    cly
+    lda (zTemp00),y
+    sta a:ScriptSlotTimer,x
+    iny
+EffectFade0BF1_at9:
+    lda (zTemp00),y
+    cmp #$FF
+    bne EffectFade0BF1_at4
+    rts
+EffectFade0BF1_at4:
+    sta z:zTemp08
+    sta a:VCE_ADDR_LO
+    iny
+    lda (zTemp00),y
+    sta z:zTemp09
+    sta a:VCE_ADDR_HI
+    iny
+    tai VCE_DATA_LO,SavedColoursLo,$0020
+    clx
+EffectFade0BF1_at8:
+    lda a:SavedColoursLo,x
+    and #$07
+    beq EffectFade0BF1_at5
+    dec a
+EffectFade0BF1_at5:
+    sta z:zTemp02
+    lda a:SavedColoursLo,x
+    and #$38
+    beq EffectFade0BF1_at6
+    sec
+    sbc #$08
+EffectFade0BF1_at6:
+    ora z:zTemp02
+    sta z:zTemp02
+    lda a:SavedColoursLo,x
+    lsr a:SavedColoursLo+1,x
+    ror a
+    and #$E0
+    beq EffectFade0BF1_at7
+    sec
+    sbc #$20
+EffectFade0BF1_at7:
+    asl a
+    rol a:SavedColoursLo+1,x
+    ora z:zTemp02
+    sta a:SavedColoursLo,x
+    inx
+    inx
+    cpx #$20
+    bcc EffectFade0BF1_at8
+    lda z:zTemp08
+    sta a:VCE_ADDR_LO
+    lda z:zTemp09
+    sta a:VCE_ADDR_HI
+    tia SavedColoursLo,VCE_DATA_LO,$0020
+    jmp EffectFade0BF1_at9
+
+; @routine 2707:362 EffectFade2707
+; @run 6C:8362
+; WHAT IT DOES: Kind 2 of the palette effects: fades palettes down a step a round; as EffectFade1A31 with the overlay at
+; sector 2707's table of lists for a negative list number ($9414).
+; HOW: EffectFade1A31's body.
+; WAITS: no.
+; Entry: X the slot. Exit: as EffectFade1A31.
+EffectFade2707Lists = $9414 ; kind 2's lists a negative list number picks, a word each
+EffectFade2707:
+    lda a:ScriptSlotTimer,x
+    beq EffectFade2707_at0
+    dec a:ScriptSlotTimer,x
+    rts
+EffectFade2707_at0:
+    inc a:ScriptSlotField24,x
+    lda a:ScriptSlotField24,x
+    cmp #$08
+    bcc EffectFade2707_at1
+    jmp ClearEffectSlot1A31
+EffectFade2707_at1:
+    lda a:ScriptSlotScript,x
+    asl a
+    tay
+    bcc EffectFade2707_at2
+    lda a:EffectFade2707Lists,y
+    sta z:zTemp00
+    lda a:EffectFade2707Lists+1,y
+    sta z:zTemp01
+    bra EffectFade2707_at3
+EffectFade2707_at2:
+    lda a:OverlayEffectFadeLists
+    sta z:zBiosAl
+    lda a:OverlayEffectFadeLists+1
+    sta z:zBiosAh
+    lda (zBiosAl),y
+    sta z:zTemp00
+    iny
+    lda (zBiosAl),y
+    sta z:zTemp01
+EffectFade2707_at3:
+    cly
+    lda (zTemp00),y
+    sta a:ScriptSlotTimer,x
+    iny
+EffectFade2707_at9:
+    lda (zTemp00),y
+    cmp #$FF
+    bne EffectFade2707_at4
+    rts
+EffectFade2707_at4:
+    sta z:zTemp08
+    sta a:VCE_ADDR_LO
+    iny
+    lda (zTemp00),y
+    sta z:zTemp09
+    sta a:VCE_ADDR_HI
+    iny
+    tai VCE_DATA_LO,SavedColoursLo,$0020
+    clx
+EffectFade2707_at8:
+    lda a:SavedColoursLo,x
+    and #$07
+    beq EffectFade2707_at5
+    dec a
+EffectFade2707_at5:
+    sta z:zTemp02
+    lda a:SavedColoursLo,x
+    and #$38
+    beq EffectFade2707_at6
+    sec
+    sbc #$08
+EffectFade2707_at6:
+    ora z:zTemp02
+    sta z:zTemp02
+    lda a:SavedColoursLo,x
+    lsr a:SavedColoursLo+1,x
+    ror a
+    and #$E0
+    beq EffectFade2707_at7
+    sec
+    sbc #$20
+EffectFade2707_at7:
+    asl a
+    rol a:SavedColoursLo+1,x
+    ora z:zTemp02
+    sta a:SavedColoursLo,x
+    inx
+    inx
+    cpx #$20
+    bcc EffectFade2707_at8
+    lda z:zTemp08
+    sta a:VCE_ADDR_LO
+    lda z:zTemp09
+    sta a:VCE_ADDR_HI
+    tia SavedColoursLo,VCE_DATA_LO,$0020
+    jmp EffectFade2707_at9

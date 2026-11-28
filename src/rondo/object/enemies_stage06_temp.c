@@ -3139,7 +3139,9 @@ void abi_TilePieceInRange072A(void)
  * WAITS: no.
  * Entry: X object. Exit: as the draw, as ClearObject, or as TilePieceInRange072A.
  */
-PieceObjArm TilePieceObject072A(uint8_t slot)
+/* TilePieceObject072A's body with the overlay's tile piece records at `records`, for the stages whose copies differ
+ * only there. */
+static PieceObjArm tile_piece_object_at(uint8_t slot, uint16_t records)
 {
     PieceObjArm p = { { 0 } };
     ObjArm *r = &p.arm;
@@ -3171,15 +3173,20 @@ PieceObjArm TilePieceObject072A(uint8_t slot)
     index = (uint8_t)(index << 4);
     WR8(OBJ->work_e[slot], index);
     y = index;
-    WR8(OBJ->f3988[slot], rd8((uint16_t)(0xAE95 + y)));
-    WR8(OBJ->f3a38[slot], rd8((uint16_t)(0xAE96 + y)));
-    item = rd8((uint16_t)(0xAE97 + y));
+    WR8(OBJ->f3988[slot], rd8((uint16_t)(records + 0 + y)));
+    WR8(OBJ->f3a38[slot], rd8((uint16_t)(records + 1 + y)));
+    item = rd8((uint16_t)(records + 2 + y));
     r->sum = add_bytes(item, RD8(OBJ->f34b8[slot]), false);
     jsr_push(0xA854);
     r->run = DrawTileScript(r->sum.value, 0);
     jsr_pop();
     r->arm = TO_DRAWN;
     return p;
+}
+
+PieceObjArm TilePieceObject072A(uint8_t slot)
+{
+    return tile_piece_object_at(slot, 0xAE95);
 }
 
 static Jump tile_piece_object072a_exit_shim(PieceObjArm p)
@@ -3661,4 +3668,144 @@ ObjArm DrawTilePiece18DA(uint8_t slot)
 void abi_DrawTilePiece18DA(void)
 {
     abi_jump_exit(draw_tile_piece072a_exit_shim(DrawTilePiece18DA(cpu.x)));
+}
+
+/*
+ * @routine 025A:01D TilePieceObject025A
+ * @run 70:A81D
+ * @stop A855
+ * WHAT IT DOES: TilePieceObject072A in the overlay at sector 025A: a piece of the scenery drawn from a tile script,
+ * with this overlay's tile piece records at $AE9B.
+ * HOW: tile_piece_object_at with this overlay's records.
+ * WAITS: no.
+ * Entry: X object. Exit: as TilePieceObject072A.
+ */
+PieceObjArm TilePieceObject025A(uint8_t slot)
+{
+    return tile_piece_object_at(slot, 0xAE9B);
+}
+
+void abi_TilePieceObject025A(void)
+{
+    abi_jump_exit(tile_piece_object072a_exit_shim(TilePieceObject025A(cpu.x)));
+}
+
+/*
+ * @routine 051A:01D TilePieceObject051A
+ * @run 70:A81D
+ * @stop A855
+ * WHAT IT DOES: TilePieceObject072A in the overlay at sector 051A: a piece of the scenery drawn from a tile script,
+ * with this overlay's tile piece records at $B07F.
+ * HOW: tile_piece_object_at with this overlay's records.
+ * WAITS: no.
+ * Entry: X object. Exit: as TilePieceObject072A.
+ */
+PieceObjArm TilePieceObject051A(uint8_t slot)
+{
+    return tile_piece_object_at(slot, 0xB07F);
+}
+
+void abi_TilePieceObject051A(void)
+{
+    abi_jump_exit(tile_piece_object072a_exit_shim(TilePieceObject051A(cpu.x)));
+}
+
+/*
+ * @routine 07DA:01D TilePieceObject07DA
+ * @run 70:A81D
+ * @stop A855
+ * WHAT IT DOES: TilePieceObject072A in the overlay at sector 07DA: a piece of the scenery drawn from a tile script,
+ * with this overlay's tile piece records at $D39B.
+ * HOW: tile_piece_object_at with this overlay's records.
+ * WAITS: no.
+ * Entry: X object. Exit: as TilePieceObject072A.
+ */
+PieceObjArm TilePieceObject07DA(uint8_t slot)
+{
+    return tile_piece_object_at(slot, 0xD39B);
+}
+
+void abi_TilePieceObject07DA(void)
+{
+    abi_jump_exit(tile_piece_object072a_exit_shim(TilePieceObject07DA(cpu.x)));
+}
+
+/*
+ * @routine 093A:01D TilePieceObject093A
+ * @run 70:A81D
+ * @stop A855
+ * WHAT IT DOES: TilePieceObject072A in the overlay at sector 093A: a piece of the scenery drawn from a tile script,
+ * with this overlay's tile piece records at $B3A8.
+ * HOW: tile_piece_object_at with this overlay's records.
+ * WAITS: no.
+ * Entry: X object. Exit: as TilePieceObject072A.
+ */
+PieceObjArm TilePieceObject093A(uint8_t slot)
+{
+    return tile_piece_object_at(slot, 0xB3A8);
+}
+
+void abi_TilePieceObject093A(void)
+{
+    abi_jump_exit(tile_piece_object072a_exit_shim(TilePieceObject093A(cpu.x)));
+}
+
+/*
+ * @routine 0A9A:01D TilePieceObject0A9A
+ * @run 70:A81D
+ * @stop A855
+ * WHAT IT DOES: TilePieceObject072A in the overlay at sector 0A9A: a piece of the scenery drawn from a tile script,
+ * with this overlay's tile piece records at $B678.
+ * HOW: tile_piece_object_at with this overlay's records.
+ * WAITS: no.
+ * Entry: X object. Exit: as TilePieceObject072A.
+ */
+PieceObjArm TilePieceObject0A9A(uint8_t slot)
+{
+    return tile_piece_object_at(slot, 0xB678);
+}
+
+void abi_TilePieceObject0A9A(void)
+{
+    abi_jump_exit(tile_piece_object072a_exit_shim(TilePieceObject0A9A(cpu.x)));
+}
+
+/*
+ * @routine 0BFA:01D TilePieceObject0BFA
+ * @run 70:A81D
+ * @stop A855
+ * WHAT IT DOES: TilePieceObject072A in the overlay at sector 0BFA: a piece of the scenery drawn from a tile script,
+ * with this overlay's tile piece records at $B037.
+ * HOW: tile_piece_object_at with this overlay's records.
+ * WAITS: no.
+ * Entry: X object. Exit: as TilePieceObject072A.
+ */
+PieceObjArm TilePieceObject0BFA(uint8_t slot)
+{
+    return tile_piece_object_at(slot, 0xB037);
+}
+
+void abi_TilePieceObject0BFA(void)
+{
+    abi_jump_exit(tile_piece_object072a_exit_shim(TilePieceObject0BFA(cpu.x)));
+}
+
+/*
+ * @routine 0D5A:01D TilePieceObject0D5A
+ * @run 70:A81D
+ * @stop A855
+ * WHAT IT DOES: TilePieceObject072A in the overlay at sector 0D5A: a piece of the scenery drawn from a tile script,
+ * with this overlay's tile piece records at $B01C.
+ * HOW: tile_piece_object_at with this overlay's records.
+ * WAITS: no.
+ * Entry: X object. Exit: as TilePieceObject072A.
+ */
+PieceObjArm TilePieceObject0D5A(uint8_t slot)
+{
+    return tile_piece_object_at(slot, 0xB01C);
+}
+
+void abi_TilePieceObject0D5A(void)
+{
+    abi_jump_exit(tile_piece_object072a_exit_shim(TilePieceObject0D5A(cpu.x)));
 }

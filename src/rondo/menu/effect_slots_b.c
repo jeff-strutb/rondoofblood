@@ -332,3 +332,117 @@ void abi_EffectColour16C1(void)
 {
     exit_shim(EffectColour16C1(cpu.x));
 }
+
+/*
+ * @routine 0251:362 EffectFade0251
+ * @run 6C:8362
+ * WHAT IT DOES: Kind 2 of the palette effects: fades palettes down a step a round; as EffectFade1A31 with the overlay at
+ * sector 0251's table of lists for a negative list number ($89E5).
+ * HOW: EffectFade1A31's body.
+ * WAITS: no.
+ * Entry: X the slot. Exit: as EffectFade1A31.
+ */
+Exit EffectFade0251(uint8_t slot)
+{
+    return EffectFadeWithTable(0x89E5, slot);
+}
+
+void abi_EffectFade0251(void)
+{
+    exit_shim(EffectFade0251(cpu.x));
+}
+
+/*
+ * @routine 0511:362 EffectFade0511
+ * @run 6C:8362
+ * WHAT IT DOES: Kind 2 of the palette effects: fades palettes down a step a round; as EffectFade1A31 with the overlay at
+ * sector 0511's table of lists for a negative list number ($89DB).
+ * HOW: EffectFade1A31's body.
+ * WAITS: no.
+ * Entry: X the slot. Exit: as EffectFade1A31.
+ */
+Exit EffectFade0511(uint8_t slot)
+{
+    return EffectFadeWithTable(0x89DB, slot);
+}
+
+void abi_EffectFade0511(void)
+{
+    exit_shim(EffectFade0511(cpu.x));
+}
+
+/*
+ * @routine 07D1:362 EffectFade07D1
+ * @run 6C:8362
+ * WHAT IT DOES: Kind 2 of the palette effects: fades palettes down a step a round; as EffectFade1A31 with the overlay at
+ * sector 07D1's table of lists for a negative list number ($89E3).
+ * HOW: EffectFade1A31's body.
+ * WAITS: no.
+ * Entry: X the slot. Exit: as EffectFade1A31.
+ */
+Exit EffectFade07D1(uint8_t slot)
+{
+    return EffectFadeWithTable(0x89E3, slot);
+}
+
+void abi_EffectFade07D1(void)
+{
+    exit_shim(EffectFade07D1(cpu.x));
+}
+
+/*
+ * @routine 0931:362 EffectFade0931
+ * @run 6C:8362
+ * WHAT IT DOES: Kind 2 of the palette effects: fades palettes down a step a round; as EffectFade1A31 with the overlay at
+ * sector 0931's table of lists for a negative list number ($89D7).
+ * HOW: EffectFade1A31's body.
+ * WAITS: no.
+ * Entry: X the slot. Exit: as EffectFade1A31.
+ */
+Exit EffectFade0931(uint8_t slot)
+{
+    return EffectFadeWithTable(0x89D7, slot);
+}
+
+void abi_EffectFade0931(void)
+{
+    exit_shim(EffectFade0931(cpu.x));
+}
+
+/*
+ * @routine 0BF1:362 EffectFade0BF1
+ * @run 6C:8362
+ * WHAT IT DOES: Kind 2 of the palette effects: fades palettes down a step a round; as EffectFade1A31 with the overlay at
+ * sector 0BF1's table of lists for a negative list number ($89C7).
+ * HOW: EffectFade1A31's body.
+ * WAITS: no.
+ * Entry: X the slot. Exit: as EffectFade1A31.
+ */
+Exit EffectFade0BF1(uint8_t slot)
+{
+    return EffectFadeWithTable(0x89C7, slot);
+}
+
+void abi_EffectFade0BF1(void)
+{
+    exit_shim(EffectFade0BF1(cpu.x));
+}
+
+/*
+ * @routine 2707:362 EffectFade2707
+ * @run 6C:8362
+ * WHAT IT DOES: Kind 2 of the palette effects: fades palettes down a step a round; as EffectFade1A31 with the overlay at
+ * sector 2707's table of lists for a negative list number ($9414).
+ * HOW: EffectFade1A31's body.
+ * WAITS: no.
+ * Entry: X the slot. Exit: as EffectFade1A31.
+ */
+Exit EffectFade2707(uint8_t slot)
+{
+    return EffectFadeWithTable(0x9414, slot);
+}
+
+void abi_EffectFade2707(void)
+{
+    exit_shim(EffectFade2707(cpu.x));
+}

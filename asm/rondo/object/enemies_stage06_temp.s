@@ -2186,3 +2186,255 @@ DrawTilePiece18DA:
     tay
     lda a:PieceEntries18DA,y
     beq DrawTilePiece18DA+$6B
+
+; @routine 025A:01D TilePieceObject025A
+; @run 70:A81D
+; @stop A855
+; WHAT IT DOES: TilePieceObject072A in the overlay at sector 025A: a piece of the scenery drawn from a tile script,
+; with this overlay's tile piece records at $AE9B.
+; HOW: tile_piece_object_at with this overlay's records.
+; WAITS: no.
+; Entry: X object. Exit: as TilePieceObject072A.
+TilePieceObject025A:
+    lda a:OBJ_STATE,x
+    bne TilePieceInRange072A
+    ldy a:OBJ_START_ARG,x
+    jsr BitMaskFromIndex072A
+    and z:zField8F
+    beq TilePieceObject025A_at0
+    jmp VecClearObject
+TilePieceObject025A_at0:
+    jsr VecLoadObjectRecord
+    lda a:OBJ_START_ARG,x
+    asl a
+    asl a
+    asl a
+    asl a
+    sta a:OBJ_WORK_E,x
+    tay
+    lda a:PieceRecords025A,y
+    sta a:OBJ_HITBOX_HALF_W,x
+    lda a:PieceRecords025A+1,y
+    sta a:OBJ_HITBOX_HALF_H,x
+    lda a:PieceRecords025A+2,y
+    clc
+    adc a:OBJ_WORK_D,x
+    cly
+    jsr VecDrawTileScript
+    rts
+
+; @routine 051A:01D TilePieceObject051A
+; @run 70:A81D
+; @stop A855
+; WHAT IT DOES: TilePieceObject072A in the overlay at sector 051A: a piece of the scenery drawn from a tile script,
+; with this overlay's tile piece records at $B07F.
+; HOW: tile_piece_object_at with this overlay's records.
+; WAITS: no.
+; Entry: X object. Exit: as TilePieceObject072A.
+TilePieceObject051A:
+    lda a:OBJ_STATE,x
+    bne TilePieceInRange072A
+    ldy a:OBJ_START_ARG,x
+    jsr BitMaskFromIndex072A
+    and z:zField8F
+    beq TilePieceObject051A_at0
+    jmp VecClearObject
+TilePieceObject051A_at0:
+    jsr VecLoadObjectRecord
+    lda a:OBJ_START_ARG,x
+    asl a
+    asl a
+    asl a
+    asl a
+    sta a:OBJ_WORK_E,x
+    tay
+    lda a:PieceRecords051A,y
+    sta a:OBJ_HITBOX_HALF_W,x
+    lda a:PieceRecords051A+1,y
+    sta a:OBJ_HITBOX_HALF_H,x
+    lda a:PieceRecords051A+2,y
+    clc
+    adc a:OBJ_WORK_D,x
+    cly
+    jsr VecDrawTileScript
+    rts
+
+; @routine 07DA:01D TilePieceObject07DA
+; @run 70:A81D
+; @stop A855
+; WHAT IT DOES: TilePieceObject072A in the overlay at sector 07DA: a piece of the scenery drawn from a tile script,
+; with this overlay's tile piece records at $D39B.
+; HOW: tile_piece_object_at with this overlay's records.
+; WAITS: no.
+; Entry: X object. Exit: as TilePieceObject072A.
+TilePieceObject07DA:
+    lda a:OBJ_STATE,x
+    bne TilePieceInRange072A
+    ldy a:OBJ_START_ARG,x
+    jsr BitMaskFromIndex072A
+    and z:zField8F
+    beq TilePieceObject07DA_at0
+    jmp VecClearObject
+TilePieceObject07DA_at0:
+    jsr VecLoadObjectRecord
+    lda a:OBJ_START_ARG,x
+    asl a
+    asl a
+    asl a
+    asl a
+    sta a:OBJ_WORK_E,x
+    tay
+    lda a:PieceRecords07DA,y
+    sta a:OBJ_HITBOX_HALF_W,x
+    lda a:PieceRecords07DA+1,y
+    sta a:OBJ_HITBOX_HALF_H,x
+    lda a:PieceRecords07DA+2,y
+    clc
+    adc a:OBJ_WORK_D,x
+    cly
+    jsr VecDrawTileScript
+    rts
+
+; @routine 093A:01D TilePieceObject093A
+; @run 70:A81D
+; @stop A855
+; WHAT IT DOES: TilePieceObject072A in the overlay at sector 093A: a piece of the scenery drawn from a tile script,
+; with this overlay's tile piece records at $B3A8.
+; HOW: tile_piece_object_at with this overlay's records.
+; WAITS: no.
+; Entry: X object. Exit: as TilePieceObject072A.
+TilePieceObject093A:
+    lda a:OBJ_STATE,x
+    bne TilePieceInRange072A
+    ldy a:OBJ_START_ARG,x
+    jsr BitMaskFromIndex072A
+    and z:zField8F
+    beq TilePieceObject093A_at0
+    jmp VecClearObject
+TilePieceObject093A_at0:
+    jsr VecLoadObjectRecord
+    lda a:OBJ_START_ARG,x
+    asl a
+    asl a
+    asl a
+    asl a
+    sta a:OBJ_WORK_E,x
+    tay
+    lda a:PieceRecords093A,y
+    sta a:OBJ_HITBOX_HALF_W,x
+    lda a:PieceRecords093A+1,y
+    sta a:OBJ_HITBOX_HALF_H,x
+    lda a:PieceRecords093A+2,y
+    clc
+    adc a:OBJ_WORK_D,x
+    cly
+    jsr VecDrawTileScript
+    rts
+
+; @routine 0A9A:01D TilePieceObject0A9A
+; @run 70:A81D
+; @stop A855
+; WHAT IT DOES: TilePieceObject072A in the overlay at sector 0A9A: a piece of the scenery drawn from a tile script,
+; with this overlay's tile piece records at $B678.
+; HOW: tile_piece_object_at with this overlay's records.
+; WAITS: no.
+; Entry: X object. Exit: as TilePieceObject072A.
+TilePieceObject0A9A:
+    lda a:OBJ_STATE,x
+    bne TilePieceInRange072A
+    ldy a:OBJ_START_ARG,x
+    jsr BitMaskFromIndex072A
+    and z:zField8F
+    beq TilePieceObject0A9A_at0
+    jmp VecClearObject
+TilePieceObject0A9A_at0:
+    jsr VecLoadObjectRecord
+    lda a:OBJ_START_ARG,x
+    asl a
+    asl a
+    asl a
+    asl a
+    sta a:OBJ_WORK_E,x
+    tay
+    lda a:PieceRecords0A9A,y
+    sta a:OBJ_HITBOX_HALF_W,x
+    lda a:PieceRecords0A9A+1,y
+    sta a:OBJ_HITBOX_HALF_H,x
+    lda a:PieceRecords0A9A+2,y
+    clc
+    adc a:OBJ_WORK_D,x
+    cly
+    jsr VecDrawTileScript
+    rts
+
+; @routine 0BFA:01D TilePieceObject0BFA
+; @run 70:A81D
+; @stop A855
+; WHAT IT DOES: TilePieceObject072A in the overlay at sector 0BFA: a piece of the scenery drawn from a tile script,
+; with this overlay's tile piece records at $B037.
+; HOW: tile_piece_object_at with this overlay's records.
+; WAITS: no.
+; Entry: X object. Exit: as TilePieceObject072A.
+TilePieceObject0BFA:
+    lda a:OBJ_STATE,x
+    bne TilePieceInRange072A
+    ldy a:OBJ_START_ARG,x
+    jsr BitMaskFromIndex072A
+    and z:zField8F
+    beq TilePieceObject0BFA_at0
+    jmp VecClearObject
+TilePieceObject0BFA_at0:
+    jsr VecLoadObjectRecord
+    lda a:OBJ_START_ARG,x
+    asl a
+    asl a
+    asl a
+    asl a
+    sta a:OBJ_WORK_E,x
+    tay
+    lda a:PieceRecords0BFA,y
+    sta a:OBJ_HITBOX_HALF_W,x
+    lda a:PieceRecords0BFA+1,y
+    sta a:OBJ_HITBOX_HALF_H,x
+    lda a:PieceRecords0BFA+2,y
+    clc
+    adc a:OBJ_WORK_D,x
+    cly
+    jsr VecDrawTileScript
+    rts
+
+; @routine 0D5A:01D TilePieceObject0D5A
+; @run 70:A81D
+; @stop A855
+; WHAT IT DOES: TilePieceObject072A in the overlay at sector 0D5A: a piece of the scenery drawn from a tile script,
+; with this overlay's tile piece records at $B01C.
+; HOW: tile_piece_object_at with this overlay's records.
+; WAITS: no.
+; Entry: X object. Exit: as TilePieceObject072A.
+TilePieceObject0D5A:
+    lda a:OBJ_STATE,x
+    bne TilePieceInRange072A
+    ldy a:OBJ_START_ARG,x
+    jsr BitMaskFromIndex072A
+    and z:zField8F
+    beq TilePieceObject0D5A_at0
+    jmp VecClearObject
+TilePieceObject0D5A_at0:
+    jsr VecLoadObjectRecord
+    lda a:OBJ_START_ARG,x
+    asl a
+    asl a
+    asl a
+    asl a
+    sta a:OBJ_WORK_E,x
+    tay
+    lda a:PieceRecords0D5A,y
+    sta a:OBJ_HITBOX_HALF_W,x
+    lda a:PieceRecords0D5A+1,y
+    sta a:OBJ_HITBOX_HALF_H,x
+    lda a:PieceRecords0D5A+2,y
+    clc
+    adc a:OBJ_WORK_D,x
+    cly
+    jsr VecDrawTileScript
+    rts

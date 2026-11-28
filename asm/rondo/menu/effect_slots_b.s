@@ -1724,3 +1724,208 @@ EffectFade2707_at7:
     sta a:VCE_ADDR_HI
     tia SavedColoursLo,VCE_DATA_LO,$0020
     jmp EffectFade2707_at9
+
+; @routine 0251:4FF EffectColour0251
+; @run 6C:84FF
+; WHAT IT DOES: Kind 3 of the palette effects; as EffectColour1A31 with the overlay at sector 0251's table of lists for a
+; negative list number ($8A0D).
+; HOW: EffectColour1A31's body.
+; WAITS: no.
+; Entry: X the slot. Exit: as EffectColour1A31.
+EffectColour0251:
+    lda a:ScriptSlotScript,x
+    bmi EffectColour0251_at0
+    asl a
+    asl a
+    adc a:OverlayEffectColourLists
+    sta z:zTemp00
+    cla
+    adc a:OverlayEffectColourLists+1
+    sta z:zTemp01
+    bra EffectColour0251_at1
+EffectColour0251_at0:
+    asl a
+    asl a
+    adc #$0D
+    sta z:zTemp00
+    cla
+    adc #$8A
+    sta z:zTemp01
+EffectColour0251_at1:
+    cly
+    lda (zTemp00),y
+    sta a:VCE_ADDR_LO
+    iny
+    lda (zTemp00),y
+    sta a:VCE_ADDR_HI
+    iny
+    lda (zTemp00),y
+    sta a:VCE_DATA_LO
+    iny
+    lda (zTemp00),y
+    sta a:VCE_DATA_HI
+    jmp ClearEffectSlot1A31
+
+; @routine 0511:4FF EffectColour0511
+; @run 6C:84FF
+; WHAT IT DOES: Kind 3 of the palette effects; as EffectColour1A31 with the overlay at sector 0511's table of lists for a
+; negative list number ($89DD).
+; HOW: EffectColour1A31's body.
+; WAITS: no.
+; Entry: X the slot. Exit: as EffectColour1A31.
+EffectColour0511:
+    lda a:ScriptSlotScript,x
+    bmi EffectColour0511_at0
+    asl a
+    asl a
+    adc a:OverlayEffectColourLists
+    sta z:zTemp00
+    cla
+    adc a:OverlayEffectColourLists+1
+    sta z:zTemp01
+    bra EffectColour0511_at1
+EffectColour0511_at0:
+    asl a
+    asl a
+    adc #$DD
+    sta z:zTemp00
+    cla
+    adc #$89
+    sta z:zTemp01
+EffectColour0511_at1:
+    cly
+    lda (zTemp00),y
+    sta a:VCE_ADDR_LO
+    iny
+    lda (zTemp00),y
+    sta a:VCE_ADDR_HI
+    iny
+    lda (zTemp00),y
+    sta a:VCE_DATA_LO
+    iny
+    lda (zTemp00),y
+    sta a:VCE_DATA_HI
+    jmp ClearEffectSlot1A31
+
+; @routine 07D1:4FF EffectColour07D1
+; @run 6C:84FF
+; WHAT IT DOES: Kind 3 of the palette effects; as EffectColour1A31 with the overlay at sector 07D1's table of lists for a
+; negative list number ($89E3).
+; HOW: EffectColour1A31's body.
+; WAITS: no.
+; Entry: X the slot. Exit: as EffectColour1A31.
+EffectColour07D1:
+    lda a:ScriptSlotScript,x
+    bmi EffectColour07D1_at0
+    asl a
+    asl a
+    adc a:OverlayEffectColourLists
+    sta z:zTemp00
+    cla
+    adc a:OverlayEffectColourLists+1
+    sta z:zTemp01
+    bra EffectColour07D1_at1
+EffectColour07D1_at0:
+    asl a
+    asl a
+    adc #$E3
+    sta z:zTemp00
+    cla
+    adc #$89
+    sta z:zTemp01
+EffectColour07D1_at1:
+    cly
+    lda (zTemp00),y
+    sta a:VCE_ADDR_LO
+    iny
+    lda (zTemp00),y
+    sta a:VCE_ADDR_HI
+    iny
+    lda (zTemp00),y
+    sta a:VCE_DATA_LO
+    iny
+    lda (zTemp00),y
+    sta a:VCE_DATA_HI
+    jmp ClearEffectSlot1A31
+
+; @routine 0931:4FF EffectColour0931
+; @run 6C:84FF
+; WHAT IT DOES: Kind 3 of the palette effects; as EffectColour1A31 with the overlay at sector 0931's table of lists for a
+; negative list number ($89D7).
+; HOW: EffectColour1A31's body.
+; WAITS: no.
+; Entry: X the slot. Exit: as EffectColour1A31.
+EffectColour0931:
+    lda a:ScriptSlotScript,x
+    bmi EffectColour0931_at0
+    asl a
+    asl a
+    adc a:OverlayEffectColourLists
+    sta z:zTemp00
+    cla
+    adc a:OverlayEffectColourLists+1
+    sta z:zTemp01
+    bra EffectColour0931_at1
+EffectColour0931_at0:
+    asl a
+    asl a
+    adc #$D7
+    sta z:zTemp00
+    cla
+    adc #$89
+    sta z:zTemp01
+EffectColour0931_at1:
+    cly
+    lda (zTemp00),y
+    sta a:VCE_ADDR_LO
+    iny
+    lda (zTemp00),y
+    sta a:VCE_ADDR_HI
+    iny
+    lda (zTemp00),y
+    sta a:VCE_DATA_LO
+    iny
+    lda (zTemp00),y
+    sta a:VCE_DATA_HI
+    jmp ClearEffectSlot1A31
+
+; @routine 0BF1:4FF EffectColour0BF1
+; @run 6C:84FF
+; WHAT IT DOES: Kind 3 of the palette effects; as EffectColour1A31 with the overlay at sector 0BF1's table of lists for a
+; negative list number ($89C7).
+; HOW: EffectColour1A31's body.
+; WAITS: no.
+; Entry: X the slot. Exit: as EffectColour1A31.
+EffectColour0BF1:
+    lda a:ScriptSlotScript,x
+    bmi EffectColour0BF1_at0
+    asl a
+    asl a
+    adc a:OverlayEffectColourLists
+    sta z:zTemp00
+    cla
+    adc a:OverlayEffectColourLists+1
+    sta z:zTemp01
+    bra EffectColour0BF1_at1
+EffectColour0BF1_at0:
+    asl a
+    asl a
+    adc #$C7
+    sta z:zTemp00
+    cla
+    adc #$89
+    sta z:zTemp01
+EffectColour0BF1_at1:
+    cly
+    lda (zTemp00),y
+    sta a:VCE_ADDR_LO
+    iny
+    lda (zTemp00),y
+    sta a:VCE_ADDR_HI
+    iny
+    lda (zTemp00),y
+    sta a:VCE_DATA_LO
+    iny
+    lda (zTemp00),y
+    sta a:VCE_DATA_HI
+    jmp ClearEffectSlot1A31

@@ -446,3 +446,98 @@ void abi_EffectFade2707(void)
 {
     exit_shim(EffectFade2707(cpu.x));
 }
+
+/*
+ * @routine 0251:4FF EffectColour0251
+ * @run 6C:84FF
+ * WHAT IT DOES: Kind 3 of the palette effects; as EffectColour1A31 with the overlay at sector 0251's table of lists for a
+ * negative list number ($8A0D).
+ * HOW: EffectColour1A31's body.
+ * WAITS: no.
+ * Entry: X the slot. Exit: as EffectColour1A31.
+ */
+Exit EffectColour0251(uint8_t slot)
+{
+    return EffectColourWithTable(0x8A0D, slot);
+}
+
+void abi_EffectColour0251(void)
+{
+    exit_shim(EffectColour0251(cpu.x));
+}
+
+/*
+ * @routine 0511:4FF EffectColour0511
+ * @run 6C:84FF
+ * WHAT IT DOES: Kind 3 of the palette effects; as EffectColour1A31 with the overlay at sector 0511's table of lists for a
+ * negative list number ($89DD).
+ * HOW: EffectColour1A31's body.
+ * WAITS: no.
+ * Entry: X the slot. Exit: as EffectColour1A31.
+ */
+Exit EffectColour0511(uint8_t slot)
+{
+    return EffectColourWithTable(0x89DD, slot);
+}
+
+void abi_EffectColour0511(void)
+{
+    exit_shim(EffectColour0511(cpu.x));
+}
+
+/*
+ * @routine 07D1:4FF EffectColour07D1
+ * @run 6C:84FF
+ * WHAT IT DOES: Kind 3 of the palette effects; as EffectColour1A31 with the overlay at sector 07D1's table of lists for a
+ * negative list number ($89E3).
+ * HOW: EffectColour1A31's body.
+ * WAITS: no.
+ * Entry: X the slot. Exit: as EffectColour1A31.
+ */
+Exit EffectColour07D1(uint8_t slot)
+{
+    return EffectColourWithTable(0x89E3, slot);
+}
+
+void abi_EffectColour07D1(void)
+{
+    exit_shim(EffectColour07D1(cpu.x));
+}
+
+/*
+ * @routine 0931:4FF EffectColour0931
+ * @run 6C:84FF
+ * WHAT IT DOES: Kind 3 of the palette effects; as EffectColour1A31 with the overlay at sector 0931's table of lists for a
+ * negative list number ($89D7).
+ * HOW: EffectColour1A31's body.
+ * WAITS: no.
+ * Entry: X the slot. Exit: as EffectColour1A31.
+ */
+Exit EffectColour0931(uint8_t slot)
+{
+    return EffectColourWithTable(0x89D7, slot);
+}
+
+void abi_EffectColour0931(void)
+{
+    exit_shim(EffectColour0931(cpu.x));
+}
+
+/*
+ * @routine 0BF1:4FF EffectColour0BF1
+ * @run 6C:84FF
+ * WHAT IT DOES: Kind 3 of the palette effects; as EffectColour1A31 with the overlay at sector 0BF1's table of lists for a
+ * negative list number ($89C7).
+ * HOW: EffectColour1A31's body.
+ * WAITS: no.
+ * Entry: X the slot. Exit: as EffectColour1A31.
+ */
+Exit EffectColour0BF1(uint8_t slot)
+{
+    return EffectColourWithTable(0x89C7, slot);
+}
+
+void abi_EffectColour0BF1(void)
+{
+    exit_shim(EffectColour0BF1(cpu.x));
+}

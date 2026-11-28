@@ -5383,3 +5383,992 @@ void abi_FileMenuShopPage(void)
 
     menu_regs_shim(&r);
 }
+
+/*
+ * The stage map (page 12): the stages the selected slot has reached, each marked on a map; the pad moves between
+ * neighbouring ones that are open; button I takes the stage chosen. MenuSlotProgress holds the position, bit 7 set
+ * when it was left by button II. SlotClearedFlags writes the open positions to $3D00 and up.
+ */
+#define MAP_FLAGS 0x3D00                    /* nonzero: the position can be moved to (SlotClearedFlags) */
+#define MAP_START 0x3D10                    /* the position the map was entered with */
+#define MAP_NEIGHBOURS 0xAF49               /* a pointer to a neighbour table for left, down, right, up, and two more */
+#define MAP_MARK_X 0xAFD0                   /* marks' X and Y by object ($20 to $2D) */
+#define MAP_MARK_Y 0xAFDE
+#define MAP_CURSOR_X 0xAFF0                 /* the cursor's place by position */
+#define MAP_CURSOR_Y 0xAFFE
+#define MAP_PATH_X 0xB0FC
+#define MAP_PATH_Y 0xB109
+#define MAP_PATHS 0xB0EF                    /* the path animation by position, 0 none */
+#define MAP_LINKS 0xB13B                    /* the mark lit beside a position */
+#define MAP_CURSOR_LIST 0xB177              /* the cursor's frame list */
+#define MAP_BLINK_FRAMES 0xB198             /* a frame by object ($10 to $1D) */
+#define MAP_PATH_LISTS 0xB1CA               /* frame list pointers by path animation */
+#define MAP_NAMES 0xB23A                    /* string pointers by position */
+#define MAP_TEXTS_A 0xB365                  /* and by position and character */
+#define MAP_TEXTS_B 0xB4F8
+#define MAP_OBJECT_FRAMES 0xAEDF            /* object $34's frame by character */
+enum { MAP_MARK_FIRST = 0x20, MAP_MARK_END = 0x2E, MAP_PATH_OBJECT = 0x30, MAP_MOVE_SOUND = 0x22 };
+
+/* DrawGlyphText through a pointer from a word table: LDA table,x; STA zTemp00; LDA table+1,x; STA zTemp01. */
+static MenuRegs draw_map_string(MenuRegs r, uint16_t table, uint8_t index, uint16_t ret)
+{
+    WR8(ZP->temp00, rd8((uint16_t)(table + index)));
+    ra(&r, rd8((uint16_t)(table + 1 + index)));
+    WR8(ZP->temp01, r.a);
+    jsr_push(ret);
+    rexit(&r, DrawGlyphText());
+    jsr_pop();
+    return r;
+}
+
+/*
+ * @routine 00DF:1F9 DrawMapStrings
+ * @run 6F:B1F9
+ * WHAT IT DOES: Draws the strings of the map's position: its name, then the character's text for it.
+ * HOW: The position doubled indexes MAP_NAMES; DrawGlyphText; then MAP_TEXTS_B or MAP_TEXTS_A by MenuSlotCharacter.
+ * WAITS: no.
+ * Entry: nothing. Exit: as DrawGlyphText.
+ */
+MenuRegs DrawMapStrings(MenuRegs r)
+{
+    uint8_t slot, position, index, character;
+
+    slot = RD8(ZP->save_slot);
+    ry(&r, slot);
+    position = rd8((uint16_t)(MenuSlotProgress + slot));
+    index = (uint8_t)(position << 1);
+    ra(&r, index);
+    rc(&r, (position & 0x80) != 0);
+    rx(&r, index);
+    r = draw_map_string(r, MAP_NAMES, index, 0xB20D);
+    slot = RD8(ZP->save_slot);
+    ry(&r, slot);
+    character = rd8((uint16_t)(MenuSlotCharacter + slot));
+    ra(&r, character);
+    position = rd8((uint16_t)(MenuSlotProgress + slot));
+    index = (uint8_t)(position << 1);
+    ra(&r, index);
+    rc(&r, (position & 0x80) != 0);
+    rx(&r, index);
+    if (character != 0) {
+        return draw_map_string(r, MAP_TEXTS_B, index, 0xB226);
+    }
+    return draw_map_string(r, MAP_TEXTS_A, index, 0xB239);
+}
+
+void abi_DrawMapStrings(void)
+{
+    MenuRegs r = DrawMapStrings(menu_regs_cpu());
+
+    menu_regs_shim(&r);
+}
+
+/*
+ * @routine 00DF:01A PlaceMapBackground
+ * @run 6F:B01A
+ * WHAT IT DOES: Puts object 0 on the map screen: picture set 5, frame 1.
+ * HOW: ClearObject, a store and an INC.
+ * WAITS: no.
+ * Entry: nothing. Exit: A 5, X 0, N and Z from the frame, C kept.
+ */
+MenuRegs PlaceMapBackground(MenuRegs r)
+{
+    rx(&r, 0);
+    jsr_push(0xB01E);
+    ClearObject(0);
+    jsr_pop();
+    ra(&r, 5);
+    WR8(OBJ->sprite_set[0], 5);
+    rnz(&r, INC8(OBJ->frame[0]));
+    return r;
+}
+
+void abi_PlaceMapBackground(void)
+{
+    MenuRegs r = PlaceMapBackground(menu_regs_cpu());
+
+    menu_regs_shim(&r);
+}
+
+/*
+ * @routine 00DF:068 PlaceMapMarks
+ * @run 6F:B068
+ * WHAT IT DOES: Puts the map's 14 marks (objects $20 to $2D) and their shadows (objects $10 to $1D) at their places;
+ * a mark whose position is open gets frame $0D.
+ * HOW: A loop over X; ClearObject; stores with X and X less $10; the flag at $3CE0+X.
+ * WAITS: no.
+ * Entry: nothing. Exit: A the last flag or $0D, X $2E, Z and C set, N clear.
+ */
+MenuRegs PlaceMapMarks(MenuRegs r)
+{
+    uint8_t object, value, flag;
+
+    for (object = MAP_MARK_FIRST; object != MAP_MARK_END; object++) {
+        jsr_push(0xB06D);
+        ClearObject(object);
+        jsr_pop();
+        WR8(OBJ->sprite_set[object], 5);
+        WR8(OBJ->sprite_set[(uint8_t)(object - 0x10)], 5);
+        value = rd8((uint16_t)(MAP_MARK_X + object));
+        WR8(OBJ->x_lo[object], value);
+        WR8(OBJ->x_lo[(uint8_t)(object - 0x10)], value);
+        value = rd8((uint16_t)(MAP_MARK_Y + object));
+        WR8(OBJ->y_lo[object], value);
+        WR8(OBJ->y_lo[(uint8_t)(object - 0x10)], value);
+        flag = rd8((uint16_t)(MAP_FLAGS - MAP_MARK_FIRST + object));
+        ra(&r, flag);
+        if (flag != 0) {
+            ra(&r, 0x0D);
+            WR8(OBJ->frame[object], 0x0D);
+        }
+    }
+    rx(&r, object);
+    rcmp(&r, object, MAP_MARK_END);
+    return r;
+}
+
+void abi_PlaceMapMarks(void)
+{
+    MenuRegs r = PlaceMapMarks(menu_regs_cpu());
+
+    menu_regs_shim(&r);
+}
+
+/* A mark lit (or put out): its start argument counted up (or cleared), and, when its position is closed, frame $0D
+ * and attribute $10 (or frame 0). */
+static void light_mark(MenuRegs *r, uint8_t x, bool light)
+{
+    uint8_t flag;
+
+    if (light) {
+        rnz(r, INC8(OBJ->start_arg[(uint8_t)(x + 0x10)]));
+    } else {
+        WR8(OBJ->start_arg[(uint8_t)(x + 0x10)], 0);
+    }
+    flag = rd8((uint16_t)(MAP_FLAGS + x));
+    ra(r, flag);
+    if (flag == 0) {
+        if (light) {
+            ra(r, 0x0D);
+            WR8(OBJ->frame[(uint8_t)(x + 0x20)], 0x0D);
+            ra(r, 0x10);
+            WR8(OBJ->sprite_attr[(uint8_t)(x + 0x20)], 0x10);
+        } else {
+            WR8(OBJ->frame[(uint8_t)(x + 0x20)], 0);
+        }
+    }
+}
+
+/* The marks of the position the slot is on: position 1 also has the mark of position 3. */
+static MenuRegs position_marks(MenuRegs r, bool light)
+{
+    uint8_t slot, position, link;
+
+    slot = RD8(ZP->save_slot);
+    rx(&r, slot);
+    position = rd8((uint16_t)(MenuSlotProgress + slot));
+    ry(&r, position);
+    rcmp(&r, position, 0x01);
+    if (position == 0x01) {
+        rx(&r, 0x03);
+        light_mark(&r, 0x03, light);
+    }
+    link = rd8((uint16_t)(MAP_LINKS + position));
+    rx(&r, link);
+    light_mark(&r, link, light);
+    return r;
+}
+
+/*
+ * @routine 00DF:097 LightMapMarks
+ * @run 6F:B097
+ * WHAT IT DOES: Lights the marks beside the slot's position.
+ * HOW: The position's link from $B13B (position 1 the mark 3 too): INC of start_arg, frame $0D and attribute $10 on a
+ * closed one.
+ * WAITS: no.
+ * Entry: nothing. Exit: X the link, Y the position, A and the flags as the last test or store left them.
+ */
+MenuRegs LightMapMarks(MenuRegs r)
+{
+    return position_marks(r, true);
+}
+
+void abi_LightMapMarks(void)
+{
+    MenuRegs r = LightMapMarks(menu_regs_cpu());
+
+    menu_regs_shim(&r);
+}
+
+/*
+ * @routine 00DF:116 PutOutMapMarks
+ * @run 6F:B116
+ * WHAT IT DOES: Puts out the marks beside the slot's position.
+ * HOW: STZ of start_arg, and of the frame on a closed one.
+ * WAITS: no.
+ * Entry: nothing. Exit: as LightMapMarks.
+ */
+MenuRegs PutOutMapMarks(MenuRegs r)
+{
+    return position_marks(r, false);
+}
+
+void abi_PutOutMapMarks(void)
+{
+    MenuRegs r = PutOutMapMarks(menu_regs_cpu());
+
+    menu_regs_shim(&r);
+}
+
+/*
+ * @routine 00DF:0CA PlaceMapPath
+ * @run 6F:B0CA
+ * WHAT IT DOES: Puts object $30, the path from the slot's position, on the map, when the position has one.
+ * HOW: ClearObject; $B0EF by position to start_arg; the place from $B0FC and $B109; picture set 5.
+ * WAITS: no.
+ * Entry: nothing. Exit: X $30, Y the position; none: A 0, Z set; else A 5, N and Z clear. C kept.
+ */
+MenuRegs PlaceMapPath(MenuRegs r)
+{
+    uint8_t slot, position, value;
+
+    rx(&r, MAP_PATH_OBJECT);
+    jsr_push(0xB0CF);
+    ClearObject(MAP_PATH_OBJECT);
+    jsr_pop();
+    slot = RD8(ZP->save_slot);
+    position = rd8((uint16_t)(MenuSlotProgress + slot));
+    ry(&r, position);
+    value = rd8((uint16_t)(MAP_PATHS + position));
+    ra(&r, value);
+    r.y = position;
+    if (value != 0) {
+        WR8(OBJ->start_arg[MAP_PATH_OBJECT], value);
+        value = rd8((uint16_t)(MAP_PATH_X + position));
+        WR8(OBJ->x_lo[MAP_PATH_OBJECT], value);
+        value = rd8((uint16_t)(MAP_PATH_Y + position));
+        WR8(OBJ->y_lo[MAP_PATH_OBJECT], value);
+        ra(&r, 5);
+        WR8(OBJ->sprite_set[MAP_PATH_OBJECT], 5);
+    }
+    return r;
+}
+
+void abi_PlaceMapPath(void)
+{
+    MenuRegs r = PlaceMapPath(menu_regs_cpu());
+
+    menu_regs_shim(&r);
+}
+
+/* StepObjectFrames' exit with the Y it leaves. */
+static void r_step_frames(MenuRegs *r, uint8_t object, uint16_t ret)
+{
+    FrameStep step;
+    uint8_t y = 0;
+
+    jsr_push(ret);
+    step = StepObjectFrames(object, &y);
+    jsr_pop();
+    (void)r_frames(r, step);
+    if (step != FRAME_HELD) {
+        r->y = y;
+        r->set |= REG_Y;
+    }
+}
+
+/*
+ * @routine 00DF:148 MoveMapCursor
+ * @run 6F:B148
+ * WHAT IT DOES: Animates object 0, the map's cursor, and puts it at the slot's position with a vertical wave.
+ * HOW: StepObjectFrames with the list at $B177; ScaleBySine of 5 by the frame counter times four; the Y of the
+ * position plus the product's middle byte, and the X.
+ * WAITS: no.
+ * Entry: nothing. Exit: A the X place, N and Z from it, Y the position, X 0; C and V from the Y add.
+ */
+MenuRegs MoveMapCursor(MenuRegs r)
+{
+    ScaleResult wave;
+    uint8_t slot, position, base, sum, value;
+    unsigned total;
+
+    rx(&r, 0);
+    WR8(ZP->temp10, (uint8_t)MAP_CURSOR_LIST);
+    ra(&r, (uint8_t)(MAP_CURSOR_LIST >> 8));
+    WR8(ZP->temp11, (uint8_t)(MAP_CURSOR_LIST >> 8));
+    r_step_frames(&r, 0, 0xB154);
+    WR8(ZP->temp00, 0x05);
+    WR8(ZP->temp01, 0x00);
+    value = (uint8_t)(RD8(ZP->frame_tick) << 2);
+    ra(&r, value);
+    jsr_push(0xB161);
+    wave = ScaleBySine(value);
+    jsr_pop();
+    (void)wave;
+    ry(&r, 0);
+    slot = RD8(ZP->save_slot);
+    position = rd8((uint16_t)(MenuSlotProgress + slot));
+    ry(&r, position);
+    base = rd8((uint16_t)(MAP_CURSOR_Y + position));
+    total = (unsigned)base + RD8(ZP->product.mid);
+    sum = (uint8_t)total;
+    rc(&r, total > 0xFF);
+    rv(&r, ((base ^ sum) & ((uint8_t)(total - base) ^ sum) & 0x80) != 0);
+    WR8(OBJ->y_lo[0], sum);
+    value = rd8((uint16_t)(MAP_CURSOR_X + position));
+    ra(&r, value);
+    WR8(OBJ->x_lo[0], value);
+    return r;
+}
+
+void abi_MoveMapCursor(void)
+{
+    MenuRegs r = MoveMapCursor(menu_regs_cpu());
+
+    menu_regs_shim(&r);
+}
+
+/*
+ * @routine 00DF:18C BlinkMapMarks
+ * @run 6F:B18C
+ * WHAT IT DOES: Blinks the lit marks (objects $10 to $1D): an object with a start argument shows its frame on every
+ * other 16 frames.
+ * HOW: STZ of the frame; start_arg and bit 4 of zFrameTick; the frame from $B198+X.
+ * WAITS: no.
+ * Entry: nothing. Exit: X $1E, Z and C set, N clear, A the last value read.
+ */
+MenuRegs BlinkMapMarks(MenuRegs r)
+{
+    uint8_t object, value;
+
+    for (object = 0x10; object != 0x1E; object++) {
+        WR8(OBJ->frame[object], 0);
+        value = RD8(OBJ->start_arg[object]);
+        ra(&r, value);
+        if (value != 0) {
+            value = (uint8_t)(RD8(ZP->frame_tick) & 0x10);
+            ra(&r, value);
+            if (value != 0) {
+                value = rd8((uint16_t)(MAP_BLINK_FRAMES + object));
+                ra(&r, value);
+                WR8(OBJ->frame[object], value);
+            }
+        }
+    }
+    rx(&r, object);
+    rcmp(&r, object, 0x1E);
+    return r;
+}
+
+void abi_BlinkMapMarks(void)
+{
+    MenuRegs r = BlinkMapMarks(menu_regs_cpu());
+
+    menu_regs_shim(&r);
+}
+
+/*
+ * @routine 00DF:1B6 AnimateMapPath
+ * @run 6F:B1B6
+ * WHAT IT DOES: Steps the path object's animation, when it has one.
+ * HOW: start_arg doubled indexes the list pointers at $B1CA; a tail jump to StepObjectFrames; none returns.
+ * WAITS: no.
+ * Entry: nothing. Exit: none: A 0, Z set, X $30; else as StepObjectFrames.
+ */
+MenuRegs AnimateMapPath(MenuRegs r)
+{
+    FrameStep step;
+    uint8_t value, index, y = 0;
+
+    rx(&r, MAP_PATH_OBJECT);
+    value = RD8(OBJ->start_arg[MAP_PATH_OBJECT]);
+    ra(&r, value);
+    if (value == 0) {
+        return r;
+    }
+    index = (uint8_t)(value << 1);
+    ra(&r, index);
+    rc(&r, (value & 0x80) != 0);
+    ry(&r, index);
+    WR8(ZP->temp10, rd8((uint16_t)(MAP_PATH_LISTS + index)));
+    ra(&r, rd8((uint16_t)(MAP_PATH_LISTS + 1 + index)));
+    WR8(ZP->temp11, r.a);
+    step = StepObjectFrames(MAP_PATH_OBJECT, &y);
+    (void)r_frames(&r, step);
+    if (step != FRAME_HELD) {
+        r.y = y;
+        r.set |= REG_Y;
+    }
+    return r;
+}
+
+void abi_AnimateMapPath(void)
+{
+    MenuRegs r = AnimateMapPath(menu_regs_cpu());
+
+    menu_regs_shim(&r);
+}
+
+/* The neighbour of the slot's position in the table pointed to at MAP_NEIGHBOURS + index; X the neighbour. */
+static MenuRegs map_neighbour(MenuRegs r, uint8_t index)
+{
+    uint8_t slot, position, neighbour, flag;
+
+    WR8(ZP->temp00, rd8((uint16_t)(MAP_NEIGHBOURS + index)));
+    WR8(ZP->temp01, rd8((uint16_t)(MAP_NEIGHBOURS + 1 + index)));
+    slot = RD8(ZP->save_slot);
+    rx(&r, slot);
+    position = rd8((uint16_t)(MenuSlotProgress + slot));
+    ry(&r, position);
+    neighbour = RD8_PTR_Y(ZP->temp00, position);
+    ra(&r, neighbour);
+    rx(&r, neighbour);
+    flag = rd8((uint16_t)(MAP_FLAGS + neighbour));
+    ra(&r, flag);
+    return r;
+}
+
+/* To the neighbour in X ($AF08): marks put out, the position moved, path, marks and strings drawn, a sound. */
+static MenuRegs map_move(MenuRegs r)
+{
+    CommandCall sound;
+    MenuReplay *p;
+    uint8_t neighbour = r.x, slot;
+
+    push8(neighbour);
+    jsr_push(0xAF0C);
+    r = PutOutMapMarks(r);
+    jsr_pop();
+    neighbour = pull8();
+    rx(&r, neighbour);
+    ra(&r, neighbour);
+    slot = RD8(ZP->save_slot);
+    ry(&r, slot);
+    wr8((uint16_t)(MenuSlotProgress + slot), neighbour);
+    jsr_push(0xAF16);
+    r = PlaceMapPath(r);
+    jsr_pop();
+    jsr_push(0xAF19);
+    r = LightMapMarks(r);
+    jsr_pop();
+    jsr_push(0xAF1C);
+    r = DrawMapStrings(r);
+    jsr_pop();
+    ra(&r, MAP_MOVE_SOUND);
+    jsr_push(0xAF21);
+    sound = SoundCommand(MAP_MOVE_SOUND, r.x, menu_y(&r));
+    jsr_pop();
+    p = menu_replay(&r, REPLAY_SOUND);
+    p->command = MAP_MOVE_SOUND;
+    p->call.sound = sound;
+    return r;
+}
+
+/*
+ * @routine 00DE:6E1 MoveOnMap
+ * @run 6F:AEE1
+ * WHAT IT DOES: Moves the slot's position by the pad: to the neighbour in the direction pressed when it is open; for
+ * left or right, when that one is closed, to the one the fifth or sixth table gives, if open.
+ * HOW: The first set bit of the pad's top four (a loop of ASL) picks the table; ($00),Y; PutOutMapMarks, the new
+ * position, PlaceMapPath, LightMapMarks, DrawMapStrings, sound $22.
+ * WAITS: no.
+ * Entry: nothing. Exit: as the arm that ran last.
+ */
+MenuRegs MoveOnMap(MenuRegs r)
+{
+    uint8_t pad, direction, index;
+
+    pad = (uint8_t)(rd8(BiosJoyTrigger) & 0xF0);
+    ra(&r, pad);
+    if (pad == 0) {
+        return r;
+    }
+    direction = 0xFF;
+    do {
+        direction++;
+        rc(&r, (pad & 0x80) != 0);
+        pad = (uint8_t)(pad << 1);
+    } while (!r.c);
+    index = (uint8_t)(direction << 1);
+    rc(&r, (direction & 0x80) != 0);
+    ra(&r, index);
+    ry(&r, index);
+    r = map_neighbour(r, index);
+    if (r.a != 0) {
+        return map_move(r);
+    }
+    pad = (uint8_t)(rd8(BiosJoyTrigger) & 0xA0);
+    ra(&r, pad);
+    if (pad == 0) {
+        return r;
+    }
+    ry(&r, 0x08);
+    ra(&r, (uint8_t)(pad & 0x80));
+    index = 0x08;
+    if (r.a == 0) {
+        index = 0x0A;
+        ry(&r, 0x0A);
+    }
+    r = map_neighbour(r, index);
+    if (r.a != 0) {
+        return map_move(r);
+    }
+    return r;
+}
+
+void abi_MoveOnMap(void)
+{
+    MenuRegs r = MoveOnMap(menu_regs_cpu());
+
+    menu_regs_shim(&r);
+}
+
+/*
+ * @routine 00DE:5AE FileMenuMapStart
+ * @run 6F:ADAE
+ * WHAT IT DOES: The map page's first step: the game state wiped, list $19 and script $0F, the position kept in
+ * MAP_START, the open positions found, and the map's objects placed.
+ * HOW: ResetGameState and the calls in order; MenuStepAdvance.
+ * WAITS: yes, in ResetGameState (the vertical blank).
+ * Entry: from MenuStepDispatch. Exit: as MenuStepAdvance.
+ */
+MenuRegs FileMenuMapStart(MenuRegs r)
+{
+    SlotFlags flags;
+    uint8_t slot, position;
+
+    jsr_push(0xADB1);
+    ResetGameState(menu_wait_regs(&r));
+    jsr_pop();
+    (void)menu_replay(&r, REPLAY_RESET);
+    ra(&r, 0x19);
+    jsr_push(0xADB6);
+    (void)StartListChannel0Kind2(0x19);
+    jsr_pop();
+    ra(&r, 2);
+    rx(&r, 0);
+    rnz(&r, 2);
+    ra(&r, 0x0F);
+    jsr_push(0xADBB);
+    (void)StartScriptSlot0Kind1(0x0F);
+    jsr_pop();
+    ry(&r, 0x0F);
+    rx(&r, 0);
+    rnz(&r, 0x0F);
+    slot = RD8(ZP->save_slot);
+    ry(&r, slot);
+    position = rd8((uint16_t)(MenuSlotProgress + slot));
+    ra(&r, position);
+    wr8(MAP_START, position);
+    jsr_push(0xADC6);
+    flags = SlotClearedFlags();
+    jsr_pop();
+    ra(&r, flags.a);
+    rx(&r, 13);
+    r.y = flags.y;
+    r.set |= REG_Y;
+    rnz(&r, 0);
+    rc(&r, true);
+    rv(&r, flags.v);
+    jsr_push(0xADC9);
+    r = PlaceMapBackground(r);
+    jsr_pop();
+    jsr_push(0xADCC);
+    r = PlaceMenuMarks(r);
+    jsr_pop();
+    jsr_push(0xADCF);
+    r = PlaceMenuPortraits(r);
+    jsr_pop();
+    jsr_push(0xADD2);
+    r = PlaceMapMarks(r);
+    jsr_pop();
+    jsr_push(0xADD5);
+    r = LightMapMarks(r);
+    jsr_pop();
+    jsr_push(0xADD8);
+    r = PlaceMapPath(r);
+    jsr_pop();
+    ra(&r, MenuStepAdvance());
+    return r;
+}
+
+void abi_FileMenuMapStart(void)
+{
+    MenuRegs r = FileMenuMapStart(menu_regs_cpu());
+
+    menu_regs_shim(&r);
+}
+
+/*
+ * @routine 00DE:5DB FileMenuMapDraw
+ * @run 6F:ADDB
+ * WHAT IT DOES: The map page's second step: the position's strings drawn.
+ * HOW: DrawMapStrings, MenuStepAdvance.
+ * WAITS: no.
+ * Entry: from MenuStepDispatch. Exit: as MenuStepAdvance.
+ */
+MenuRegs FileMenuMapDraw(MenuRegs r)
+{
+    jsr_push(0xADDE);
+    r = DrawMapStrings(r);
+    jsr_pop();
+    ra(&r, MenuStepAdvance());
+    return r;
+}
+
+void abi_FileMenuMapDraw(void)
+{
+    MenuRegs r = FileMenuMapDraw(menu_regs_cpu());
+
+    menu_regs_shim(&r);
+}
+
+/*
+ * @routine 00DE:5E1 FileMenuMapStep
+ * @run 6F:ADE1
+ * WHAT IT DOES: The map's frame: the objects animate and the pad moves the position. Button I goes on a step with sound
+ * $3F; button II goes on a step with the entry position put back, bit 7 set.
+ * HOW: MoveMapCursor, AnimateMenuMarks, BlinkMapMarks, AnimateMapPath, MoveOnMap; the trigger's bits 0 and 1.
+ * WAITS: no.
+ * Entry: from MenuStepDispatch. Exit: as the arm that ran last.
+ */
+MenuRegs FileMenuMapStep(MenuRegs r)
+{
+    CommandCall sound;
+    MenuReplay *p;
+    uint8_t trigger, position, slot;
+
+    jsr_push(0xADE4);
+    r = MoveMapCursor(r);
+    jsr_pop();
+    jsr_push(0xADE7);
+    r = AnimateMenuMarks(r);
+    jsr_pop();
+    jsr_push(0xADEA);
+    r = BlinkMapMarks(r);
+    jsr_pop();
+    jsr_push(0xADED);
+    r = AnimateMapPath(r);
+    jsr_pop();
+    jsr_push(0xADF0);
+    r = MoveOnMap(r);
+    jsr_pop();
+    trigger = (uint8_t)(rd8(BiosJoyTrigger) & 0x03);
+    ra(&r, trigger);
+    if (trigger == 0) {
+        return r;
+    }
+    jsr_push(0xADFA);
+    ra(&r, MenuStepAdvance());
+    jsr_pop();
+    trigger = (uint8_t)(rd8(BiosJoyTrigger) & 0x01);
+    ra(&r, trigger);
+    if (trigger == 0) {
+        position = rd8(MAP_START);
+        slot = RD8(ZP->save_slot);
+        ry(&r, slot);
+        position = (uint8_t)(position | 0x80);
+        ra(&r, position);
+        wr8((uint16_t)(MenuSlotProgress + slot), position);
+        return r;
+    }
+    ra(&r, 0x3F);
+    jsr_push(0xAE12);
+    sound = SoundCommand(0x3F, r.x, menu_y(&r));
+    jsr_pop();
+    p = menu_replay(&r, REPLAY_SOUND);
+    p->command = 0x3F;
+    p->call.sound = sound;
+    return r;
+}
+
+void abi_FileMenuMapStep(void)
+{
+    MenuRegs r = FileMenuMapStep(menu_regs_cpu());
+
+    menu_regs_shim(&r);
+}
+
+/* StartListChannel0Kind2: A 2, X 0. */
+static MenuRegs start_list(MenuRegs r, uint8_t list, uint16_t ret)
+{
+    ra(&r, list);
+    jsr_push(ret);
+    (void)StartListChannel0Kind2(list);
+    jsr_pop();
+    ra(&r, 2);
+    rx(&r, 0);
+    rnz(&r, 2);
+    return r;
+}
+
+/*
+ * @routine 00DE:613 FileMenuMapLeaveStart
+ * @run 6F:AE13
+ * WHAT IT DOES: The map page's step after the pick: the game state wiped, the start screen's lists again.
+ * HOW: ResetGameState, list $0D on channel 0, lists 0 and 1 as kind 3 on channels 7 and 6, MenuStepAdvance.
+ * WAITS: yes, in ResetGameState (the vertical blank).
+ * Entry: from MenuStepDispatch. Exit: as MenuStepAdvance.
+ */
+MenuRegs FileMenuMapLeaveStart(MenuRegs r)
+{
+    jsr_push(0xAE16);
+    ResetGameState(menu_wait_regs(&r));
+    jsr_pop();
+    (void)menu_replay(&r, REPLAY_RESET);
+    r = start_list(r, 0x0D, 0xAE1B);
+    rx(&r, 0x07);
+    ra_keep(&r, 0);
+    jsr_push(0xAE21);
+    (void)StartListChannelKind3(0, 7);
+    jsr_pop();
+    ra(&r, 3);
+    rx(&r, 0x06);
+    ra(&r, 1);
+    jsr_push(0xAE28);
+    (void)StartListChannelKind3(1, 6);
+    jsr_pop();
+    ra(&r, 3);
+    ra(&r, MenuStepAdvance());
+    return r;
+}
+
+void abi_FileMenuMapLeaveStart(void)
+{
+    MenuRegs r = FileMenuMapLeaveStart(menu_regs_cpu());
+
+    menu_regs_shim(&r);
+}
+
+/*
+ * @routine 00DE:62B FileMenuMapLeaveObjects
+ * @run 6F:AE2B
+ * WHAT IT DOES: Puts the slot page's objects back; the cursor on item $15 when button II left the map (the bit
+ * cleared), else on $13.
+ * HOW: List $0F, object list 0, bit 7 of MenuSlotProgress, PlaceCursorObjects, MenuStepAdvance.
+ * WAITS: no.
+ * Entry: from MenuStepDispatch. Exit: as MenuStepAdvance.
+ */
+MenuRegs FileMenuMapLeaveObjects(MenuRegs r)
+{
+    CursorTarget place;
+    uint8_t slot, position, item;
+
+    r = start_list(r, 0x0F, 0xAE30);
+    ra_keep(&r, 0);
+    jsr_push(0xAE34);
+    rexit(&r, PlaceObjectList(0));
+    jsr_pop();
+    slot = RD8(ZP->save_slot);
+    ry(&r, slot);
+    position = rd8((uint16_t)(MenuSlotProgress + slot));
+    ra(&r, position);
+    if (position & 0x80) {
+        position &= 0x7F;
+        ra(&r, position);
+        wr8((uint16_t)(MenuSlotProgress + slot), position);
+        item = 0x15;
+    } else {
+        item = 0x13;
+    }
+    ra(&r, item);
+    jsr_push(0xAE49);
+    place = PlaceCursorObjects(item);
+    jsr_pop();
+    ra(&r, place.value);
+    r.x = 1;
+    r.y = place.index;
+    r.set |= REG_X | REG_Y;
+    rc(&r, place.carry);
+    ra(&r, MenuStepAdvance());
+    return r;
+}
+
+void abi_FileMenuMapLeaveObjects(void)
+{
+    MenuRegs r = FileMenuMapLeaveObjects(menu_regs_cpu());
+
+    menu_regs_shim(&r);
+}
+
+/*
+ * @routine 00DE:64C FileMenuMapLeaveList
+ * @run 6F:AE4C
+ * WHAT IT DOES: Draws the slot menu and starts list $13 for a slot with data, $12 without.
+ * HOW: DrawSlotMenu, bit 0 of the slot's first byte, StartListChannel0Kind2, MenuStepAdvance.
+ * WAITS: no.
+ * Entry: from MenuStepDispatch. Exit: as MenuStepAdvance.
+ */
+MenuRegs FileMenuMapLeaveList(MenuRegs r)
+{
+    uint8_t slot, offset, list;
+
+    jsr_push(0xAE4F);
+    r = DrawSlotMenu(r);
+    jsr_pop();
+    slot = RD8(ZP->save_slot);
+    ry(&r, slot);
+    offset = rd8((uint16_t)(SLOT_OFFSETS + slot));
+    rx(&r, offset);
+    rc(&r, (rd8((uint16_t)(SaveBuffer + offset)) & 0x01) != 0);
+    list = r.c ? 0x13 : 0x12;
+    r = start_list(r, list, 0xAE60);
+    ra(&r, MenuStepAdvance());
+    return r;
+}
+
+void abi_FileMenuMapLeaveList(void)
+{
+    MenuRegs r = FileMenuMapLeaveList(menu_regs_cpu());
+
+    menu_regs_shim(&r);
+}
+
+/*
+ * @routine 00DE:663 FileMenuMapLeaveDraw
+ * @run 6F:AE63
+ * WHAT IT DOES: Draws the slot page a screen to the left of the map and goes back to page 7: script $0E, the slot's
+ * details, name and percentage, its objects and character picture, then objects $10 to $3F moved a screen left and the
+ * scroll a screen right.
+ * HOW: As the end of FileMenuSlideDraw for a slot, with frame $34 from $AEDF; DEC of x_hi over objects $10 to $3F, INC
+ * of the scroll's high byte; SetMenuPage 7.
+ * WAITS: no.
+ * Entry: from MenuStepDispatch. Exit: A 0, N and Z from 7, X $40, the rest as the draws leave them.
+ */
+MenuRegs FileMenuMapLeaveDraw(MenuRegs r)
+{
+    uint8_t slot, row, offset, byte, kind, character, object;
+
+    ra(&r, 0x0E);
+    jsr_push(0xAE68);
+    (void)StartScriptSlot0Kind1(0x0E);
+    jsr_pop();
+    ry(&r, 0x0E);
+    rx(&r, 0);
+    rnz(&r, 0x0E);
+    jsr_push(0xAE6B);
+    rexit(&r, DrawSlotDetails());
+    jsr_pop();
+    jsr_push(0xAE6E);
+    r_arith(&r, DrawCursorRowDigit());
+    jsr_pop();
+    slot = RD8(ZP->save_slot);
+    rc(&r, false);
+    row = radd(&r, slot, 0x06);
+    jsr_push(0xAE76);
+    rexit(&r, DrawSlotName(row, r.x));
+    jsr_pop();
+    slot = RD8(ZP->save_slot);
+    rc(&r, false);
+    row = radd(&r, slot, 0x06);
+    jsr_push(0xAE7E);
+    rexit(&r, DrawSlotPercent(row, r.x));
+    jsr_pop();
+    slot = RD8(ZP->save_slot);
+    ry(&r, slot);
+    offset = rd8((uint16_t)(SLOT_OFFSETS + slot));
+    rx(&r, offset);
+    byte = rd8((uint16_t)(SaveBuffer + offset));
+    rc(&r, (byte & 0x01) != 0);
+    kind = r.c ? 3 : 5;
+    ra(&r, kind);
+    jsr_push(0xAE90);
+    rexit(&r, PlaceObjectList(kind));
+    jsr_pop();
+    slot = RD8(ZP->save_slot);
+    ry(&r, slot);
+    character = rd8((uint16_t)(MenuSlotCharacter + slot));
+    WR8(OBJ->start_arg[0x33], character);
+    WR8(OBJ->work_d[0x33], character);
+    rx(&r, character);
+    push8(character);
+    offset = rd8((uint16_t)(SLOT_OFFSETS + slot));
+    byte = rd8((uint16_t)(SaveBuffer + offset));
+    rx(&r, pull8());
+    ra(&r, (uint8_t)(byte >> 1));
+    rc(&r, (byte & 0x01) != 0);
+    if (r.c) {
+        byte = rd8((uint16_t)(MAP_OBJECT_FRAMES + r.x));
+        ra(&r, byte);
+        WR8(OBJ->frame[0x34], byte);
+    }
+    slot = RD8(ZP->save_slot);
+    ry(&r, slot);
+    offset = rd8((uint16_t)(SLOT_OFFSETS + slot));
+    rx(&r, offset);
+    byte = rd8((uint16_t)(SaveBuffer + offset));
+    rc(&r, (byte & 0x01) != 0);
+    byte >>= 1;
+    ra(&r, byte);
+    if (!r.c) {
+        WR8(OBJ->frame[0x31], 0);
+    }
+    rc(&r, (byte & 0x01) != 0);
+    byte >>= 1;
+    ra(&r, byte);
+    if (!r.c) {
+        WR8(OBJ->frame[0x32], 0);
+    }
+    rc(&r, (byte & 0x01) != 0);
+    byte >>= 1;
+    ra(&r, byte);
+    if (!r.c) {
+        WR8(OBJ->frame[0x2F], 0);
+    }
+    rc(&r, (byte & 0x01) != 0);
+    byte >>= 1;
+    ra(&r, byte);
+    if (!r.c) {
+        WR8(OBJ->frame[0x30], 0);
+    }
+    for (object = 0x10; object != 0x40; object++) {
+        DEC8(OBJ->x_hi[object]);
+    }
+    rx(&r, object);
+    rcmp(&r, object, 0x40);
+    rnz(&r, INC8(SCROLL->x_hi[0]));
+    ra(&r, 0x07);
+    SetMenuPage(0x07);
+    ra(&r, 0);
+    rnz(&r, 0x07);
+    return r;
+}
+
+void abi_FileMenuMapLeaveDraw(void)
+{
+    MenuRegs r = FileMenuMapLeaveDraw(menu_regs_cpu());
+
+    menu_regs_shim(&r);
+}
+
+/*
+ * @routine 00DE:59B FileMenuMapPage
+ * @run 6F:AD9B
+ * @stop ADA0
+ * WHAT IT DOES: Page 12: the stage map.
+ * HOW: zField80 in A and a JSR to MenuStepDispatch, the table after it.
+ * WAITS: yes, in the steps that wipe the game state.
+ * Entry: from the menu's page table. Exit: as the step leaves them.
+ */
+MenuRegs FileMenuMapPage(MenuRegs r)
+{
+    uint16_t target = menu_page(&r, 0xADA0);
+
+    switch (target) {
+    case 0xADAE: return FileMenuMapStart(r);
+    case 0xADDB: return FileMenuMapDraw(r);
+    case 0xADE1: return FileMenuMapStep(r);
+    case 0xAE13: return FileMenuMapLeaveStart(r);
+    case 0xAE2B: return FileMenuMapLeaveObjects(r);
+    case 0xAE4C: return FileMenuMapLeaveList(r);
+    case 0xAE63: return FileMenuMapLeaveDraw(r);
+    default: return menu_elsewhere(r, target);
+    }
+}
+
+void abi_FileMenuMapPage(void)
+{
+    MenuRegs r = FileMenuMapPage(menu_regs_cpu());
+
+    menu_regs_shim(&r);
+}

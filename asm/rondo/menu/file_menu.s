@@ -2725,3 +2725,537 @@ HideShopLine_at0:
 HideShopLine_at5:
     tsb z:zTemp08
     bpl DrawRecordList+32
+
+; @routine 00DE:59B FileMenuMapPage
+; @run 6F:AD9B
+; @stop ADA0
+; WHAT IT DOES: Page 12: the stage map.
+; HOW: zField80 in A and a JSR to MenuStepDispatch, the table after it.
+; WAITS: yes, in the steps that wipe the game state.
+; Entry: from the menu's page table. Exit: as the step leaves them.
+MapFlags = $3D00 ; nonzero where the map can be moved to
+MapStart = $3D10 ; the position the map was entered with
+MapNeighbours = $AF49 ; neighbour table pointers
+MapMarkX = $AFD0 ; marks' X by object
+MapMarkY = $AFDE ; marks' Y by object
+MapCursorX = $AFF0 ; cursor X by position
+MapCursorY = $AFFE ; cursor Y by position
+MapPaths = $B0EF ; path animation by position
+MapPathX = $B0FC ; path X by position
+MapPathY = $B109 ; path Y by position
+MapLinks = $B13B ; the mark beside a position
+MapCursorList = $B177 ; the cursor frame list
+MapBlinkFrames = $B198 ; blink frames by object
+MapPathLists = $B1CA ; path frame lists
+MapNames = $B23A ; string pointers by position
+MapTextsA = $B365 ; text pointers by position
+MapTextsB = $B4F8 ; text pointers by position for character 1
+MapObjectFrames = $AEDF ; object 34 frames by character
+FileMenuMapPage:
+    lda z:zField80
+    jsr MenuStepDispatch
+
+; @routine 00DE:5AE FileMenuMapStart
+; @run 6F:ADAE
+; WHAT IT DOES: The map page's first step: the game state wiped, list $19 and script $0F, the position kept in
+; MAP_START, the open positions found, and the map's objects placed.
+; HOW: ResetGameState and the calls in order; MenuStepAdvance.
+; WAITS: yes, in ResetGameState (the vertical blank).
+; Entry: from MenuStepDispatch. Exit: as MenuStepAdvance.
+FileMenuMapStart:
+    jsr VecResetGameState
+    lda #$19
+    jsr VecStartListChannel0Kind2
+    lda #$0F
+    jsr VecStartScriptSlot0Kind1
+    ldy z:zSaveSlot
+    lda a:MenuSlotProgress,y
+    sta a:MapStart
+    jsr SlotClearedFlags
+    jsr PlaceMapBackground
+    jsr PlaceMenuMarks
+    jsr PlaceMenuPortraits
+    jsr PlaceMapMarks
+    jsr LightMapMarks
+    jsr PlaceMapPath
+    jmp MenuStepAdvance
+
+; @routine 00DE:5DB FileMenuMapDraw
+; @run 6F:ADDB
+; WHAT IT DOES: The map page's second step: the position's strings drawn.
+; HOW: DrawMapStrings, MenuStepAdvance.
+; WAITS: no.
+; Entry: from MenuStepDispatch. Exit: as MenuStepAdvance.
+FileMenuMapDraw:
+    jsr DrawMapStrings
+    jmp MenuStepAdvance
+
+; @routine 00DE:5E1 FileMenuMapStep
+; @run 6F:ADE1
+; WHAT IT DOES: The map's frame: the objects animate and the pad moves the position. Button I goes on a step with sound
+; $3F; button II goes on a step with the entry position put back, bit 7 set.
+; HOW: MoveMapCursor, AnimateMenuMarks, BlinkMapMarks, AnimateMapPath, MoveOnMap; the trigger's bits 0 and 1.
+; WAITS: no.
+; Entry: from MenuStepDispatch. Exit: as the arm that ran last.
+FileMenuMapStep:
+    jsr MoveMapCursor
+    jsr AnimateMenuMarks
+    jsr BlinkMapMarks
+    jsr AnimateMapPath
+    jsr MoveOnMap
+    lda a:BiosJoyTrigger
+    and #$03
+    beq FileMenuMapStep_at0
+    jsr MenuStepAdvance
+    lda a:BiosJoyTrigger
+    and #$01
+    bne FileMenuMapStep_at1
+    lda a:MapStart
+    ldy z:zSaveSlot
+    ora #$80
+    sta a:MenuSlotProgress,y
+    bra FileMenuMapStep_at0
+FileMenuMapStep_at1:
+    lda #$3F
+    jsr VecSoundCommand
+FileMenuMapStep_at0:
+    rts
+
+; @routine 00DE:613 FileMenuMapLeaveStart
+; @run 6F:AE13
+; WHAT IT DOES: The map page's step after the pick: the game state wiped, the start screen's lists again.
+; HOW: ResetGameState, list $0D on channel 0, lists 0 and 1 as kind 3 on channels 7 and 6, MenuStepAdvance.
+; WAITS: yes, in ResetGameState (the vertical blank).
+; Entry: from MenuStepDispatch. Exit: as MenuStepAdvance.
+FileMenuMapLeaveStart:
+    jsr VecResetGameState
+    lda #$0D
+    jsr VecStartListChannel0Kind2
+    ldx #$07
+    cla
+    jsr VecStartListChannelKind3
+    ldx #$06
+    lda #$01
+    jsr VecStartListChannelKind3
+    jmp MenuStepAdvance
+
+; @routine 00DE:62B FileMenuMapLeaveObjects
+; @run 6F:AE2B
+; WHAT IT DOES: Puts the slot page's objects back; the cursor on item $15 when button II left the map (the bit
+; cleared), else on $13.
+; HOW: List $0F, object list 0, bit 7 of MenuSlotProgress, PlaceCursorObjects, MenuStepAdvance.
+; WAITS: no.
+; Entry: from MenuStepDispatch. Exit: as MenuStepAdvance.
+FileMenuMapLeaveObjects:
+    lda #$0F
+    jsr VecStartListChannel0Kind2
+    cla
+    jsr PlaceObjectList
+    ldy z:zSaveSlot
+    lda a:MenuSlotProgress,y
+    bpl FileMenuMapLeaveObjects_at0
+    and #$7F
+    sta a:MenuSlotProgress,y
+    lda #$15
+    bra FileMenuMapLeaveObjects_tAE46
+FileMenuMapLeaveObjects_at0:
+    lda #$13
+FileMenuMapLeaveObjects_tAE46:
+    jsr PlaceCursorObjects
+    jmp MenuStepAdvance
+
+; @routine 00DE:64C FileMenuMapLeaveList
+; @run 6F:AE4C
+; WHAT IT DOES: Draws the slot menu and starts list $13 for a slot with data, $12 without.
+; HOW: DrawSlotMenu, bit 0 of the slot's first byte, StartListChannel0Kind2, MenuStepAdvance.
+; WAITS: no.
+; Entry: from MenuStepDispatch. Exit: as MenuStepAdvance.
+FileMenuMapLeaveList:
+    jsr DrawSlotMenu
+    ldy z:zSaveSlot
+    ldx a:SlotOffsets,y
+    lda a:SaveBuffer,x
+    lsr a
+    lda #$13
+    bcs FileMenuMapLeaveList_at0
+    dec a
+FileMenuMapLeaveList_at0:
+    jsr VecStartListChannel0Kind2
+    jmp MenuStepAdvance
+
+; @routine 00DE:663 FileMenuMapLeaveDraw
+; @run 6F:AE63
+; WHAT IT DOES: Draws the slot page a screen to the left of the map and goes back to page 7: script $0E, the slot's
+; details, name and percentage, its objects and character picture, then objects $10 to $3F moved a screen left and the
+; scroll a screen right.
+; HOW: As the end of FileMenuSlideDraw for a slot, with frame $34 from $AEDF; DEC of x_hi over objects $10 to $3F, INC
+; of the scroll's high byte; SetMenuPage 7.
+; WAITS: no.
+; Entry: from MenuStepDispatch. Exit: A 0, N and Z from 7, X $40, the rest as the draws leave them.
+FileMenuMapLeaveDraw:
+    lda #$0E
+    jsr VecStartScriptSlot0Kind1
+    jsr DrawSlotDetails
+    jsr DrawCursorRowDigit
+    lda z:zSaveSlot
+    clc
+    adc #$06
+    jsr DrawSlotName
+    lda z:zSaveSlot
+    clc
+    adc #$06
+    jsr DrawSlotPercent
+    ldy z:zSaveSlot
+    ldx a:SlotOffsets,y
+    lda a:SaveBuffer,x
+    lsr a
+    lda #$03
+    bcs FileMenuMapLeaveDraw_at0
+    lda #$05
+FileMenuMapLeaveDraw_at0:
+    jsr PlaceObjectList
+    ldy z:zSaveSlot
+    lda a:MenuSlotCharacter,y
+    sta a:OBJ_START_ARG+$33
+    sta a:OBJ_WORK_D+$33
+    tax
+    phx
+    ldx a:SlotOffsets,y
+    lda a:SaveBuffer,x
+    plx
+    lsr a
+    bcc FileMenuMapLeaveDraw_at1
+    lda a:PieceRecords12DA,x
+    sta a:OBJ_FRAME+$34
+FileMenuMapLeaveDraw_at1:
+    ldy z:zSaveSlot
+    ldx a:SlotOffsets,y
+    lda a:SaveBuffer,x
+    lsr a
+    bcs FileMenuMapLeaveDraw_at2
+    stz a:OBJ_FRAME+$31
+FileMenuMapLeaveDraw_at2:
+    lsr a
+    bcs FileMenuMapLeaveDraw_at3
+    stz a:OBJ_FRAME+$32
+FileMenuMapLeaveDraw_at3:
+    lsr a
+    bcs FileMenuMapLeaveDraw_at4
+    stz a:OBJ_FRAME+$2F
+FileMenuMapLeaveDraw_at4:
+    lsr a
+    bcs FileMenuMapLeaveDraw_at5
+    stz a:OBJ_FRAME+$30
+FileMenuMapLeaveDraw_at5:
+    ldx #$10
+FileMenuMapLeaveDraw_tAECF:
+    dec a:OBJ_X_HI,x
+    inx
+    cpx #$40
+    bne FileMenuMapLeaveDraw_tAECF
+    inc a:ScrollXHi
+    lda #$07
+    jmp SetMenuPage
+
+; @routine 00DE:6E1 MoveOnMap
+; @run 6F:AEE1
+; WHAT IT DOES: Moves the slot's position by the pad: to the neighbour in the direction pressed when it is open; for
+; left or right, when that one is closed, to the one the fifth or sixth table gives, if open.
+; HOW: The first set bit of the pad's top four (a loop of ASL) picks the table; ($00),Y; PutOutMapMarks, the new
+; position, PlaceMapPath, LightMapMarks, DrawMapStrings, sound $22.
+; WAITS: no.
+; Entry: nothing. Exit: as the arm that ran last.
+MoveOnMap:
+    lda a:BiosJoyTrigger
+    and #$F0
+    beq MoveOnMap_at0
+    ldy #$FF
+MoveOnMap_at1:
+    iny
+    asl a
+    bcc MoveOnMap_at1
+    tya
+    asl a
+    tay
+    lda a:MapNeighbours,y
+    sta z:zTemp00
+    lda a:MapNeighbours+1,y
+    sta z:zTemp01
+    ldx z:zSaveSlot
+    ldy a:MenuSlotProgress,x
+    lda (zTemp00),y
+    tax
+    lda a:StageVramBuffer,x
+    beq MoveOnMap_tAF22
+MoveOnMap_at3:
+    phx
+    jsr PutOutMapMarks
+    plx
+    txa
+    ldy z:zSaveSlot
+    sta a:MenuSlotProgress,y
+    jsr PlaceMapPath
+    jsr LightMapMarks
+    jsr DrawMapStrings
+    lda #$22
+    jsr VecSoundCommand
+MoveOnMap_at0:
+    rts
+MoveOnMap_tAF22:
+    lda a:BiosJoyTrigger
+    and #$A0
+    beq MoveOnMap_at0
+    ldy #$08
+    and #$80
+    bne MoveOnMap_at2
+    ldy #$0A
+MoveOnMap_at2:
+    lda a:MapNeighbours,y
+    sta z:zTemp00
+    lda a:MapNeighbours+1,y
+    sta z:zTemp01
+    ldx z:zSaveSlot
+    ldy a:MenuSlotProgress,x
+    lda (zTemp00),y
+    tax
+    lda a:StageVramBuffer,x
+    bne MoveOnMap_at3
+    rts
+
+; @routine 00DF:01A PlaceMapBackground
+; @run 6F:B01A
+; WHAT IT DOES: Puts object 0 on the map screen: picture set 5, frame 1.
+; HOW: ClearObject, a store and an INC.
+; WAITS: no.
+; Entry: nothing. Exit: A 5, X 0, N and Z from the frame, C kept.
+PlaceMapBackground:
+    clx
+    jsr VecClearObject
+    lda #$05
+    sta a:OBJ_SPRITE_SET,x
+    inc a:OBJ_FRAME,x
+    rts
+
+; @routine 00DF:068 PlaceMapMarks
+; @run 6F:B068
+; WHAT IT DOES: Puts the map's 14 marks (objects $20 to $2D) and their shadows (objects $10 to $1D) at their places;
+; a mark whose position is open gets frame $0D.
+; HOW: A loop over X; ClearObject; stores with X and X less $10; the flag at $3CE0+X.
+; WAITS: no.
+; Entry: nothing. Exit: A the last flag or $0D, X $2E, Z and C set, N clear.
+PlaceMapMarks:
+    ldx #$20
+PlaceMapMarks_at1:
+    jsr VecClearObject
+    lda #$05
+    sta a:OBJ_SPRITE_SET,x
+    sta a:OBJ_SPRITE_SET-$10,x
+    lda a:MapMarkX,x
+    sta a:OBJ_X_LO,x
+    sta a:OBJ_X_LO-$10,x
+    lda a:MapMarkY,x
+    sta a:OBJ_Y_LO,x
+    sta a:OBJ_Y_LO-$10,x
+    lda a:MapFlags-$20,x
+    beq PlaceMapMarks_at0
+    lda #$0D
+    sta a:OBJ_FRAME,x
+PlaceMapMarks_at0:
+    inx
+    cpx #$2E
+    bne PlaceMapMarks_at1
+    rts
+
+; @routine 00DF:097 LightMapMarks
+; @run 6F:B097
+; WHAT IT DOES: Lights the marks beside the slot's position.
+; HOW: The position's link from $B13B (position 1 the mark 3 too): INC of start_arg, frame $0D and attribute $10 on a
+; closed one.
+; WAITS: no.
+; Entry: nothing. Exit: X the link, Y the position, A and the flags as the last test or store left them.
+LightMapMarks:
+    ldx z:zSaveSlot
+    ldy a:MenuSlotProgress,x
+    cpy #$01
+    bne LightMapMarks_at0
+    ldx #$03
+    inc a:OBJ_START_ARG+$10,x
+    lda a:StageVramBuffer,x
+    bne LightMapMarks_at0
+    lda #$0D
+    sta a:OBJ_FRAME+$20,x
+    lda #$10
+    sta a:OBJ_SPRITE_ATTR+$20,x
+LightMapMarks_at0:
+    ldx a:MapLinks,y
+    inc a:OBJ_START_ARG+$10,x
+    lda a:StageVramBuffer,x
+    bne LightMapMarks_at1
+    lda #$0D
+    sta a:OBJ_FRAME+$20,x
+    lda #$10
+    sta a:OBJ_SPRITE_ATTR+$20,x
+LightMapMarks_at1:
+    rts
+
+; @routine 00DF:0CA PlaceMapPath
+; @run 6F:B0CA
+; WHAT IT DOES: Puts object $30, the path from the slot's position, on the map, when the position has one.
+; HOW: ClearObject; $B0EF by position to start_arg; the place from $B0FC and $B109; picture set 5.
+; WAITS: no.
+; Entry: nothing. Exit: X $30, Y the position; none: A 0, Z set; else A 5, N and Z clear. C kept.
+PlaceMapPath:
+    ldx #$30
+    jsr VecClearObject
+    ldy z:zSaveSlot
+    lda a:MenuSlotProgress,y
+    tay
+    lda a:MapPaths,y
+    beq PlaceMapPath_at0
+    sta a:OBJ_START_ARG,x
+    lda a:MapPathX,y
+    sta a:OBJ_X_LO,x
+    lda a:MapPathY,y
+    sta a:OBJ_Y_LO,x
+    lda #$05
+    sta a:OBJ_SPRITE_SET,x
+PlaceMapPath_at0:
+    rts
+
+; @routine 00DF:116 PutOutMapMarks
+; @run 6F:B116
+; WHAT IT DOES: Puts out the marks beside the slot's position.
+; HOW: STZ of start_arg, and of the frame on a closed one.
+; WAITS: no.
+; Entry: nothing. Exit: as LightMapMarks.
+PutOutMapMarks:
+    ldx z:zSaveSlot
+    ldy a:MenuSlotProgress,x
+    cpy #$01
+    bne PutOutMapMarks_at0
+    ldx #$03
+    stz a:OBJ_START_ARG+$10,x
+    lda a:StageVramBuffer,x
+    bne PutOutMapMarks_at0
+    stz a:OBJ_FRAME+$20,x
+PutOutMapMarks_at0:
+    ldx a:MapLinks,y
+    stz a:OBJ_START_ARG+$10,x
+    lda a:StageVramBuffer,x
+    bne PutOutMapMarks_at1
+    stz a:OBJ_FRAME+$20,x
+PutOutMapMarks_at1:
+    rts
+
+; @routine 00DF:148 MoveMapCursor
+; @run 6F:B148
+; WHAT IT DOES: Animates object 0, the map's cursor, and puts it at the slot's position with a vertical wave.
+; HOW: StepObjectFrames with the list at $B177; ScaleBySine of 5 by the frame counter times four; the Y of the
+; position plus the product's middle byte, and the X.
+; WAITS: no.
+; Entry: nothing. Exit: A the X place, N and Z from it, Y the position, X 0; C and V from the Y add.
+MoveMapCursor:
+    clx
+    lda #<MapCursorList
+    sta z:zTemp10
+    lda #>MapCursorList
+    sta z:zTemp11
+    jsr VecStepObjectFrames
+    lda #$05
+    sta z:zTemp00
+    stz z:zTemp01
+    lda z:zFrameTick
+    asl a
+    asl a
+    jsr VecScaleBySine
+    ldy z:zSaveSlot
+    lda a:MenuSlotProgress,y
+    tay
+    lda a:MapCursorY,y
+    clc
+    adc z:SpriteFlipMask
+    sta a:OBJ_Y_LO,x
+    lda a:MapCursorX,y
+    sta a:OBJ_X_LO,x
+    rts
+
+; @routine 00DF:18C BlinkMapMarks
+; @run 6F:B18C
+; WHAT IT DOES: Blinks the lit marks (objects $10 to $1D): an object with a start argument shows its frame on every
+; other 16 frames.
+; HOW: STZ of the frame; start_arg and bit 4 of zFrameTick; the frame from $B198+X.
+; WAITS: no.
+; Entry: nothing. Exit: X $1E, Z and C set, N clear, A the last value read.
+BlinkMapMarks:
+    ldx #$10
+BlinkMapMarks_tB18E:
+    stz a:OBJ_FRAME,x
+    lda a:OBJ_START_ARG,x
+    beq BlinkMapMarks_tB1A2
+    lda z:zFrameTick
+    and #$10
+    beq BlinkMapMarks_tB1A2
+    lda a:MapBlinkFrames,x
+    sta a:OBJ_FRAME,x
+BlinkMapMarks_tB1A2:
+    inx
+    cpx #$1E
+    bne BlinkMapMarks_tB18E
+    rts
+
+; @routine 00DF:1B6 AnimateMapPath
+; @run 6F:B1B6
+; WHAT IT DOES: Steps the path object's animation, when it has one.
+; HOW: start_arg doubled indexes the list pointers at $B1CA; a tail jump to StepObjectFrames; none returns.
+; WAITS: no.
+; Entry: nothing. Exit: none: A 0, Z set, X $30; else as StepObjectFrames.
+AnimateMapPath:
+    ldx #$30
+    lda a:OBJ_START_ARG,x
+    beq AnimateMenuMarks+15
+    asl a
+    tay
+    lda a:MapPathLists,y
+    sta z:zTemp10
+    lda a:MapPathLists+1,y
+    sta z:zTemp11
+    jmp VecStepObjectFrames
+
+; @routine 00DF:1F9 DrawMapStrings
+; @run 6F:B1F9
+; WHAT IT DOES: Draws the strings of the map's position: its name, then the character's text for it.
+; HOW: The position doubled indexes MAP_NAMES; DrawGlyphText; then MAP_TEXTS_B or MAP_TEXTS_A by MenuSlotCharacter.
+; WAITS: no.
+; Entry: nothing. Exit: as DrawGlyphText.
+DrawMapStrings:
+    ldy z:zSaveSlot
+    lda a:MenuSlotProgress,y
+    asl a
+    tax
+    lda a:SoundDrvInit+7,x
+    sta z:zTemp00
+    lda a:SoundDrvInit+8,x
+    sta z:zTemp01
+    jsr DrawGlyphText
+    ldy z:zSaveSlot
+    lda a:MenuSlotCharacter,y
+    beq DrawMapStrings_tB227
+    lda a:MenuSlotProgress,y
+    asl a
+    tax
+    lda a:MapTextsB,x
+    sta z:zTemp00
+    lda a:MapTextsB+1,x
+    sta z:zTemp01
+    jsr DrawGlyphText
+    rts
+DrawMapStrings_tB227:
+    lda a:MenuSlotProgress,y
+    asl a
+    tax
+    lda a:MapTextsA,x
+    sta z:zTemp00
+    lda a:MapTextsA+1,x
+    sta z:zTemp01
+    jsr DrawGlyphText
+    rts

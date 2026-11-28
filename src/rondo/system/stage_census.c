@@ -27,13 +27,13 @@ static void scroll_step_exit_shim(StageScrollEnd end)
     stream_walk_exit_shim(end.walk);
 }
 
-/* The set-up ends with the stream walk's count and a JMP to the frame step; the JMP is made as original code. */
+/* The set-up ends with the stream walk's count and a JMP to the frame step: the C of the routine loaded there. */
 static void set_up_exit_shim(SetUpEnd end, uint16_t jump_run, uint16_t tail_run)
 {
     cpu.x = end.x;
     lines_exit_shim(end.count);
     cpu.x = end.x;
-    call_original_at(jump_run, tail_run);
+    run_routine_from(jump_run, tail_run);
 }
 
 /* What the pair leaves: A, X and Y (the second spawn's slot); N and Z from A. C and V are as the spawn left them. */

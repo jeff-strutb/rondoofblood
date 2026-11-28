@@ -74,6 +74,16 @@ static SpawnedObject resident_spawn_964f(uint8_t row)
     return resident_spawn_shim(0x964F, row);
 }
 
+/* LDA, CLC, ADC, TAM, INC A, TAM as they leave the registers, then the JMP to $A000. */
+static void resident_jump_shim(Sum bank)
+{
+    cpu.a = (uint8_t)(bank.value + 1);
+    abi_nz(cpu.a);
+    abi_flag(P_C, bank.carry);
+    abi_flag(P_V, bank.overflow);
+    run_routine(0xA000);
+}
+
 /* StartStageLists with a program's own tables, list expansion, script slot 7 and return addresses. */
 static void list_channel_registers_shim(uint8_t a, uint8_t x);
 
@@ -1515,4 +1525,29 @@ void abi_EffectRestoreColours1531(void)
     EffectRestoreColours1531(cpu.x, cpu.y);
     cpu.a = 0x80;
     abi_nz(0x80);
+}
+
+/*
+ * @routine 026E:205 StepScrollAndRunObjects026E
+ * @run 6B:8A05
+ * WHAT IT DOES: Steps the stage scroll, maps the banks eight and nine above zRamBaseBank at $A000 and $C000, and goes on into the overlay at $A000.
+ * HOW: A JSR to the scroll step at $89EC (the one loaded there: the nine programs hold these bytes), an add, two TAM, and a JMP to $A000.
+ * WAITS: as the code at $A000.
+ * Entry: X as the scroll step takes it. Exit: as the code at $A000, entered with A the second bank, N and Z from it, C and V from the add.
+ * Nothing the game does loads these programs (codemap.unloaded_programs), so nothing is known to reach it.
+ */
+void StepScrollAndRunObjects026E(void)
+{
+    Sum bank;
+
+    call_routine(0x8A08, 0x89EC);
+    bank = add_bytes(0x08, RD8(ZP->ram_base_bank), false);
+    tam(0x20, bank.value);
+    tam(0x40, (uint8_t)(bank.value + 1));
+    resident_jump_shim(bank);
+}
+
+void abi_StepScrollAndRunObjects026E(void)
+{
+    StepScrollAndRunObjects026E();
 }

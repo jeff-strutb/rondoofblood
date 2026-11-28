@@ -136,4 +136,7 @@ void abi_ClearEffectSlot1531(void);
 void EffectRestoreColours1531(uint8_t slot, uint8_t y);
 void abi_EffectRestoreColours1531(void);
 
+void StepScrollAndRunObjects026E(void);
+void abi_StepScrollAndRunObjects026E(void);
+
 #endif

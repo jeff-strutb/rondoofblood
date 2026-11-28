@@ -1972,3 +1972,21 @@ EffectRestoreColours1531:
     sta a:VCE_ADDR_LO
     tia EffectSpriteColours1531,VCE_DATA_LO,$0100
     jmp ClearEffectSlot1531
+
+; @routine 026E:205 StepScrollAndRunObjects026E
+; @run 6B:8A05
+; WHAT IT DOES: Steps the stage scroll, maps the banks eight and nine above zRamBaseBank at $A000 and $C000, and goes on into the overlay at $A000.
+; HOW: A JSR to the scroll step at $89EC (the one loaded there: the nine programs hold these bytes), an add, two TAM, and a JMP to $A000.
+; WAITS: as the code at $A000.
+; Entry: X as the scroll step takes it. Exit: as the code at $A000, entered with A the second bank, N and Z from it, C and V from the add.
+; Nothing the game does loads these programs (codemap.unloaded_programs), so nothing is known to reach it.
+StageObjectsEntry026E = $A000 ; the overlay loaded at $A000, its first entry
+StepScrollAndRunObjects026E:
+    jsr StageScrollStep026E
+    lda #$08
+    clc
+    adc z:zRamBaseBank
+    tam #$20
+    inc a
+    tam #$40
+    jmp StageObjectsEntry026E

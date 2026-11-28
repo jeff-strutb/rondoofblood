@@ -193,4 +193,7 @@ void abi_StageFallLeft026D(void);
 StageRegs StageRestartInPlace026D(StageRegs r);
 void abi_StageRestartInPlace026D(void);
 
+StageRegs StageShowStartFrame026D(StageRegs r);
+void abi_StageShowStartFrame026D(void);
+
 #endif

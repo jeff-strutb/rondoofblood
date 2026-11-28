@@ -109,4 +109,8 @@ StageRegs StageFallLeftAt(StageRegs r, StageRegs (*land)(StageRegs), StageRegs (
 StageRegs StageRestartInPlaceAt(StageRegs r, uint16_t at, uint16_t lists, uint16_t runs, uint16_t init, uint16_t spawn,
                                 uint16_t setup);
 
+
+/* system/stage_flow.c: StageShowStartFrame (024D:448) run at `at`, with its table of frames. */
+StageRegs StageShowStartFrameAt(StageRegs r, uint16_t at, uint16_t frames);
+
 #endif

@@ -2439,3 +2439,18 @@ StageRestartInPlace026D:
     lda z:zField83
     sta z:zField86
     rts
+
+; @routine 026D:420 StageShowStartFrame026D
+; @run 6B:8420
+; WHAT IT DOES: The player's frame by character set, then his animation sound (as StageShowStartFrame, 024D:448). Programs 031D, 043D, 064D, 10DD, 122D, 1A2D, 1B8D and 1CED hold the same bytes.
+; HOW: MapOverlayBanks5And6's bytes; OBJ_FRAME of slot 0 from StartFrameByCharacter026D; the tail JMP to $A012.
+; WAITS: no.
+; Entry: nothing. Exit: as $A012, entered with X zCharacter, A the frame, N and Z from it.
+; Nothing the game does loads this program (codemap.unloaded_programs), so nothing is known to reach it.
+StartFrameByCharacter026D = $842E ; the player's frame at a start by zCharacter, in the 026D programs
+StageShowStartFrame026D:
+    jsr MapOverlayBanks5And6_026D
+    ldx z:zCharacter
+    lda a:StartFrameByCharacter026D,x
+    sta a:OBJ_FRAME
+    jmp MariaVecAnimationSound

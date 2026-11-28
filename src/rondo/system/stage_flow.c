@@ -937,11 +937,19 @@ void abi_StageRestartInPlace(void)
  */
 StageRegs StageShowStartFrame(StageRegs r)
 {
-    r = map_banks_5_6(r, 0x844B);
+    return StageShowStartFrameAt(r, 0x8448, StartFrameByCharacter);
+}
+
+/* StageShowStartFrame's body, at the address it runs at (its JSR returns to at + 3, its tail JMP is at at + $0B), with
+ * its table of frames: the builds of the overlay that hold these instructions at another address
+ * (stage_programs_census.c) pass their own. */
+StageRegs StageShowStartFrameAt(StageRegs r, uint16_t at, uint16_t frames)
+{
+    r = map_banks_5_6(r, (uint16_t)(at + 3));
     r.x = RD8(ZP->character);
-    r = loaded(r, rd8((uint16_t)(StartFrameByCharacter + r.x)));
+    r = loaded(r, rd8((uint16_t)(frames + r.x)));
     WR8(OBJ->frame[0], r.a);
-    return tail_to(r, 0x8453, 0xA012);
+    return tail_to(r, (uint16_t)(at + 0x0B), 0xA012);
 }
 
 void abi_StageShowStartFrame(void)

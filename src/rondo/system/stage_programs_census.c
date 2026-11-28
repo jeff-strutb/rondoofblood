@@ -1970,3 +1970,24 @@ void abi_StageRestartInPlace026D(void)
 {
     stage_regs_load_shim(StageRestartInPlace026D(stage_regs_entry_shim()));
 }
+
+/*
+ * @routine 026D:420 StageShowStartFrame026D
+ * @run 6B:8420
+ * WHAT IT DOES: The player's frame by character set, then his animation sound (as StageShowStartFrame, 024D:448). Programs 031D, 043D, 064D, 10DD, 122D, 1A2D, 1B8D and 1CED hold the same bytes.
+ * HOW: StageShowStartFrameAt (stage_flow.c), the body of 024D:448, at $8420 with this program's table of frames at
+ * $842E; its JSR to $8089 goes to MapOverlayBanks5And6's bytes (024D:0A0) in all nine programs, so its C is
+ * MapOverlayBanks5And6's.
+ * WAITS: no.
+ * Entry: nothing. Exit: as $A012, entered with X zCharacter, A the frame, N and Z from it.
+ * Nothing the game does loads this program (codemap.unloaded_programs), so nothing is known to reach it.
+ */
+StageRegs StageShowStartFrame026D(StageRegs r)
+{
+    return StageShowStartFrameAt(r, 0x8420, 0x842E);
+}
+
+void abi_StageShowStartFrame026D(void)
+{
+    stage_regs_load_shim(StageShowStartFrame026D(stage_regs_entry_shim()));
+}

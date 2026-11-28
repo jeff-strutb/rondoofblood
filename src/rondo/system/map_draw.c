@@ -110,7 +110,7 @@ void abi_OrVramDataLong(void)
 }
 
 /* Both VRAM addresses, read then write, set to one word; the data port selected. */
-static void set_vram_addresses(uint8_t lo, uint8_t hi, uint16_t first_ret, uint16_t second_ret)
+void set_vram_addresses(uint8_t lo, uint8_t hi, uint16_t first_ret, uint16_t second_ret)
 {
     jsr_push(first_ret);
     SelectVramReadAddress();

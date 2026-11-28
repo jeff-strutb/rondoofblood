@@ -29,6 +29,7 @@ HitboxEnd ComputeHitboxPositions(void);
 HitboxEnd ComputeHitboxPositionsLong(void);
 
 /* system/map_draw.c: the VDC data port's word, masked in place; the high byte read back and returned. */
+void set_vram_addresses(uint8_t lo, uint8_t hi, uint16_t first_ret, uint16_t second_ret);
 void SetVramAddresses(uint8_t lo, uint8_t hi);
 void SetVramAddressesLong(uint8_t lo, uint8_t hi);
 void SetStageTileVramAddress(void);

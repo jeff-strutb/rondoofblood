@@ -553,4 +553,11 @@ void abi_TitleScreenEntry(void);
 void abi_AttractEntry(void);
 void abi_SceneObjectsEntry(void);
 
+void abi_EndingCommandSubModeTwo(void);
+void abi_EndingCommandStartListOnly(void);
+void abi_EndingCommandStartScript3(void);
+void abi_EndingCommandSkip(void);
+void abi_EndingCommandPlaceTitleObjectA(void);
+void abi_EndingCommandPlaceTitleObjectB(void);
+void abi_EndingScrollByState(void);
 #endif

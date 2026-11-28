@@ -1908,3 +1908,114 @@ EndingBegin1E61:
     sta z:zWaitTimer4
     inc z:zGameSubMode
     rts
+
+; @routine 010D:08A EndingCommandSubModeTwo
+; @run 6B:808A
+; WHAT IT DOES: A script command: puts the ending in sub-mode 2.
+; HOW: LDA #2, STA zGameSubMode; back to EndingScriptAdvance.
+; WAITS: no.
+; Entry: from EndingScriptStep, Y 3. Exit: as EndingScriptAdvance.
+EndingCommandSubModeTwo:
+    lda #$02
+    sta z:zGameSubMode
+    bra EndingScriptAdvance
+
+; @routine 010D:0A4 EndingCommandStartListOnly
+; @run 6B:80A4
+; WHAT IT DOES: A script command: starts list channel 0 with the operand's list. No entry of the command table found names it.
+; HOW: StartListChannel0Kind2; back to EndingScriptAdvance.
+; WAITS: no.
+; Entry: from EndingScriptStep, Y 3. Exit: as EndingScriptAdvance.
+EndingCommandStartListOnly:
+    lda (zScriptPtr),y
+    jsr VecStartListChannel0Kind2
+    bra EndingScriptAdvance
+
+; @routine 010D:0BA EndingCommandStartScript3
+; @run 6B:80BA
+; WHAT IT DOES: A script command: starts script slot 0 as kind 3 with the operand's script.
+; HOW: StartScriptSlot0Kind3; back to EndingScriptAdvance.
+; WAITS: no.
+; Entry: from EndingScriptStep, Y 3. Exit: as EndingScriptAdvance.
+EndingCommandStartScript3:
+    lda (zScriptPtr),y
+    jsr VecStartScriptSlot0Kind3
+    jmp EndingScriptAdvance
+
+; @routine 010D:0C2 EndingCommandSkip
+; @run 6B:80C2
+; WHAT IT DOES: A script command that does nothing.
+; HOW: JMP EndingScriptAdvance.
+; WAITS: no.
+; Entry: from EndingScriptStep, Y 3. Exit: as EndingScriptAdvance.
+EndingCommandSkip:
+    jmp EndingScriptAdvance
+
+; @routine 010D:157 EndingCommandPlaceTitleObjectA
+; @run 6B:8157
+; WHAT IT DOES: A script command: as ScriptPlaceTitleObjectA (the attract scene's), in the ending's script.
+; HOW: ClearObject, one added to the state, four operands, the Y place; back to EndingScriptAdvance.
+; WAITS: no.
+; Entry: from EndingScriptStep, Y 3. Exit: as EndingScriptAdvance.
+EndingCommandPlaceTitleObjectA:
+    ldx #$2E
+    jsr VecClearObject
+    inc a:OBJ_KIND,x
+    lda (zScriptPtr),y
+    sta a:OBJ_START_ARG,x
+    iny
+    lda (zScriptPtr),y
+    sta a:OBJ_WORK_D,x
+    iny
+    lda (zScriptPtr),y
+    sta a:OBJ_WORK_E,x
+    iny
+    lda (zScriptPtr),y
+    sta a:OBJ_WORK_F,x
+    lda #$C8
+    sta a:OBJ_Y_LO,x
+    jmp EndingScriptAdvance
+
+; @routine 010D:17E EndingCommandPlaceTitleObjectB
+; @run 6B:817E
+; WHAT IT DOES: A script command: as ScriptPlaceTitleObjectB (the attract scene's), in the ending's script.
+; HOW: ClearObject, one added to the state, four operands, the Y place; back to EndingScriptAdvance.
+; WAITS: no.
+; Entry: from EndingScriptStep, Y 3. Exit: as EndingScriptAdvance.
+EndingCommandPlaceTitleObjectB:
+    ldx #$2F
+    jsr VecClearObject
+    inc a:OBJ_KIND,x
+    lda (zScriptPtr),y
+    sta a:OBJ_START_ARG,x
+    iny
+    lda (zScriptPtr),y
+    sta a:OBJ_WORK_D,x
+    iny
+    lda (zScriptPtr),y
+    sta a:OBJ_WORK_E,x
+    iny
+    lda (zScriptPtr),y
+    sta a:OBJ_WORK_F,x
+    lda #$D8
+    sta a:OBJ_Y_LO,x
+    jmp EndingScriptAdvance
+
+; @routine 010D:528 EndingScrollByState
+; @run 6B:8528
+; @stop 853A
+; WHAT IT DOES: An object handler: goes to the step the object's state names in the table at $853A.
+; HOW: The state doubled indexes the table; the word goes through zTemp00 and zTemp01 and is jumped through.
+; WAITS: no.
+; Entry: X the object. Exit: as the step; A the table's high byte, Y the doubled state and C its bit 7 where the step
+; leaves them.
+EndingScrollSteps853A = $853A ; the steps of EndingScrollByState by object state
+EndingScrollByState:
+    lda a:OBJ_STATE,x
+    asl a
+    tay
+    lda a:EndingScrollSteps853A,y
+    sta z:zTemp00
+    lda a:EndingScrollSteps853A+1,y
+    sta z:zTemp01
+    jmp (ZeroPage)

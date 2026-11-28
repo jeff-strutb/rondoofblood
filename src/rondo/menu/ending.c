@@ -78,6 +78,14 @@ static ObjExit with_carry(ObjExit result, bool carry)
     return result;
 }
 
+Exit EndingCommandSubModeTwo(void);
+Exit EndingCommandStartListOnly(void);
+Exit EndingCommandStartScript3(void);
+Exit EndingCommandSkip(void);
+Exit EndingCommandPlaceTitleObjectA(void);
+Exit EndingCommandPlaceTitleObjectB(void);
+ObjExit EndingScrollByState(uint8_t object);
+
 /*
  * @routine 010D:029 EndingFrameTick
  * @run 6B:8029
@@ -2527,6 +2535,146 @@ Exit EndingCommandLoadBanks(void)
 }
 
 /*
+ * @routine 010D:08A EndingCommandSubModeTwo
+ * @run 6B:808A
+ * WHAT IT DOES: A script command: puts the ending in sub-mode 2.
+ * HOW: LDA #2, STA zGameSubMode; back to EndingScriptAdvance.
+ * WAITS: no.
+ * Entry: from EndingScriptStep, Y 3. Exit: as EndingScriptAdvance.
+ */
+Exit EndingCommandSubModeTwo(void)
+{
+    WR8(ZP->game_sub_mode, 2);
+    return EndingScriptAdvance();
+}
+
+void abi_EndingCommandSubModeTwo(void)
+{
+    exit_shim(EndingCommandSubModeTwo());
+}
+
+/*
+ * @routine 010D:0A4 EndingCommandStartListOnly
+ * @run 6B:80A4
+ * WHAT IT DOES: A script command: starts list channel 0 with the operand's list. No entry of the command table found names it.
+ * HOW: StartListChannel0Kind2; back to EndingScriptAdvance.
+ * WAITS: no.
+ * Entry: from EndingScriptStep, Y 3. Exit: as EndingScriptAdvance.
+ */
+Exit EndingCommandStartListOnly(void)
+{
+    uint8_t list = RD8_PTR_Y(ZP->ENDING_PTR, 3);
+
+    jsr_push(0x80A9);
+    StartListChannel0Kind2(list);
+    jsr_pop();
+    return EndingScriptAdvance();
+}
+
+void abi_EndingCommandStartListOnly(void)
+{
+    exit_shim(EndingCommandStartListOnly());
+}
+
+/*
+ * @routine 010D:0BA EndingCommandStartScript3
+ * @run 6B:80BA
+ * WHAT IT DOES: A script command: starts script slot 0 as kind 3 with the operand's script.
+ * HOW: StartScriptSlot0Kind3; back to EndingScriptAdvance.
+ * WAITS: no.
+ * Entry: from EndingScriptStep, Y 3. Exit: as EndingScriptAdvance.
+ */
+Exit EndingCommandStartScript3(void)
+{
+    uint8_t script = RD8_PTR_Y(ZP->ENDING_PTR, 3);
+
+    jsr_push(0x80BF);
+    (void)StartScriptSlot0Kind3(script);
+    jsr_pop();
+    return EndingScriptAdvance();
+}
+
+void abi_EndingCommandStartScript3(void)
+{
+    exit_shim(EndingCommandStartScript3());
+}
+
+/*
+ * @routine 010D:0C2 EndingCommandSkip
+ * @run 6B:80C2
+ * WHAT IT DOES: A script command that does nothing.
+ * HOW: JMP EndingScriptAdvance.
+ * WAITS: no.
+ * Entry: from EndingScriptStep, Y 3. Exit: as EndingScriptAdvance.
+ */
+Exit EndingCommandSkip(void)
+{
+    return EndingScriptAdvance();
+}
+
+void abi_EndingCommandSkip(void)
+{
+    exit_shim(EndingCommandSkip());
+}
+
+/* The two title objects of the ending's script: ClearObject, kind +1 (the cleared slot's kind 1), four operands and the Y place. */
+static Exit ending_place_title_object(uint8_t object, uint8_t y_low, uint16_t ret)
+{
+    uint8_t value;
+
+    jsr_push(ret);
+    ClearObject(object);
+    jsr_pop();
+    INC8(OBJ->kind[object]);
+    value = RD8_PTR_Y(ZP->ENDING_PTR, 3);
+    WR8(OBJ->start_arg[object], value);
+    value = RD8_PTR_Y(ZP->ENDING_PTR, 4);
+    WR8(OBJ->work_d[object], value);
+    value = RD8_PTR_Y(ZP->ENDING_PTR, 5);
+    WR8(OBJ->work_e[object], value);
+    value = RD8_PTR_Y(ZP->ENDING_PTR, 6);
+    WR8(OBJ->work_f[object], value);
+    WR8(OBJ->y_lo[object], y_low);
+    return EndingScriptAdvance();
+}
+
+/*
+ * @routine 010D:157 EndingCommandPlaceTitleObjectA
+ * @run 6B:8157
+ * WHAT IT DOES: A script command: as ScriptPlaceTitleObjectA (the attract scene's), in the ending's script.
+ * HOW: ClearObject, one added to the kind, four operands, the Y place; back to EndingScriptAdvance.
+ * WAITS: no.
+ * Entry: from EndingScriptStep, Y 3. Exit: as EndingScriptAdvance.
+ */
+Exit EndingCommandPlaceTitleObjectA(void)
+{
+    return ending_place_title_object(0x2E, 0xC8, 0x815C);
+}
+
+void abi_EndingCommandPlaceTitleObjectA(void)
+{
+    exit_shim(EndingCommandPlaceTitleObjectA());
+}
+
+/*
+ * @routine 010D:17E EndingCommandPlaceTitleObjectB
+ * @run 6B:817E
+ * WHAT IT DOES: A script command: as ScriptPlaceTitleObjectB (the attract scene's), in the ending's script.
+ * HOW: ClearObject, one added to the kind, four operands, the Y place; back to EndingScriptAdvance.
+ * WAITS: no.
+ * Entry: from EndingScriptStep, Y 3. Exit: as EndingScriptAdvance.
+ */
+Exit EndingCommandPlaceTitleObjectB(void)
+{
+    return ending_place_title_object(0x2F, 0xD8, 0x8183);
+}
+
+void abi_EndingCommandPlaceTitleObjectB(void)
+{
+    exit_shim(EndingCommandPlaceTitleObjectB());
+}
+
+/*
  * @routine 010D:04F EndingScriptStep
  * @run 6B:804F
  * WHAT IT DOES: Runs the ending's script command if its time has come: the two time bytes after the command byte equal the frame counter.
@@ -2576,6 +2724,11 @@ Exit EndingScriptStepV(int v_in)
     case 0x80F6: return EndingCommandPlaceFrame();
     case 0x810B: return EndingCommandPlaceTimed();
     case 0x81A5: return EndingCommandLoadBanks();
+    case 0x808A: return EndingCommandSubModeTwo();
+    case 0x80BA: return EndingCommandStartScript3();
+    case 0x80C2: return EndingCommandSkip();
+    case 0x8157: return EndingCommandPlaceTitleObjectA();
+    case 0x817E: return EndingCommandPlaceTitleObjectB();
     case 0x8067:
         exit.a = index;
         exit.x = index;
@@ -2678,6 +2831,68 @@ void abi_EndingBegin1E61(void)
 }
 
 /*
+ * @routine 010D:528 EndingScrollByState
+ * @run 6B:8528
+ * @stop 853A
+ * WHAT IT DOES: An object handler: goes to the step the object's state names in the table at $853A.
+ * HOW: The state doubled indexes the table; the word goes through zTemp00 and zTemp01 and is jumped through.
+ * WAITS: no.
+ * Entry: X the object. Exit: as the step; A the table's high byte, Y the doubled state and C its bit 7 where the step
+ * leaves them.
+ */
+ObjExit EndingScrollByState(uint8_t object)
+{
+    ObjExit result = { 0 };
+    uint8_t state, index, low, high;
+    uint16_t target;
+
+    state = RD8(OBJ->state[object]);
+    index = (uint8_t)(state << 1);
+    low = rd8((uint16_t)(0x853A + index));
+    WR8(ZP->temp00, low);
+    high = rd8((uint16_t)(0x853B + index));
+    WR8(ZP->temp01, high);
+    low = RD8(ZP->temp00);
+    target = (uint16_t)(low | (RD8(ZP->temp01) << 8));
+    switch (target) {
+    case 0x8548: result = EndingScrollWindowHold(object); break;
+    case 0x8565: result = EndingStartList3(object, high); break;
+    case 0x8579: result = EndingStartScript18(object, high); break;
+    case 0x8598: result = EndingScrollSlide(object); break;
+    case 0x85BF: result = EndingSplitScrolls(object, high); break;
+    case 0x85E2: result = EndingScrollsOn(object, high); break;
+    case 0x85F2:
+        EndingNothing();
+        result.exit.nz = high;
+        result.exit.a_kept = result.exit.x_kept = result.exit.y_kept = result.exit.c_kept = true;
+        break;
+    default:
+        cpu_entry_shim(high, object, index, (state & 0x80) != 0);
+        run_routine(target);
+        result.exit.from_cpu = true;
+        return result;
+    }
+    if (result.exit.a_kept) {
+        result.exit.a = result.moved ? move_high(result.move) : high;
+        result.exit.a_kept = false;
+    }
+    if (result.exit.y_kept) {
+        result.exit.y = index;
+        result.exit.y_kept = false;
+    }
+    if (result.exit.c_kept && !result.moved) {
+        result.exit.c = (state & 0x80) != 0;
+        result.exit.c_kept = false;
+    }
+    return result;
+}
+
+void abi_EndingScrollByState(void)
+{
+    object_exit_shim(EndingScrollByState(cpu.x));
+}
+
+/*
  * @routine 010D:1E9 EndingDispatchKind
  * @run 6B:81E9
  * WHAT IT DOES: Sends an object to the handler its kind names: the table at $81F9 holds one address per kind, kind 1 first.
@@ -2735,6 +2950,7 @@ ObjExit EndingDispatchKind(uint8_t kind, uint8_t object)
     case 0x8298: result = falling_piece_exit_shim(EndingFallingPiece(object)); break;
     case 0x8239: result = credit_scroll_exit_shim(EndingCreditScrollStart(object)); break;
     case 0x87D6: result = EndingRiseFrame32B(object); break;
+    case 0x8528: result = EndingScrollByState(object); break;
     default:
         exit.from_cpu = true;
         result.exit = exit;

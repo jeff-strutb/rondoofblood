@@ -1014,7 +1014,7 @@ void ListMoveCount0E0C_32D(uint8_t slot)
 {
     step_list(slot, 0xB972, true, 0xBB38);
     gravity(slot, 0xBB3B);
-    move_x(slot, 0xBB3E);
+    move_y(slot, 0xBB3E);
     if (!counted_out(DEC8(OBJ->work_e[slot]))) {
         return;
     }

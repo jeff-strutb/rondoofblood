@@ -418,3 +418,20 @@ void abi_StepStageFrameLong(void)
 {
     stage_exit_shim(StepStageFrameLong(cpu.x, cpu.y, (cpu.p & P_V) != 0));
 }
+
+/*
+ * @routine 024E:36C StepStageFrameIdle
+ * @run 6B:8B6C
+ * WHAT IT DOES: StepStageFrame's way out when the stage's frame object is off: nothing.
+ * HOW: One RTS, just before StepStageFrame, which branches back to it.
+ * WAITS: no.
+ * Entry: nothing. Exit: everything kept.
+ */
+void StepStageFrameIdle(void)
+{
+}
+
+void abi_StepStageFrameIdle(void)
+{
+    StepStageFrameIdle();
+}

@@ -15,7 +15,7 @@
 StepStageFrameTables = $8C19 ; table StepStageFrame reads
 StepStageFrame:
     lda a:OBJ_FRAME+87
-    beq $8B6C
+    beq StepStageFrameIdle
     bbs1 zPaused,StepStageFrame_at0
     lda a:StageShownStock+1
     beq StepStageFrame_at1
@@ -177,7 +177,7 @@ SetHealthBarAddress_at0:
 ; Entry, exit: as StepStageFrame.
 StepStageFrameLong:
     lda a:$2ABF
-    beq $8B6C
+    beq StepStageFrameIdle
     bbs1 zPaused,StepStageFrameLong_at0
     lda a:StageVar3616+1
     beq StepStageFrameLong_at1
@@ -295,4 +295,13 @@ SetHealthBarAddressLong:
     tay
     jsr SetVramAddressesLong
 SetHealthBarAddressLong_at0:
+    rts
+
+; @routine 024E:36C StepStageFrameIdle
+; @run 6B:8B6C
+; WHAT IT DOES: StepStageFrame's way out when the stage's frame object is off: nothing.
+; HOW: One RTS, just before StepStageFrame, which branches back to it.
+; WAITS: no.
+; Entry: nothing. Exit: everything kept.
+StepStageFrameIdle:
     rts

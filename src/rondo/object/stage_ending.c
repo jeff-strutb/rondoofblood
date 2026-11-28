@@ -204,6 +204,7 @@ static StageExit step_stage_ending(uint8_t x, uint8_t y)
 /*
  * @routine 024E:7C4 StepStageEnding
  * @run 6B:8FC4
+ * @stop 904A
  * WHAT IT DOES: One step of a stage's ending: starts the CD track again on the first step unless
  * the stage's mode is one of two, drops two objects along tables of speeds and times (a step
  * each when their timers run out; the last step of the first sets the done flag in zField8E), and
@@ -223,4 +224,24 @@ StageExit StepStageEnding(uint8_t x, uint8_t y)
 void abi_StepStageEnding(void)
 {
     stage_exit_shim(StepStageEnding(cpu.x, cpu.y));
+}
+
+/*
+ * @routine 024E:866 StepStageEndingFade
+ * @run 6B:9066
+ * WHAT IT DOES: StepStageEnding's fade: masks columns of VRAM rows with random bytes, from the row of the fade
+ * table the pick names, the address moving on a column each.
+ * HOW: The pick folded into a row, four bytes of the table at $9056 (address, columns, step); NextRandom and
+ * MaskVramRowsRandom per column.
+ * WAITS: no.
+ * Entry: A the pick (OBJ_CHILD_ORDER of slot 84). Exit: as the last column left it.
+ */
+StageExit StepStageEndingFade(uint8_t pick)
+{
+    return draw_fade(pick);
+}
+
+void abi_StepStageEndingFade(void)
+{
+    stage_exit_shim(StepStageEndingFade(cpu.a));
 }

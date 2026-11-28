@@ -243,6 +243,9 @@ StageExit StageScriptByWave(void);
 StageExit SetHealthBarAddress(void);
 StageExit SetHealthBarAddressLong(void);
 StageExit StepStageFrame(uint8_t x, uint8_t y, bool v);
+/* system/stage_tick.c: the RTS before it that it branches back to (024E:36C). */
+void StepStageFrameIdle(void);
+void abi_StepStageFrameIdle(void);
 StageExit StepStageFrameLong(uint8_t x, uint8_t y, bool v);
 
 /* object/hit_test.c: the overlay's hit test and its two handlers. */
@@ -274,6 +277,9 @@ StageExit HitTestAllObjectsLong(uint8_t x);
 
 /* object/stage_ending.c: one step of the stage's ending effect. */
 StageExit StepStageEnding(uint8_t x, uint8_t y);
+/* object/stage_ending.c: its fade, from the pick (024E:866). */
+StageExit StepStageEndingFade(uint8_t pick);
+void abi_StepStageEndingFade(void);
 
 /* system/stage_main.c: one frame of the stage. */
 StageExit RunStageFrame(uint8_t a, uint8_t x, uint8_t y, bool c, bool v);

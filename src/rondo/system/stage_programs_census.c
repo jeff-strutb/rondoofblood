@@ -2618,3 +2618,43 @@ void abi_MaskVramRowsRandom031F(void)
 {
     mask_vram_rows_exit_shim(MaskVramRowsRandom031F());
 }
+
+/*
+ * @routine 026F:29D ClearStageBitRows026F
+ * @run 6B:929D
+ * WHAT IT DOES: Clears the stage's bit in four rows of VRAM words (as ClearStageBitRows, 024F:2DF). Programs 064F, 122F, 1A2F, 1B8F and 1CEF hold the same bytes.
+ * HOW: ClearStageBitRowsAt (stage_clear_bits.c), the body of 024F:2DF, at $929D with SetVramAddresses026F and this
+ * program's tables at $92E5 and $92ED.
+ * WAITS: no.
+ * Entry: X kept for the caller; zTemp08-09 the base, zTemp0F the place. Exit: as ClearStageBitRows.
+ * Nothing the game does loads this program (codemap.unloaded_programs), so nothing is known to reach it.
+ */
+StageExit ClearStageBitRows026F(uint8_t x)
+{
+    return ClearStageBitRowsAt(x, SetVramAddresses026F, 0x929D, 0x92E5, 0x92ED);
+}
+
+void abi_ClearStageBitRows026F(void)
+{
+    stage_exit_shim(ClearStageBitRows026F(cpu.x));
+}
+
+/*
+ * @routine 031F:291 ClearStageBitRows031F
+ * @run 6B:9291
+ * WHAT IT DOES: Clears the stage's bit in four rows of VRAM words (as ClearStageBitRows, 024F:2DF). Programs 043F and 10DF hold the same bytes.
+ * HOW: ClearStageBitRowsAt (stage_clear_bits.c), the body of 024F:2DF, at $9291 with SetVramAddresses031F and this
+ * program's tables at $92D9 and $92E1.
+ * WAITS: no.
+ * Entry: X kept for the caller; zTemp08-09 the base, zTemp0F the place. Exit: as ClearStageBitRows.
+ * Nothing the game does loads this program (codemap.unloaded_programs), so nothing is known to reach it.
+ */
+StageExit ClearStageBitRows031F(uint8_t x)
+{
+    return ClearStageBitRowsAt(x, SetVramAddresses031F, 0x9291, 0x92D9, 0x92E1);
+}
+
+void abi_ClearStageBitRows031F(void)
+{
+    stage_exit_shim(ClearStageBitRows031F(cpu.x));
+}

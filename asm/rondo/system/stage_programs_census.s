@@ -3593,3 +3593,105 @@ MaskVramRowsRandom031F_at7:
     dex
     bne MaskVramRowsRandom031F_at7
     rts
+
+; @routine 026F:29D ClearStageBitRows026F
+; @run 6B:929D
+; WHAT IT DOES: Clears the stage's bit in four rows of VRAM words (as ClearStageBitRows, 024F:2DF). Programs 064F, 122F, 1A2F, 1B8F and 1CEF hold the same bytes.
+; HOW: As ClearStageBitRows, with SetVramAddresses026F and StageClearBitLo026F/StageClearBitHi026F.
+; WAITS: no.
+; Entry: X kept for the caller; zTemp08-09 the base, zTemp0F the place. Exit: as ClearStageBitRows.
+; Nothing the game does loads this program (codemap.unloaded_programs), so nothing is known to reach it.
+StageClearBitLo026F = $92E5 ; the low byte of the stage's bit in the cleared word, by stage index, in the 026D programs
+StageClearBitHi026F = $92ED ; and its high byte
+ClearStageBitRows026F:
+    lda z:zTemp0F
+    and #$0F
+    tay
+    lda z:zTemp0F
+    lsr a
+    lsr a
+    lsr a
+    lsr a
+    clc
+    adc z:zTemp08
+    sta z:zTemp0A
+    lda z:zTemp09
+    sta z:zTemp0B
+    lda #$04
+    sta z:zTemp0E
+ClearStageBitRows026F_at0:
+    phx
+    phy
+    ldx z:zTemp0A
+    ldy z:zTemp0B
+    jsr SetVramAddresses026F
+    ply
+    lda a:VDC_DATA_LO
+    and a:StageClearBitLo026F,y
+    sta a:VDC_DATA_LO
+    lda a:VDC_DATA_HI
+    and a:StageClearBitHi026F,y
+    sta a:VDC_DATA_HI
+    plx
+    lda z:zTemp0A
+    clc
+    adc #$10
+    sta z:zTemp0A
+    dec z:zTemp0E
+    bne ClearStageBitRows026F_at0
+    lda z:zTemp0F
+    clc
+    adc #$23
+    sta z:zTemp0F
+    rts
+
+; @routine 031F:291 ClearStageBitRows031F
+; @run 6B:9291
+; WHAT IT DOES: Clears the stage's bit in four rows of VRAM words (as ClearStageBitRows, 024F:2DF). Programs 043F and 10DF hold the same bytes.
+; HOW: As ClearStageBitRows, with SetVramAddresses031F and StageClearBitLo031F/StageClearBitHi031F.
+; WAITS: no.
+; Entry: X kept for the caller; zTemp08-09 the base, zTemp0F the place. Exit: as ClearStageBitRows.
+; Nothing the game does loads this program (codemap.unloaded_programs), so nothing is known to reach it.
+StageClearBitLo031F = $92D9 ; the low byte of the stage's bit in the cleared word, by stage index, in the 031D programs
+StageClearBitHi031F = $92E1 ; and its high byte
+ClearStageBitRows031F:
+    lda z:zTemp0F
+    and #$0F
+    tay
+    lda z:zTemp0F
+    lsr a
+    lsr a
+    lsr a
+    lsr a
+    clc
+    adc z:zTemp08
+    sta z:zTemp0A
+    lda z:zTemp09
+    sta z:zTemp0B
+    lda #$04
+    sta z:zTemp0E
+ClearStageBitRows031F_at0:
+    phx
+    phy
+    ldx z:zTemp0A
+    ldy z:zTemp0B
+    jsr SetVramAddresses031F
+    ply
+    lda a:VDC_DATA_LO
+    and a:StageClearBitLo031F,y
+    sta a:VDC_DATA_LO
+    lda a:VDC_DATA_HI
+    and a:StageClearBitHi031F,y
+    sta a:VDC_DATA_HI
+    plx
+    lda z:zTemp0A
+    clc
+    adc #$10
+    sta z:zTemp0A
+    dec z:zTemp0E
+    bne ClearStageBitRows031F_at0
+    lda z:zTemp0F
+    clc
+    adc #$23
+    sta z:zTemp0F
+    rts

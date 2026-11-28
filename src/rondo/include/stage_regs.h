@@ -179,4 +179,10 @@ VramMaskExit MaskVramRowsRandomAt(uint16_t at, void (*point)(uint8_t lo, uint8_t
                                   MaskExit (*row_copy)(uint8_t x, uint8_t y), MaskExit (*row)(uint8_t x, uint8_t y));
 void mask_vram_rows_exit_shim(VramMaskExit out);
 
+
+/* system/stage_clear_bits.c: ClearStageBitRows (024F:2DF) run at `at`, with its VRAM address setter and its tables of
+ * the stage's bit. */
+StageExit ClearStageBitRowsAt(uint8_t x, void (*set)(uint8_t lo, uint8_t hi), uint16_t at, uint16_t bit_lo,
+                              uint16_t bit_hi);
+
 #endif

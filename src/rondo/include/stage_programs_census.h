@@ -282,4 +282,10 @@ void abi_MaskVramRowsRandom026F(void);
 VramMaskExit MaskVramRowsRandom031F(void);
 void abi_MaskVramRowsRandom031F(void);
 
+StageExit ClearStageBitRows026F(uint8_t x);
+void abi_ClearStageBitRows026F(void);
+
+StageExit ClearStageBitRows031F(uint8_t x);
+void abi_ClearStageBitRows031F(void);
+
 #endif

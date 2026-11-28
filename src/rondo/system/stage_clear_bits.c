@@ -4,8 +4,9 @@
 #include "routines.h"
 #include "ram.h"
 #include "stage_map.h"
+#include "stage_regs.h"
 
-enum { ROWS = 4, ROW_STEP = 0x10, NEXT_ROW_BASE = 0x23, SET_RETURN = 0x9300, RUN_RETURN_1 = 0x92DB, RUN_RETURN_2 = 0x92DD,
+enum { ROWS = 4, ROW_STEP = 0x10, NEXT_ROW_BASE = 0x23, RUN_RETURN_1 = 0x92DB, RUN_RETURN_2 = 0x92DD,
        RUN_RETURN_3 = 0x92DF, FIRST_ENTRY = 0x92DF };
 
 typedef void (*SetAddress)(uint8_t lo, uint8_t hi);
@@ -15,7 +16,9 @@ typedef void (*SetAddress)(uint8_t lo, uint8_t hi);
  * tables are read by the stage index in the low nibble of zTemp0F), and steps the address on a
  * row; zTemp0F then moves on by $23.
  */
-static StageExit clear_bit_rows(uint8_t entry_x, SetAddress set)
+/* The body, at the address it runs at (its JSR returns to at + $21), with the C of its VRAM address setter and its
+ * tables of the stage's bit, low and high bytes. */
+static StageExit clear_bit_rows(uint8_t entry_x, SetAddress set, uint16_t at, uint16_t bit_lo, uint16_t bit_hi)
 {
     StageExit end = { 0, 0, 0, false, false, 0, EXIT_X | EXIT_Y | EXIT_C | EXIT_V };
     uint8_t a;
@@ -40,15 +43,15 @@ static StageExit clear_bit_rows(uint8_t entry_x, SetAddress set)
         push8(y);
         x_lo = RD8(ZP->temp0a);
         y_hi = RD8(ZP->temp0b);
-        jsr_push(SET_RETURN);
+        jsr_push((uint16_t)(at + 0x21));
         set(x_lo, y_hi);
         jsr_pop();
         y = pull8();
         byte = RD8(VDC->data_lo);
-        byte = (uint8_t)(byte & TBL8(StageClearBitLo, y));
+        byte = (uint8_t)(byte & rd8((uint16_t)(bit_lo + y)));
         WR8(VDC->data_lo, byte);
         byte = RD8(VDC->data_hi);
-        byte = (uint8_t)(byte & TBL8(StageClearBitHi, y));
+        byte = (uint8_t)(byte & rd8((uint16_t)(bit_hi + y)));
         WR8(VDC->data_hi, byte);
         entry_x = pull8();
         a = RD8(ZP->temp0a);
@@ -81,7 +84,7 @@ static StageExit clear_bit_rows(uint8_t entry_x, SetAddress set)
  */
 StageExit ClearStageBitRows(uint8_t x)
 {
-    return clear_bit_rows(x, SetVramAddresses);
+    return clear_bit_rows(x, SetVramAddresses, FIRST_ENTRY, StageClearBitLo_TBL, StageClearBitHi_TBL);
 }
 
 void abi_ClearStageBitRows(void)
@@ -99,12 +102,20 @@ void abi_ClearStageBitRows(void)
  */
 StageExit ClearStageBitRowsLong(uint8_t x)
 {
-    return clear_bit_rows(x, SetVramAddressesLong);
+    return clear_bit_rows(x, SetVramAddressesLong, FIRST_ENTRY, StageClearBitLo_TBL, StageClearBitHi_TBL);
 }
 
 void abi_ClearStageBitRowsLong(void)
 {
     stage_exit_shim(ClearStageBitRowsLong(cpu.x));
+}
+
+/* ClearStageBitRows' body for the builds of the overlay that hold it elsewhere (stage_programs_census.c), at the
+ * address their code runs at, with their VRAM address setter and tables of the stage's bit. */
+StageExit ClearStageBitRowsAt(uint8_t x, void (*set)(uint8_t lo, uint8_t hi), uint16_t at, uint16_t bit_lo,
+                              uint16_t bit_hi)
+{
+    return clear_bit_rows(x, set, at, bit_lo, bit_hi);
 }
 
 /*

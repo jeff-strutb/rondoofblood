@@ -157,4 +157,7 @@ void abi_StageSubStepDeath026D(void);
 StageRegs StageSubStepTally026D(StageRegs r);
 void abi_StageSubStepTally026D(void);
 
+StageRegs StageSubStepFadeOut026D(StageRegs r);
+void abi_StageSubStepFadeOut026D(void);
+
 #endif

@@ -1710,3 +1710,24 @@ void abi_StageSubStepTally026D(void)
 {
     stage_regs_load_shim(StageSubStepTally026D(stage_regs_entry_shim()));
 }
+
+/*
+ * @routine 026D:28B StageSubStepFadeOut026D
+ * @run 6B:828B
+ * WHAT IT DOES: Sub-step to the fade: sub-mode 4 from its first step, zField89 cleared, the scroll stopped (as StageSubStepFadeOut, 024D:2A2). Programs 031D, 043D, 064D,
+ * 10DD, 122D, 1A2D, 1B8D and 1CED hold the same bytes.
+ * HOW: StageSubStepFadeOutAt (stage_flow.c), the body of 024D:2A2, with this program's tail JMP at $8293 to its
+ * StageScrollSpeedsOff026D at $80AE, the C of the routine loaded there.
+ * WAITS: no.
+ * Entry: X and Y the caller's. Exit: as StageScrollSpeedsOff026D.
+ * Nothing the game does loads this program (codemap.unloaded_programs), so nothing is known to reach it.
+ */
+StageRegs StageSubStepFadeOut026D(StageRegs r)
+{
+    return StageSubStepFadeOutAt(r, 0x8293, 0x80AE);
+}
+
+void abi_StageSubStepFadeOut026D(void)
+{
+    stage_regs_load_shim(StageSubStepFadeOut026D(stage_regs_entry_shim()));
+}

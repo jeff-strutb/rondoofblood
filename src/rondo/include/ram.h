@@ -1072,5 +1072,22 @@
 #define OBJ_PIECE_NEXT 0x34B8 /* crash kind 0's use of OBJ_WORK_D: its next piece's slot less 6, 0 to 8 (MariaCrash0Drop) */
 #define OBJ_PIECE_PLACE 0x3510 /* crash kind 0's use of OBJ_WORK_E: its next piece's place in MariaCrash0PiecePlaces, 0 to 15 (MariaCrash0Drop) */
 #define MariaStateHandlers 0xA2E3 /* eighteen words by OBJ_STATE: her states' handlers (MariaStateDispatch) */
+#define MariaPadSequenceDirections 0xB96B /* the directions of her pad sequence, by twice the step plus her facing (MariaPadSequence) */
+#define MariaAnimationLists 0xBF3D /* her animation lists' words by animation (MariaAnimationPoint) */
+#define MariaTurnStates 0xBA54 /* 1 for the states that may turn at the screen's middle, by state (MariaCheckTurnWindow) */
+#define MariaItemCosts 0xBD4A /* the hearts her item crash costs, by item (MariaTryItemCrash, MariaCheckItemHearts) */
+#define MariaItemCrashLists 0xBD53 /* the sound list her item crash starts, by item (MariaTryItemCrash) */
+#define MariaItemCrashScripts 0xBD5C /* the script her item crash starts, by item (MariaTryItemCrash) */
+#define MariaItemSecondCosts 0xBCD5 /* the hearts a second thrown item asks, by item (MariaUseItem) */
+#define MariaItemThrowCosts 0xBCDE /* the hearts a thrown item costs, by item (MariaUseItem) */
+#define MariaItemThrowLists 0xBCE7 /* the sound list a thrown item's first use starts, by item (MariaUseItem) */
+#define MariaItemThrowScripts 0xBCF0 /* the script a thrown item's first use starts, by item (MariaUseItem) */
+#define MariaColumnOffsets 0xBE69 /* her probe columns' offsets across, by column and facing (MariaColumnOffset) */
+#define MariaWallReach 0xBE73 /* her wall probe's reach by side (MariaWall) */
+#define MariaWallLift 0xBE75 /* her wall probe's lift by column (MariaWall) */
+#define MariaWallLiftHigh 0xBE7B /* her wall probe's high lift by column (MariaWall) */
+#define MariaWallPushBits 0xBE81 /* the push bits her wall probe tests by side (MariaWall) */
+#define MariaObjectSpeedsY 0xC29A /* the Y speed words her objects take by entry (MariaSetVelocityYFromTable) */
+#define MariaObjectSpeedsX 0xC2ED /* the X speed words her objects take by entry (MariaSetVelocityXFromTable) */
 
 #endif

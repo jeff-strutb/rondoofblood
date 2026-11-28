@@ -541,9 +541,9 @@ MariaStateDoubled:
 MariaSetVelocityYFromTable:
     asl a
     tay
-    lda a:$C29A,y
+    lda a:MariaObjectSpeedsY,y
     sta a:OBJ_VY_LO,x
-    lda a:$C29B,y
+    lda a:MariaObjectSpeedsY+1,y
     sta a:OBJ_VY_HI,x
     rts
 
@@ -556,8 +556,8 @@ MariaSetVelocityYFromTable:
 MariaSetVelocityXFromTable:
     asl a
     tay
-    lda a:$C2ED,y
+    lda a:MariaObjectSpeedsX,y
     sta a:OBJ_VX_LO,x
-    lda a:$C2EE,y
+    lda a:MariaObjectSpeedsX+1,y
     sta a:OBJ_VX_HI,x
     rts

@@ -663,7 +663,7 @@ MariaColumnOffset:
     clc
     adc a:OBJ_FACING_LEFT
     tay
-    lda a:RichterColumnOffsets+$31C,y
+    lda a:MariaColumnOffsets,y
     rts
 
 ; @routine 01E0:5A4 MariaLiftByColumn
@@ -831,9 +831,9 @@ MariaWall:
     cmp #$01
     beq MariaWall_at2
     lda z:zPlayerPush
-    and a:RichterWallPushBits+$31C,y
+    and a:MariaWallPushBits,y
     bne MariaWallPushed
-    lda a:RichterWallReach+$31C,y
+    lda a:MariaWallReach,y
     sta z:zTemp10
     lda a:OBJ_STATE
     cmp #$03
@@ -855,10 +855,10 @@ MariaWall_at3:
     stz z:zTemp01
     lda a:OBJ_Y_LO
     clc
-    adc a:RichterWallLift+$31C,x
+    adc a:MariaWallLift,x
     sta z:zTemp02
     lda a:OBJ_Y_HI
-    adc a:RichterWallLiftHigh+$31C,x
+    adc a:MariaWallLiftHigh,x
     sta z:zTemp03
     jsr MariaReadIfOnPage
     and #$02

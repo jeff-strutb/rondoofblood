@@ -546,7 +546,7 @@ MariaPadSequence:
     lda z:zPadHeld
     and #$F0
     beq MariaPadSequence_at0
-    cmp a:MariaPadSequence+$37,x
+    cmp a:MariaPadSequenceDirections,x
     bne MariaPadSequence_at0
     inc a:PlayerHeldCount+2
     lda a:PlayerHeldCount+2
@@ -673,9 +673,9 @@ MariaAnimationPoint:
     lda a:OBJ_WORK_A
     asl a
     tay
-    lda a:AnimationLists+$322,y
+    lda a:MariaAnimationLists,y
     sta z:zTemp00
-    lda a:AnimationLists+$322+1,y
+    lda a:MariaAnimationLists+1,y
     sta z:zTemp01
     lda a:OBJ_SCROLL_BAND
     asl a
@@ -695,7 +695,7 @@ MariaCheckTurnWindow:
     rts
 MariaCheckTurnWindow_at0:
     ldx a:OBJ_STATE
-    lda a:RichterTurnStates+$327,x
+    lda a:MariaTurnStates,x
     sta a:PlayerDoorReady
     lda a:OBJ_FACING_LEFT
     bne MariaCheckTurnWindow_at1
@@ -720,7 +720,7 @@ MariaCheckItemHearts:
     stz a:RichterItemReady
     ldx z:zField93
     lda z:zField94
-    cmp a:RichterItemCosts+$4FD,x
+    cmp a:MariaItemCosts,x
     bcs MariaCheckItemHearts_at0
     rts
 MariaCheckItemHearts_at0:
@@ -773,7 +773,7 @@ MariaUseItem_at2:
     beq MariaUseItem_at3
     ldx z:zField93
     lda z:zField94
-    cmp a:MariaUseItem+$9C,x
+    cmp a:MariaItemThrowCosts,x
     bcs MariaUseItem_at4
 MariaUseItem_at3:
     stz a:PlayerAttackKind
@@ -791,14 +791,14 @@ MariaUseItem_at4:
     jsr MariaFindLiveObject
     bne MariaUseItem_at3
     ldx z:zField93
-    lda a:MariaUseItem+$A5,x
+    lda a:MariaItemThrowLists,x
     beq MariaUseItem_at6
     ldx #$06
     jsr VecStartListChannelKind2
 MariaUseItem_at6:
     stz a:PlayerItemFirstUse
     ldx z:zField93
-    lda a:MariaUseItem+$AE,x
+    lda a:MariaItemThrowScripts,x
     beq MariaUseItem_at5
     ldx #$06
     jsr VecStartScriptSlotKind1
@@ -808,7 +808,7 @@ MariaUseItem_at5:
     beq MariaUseItem_at7
     ldx z:zField93
     lda z:zField94
-    cmp a:MariaUseItem+$93,x
+    cmp a:MariaItemSecondCosts,x
     bcc MariaUseItem_at3
     lda a:OBJ_KIND+8
     bne MariaUseItem_at3
@@ -818,7 +818,7 @@ MariaUseItem_at7:
     lda z:zField94
     sed
     sec
-    sbc a:MariaUseItem+$9C,x
+    sbc a:MariaItemThrowCosts,x
     cld
     sta z:zField94
     jmp MariaUseItem_at8
@@ -872,7 +872,7 @@ MariaTryItemCrash_at1:
     bne MariaTryItemCrash_at1
     ldx z:zField93
     lda z:zField94
-    cmp a:RichterItemCosts+$4FD,x
+    cmp a:MariaItemCosts,x
     bcs MariaTryItemCrash_at2
 MariaTryItemCrash_at5:
     stz a:PadForcedPress
@@ -880,14 +880,14 @@ MariaTryItemCrash_at5:
     rts
 MariaTryItemCrash_at2:
     ldx z:zField93
-    lda a:RichterItemCrashLists+$4FD,x
+    lda a:MariaItemCrashLists,x
     beq MariaTryItemCrash_at3
     ldx #$06
     jsr VecStartListChannelKind2
 MariaTryItemCrash_at3:
     stz a:PlayerItemFirstUse
     ldx z:zField93
-    lda a:RichterItemCrashScripts+$4FD,x
+    lda a:MariaItemCrashScripts,x
     beq MariaTryItemCrash_at4
     ldx #$06
     jsr VecStartScriptSlotKind1
@@ -896,7 +896,7 @@ MariaTryItemCrash_at4:
     lda z:zField94
     sed
     sec
-    sbc a:RichterItemCosts+$4FD,x
+    sbc a:MariaItemCosts,x
     cld
     sta z:zField94
     sec

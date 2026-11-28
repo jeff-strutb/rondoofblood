@@ -22,6 +22,7 @@ Nothing is run. The map is worked out from the disc alone:
     python3 tools/rondo/codemap.py            the map, into build/rondo/codemap/
     python3 tools/rondo/codemap.py --check    the map against every filed @routine and @run
     python3 tools/rondo/codemap.py --progress M1 and M2 by disc area: docs/rondo/progress.svg and the README
+    python3 tools/rondo/codemap.py --todo     every routine found, each body once, and whether it is done
 """
 import array
 import collections
@@ -315,6 +316,8 @@ class Map:
     def __init__(self, disc, mem, name):
         self.disc, self.mem, self.name = disc, mem, name
         self.alts = {}
+        self.gstores = collections.defaultdict(set)   # fixed address -> the values stored there (None: unknown)
+        self.gconst = {}                              # fixed address -> its one value, from a first pass
         self.starts = {}            # disc offset of an instruction start -> set of run addresses
         self.entries = {}           # (disc offset, run address) -> how it was entered
         self.bad = []               # (entry, place, why) where following met what code cannot be
@@ -405,7 +408,7 @@ class Map:
         if key in self.fns:
             return self.fns[key]
         if key in self.busy:
-            return None, ALL
+            return None, ALL, ()
         self.busy.add(key)
         outer, self.caller = self.caller, key
         ex = self.body(d, pc, st)
@@ -419,6 +422,7 @@ class Map:
         seen = {}
         work = [(d0, pc0, st0)]
         exits = None
+        exram = None                # the fixed-address values every return leaves
         writes = set()
         key0 = (d0, pc0, st0.mpr)
         mine = self.bodies.setdefault(key0, {})
@@ -462,8 +466,17 @@ class Map:
             if self.stored is not None and writes is not ALL:
                 writes |= self.stored
             fall = name not in huc.ENDS
+            if name == "rts":
+                pushed = self.rts_targets(st, pc)
+                if pushed:                          # an address pushed and returned to: a jump, not a return
+                    self.curkey = key0
+                    for t, how in pushed:
+                        for td in self.places(t, s.mpr)[0]:
+                            self.call(td, t, St(s.mpr), how)
+                    continue
             if name in ("rts", "rti"):
                 exits = s.mpr if exits is None else tuple(p if p == q else None for p, q in zip(exits, s.mpr))
+                exram = set(s.ram) if exram is None else exram & set(s.ram)
                 continue
             if (mode == "rel" or mode == "zrel") and name != "bsr":
                 taken = self.branch(name, st)
@@ -479,9 +492,10 @@ class Map:
                     if not tds:
                         self.unplaced[why] += 1
                     for td in tds:
-                        ex, w = self.call(td, target, s.copy(), "jmp")
+                        ex, w, er = self.call(td, target, s.copy(), "jmp")
                         if ex is not None:
                             exits = ex if exits is None else tuple(p if p == q else None for p, q in zip(exits, ex))
+                            exram = set(er) if exram is None else exram & set(er)
                         if writes is not ALL:
                             writes = ALL if w is ALL else writes | w
             if name == "jsr" or name == "bsr":
@@ -496,9 +510,10 @@ class Map:
                         s = s.copy(a=None, x=None, y=None, c=None, ram=())
                         writes = ALL
                     else:
-                        exm, wall = None, set()
+                        exm, wall, erj = None, set(), None
                         for td in tds:
-                            ex, w = self.call(td, target, s.copy(stk=RET), "jsr")
+                            ex, w, er = self.call(td, target, s.copy(stk=RET), "jsr")
+                            erj = set(er) if erj is None else erj & set(er)
                             ck = (td, target, s.mpr)
                             if ck in self.consumed:
                                 fall = False            # the callee pulls its return address: it does not come back
@@ -511,6 +526,9 @@ class Map:
                             wall = ALL if (w is ALL or wall is ALL) else wall | w
                         s = s.copy(mpr=exm, a=None, x=None, y=None, c=None)
                         s.kill(wall)
+                        for k_, v_ in sorted(erj or (), key=lambda kv: kv[0]):
+                            if wall is ALL or k_ in wall:
+                                s.write(k_, v_)         # what the callee leaves at an address it writes
                         if writes is not ALL:
                             writes = ALL if wall is ALL else writes | wall
             if name == "jmp" and mode in ("ind", "iax"):
@@ -523,7 +541,29 @@ class Map:
                     self.badkey(key0); self.bad.append(((d0, pc0), d, "falls into an unmapped window"))
                 else:
                     work.append((nxt_d, pn, s))
-        return exits, writes
+        if exram is not None and writes is not ALL:
+            exram = {kv for kv in exram if kv[0] in writes}
+        return exits, writes, tuple(exram or ())
+
+    def rts_targets(self, st, pc):
+        """What an RTS goes to when the code pushed it: the top two bytes of the stack a known address (high pushed
+        first), or a word of a table (each entry of it, read as a jump table), plus one; and a known address pushed
+        beneath it, where those return to. [(run, how)]; [] for a plain return."""
+        stk = st.stk
+        if not stk or len(stk) < 2:
+            return []
+        lo, hi = stk[-1], stk[-2]
+        out = []
+        if isinstance(lo, int) and isinstance(hi, int):
+            out.append(((hi << 8 | lo) + 1 & 0xFFFF, "pushed address"))
+        elif isinstance(lo, tuple) and isinstance(hi, tuple) and lo[0] == "tbl" and hi == ("tbl", lo[1] + 1):
+            for w in self.words(lo[1], 0, None, st.mpr, plus=1):
+                out.append((w, "pushed from a table"))
+        else:
+            return []
+        if len(stk) >= 4 and isinstance(stk[-3], int) and isinstance(stk[-4], int):
+            out.append(((stk[-4] << 8 | stk[-3]) + 1 & 0xFFFF, "pushed return address"))
+        return out
 
     def go(self, work, target, st, entry, at):
         tds, why = self.places(target, st.mpr)
@@ -564,16 +604,26 @@ class Map:
         x = st.x if isinstance(st.x, int) else None
         return self.words(addr, x or 0, x, st.mpr)
 
-    def words(self, addr, first, one, mpr):
+    def words(self, addr, first, one, mpr, plus=0):
         """The words of a table of code addresses from entry first: one entry when the index is known, else
-        every entry while it is code (decodes cleanly to a return within ENTRY_LOOK instructions)."""
+        every entry while it is code (decodes cleanly to a return within ENTRY_LOOK instructions); the words
+        $0000 and $FFFF are empty slots, passed over."""
         out = []
         for k in range(first, first + 2 * TABLE_MAX, 2):
             w = self.word((addr + k) & 0xFFFF, mpr)
-            if w is None or w < 0x4000 or w >= 0xE000:
+            if w is None:
+                break
+            if w in (0x0000, 0xFFFF) and one is None:
+                continue                            # an empty slot: the table goes on past it
+            w = (w + plus) & 0xFFFF
+            if w < 0x4000 or w >= 0xE000:
                 break
             td, why = self.place(w, mpr)
-            if td is None or not self.clean(td, w):
+            if td is None:
+                if one is not None:
+                    break
+                continue                            # an address in a window not known here: not a table's end
+            if not self.clean(td, w):
                 break
             out.append(w)
             if one is not None:
@@ -620,9 +670,12 @@ class Map:
                 self.stored = {fixed}
                 if name in self.STORES:
                     reg = self.STORES[name]
-                    s.write(fixed, 0 if reg is None else {"a": ra, "x": x, "y": y}[reg])
+                    v = 0 if reg is None else {"a": ra, "x": x, "y": y}[reg]
+                    s.write(fixed, v)
+                    self.gstores[fixed].add(v if isinstance(v, int) else None)
                 else:
                     s.write(fixed, None)
+                    self.gstores[fixed].add(None)
             elif mode in ("abx", "aby", "zpx", "zpy"):
                 base = (0x2000 | ops[0]) if mode in ("zpx", "zpy") else ops[0]
                 self.stored = set(range(base, base + 0x100))
@@ -638,6 +691,8 @@ class Map:
         src = imm if mode == "imm" else zpv if zpv is not None else (st.read(fixed) if fixed is not None else None)
         if fixed in CARD_BYTES:
             src = CARD_BYTES[fixed]
+        elif src is None and fixed is not None and fixed in self.gconst:
+            src = self.gconst[fixed]
         if name == "lda" and mode in ("abx", "aby"):
             s.a = ("tbl", ops[0])                    # a byte of a table: what a pointer loaded from it points at
             return s
@@ -688,7 +743,7 @@ class Map:
         elif name == "sxy":
             s.x, s.y = y, x
         elif name in ("pha", "phx", "phy"):
-            v = {"pha": a, "phx": x, "phy": y}[name]
+            v = {"pha": st.a, "phx": x, "phy": y}[name]       # A may be a table reference: an RTS dispatch
             s.stk = None if st.stk is None or len(st.stk) >= STACK_MAX else st.stk + (v,)
         elif name in ("pla", "plx", "ply"):
             if not st.stk:                      # unknown, or below this routine's frame
@@ -744,6 +799,29 @@ class Map:
 
 # ------------------------------------------------------------------------------------------- roots
 
+def scene_map(disc, mem, key, kmpr, consts):
+    """Follow one memory from the kernel's vectors (and the scene overlay's entry); consts: fixed addresses whose
+    one value a first pass found (every store to them in this memory the same known value; stores through an
+    index or by block move are not counted)."""
+    m = Map(disc, mem, key)
+    m.gconst = consts or {}
+    for slot in range(0, 0x100, 3):          # the kernel's vector table: JMPs from $4000, empty slots zero
+        run = 0x4000 + slot
+        b = disc.buf[kernel_disc(run)]
+        if b == 0x4C:
+            m.call(kernel_disc(run), run, St(kmpr), "kernel vector")
+        elif disc.buf[kernel_disc(run):kernel_disc(run) + 3] != b"\x00\x00\x00":
+            break
+    if key != "kernel":
+        mpr = list(kmpr)
+        mpr[4] = BASE + 4                    # SceneCallOverlay maps the overlay at $8000
+        d, _ = m.place(0x8006, mpr)
+        if d is not None:
+            m.call(d, 0x8006, St(mpr), "scene overlay entry $8006")
+    m.drain()
+    return m
+
+
 def follow_all(disc, mems):
     maps = {}
     boot = Map(disc, mems.boot, "boot")
@@ -756,21 +834,9 @@ def follow_all(disc, mems):
     for key, mem in mems.all():
         if key == "boot":
             continue
-        m = Map(disc, mem, key)
-        for slot in range(0, 0x100, 3):          # the kernel's vector table: JMPs from $4000, empty slots zero
-            run = 0x4000 + slot
-            b = disc.buf[kernel_disc(run)]
-            if b == 0x4C:
-                m.call(kernel_disc(run), run, St(kmpr), "kernel vector")
-            elif disc.buf[kernel_disc(run):kernel_disc(run) + 3] != b"\x00\x00\x00":
-                break
-        if key != "kernel":
-            mpr = list(kmpr)
-            mpr[4] = BASE + 4                    # SceneCallOverlay maps the overlay at $8000
-            d, _ = m.place(0x8006, mpr)
-            if d is not None:
-                m.call(d, 0x8006, St(mpr), "scene overlay entry $8006")
-        m.drain()
+        m = scene_map(disc, mem, key, kmpr, None)
+        consts = {a: next(iter(v)) for a, v in m.gstores.items() if len(v) == 1 and None not in v}
+        m = scene_map(disc, mem, key, kmpr, consts)
         maps[key] = m
     for key, mem, mpr, targets in unloaded_programs(disc, mems):
         m = Map(disc, mem, key)
@@ -1197,6 +1263,52 @@ def svg(rows, order, total):
     return "\n".join(o) + "\n"
 
 
+def todo(disc, mems, maps):
+    """Every routine the map found, once per distinct body: [(area, place, run, bytes, status, name)], status
+    "done" (filed, C finished), "C unfinished" (filed, its C calls original game code) or "to do" (not filed).
+    A routine's bytes are its body's instructions from its entry on, in one piece; a body the disc holds again
+    elsewhere is listed once, at its first place."""
+    buf = disc.buf
+    import asmbuild
+    pieces = sorted((p["disc"], p["disc"] + p["end"], p["name"]) for p in asmbuild.filed_pieces(buf))
+    starts_ = [a for a, _, _ in pieces]
+    import bisect
+    finished = {}
+    for path in glob.glob(os.path.join(TOP, "src", "rondo", "**", "*.c"), recursive=True):
+        t = open(path, encoding="utf-8").read()
+        ms = list(TAG.finditer(t))
+        for i, m in enumerate(ms):
+            body = t[m.end(): ms[i + 1].start() if i + 1 < len(ms) else len(t)]
+            finished[int(m.group(1), 16) * SECTOR + int(m.group(2), 16)] = not runs_game_code(body)
+    names, _ = areas(mems)
+    seen, rows = {}, []
+    for m in maps.values():
+        for key in m.keep:
+            d, pc = key[0], key[1]
+            if d in seen:
+                continue
+            body = m.bodies.get(key, {})
+            ln = {dd: n for (dd, _), n in body.items()}
+            end = d
+            while end in ln:
+                end += ln[end]
+            if end == d:
+                continue
+            k = buf[d:end]
+            if k in seen.values():
+                seen[d] = k
+                continue
+            seen[d] = k
+            i = bisect.bisect_right(starts_, d) - 1
+            status, name = "to do", ""
+            if i >= 0 and pieces[i][0] <= d < pieces[i][1]:
+                a, _, name = pieces[i]
+                status = "done" if finished.get(a) else "C unfinished" if a in finished else "assembly only"
+            rows.append((names.get(d // SECTOR, "Not loaded"), d, pc, end - d, status, name))
+    rows.sort(key=lambda r: r[1])
+    return rows
+
+
 README = os.path.join(TOP, "README.md")
 PICTURE = os.path.join(TOP, "docs", "rondo", "progress.svg")
 
@@ -1252,6 +1364,22 @@ def main():
             r = rows[n]
             print(f"  {n:24} {r[0]:8,} B  M1 {100 * r[1] / r[0]:5.1f}%  M2 {100 * r[2] / r[0]:5.1f}%")
         print(f"  {'whole game':24} {total[0]:8,} B  M1 {100 * total[1] / total[0]:5.1f}%  M2 {100 * total[2] / total[0]:5.1f}%")
+    if "--todo" in sys.argv[1:]:
+        rows = todo(disc, mems, maps)
+        os.makedirs(OUT, exist_ok=True)
+        path = os.path.join(OUT, "todo.csv")
+        with open(path, "w", newline="") as fh:
+            w = csv.writer(fh)
+            w.writerow(["area", "place", "run", "bytes", "status", "name"])
+            for a, d, pc, n, st_, nm in rows:
+                w.writerow([a, f"{d // SECTOR:04X}:{d % SECTOR:03X}", f"{pc:04X}", n, st_, nm])
+        c = collections.Counter(r[4] for r in rows)
+        b = collections.Counter()
+        for r in rows:
+            b[r[4]] += r[3]
+        print(f"to-do list: {path}")
+        for k in ("done", "C unfinished", "assembly only", "to do"):
+            print(f"  {k:14} {c[k]:6,} routines {b[k]:9,} B")
     if "--check" in sys.argv[1:]:
         res, miss = check(disc, mems, maps, cps)
         for k, v in res.items():

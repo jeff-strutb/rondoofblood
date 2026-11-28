@@ -353,4 +353,35 @@ StageRegs TallyPause3CDAt(StageRegs r, uint16_t at, const TallyBuild *build);
 
 StageRegs TallyEnd3CDAt(StageRegs r, uint16_t at, const TallyBuild *build);
 
+StageRegs TallyStart031F(StageRegs r);
+void abi_TallyStart031F(void);
+StageRegs TallyBoard031F(StageRegs r);
+void abi_TallyBoard031F(void);
+StageRegs TallyDigits031F(StageRegs r);
+void abi_TallyDigits031F(void);
+StageRegs TallyCell031F(StageRegs r);
+void abi_TallyCell031F(void);
+StageRegs TallyPause031F(StageRegs r);
+void abi_TallyPause031F(void);
+StageRegs TallyHealth031F(StageRegs r);
+void abi_TallyHealth031F(void);
+StageRegs TallyHearts031F(StageRegs r);
+void abi_TallyHearts031F(void);
+StageRegs TallyDigitCell031F(StageRegs r);
+void abi_TallyDigitCell031F(void);
+StageRegs TallyEnd031F(StageRegs r);
+void abi_TallyEnd031F(void);
+StageRegs TallyReveal031F(StageRegs r);
+void abi_TallyReveal031F(void);
+StageRegs TallyWaitPress031F(StageRegs r);
+void abi_TallyWaitPress031F(void);
+StageRegs TallyStockBonus031F(StageRegs r);
+void abi_TallyStockBonus031F(void);
+StageRegs TallyExtraLife031F(StageRegs r);
+void abi_TallyExtraLife031F(void);
+TallyWaitEnd TallyWait031F(StageRegs r);
+void abi_TallyWait031F(void);
+StageRegs ClearVramRows031F(StageRegs r);
+void abi_ClearVramRows031F(void);
+
 #endif

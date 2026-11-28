@@ -23,6 +23,8 @@
 #include "syscard.h"
 #include "stage_b_census.h"
 #include "stage_c_census.h"
+#include "stage_programs_census.h"
+#include "front_end.h"
 
 enum {
     FADE_ACTIVE = 0x203C, SUB3_STEP_TABLE = 0x2084, SUB3_STEP = 0x2085, FALL_STEP = 0x2088, FADE_COUNT = 0x209B,
@@ -8079,4 +8081,354 @@ StageRegs HitKindState3CD(StageRegs r)
 void abi_HitKindState3CD(void)
 {
     regs_exit_shim(HitKindState3CD(regs_entry_shim()));
+}
+
+/* The 031D program's tally screen: its own routines as the shared bodies call them. */
+static StageRegs draw_piece_031f(StageRegs r)
+{
+    stage_regs_load_shim(r);
+    abi_SpawnStageObject031F();
+    return stage_regs_from_cpu_shim(r);
+}
+
+static StageRegs clear_words_031f(StageRegs r)
+{
+    return ClearVramRows031F(r);
+}
+
+static StageRegs write_address_031f(StageRegs r)
+{
+    SetVramAddressXYAt(r.x, r.y, 0x9628);
+    return loaded(r, 0x02);
+}
+
+static StageRegs set_addresses_031f(StageRegs r)
+{
+    SetVramAddresses031F(r.x, r.y);
+    return loaded(r, 0x02);
+}
+
+static const TallyBuild tally_031f = {
+    ADDR_OF(STAGEWORK->mask_buffer[0]), 0x95A0, ADDR_OF8(OBJ->tally_wait[0]), ADDR_OF8(OBJ->work_d[85]),
+    ADDR_OF8(OBJ->frame[83]), 0x9368, 0x941B, 0x9587, 0x52, false,
+    draw_piece_031f, clear_words_031f, write_address_031f, set_addresses_031f
+};
+
+/*
+ * @routine 031F:310 TallyStart031F
+ * @run 6B:9310
+ * WHAT IT DOES: The tally screen's first step: after its wait, the sound stopped, sound $52, the next step.
+ * HOW: TallyStart3CDAt (stage_c_census.c), 03CD's body, with this program's build (tally_031f).
+ * WAITS: no.
+ * Entry: nothing.
+ * Nothing the game does loads this program (codemap.unloaded_programs), so nothing is known to reach it.
+ */
+StageRegs TallyStart031F(StageRegs r)
+{
+    return TallyStart3CDAt(r, 0x9310, &tally_031f);
+}
+
+void abi_TallyStart031F(void)
+{
+    regs_exit_shim(TallyStart031F(regs_entry_shim()));
+}
+
+/*
+ * @routine 031F:31E TallyBoard031F
+ * @run 6B:931E
+ * WHAT IT DOES: As TallyBoard3CD: the tally board set up, then run on into its digits.
+ * HOW: TallyBoard3CDAt (stage_c_census.c), 03CD's body, with this program's build (tally_031f).
+ * WAITS: no.
+ * Entry: nothing.
+ * Nothing the game does loads this program (codemap.unloaded_programs), so nothing is known to reach it.
+ */
+StageRegs TallyBoard031F(StageRegs r)
+{
+    return TallyBoard3CDAt(r, 0x931E, &tally_031f);
+}
+
+void abi_TallyBoard031F(void)
+{
+    regs_exit_shim(TallyBoard031F(regs_entry_shim()));
+}
+
+/*
+ * @routine 031F:368 TallyDigits031F
+ * @run 6B:9368
+ * WHAT IT DOES: As TallyDigits3CD: the health's and the hearts' digits put in the board's cells.
+ * HOW: TallyDigits3CDAt (stage_c_census.c), 03CD's body, with this program's build (tally_031f).
+ * WAITS: no.
+ * Entry: nothing.
+ * Nothing the game does loads this program (codemap.unloaded_programs), so nothing is known to reach it.
+ */
+StageRegs TallyDigits031F(StageRegs r)
+{
+    return TallyDigits3CDAt(r, 0x9368, &tally_031f);
+}
+
+void abi_TallyDigits031F(void)
+{
+    regs_exit_shim(TallyDigits031F(regs_entry_shim()));
+}
+
+/*
+ * @routine 031F:41B TallyCell031F
+ * @run 6B:941B
+ * WHAT IT DOES: As TallyCell3CD: one cell of the board drawn.
+ * HOW: TallyCell3CDAt (stage_c_census.c), 03CD's body, with this program's build (tally_031f).
+ * WAITS: no.
+ * Entry: A the cell, zTemp00 its value.
+ * Nothing the game does loads this program (codemap.unloaded_programs), so nothing is known to reach it.
+ */
+StageRegs TallyCell031F(StageRegs r)
+{
+    return TallyCell3CDAt(r, 0x941B, &tally_031f);
+}
+
+void abi_TallyCell031F(void)
+{
+    regs_exit_shim(TallyCell031F(regs_entry_shim()));
+}
+
+/*
+ * @routine 031F:4A0 TallyPause031F
+ * @run 6B:94A0
+ * WHAT IT DOES: As TallyPause3CD: after its wait, a wait of $40 and the next step.
+ * HOW: TallyPause3CDAt (stage_c_census.c), 03CD's body, with this program's build (tally_031f).
+ * WAITS: no.
+ * Entry: nothing.
+ * Nothing the game does loads this program (codemap.unloaded_programs), so nothing is known to reach it.
+ */
+StageRegs TallyPause031F(StageRegs r)
+{
+    return TallyPause3CDAt(r, 0x94A0, &tally_031f);
+}
+
+void abi_TallyPause031F(void)
+{
+    regs_exit_shim(TallyPause031F(regs_entry_shim()));
+}
+
+/*
+ * @routine 031F:54D TallyHealth031F
+ * @run 6B:954D
+ * WHAT IT DOES: As TallyHealth3CD: the board's health redrawn.
+ * HOW: TallyHealth3CDAt (stage_c_census.c), 03CD's body, with this program's build (tally_031f).
+ * WAITS: no.
+ * Entry: nothing.
+ * Nothing the game does loads this program (codemap.unloaded_programs), so nothing is known to reach it.
+ */
+StageRegs TallyHealth031F(StageRegs r)
+{
+    return TallyHealth3CDAt(r, 0x954D, &tally_031f);
+}
+
+void abi_TallyHealth031F(void)
+{
+    regs_exit_shim(TallyHealth031F(regs_entry_shim()));
+}
+
+/*
+ * @routine 031F:56A TallyHearts031F
+ * @run 6B:956A
+ * WHAT IT DOES: As TallyHearts3CD: the board's hearts redrawn.
+ * HOW: TallyHearts3CDAt (stage_c_census.c), 03CD's body, with this program's build (tally_031f).
+ * WAITS: no.
+ * Entry: nothing.
+ * Nothing the game does loads this program (codemap.unloaded_programs), so nothing is known to reach it.
+ */
+StageRegs TallyHearts031F(StageRegs r)
+{
+    return TallyHearts3CDAt(r, 0x956A, &tally_031f);
+}
+
+void abi_TallyHearts031F(void)
+{
+    regs_exit_shim(TallyHearts031F(regs_entry_shim()));
+}
+
+/*
+ * @routine 031F:587 TallyDigitCell031F
+ * @run 6B:9587
+ * WHAT IT DOES: As TallyDigitCell3CD: a cell stepped to its end.
+ * HOW: TallyDigitCell3CDAt (stage_c_census.c), 03CD's body, with this program's build (tally_031f).
+ * WAITS: no.
+ * Entry: X the cell.
+ * Nothing the game does loads this program (codemap.unloaded_programs), so nothing is known to reach it.
+ */
+StageRegs TallyDigitCell031F(StageRegs r)
+{
+    return TallyDigitCell3CDAt(r, 0x9587, &tally_031f);
+}
+
+void abi_TallyDigitCell031F(void)
+{
+    regs_exit_shim(TallyDigitCell031F(regs_entry_shim()));
+}
+
+/*
+ * @routine 031F:537 TallyEnd031F
+ * @run 6B:9537
+ * WHAT IT DOES: As TallyEnd3CD: after its wait, the kept health to zField94, zModeDone counted.
+ * HOW: TallyEnd3CDAt (stage_c_census.c), 03CD's body, with this program's build (tally_031f).
+ * WAITS: no.
+ * Entry: nothing.
+ * Nothing the game does loads this program (codemap.unloaded_programs), so nothing is known to reach it.
+ */
+StageRegs TallyEnd031F(StageRegs r)
+{
+    return TallyEnd3CDAt(r, 0x9537, &tally_031f);
+}
+
+void abi_TallyEnd031F(void)
+{
+    regs_exit_shim(TallyEnd031F(regs_entry_shim()));
+}
+
+/*
+ * @routine 031F:390 TallyReveal031F
+ * @run 6B:9390
+ * WHAT IT DOES: As TallyReveal3CD, but the reveal's end does not set bit 1 of zPaused: one cell of the board revealed a call.
+ * HOW: TallyReveal3CDAt (stage_c_census.c), 03CD's body, with this program's build (tally_031f).
+ * WAITS: no.
+ * Entry: nothing.
+ * Nothing the game does loads this program (codemap.unloaded_programs), so nothing is known to reach it.
+ */
+StageRegs TallyReveal031F(StageRegs r)
+{
+    return TallyReveal3CDAt(r, 0x9390, &tally_031f);
+}
+
+void abi_TallyReveal031F(void)
+{
+    regs_exit_shim(TallyReveal031F(regs_entry_shim()));
+}
+
+/*
+ * @routine 031F:500 TallyWaitPress031F
+ * @run 6B:9500
+ * WHAT IT DOES: After its wait, bit 1 of zPaused set and the paused step run until it clears that bit; then a wait of $20 and the next step.
+ * HOW: The wait; SMB1; the routine loaded at $8EA0; a test of the bit.
+ * WAITS: no.
+ * Entry: nothing.
+ * Nothing the game does loads this program (codemap.unloaded_programs), so nothing is known to reach it.
+ */
+StageRegs TallyWaitPress031F(StageRegs r)
+{
+    TallyWaitEnd wait = tally_wait_at(r, 0x9503, OBJ_TALLY_WAIT);
+
+    r = wait.r;
+    if (wait.dropped) {
+        return r;
+    }
+    RMW8(ZP->paused, old, old | 0x02);
+    r = resident_call(r, 0x9508, 0x8EA0);
+    if ((RD8(ZP->paused) & 0x02) != 0) {
+        return r;
+    }
+    r = loaded(r, 0x20);
+    WR8(OBJ->tally_wait[0], 0x20);
+    return TallyNext152D(r);
+}
+
+void abi_TallyWaitPress031F(void)
+{
+    regs_exit_shim(TallyWaitPress031F(regs_entry_shim()));
+}
+
+/*
+ * @routine 031F:514 TallyStockBonus031F
+ * @run 6B:9514
+ * WHAT IT DOES: After its wait, an extra life (TallyExtraLife031F), the routine at $9103, a wait of $80 and the next step.
+ * HOW: The wait; TallyExtraLife031F by BSR; the routine loaded at $9103; a store.
+ * WAITS: no.
+ * Entry: nothing.
+ * Nothing the game does loads this program (codemap.unloaded_programs), so nothing is known to reach it.
+ */
+StageRegs TallyStockBonus031F(StageRegs r)
+{
+    TallyWaitEnd wait = tally_wait_at(r, 0x9517, OBJ_TALLY_WAIT);
+
+    r = wait.r;
+    if (wait.dropped) {
+        return r;
+    }
+    CALL(0x9519, TallyExtraLife031F(r));
+    r = resident_call(r, 0x951C, 0x9103);
+    r = loaded(r, 0x80);
+    WR8(OBJ->tally_wait[0], 0x80);
+    return TallyNext152D(r);
+}
+
+void abi_TallyStockBonus031F(void)
+{
+    regs_exit_shim(TallyStockBonus031F(regs_entry_shim()));
+}
+
+/*
+ * @routine 031F:524 TallyExtraLife031F
+ * @run 6B:9524
+ * WHAT IT DOES: A life more: the player's stock one up in decimal, 99 at most, and sound $48.
+ * HOW: bcd_plus_one; the sound command.
+ * WAITS: no.
+ * Entry: nothing.
+ * Nothing the game does loads this program (codemap.unloaded_programs), so nothing is known to reach it.
+ */
+StageRegs TallyExtraLife031F(StageRegs r)
+{
+    r = loaded(r, RD8(ZP->stock));
+    r = bcd_plus_one(r);
+    if (r.c) {
+        r = loaded(r, 0x99);
+    }
+    WR8(ZP->stock, r.a);
+    r = loaded(r, 0x48);
+    return vector_call(r, 0x9536, abi_VecSoundCommand);
+}
+
+void abi_TallyExtraLife031F(void)
+{
+    regs_exit_shim(TallyExtraLife031F(regs_entry_shim()));
+}
+
+/*
+ * @routine 031F:542 TallyWait031F
+ * @run 6B:9542
+ * WHAT IT DOES: The tally steps' wait: while OBJ_TALLY_WAIT is not 0, one less and the caller's return dropped.
+ * HOW: TallyWait152DAt (stage_b_census.c), the body of 152D's wait, on OBJ_TALLY_WAIT.
+ * WAITS: no.
+ * Entry: nothing.
+ * Nothing the game does loads this program (codemap.unloaded_programs), so nothing is known to reach it.
+ */
+TallyWaitEnd TallyWait031F(StageRegs r)
+{
+    return TallyWait152DAt(r, OBJ_TALLY_WAIT);
+}
+
+void abi_TallyWait031F(void)
+{
+    regs_exit_shim(TallyWait031F(regs_entry_shim()).r);
+}
+
+/*
+ * @routine 031F:5FE ClearVramRows031F
+ * @run 6B:95FE
+ * WHAT IT DOES: ClearVramRows' bytes (004D:4C8) in this program.
+ * HOW: ClearVramRowsAt (continue_screen.c) with the returns of its JSRs here, $9603 and $9628.
+ * WAITS: no.
+ * Entry: A rows, X the address low, Y high.
+ * Nothing the game does loads this program (codemap.unloaded_programs), so nothing is known to reach it.
+ */
+StageRegs ClearVramRows031F(StageRegs r)
+{
+    ClearVramRowsAt(r.a, r.x, r.y, 0x9603, 0x9628);
+    r = loaded(r, 0x02);
+    r.x = 0;
+    r.nz = 0;
+    return r;
+}
+
+void abi_ClearVramRows031F(void)
+{
+    regs_exit_shim(ClearVramRows031F(regs_entry_shim()));
 }

@@ -5720,3 +5720,460 @@ HitKindState3CD:
     sta a:OBJ_HIT_STATUS+80,x
     rts
 
+
+; @routine 031F:310 TallyStart031F
+; @run 6B:9310
+; WHAT IT DOES: The tally screen's first step: after its wait, the sound stopped, sound $52, the next step.
+; HOW: TallyStart3CD's code with this program's wait and sound.
+; WAITS: no.
+; Entry: nothing.
+; Nothing the game does loads this program (codemap.unloaded_programs), so nothing is known to reach it.
+StagePausedStep031F = $8EA0 ; the paused step in this program
+TallyNext031F = $931B ; the INC and RTS TallyStart031F runs into
+MapStageBanks031F = $95E8 ; MapStageBanks' bytes (024F:349) in this program
+StageSplitTens031F = $9611 ; StageSplitTens152D's bytes (152F:40A) in this program
+SetVramAddressXY031F = $9625 ; SetVramAddressXY's bytes (004D:4DB) in this program
+TallyCellSource031F = $95A0 ; the tally screen's first cells, $3E of them
+TallyStart031F:
+    jsr TallyWait031F
+    jsr VecStopSound
+    lda #$52
+    jsr VecSoundCommand
+
+; @routine 031F:31E TallyBoard031F
+; @run 6B:931E
+; WHAT IT DOES: As TallyBoard3CD: the tally board set up, then run on into its digits.
+; HOW: TallyBoard3CD's code with this program's cells, bytes and routines.
+; WAITS: no.
+; Entry: nothing.
+; Nothing the game does loads this program (codemap.unloaded_programs), so nothing is known to reach it.
+TallyBoard031F:
+    lda #$16
+    jsr VecStartScriptSlot0Kind1
+    ldx #$05
+    jsr SpawnStageObject031F
+    inx
+    jsr SpawnStageObject031F
+    inx
+    jsr SpawnStageObject031F
+    lda z:zField94
+    sta a:OBJ_WORK_D+85
+    lda z:zPlayerHealth
+    cmp #$5C
+    bne TallyBoard031F_at0
+    lda #$18
+    sta a:OBJ_FRAME+83
+TallyBoard031F_at0:
+    clx
+    ldy #$50
+    lda #$0E
+    jsr ClearVramRows031F
+    clx
+    ldy #$54
+    lda #$0C
+    jsr ClearVramRows031F
+    ldx #$80
+    ldy #$5D
+    lda #$0A
+    jsr ClearVramRows031F
+    clx
+TallyBoard031F_at1:
+    lda a:TallyCellSource031F,x
+    sta a:StageMaskBuffer,x
+    inx
+    cpx #$3E
+    bne TallyBoard031F_at1
+    jsr TallyNext031F
+
+; @routine 031F:368 TallyDigits031F
+; @run 6B:9368
+; WHAT IT DOES: As TallyDigits3CD: the health's and the hearts' digits put in the board's cells.
+; HOW: TallyDigits3CD's code with this program's cells, bytes and routines.
+; WAITS: no.
+; Entry: nothing.
+; Nothing the game does loads this program (codemap.unloaded_programs), so nothing is known to reach it.
+TallyDigits031F:
+    lda z:zPlayerHealth
+    jsr StageSplitTens031F
+    inx
+    cpx #$01
+    beq TallyDigits031F_at0
+    stx a:StageMaskBuffer+17
+TallyDigits031F_at0:
+    inc a
+    sta a:StageMaskBuffer+18
+    lda z:zField94
+    lsr a
+    lsr a
+    lsr a
+    lsr a
+    inc a
+    cmp #$01
+    beq TallyDigits031F_at1
+    sta a:StageMaskBuffer+33
+TallyDigits031F_at1:
+    lda z:zField94
+    and #$0F
+    inc a
+    sta a:StageMaskBuffer+34
+    rts
+
+; @routine 031F:41B TallyCell031F
+; @run 6B:941B
+; WHAT IT DOES: As TallyCell3CD: one cell of the board drawn.
+; HOW: TallyCell3CD's code with this program's cells, bytes and routines.
+; WAITS: no.
+; Entry: A the cell, zTemp00 its value.
+; Nothing the game does loads this program (codemap.unloaded_programs), so nothing is known to reach it.
+TallyCell031F:
+    sec
+    sbc #$0A
+    tax
+    sta z:zTemp01
+    lsr a
+    and #$1C
+    bbr2 zTemp01,TallyCell031F_at0
+    ora #$20
+TallyCell031F_at0:
+    sta z:zTemp02
+    lda z:zTemp01
+    and #$03
+    ora z:zTemp02
+    sta z:zTemp01
+    stz z:zTemp08
+    lsr a
+    lsr z:zTemp08
+    lsr a
+    ror z:zTemp08
+    lsr a
+    ror z:zTemp08
+    sta z:zTemp09
+    lda z:zTemp00
+    lsr a
+    lsr a
+    and #$30
+    clc
+    adc #$08
+    clc
+    adc z:zTemp08
+    tax
+    lda #$50
+    adc z:zTemp09
+    tay
+    lda z:zTemp00
+    dec a
+    and #$3F
+    stz z:zTemp09
+    asl a
+    rol z:zTemp09
+    asl a
+    rol z:zTemp09
+    asl a
+    rol z:zTemp09
+    sta z:zTemp08
+    lda #$54
+    clc
+    adc z:zTemp08
+    sta z:zTemp10
+    lda #$BF
+    adc z:zTemp09
+    sta z:zTemp11
+    jsr SetVramAddresses031F
+    cly
+    bbs0 zTemp01,TallyCell031F_at1
+TallyCell031F_at2:
+    lda a:VDC_DATA_LO
+    sta a:VDC_DATA_LO
+    lda a:VDC_DATA_HI
+    lda (zTemp10),y
+    sta a:VDC_DATA_HI
+    iny
+    cpy #$08
+    bne TallyCell031F_at2
+    rts
+TallyCell031F_at1:
+    lda a:VDC_DATA_LO
+    lda (zTemp10),y
+    sta a:VDC_DATA_LO
+    lda a:VDC_DATA_HI
+    sta a:VDC_DATA_HI
+    iny
+    cpy #$08
+    bne TallyCell031F_at1
+TallyCell031F_at3:
+    rts
+
+; @routine 031F:4A0 TallyPause031F
+; @run 6B:94A0
+; WHAT IT DOES: As TallyPause3CD: after its wait, a wait of $40 and the next step.
+; HOW: TallyPause3CD's code with this program's cells, bytes and routines.
+; WAITS: no.
+; Entry: nothing.
+; Nothing the game does loads this program (codemap.unloaded_programs), so nothing is known to reach it.
+TallyPause031F:
+    jsr TallyWait031F
+    lda #$40
+    sta a:OBJ_TALLY_WAIT
+    jmp TallyNext031F
+
+; @routine 031F:54D TallyHealth031F
+; @run 6B:954D
+; WHAT IT DOES: As TallyHealth3CD: the board's health redrawn.
+; HOW: TallyHealth3CD's code with this program's cells, bytes and routines.
+; WAITS: no.
+; Entry: nothing.
+; Nothing the game does loads this program (codemap.unloaded_programs), so nothing is known to reach it.
+TallyHealth031F:
+    jsr MapStageBanks031F
+    jsr TallyDigits031F
+    ldx #$12
+    bsr TallyDigitCell031F
+    lda z:zPlayerHealth
+    cmp #$0A
+    bcc TallyHealth031F_at0
+    ldx #$11
+    bra TallyDigitCell031F
+TallyHealth031F_at0:
+    ldx #$40
+    ldy #$54
+    lda #$01
+    jmp ClearVramRows031F
+
+; @routine 031F:56A TallyHearts031F
+; @run 6B:956A
+; WHAT IT DOES: As TallyHearts3CD: the board's hearts redrawn.
+; HOW: TallyHearts3CD's code with this program's cells, bytes and routines.
+; WAITS: no.
+; Entry: nothing.
+; Nothing the game does loads this program (codemap.unloaded_programs), so nothing is known to reach it.
+TallyHearts031F:
+    jsr MapStageBanks031F
+    jsr TallyDigits031F
+    ldx #$22
+    bsr TallyDigitCell031F
+    lda z:zField94
+    cmp #$10
+    bcc TallyHearts031F_at0
+    ldx #$21
+    bra TallyDigitCell031F
+TallyHearts031F_at0:
+    ldx #$40
+    ldy #$55
+    lda #$01
+    jmp ClearVramRows031F
+
+; @routine 031F:587 TallyDigitCell031F
+; @run 6B:9587
+; WHAT IT DOES: As TallyDigitCell3CD: a cell stepped to its end.
+; HOW: TallyDigitCell3CD's code with this program's cells, bytes and routines.
+; WAITS: no.
+; Entry: X the cell.
+; Nothing the game does loads this program (codemap.unloaded_programs), so nothing is known to reach it.
+TallyDigitCell031F:
+    phx
+    lda a:StageMaskBuffer,x
+    sta z:zTemp00
+    txa
+    jsr TallyCell031F
+    plx
+    lda a:StageMaskBuffer,x
+    clc
+    adc #$40
+    bcs TallyDigitCell031F_at0
+    sta a:StageMaskBuffer,x
+    bra TallyDigitCell031F
+TallyDigitCell031F_at0:
+    rts
+
+; @routine 031F:537 TallyEnd031F
+; @run 6B:9537
+; WHAT IT DOES: As TallyEnd3CD: after its wait, the kept health to zField94, zModeDone counted.
+; HOW: TallyEnd3CD's code with this program's cells, bytes and routines.
+; WAITS: no.
+; Entry: nothing.
+; Nothing the game does loads this program (codemap.unloaded_programs), so nothing is known to reach it.
+TallyEnd031F:
+    jsr TallyWait031F
+    lda a:OBJ_WORK_D+85
+    sta z:zField94
+    inc z:zModeDone
+    rts
+
+; @routine 031F:390 TallyReveal031F
+; @run 6B:9390
+; WHAT IT DOES: As TallyReveal3CD, but the reveal's end does not set bit 1 of zPaused: one cell of the board revealed a call.
+; HOW: TallyReveal3CD's code without its SMB1.
+; WAITS: no.
+; Entry: nothing.
+; Nothing the game does loads this program (codemap.unloaded_programs), so nothing is known to reach it.
+TallyReveal031F:
+    jsr MapStageBanks031F
+    ldx #$3D
+TallyReveal031F_at1:
+    lda a:StageMaskBuffer,x
+    bne TallyReveal031F_at0
+    dex
+    bpl TallyReveal031F_at1
+    lda #$40
+    sta a:OBJ_TALLY_WAIT
+    jmp TallyNext031F
+TallyReveal031F_at0:
+    jsr VecNextRandom
+    and #$3F
+    cmp #$3E
+    bcs TallyReveal031F_at0
+    tax
+    lda a:StageMaskBuffer,x
+    beq TallyReveal031F_at0
+    sta z:zTemp00
+    adc #$40
+    sta a:StageMaskBuffer,x
+    bcc TallyReveal031F_at2
+    stz a:StageMaskBuffer,x
+TallyReveal031F_at2:
+    txa
+    and #$3F
+    cmp #$0A
+    bcs TallyCell031F
+    stz z:zTemp08
+    lsr a
+    ror z:zTemp08
+    lsr a
+    ror z:zTemp08
+    sta z:zTemp09
+    lda z:zTemp00
+    lsr a
+    lsr a
+    and #$30
+    clc
+    adc #$80
+    clc
+    adc z:zTemp08
+    tax
+    lda #$5D
+    adc z:zTemp09
+    tay
+    lda z:zTemp00
+    dec a
+    and #$3F
+    stz z:zTemp08
+    lsr a
+    ror z:zTemp08
+    lsr a
+    ror z:zTemp08
+    lsr a
+    ror z:zTemp08
+    sta z:zTemp09
+    lda #$34
+    clc
+    adc z:zTemp08
+    sta z:zTemp10
+    lda #$C0
+    adc z:zTemp09
+    sta z:zTemp11
+    jsr SetVramAddressXY031F
+    cly
+    ldx #$10
+TallyReveal031F_at3:
+    sxy
+    lda (zTemp10),y
+    sta a:VDC_DATA_LO
+    sxy
+    lda (zTemp10),y
+    sta a:VDC_DATA_HI
+    iny
+    inx
+    cpy #$10
+    bne TallyReveal031F_at3
+    rts
+
+; @routine 031F:500 TallyWaitPress031F
+; @run 6B:9500
+; WHAT IT DOES: After its wait, bit 1 of zPaused set and the paused step run until it clears that bit; then a wait of $20 and the next step.
+; HOW: TallyWaitPress3CD with an SMB1, the call to $8EA0 and its own wait byte.
+; WAITS: no.
+; Entry: nothing.
+; Nothing the game does loads this program (codemap.unloaded_programs), so nothing is known to reach it.
+TallyWaitPress031F:
+    jsr TallyWait031F
+    smb1 z:zPaused
+    jsr StagePausedStep031F
+    bbr1 zPaused,TallyWaitPress031F_at0
+    rts
+TallyWaitPress031F_at0:
+    lda #$20
+    sta a:OBJ_TALLY_WAIT
+    jmp TallyNext031F
+
+; @routine 031F:514 TallyStockBonus031F
+; @run 6B:9514
+; WHAT IT DOES: After its wait, an extra life (TallyExtraLife031F), the routine at $9103, a wait of $80 and the next step.
+; HOW: A BSR, a JSR, a store and a jump.
+; WAITS: no.
+; Entry: nothing.
+; Nothing the game does loads this program (codemap.unloaded_programs), so nothing is known to reach it.
+TallyStockBonus031F:
+    jsr TallyWait031F
+    bsr TallyExtraLife031F
+    jsr BlendStageStockRows031F
+    lda #$80
+    sta a:OBJ_TALLY_WAIT
+    jmp TallyNext031F
+
+; @routine 031F:524 TallyExtraLife031F
+; @run 6B:9524
+; WHAT IT DOES: A life more: the player's stock one up in decimal, 99 at most, and sound $48.
+; HOW: SED, CLC, ADC, CLD; a store; the sound.
+; WAITS: no.
+; Entry: nothing.
+; Nothing the game does loads this program (codemap.unloaded_programs), so nothing is known to reach it.
+TallyExtraLife031F:
+    sed
+    lda z:zStock
+    clc
+    adc #$01
+    bcc TallyExtraLife031F_at0
+    lda #$99
+TallyExtraLife031F_at0:
+    sta z:zStock
+    cld
+    lda #$48
+    jsr VecSoundCommand
+    rts
+
+; @routine 031F:542 TallyWait031F
+; @run 6B:9542
+; WHAT IT DOES: The tally steps' wait: while OBJ_TALLY_WAIT is not 0, one less and the caller's return dropped.
+; HOW: TallyWait152D's code on OBJ_TALLY_WAIT.
+; WAITS: no.
+; Entry: nothing.
+; Nothing the game does loads this program (codemap.unloaded_programs), so nothing is known to reach it.
+TallyWait031F:
+    lda a:OBJ_TALLY_WAIT
+    beq TallyWait031F_at0
+    dec a:OBJ_TALLY_WAIT
+    pla
+    pla
+TallyWait031F_at0:
+    rts
+
+; @routine 031F:5FE ClearVramRows031F
+; @run 6B:95FE
+; WHAT IT DOES: ClearVramRows' bytes (004D:4C8) in this program.
+; HOW: ClearVramRows' code, calling the copy of SetVramAddressXY at $9625.
+; WAITS: no.
+; Entry: A rows, X the address low, Y high.
+; Nothing the game does loads this program (codemap.unloaded_programs), so nothing is known to reach it.
+ClearVramRows031F:
+    sta z:zTemp00
+    jsr SetVramAddressXY031F
+ClearVramRows031F_at1:
+    ldx #$40
+ClearVramRows031F_at0:
+    st1 #$00
+    st2 #$00
+    dex
+    bne ClearVramRows031F_at0
+    dec z:zTemp00
+    bne ClearVramRows031F_at1
+    rts

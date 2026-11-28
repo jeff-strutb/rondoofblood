@@ -69,6 +69,8 @@ SpawnedObject SpawnStageObjectLong(uint8_t row);
 
 /* system/stage_vram_runs.c: where the walk stopped: X the buffer index, Y the list position (A $FF, N 0, Z 1, C 1). */
 typedef struct { uint8_t x; uint8_t y; } StageRunsEnd;
+StageRunsEnd expand_vram_runs(uint16_t table);
+void runs_exit_shim(StageRunsEnd end);
 StageRunsEnd ExpandStageVramRuns(void);
 StageRunsEnd ExpandStageVramRunsB(void);
 StageRunsEnd ExpandStageVramRunsC(void);

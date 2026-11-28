@@ -13,7 +13,7 @@ enum { BUFFER_BYTES = 0x00FF, RUN_END = 0xFF, VALUE_MASK = 0x7F, END_OF_RUN_BIT 
  * the run's last byte. An $FF where a byte is expected ends the list. Returns the buffer index
  * and the list position the walk stopped at.
  */
-static StageRunsEnd expand_vram_runs(uint16_t table)
+StageRunsEnd expand_vram_runs(uint16_t table)
 {
     uint8_t y;
     uint8_t x;
@@ -46,7 +46,7 @@ static StageRunsEnd expand_vram_runs(uint16_t table)
 }
 
 /* The exit the list's end leaves: A $FF compared equal to $FF (N 0, Z 1, C 1), X and Y as stopped. */
-static void runs_exit_shim(StageRunsEnd end)
+void runs_exit_shim(StageRunsEnd end)
 {
     cpu.a = RUN_END;
     cpu.x = end.x;

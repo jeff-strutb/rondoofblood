@@ -3198,12 +3198,18 @@ void abi_StageLoadRowMap3CD(void)
  */
 StageRegs StageRouteSetUpA3CD(StageRegs r)
 {
+    return StageRouteSetUpA3CDAt(r, &route_3cd);
+}
+
+/* StageRouteSetUpA3CD's body, for the builds of it with their own tables. */
+StageRegs StageRouteSetUpA3CDAt(StageRegs r, const StageRouteBuild *build)
+{
     r = vector_call(r, 0x8850, abi_VecClearListChannels);
     r.x = RD8(ZP->field82);
     r.nz = r.x;
-    r = loaded(r, rd8((uint16_t)(0x9D57 + r.x)));
+    r = loaded(r, rd8((uint16_t)(build->route_a + r.x)));
     r = vector_call(r, 0x8858, abi_VecStartListChannel0Kind2);
-    return StageUnpackList3CD(r);
+    return StageUnpackList3CDAt(r, build);
 }
 
 void abi_StageRouteSetUpA3CD(void)

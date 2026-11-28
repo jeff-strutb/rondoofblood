@@ -308,5 +308,6 @@ typedef struct {
 } StageRouteBuild;
 StageRegs StageUnpackList3CDAt(StageRegs r, const StageRouteBuild *build);
 StageRegs StageLoadRowMap3CDAt(StageRegs r, const StageRouteBuild *build);
+StageRegs StageRouteSetUpA3CDAt(StageRegs r, const StageRouteBuild *build);
 
 #endif

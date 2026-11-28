@@ -57,11 +57,11 @@ static void load_regs_shim(Regs r)
     abi_flag(P_V, r.v);
 }
 
-/* Original code at a call, run with the registers as they stand. */
-static Regs original_call_shim(Regs r, uint16_t ret, uint16_t run)
+/* A call into the overlay's window, to the C of the routine loaded there, with the registers as they stand. */
+static Regs loaded_call_shim(Regs r, uint16_t ret, uint16_t run)
 {
     load_regs_shim(r);
-    call_orig(ret, run);
+    call_routine(ret, run);
     return regs_of(stage_exit_from_cpu_shim(), r);
 }
 
@@ -86,18 +86,12 @@ static StageExit run_stage_frame(Regs r)
     uint8_t a;
 
     r.nz = INC8(ZP->wave_counter);
-    jsr_push(TICK_RETURN);
-    if (resident_at(TICK_RUN) == DISC(0x05BE, 0x36D)) {
-        r = regs_of(StepStageFrameLong(r.x, r.y, r.v), r);
-    } else {
-        r = regs_of(StepStageFrame(r.x, r.y, r.v), r);
-    }
-    jsr_pop();
-    r = original_call_shim(r, COMMON_A_RETURN, COMMON_A_RUN);
+    r = loaded_call_shim(r, TICK_RETURN, TICK_RUN);
+    r = loaded_call_shim(r, COMMON_A_RETURN, COMMON_A_RUN);
     jsr_push(PLAYER_RETURN);
     r = player_and_camera_shim(r);
     jsr_pop();
-    r = original_call_shim(r, COMMON_B_RETURN, COMMON_B_RUN);
+    r = loaded_call_shim(r, COMMON_B_RETURN, COMMON_B_RUN);
     jsr_push(OBJECTS_RETURN);
     StepScrollAndRunObjects(r.x);
     jsr_pop();
@@ -135,8 +129,9 @@ static StageExit run_stage_frame(Regs r)
  * WHAT IT DOES: One frame of a stage: counts the wave, ticks the stage (StepStageFrame), runs the
  * player and the camera and the objects, and steps the ending effect; when the ending is done it
  * puts the game in mode 1 and sets the object timer by the stage.
- * HOW: Calls in turn StepStageFrame, the overlay's two common pieces at $80AB and $80BF (original
- * code), PlayerAndCameraFrame, StepScrollAndRunObjects and StepStageEnding.
+ * HOW: Calls in turn the stage tick at $8B6D, the overlay's two common pieces at $80AB and $80BF,
+ * PlayerAndCameraFrame, StepScrollAndRunObjects and StepStageEnding. The tick and the two pieces differ between
+ * the overlays, so each goes to the C of the routine loaded there.
  * Every stage overlay holds the same code here.
  * WAITS: it can wait where a handler's code does.
  * Entry: X and Y as the tick takes them; A, C and V as the caller left them, which the pieces after

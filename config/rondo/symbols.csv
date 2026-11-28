@@ -1134,3 +1134,9 @@ DBB5,abs,MariaKind19TargetsX,the X low byte each kind 19 object aims at, by slot
 DBBF,abs,MariaKind19TargetsY,the Y low byte each kind 19 object aims at and stops past, by slot less 5 (MariaObjectAimAtPlace, MariaKind19Aim)
 DBC9,abs,MariaKind19Animations,each kind 19 object's animation at its start, by slot less 5 (MariaKind19Start)
 DBD3,abs,MariaKind19Waits,each kind 19 object's wait once it has arrived, by slot less 5 (MariaKind19Aim)
+# Maria's objects, kinds 17, 23 and 24 (maria_objects_kind23.c).
+DCEF,abs,MariaKind23SpeedsYLo,kind 23's Y speed low byte at its start, by slot less 6 (MariaKind23)
+DCF8,abs,MariaKind23SpeedsYHi,kind 23's Y speed high byte at its start, by slot less 6 (MariaKind23)
+DD01,abs,MariaKind23SpeedsXLo,kind 23's X speed low byte at its start, by slot less 6 (MariaKind23)
+DD0A,abs,MariaKind23SpeedsXHi,kind 23's X speed high byte at its start, by slot less 6 (MariaKind23)
+DD74,abs,MariaKind24Speeds,kind 24's X and Y speed words at its start, four bytes by slot less 11 (MariaKind24)

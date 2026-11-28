@@ -416,7 +416,7 @@ ListDashThenState117F_at0:
 MoveBounceOffWall12DC:
     jsr VecApplyVelocityX
     lda #$04
-    sta z:SpriteFlipMask
+    sta z:zProduct1
     lda #$02
     jsr VecProbeTerrain
     lda a:OBJ_VX_HI,x
@@ -548,7 +548,7 @@ ListByStateThenProbe161C:
     lda a:ListByStateThenProbe161CSpeeds,y
     sta a:OBJ_VX_HI,x
     lda #$0A
-    sta z:SpriteFlipMask
+    sta z:zProduct1
     jsr BounceAtWalls
 ListByStateThenProbe161C_at0:
     rts

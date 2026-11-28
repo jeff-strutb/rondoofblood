@@ -110,7 +110,7 @@ LoadRecordTail10CD_331:
 ; Entry: Exit: as the last call or load left them.
 ProbeHeight12Tail117C:
     lda #$0C
-    sta z:SpriteFlipMask
+    sta z:zProduct1
     jmp BounceAtWalls
 
 ; @routine 117E:2E7 ProbeHeightCall117E_2E7
@@ -121,7 +121,7 @@ ProbeHeight12Tail117C:
 ; Entry: Exit: as the last call or load left them.
 ProbeHeightCall117E_2E7:
     lda #$10
-    sta z:SpriteFlipMask
+    sta z:zProduct1
     jsr BounceAtWalls
     rts
 
@@ -147,7 +147,7 @@ StateOnWhenNear117F_at0:
 ; Entry: Exit: as the last call or load left them.
 ProbeHeightCall117F_46F:
     lda #$12
-    sta z:SpriteFlipMask
+    sta z:zProduct1
     jsr BounceAtWalls
     rts
 

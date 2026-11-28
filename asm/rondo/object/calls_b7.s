@@ -549,7 +549,7 @@ ListSpeedProbe117D:
     lda a:ListSpeedProbe117DSpeeds,y
     sta a:OBJ_VX_LO,x
     lda #$06
-    sta z:SpriteFlipMask
+    sta z:zProduct1
     jsr BounceAtWalls
     rts
 
@@ -690,7 +690,7 @@ FallProbeToA8_13FB:
     jsr VecApplyVelocity
     jsr VecApplyGravity
     lda #$04
-    sta z:SpriteFlipMask
+    sta z:zProduct1
     lda #$22
     jsr VecProbeTerrain
     lda a:OBJ_Y_LO,x
@@ -750,7 +750,7 @@ ListSpeedProbe161D:
     lda a:ListSpeedProbe161DSpeeds,y
     sta a:OBJ_VX_LO,x
     lda #$0C
-    sta z:SpriteFlipMask
+    sta z:zProduct1
     jsr BounceAtWalls
     rts
 

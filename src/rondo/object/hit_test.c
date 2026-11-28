@@ -131,8 +131,11 @@ void abi_HitReportHandlerLong(void)
     stage_exit_shim(HitReportHandlerLong(cpu.x, cpu.y));
 }
 
-/* The jump into a handler this overlay's hit test names that has no C: the registers as the test leaves them. */
-static StageExit original_handler_shim(uint16_t handler, uint8_t a, uint8_t x, uint8_t y, bool c, bool v)
+/*
+ * The JMP [temp00] into a handler other than the group's two above: the registers and flags as the test leaves them,
+ * then the routine loaded at that address (routine_at), which returns to the test's caller with its own registers.
+ */
+static StageExit loaded_handler_shim(uint16_t handler, uint8_t a, uint8_t x, uint8_t y, bool c, bool v)
 {
     StageExit done = { 0, 0, 0, false, false, 0, EXIT_CPU };
 
@@ -142,7 +145,7 @@ static StageExit original_handler_shim(uint16_t handler, uint8_t a, uint8_t x, u
     abi_nz(y);
     abi_flag(P_C, c);
     abi_flag(P_V, v);
-    call_original(handler);
+    run_routine(handler);
     return done;
 }
 
@@ -316,7 +319,7 @@ static StageExit hit_test(uint8_t x, uint16_t table, const HitHandlers *handlers
         done.set = EXIT_Y | EXIT_C | EXIT_V;
         return done;
     }
-    return original_handler_shim(handler, a, x, y, c, v);
+    return loaded_handler_shim(handler, a, x, y, c, v);
 }
 
 /*

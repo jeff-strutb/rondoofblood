@@ -1919,6 +1919,11 @@ void abi_StageClearedWalkOut3CD(void)
     regs_exit_shim(StageClearedWalkOut3CD(regs_entry_shim()));
 }
 
+/* 03CD's wait for the stage's objects. */
+static const WaitObjectsBuild wait_objects_3cd = {
+    0x846C, { 0x8445, 0x803E, 0x804C, 0x899E }, ADDR_OF8(OBJ->state[40]), 0x40, STAGE_FLAG_2743
+};
+
 /*
  * @routine 03CD:46C StageClearedWaitObjects3CD
  * @run 6B:846C
@@ -1941,21 +1946,27 @@ void abi_StageClearedWalkOut3CD(void)
  */
 StageRegs StageClearedWaitObjects3CD(StageRegs r)
 {
+    return StageClearedWaitObjects3CDAt(r, &wait_objects_3cd);
+}
+
+/* StageClearedWaitObjects3CD's body, for its builds elsewhere. */
+StageRegs StageClearedWaitObjects3CDAt(StageRegs r, const WaitObjectsBuild *build)
+{
     uint8_t slot;
 
-    CALL(0x846F, StageWalkSprite3CD(r));
-    CALL(0x8472, StageFrameA0093CD(r));
-    CALL(0x8475, StageFrameA08D3CD(r));
-    CALL(0x8478, StageOverlayFrame3CD(r));
-    for (slot = 0x40; slot != 0; slot--) {
-        r = loaded(r, RD8(OBJ->state[40 + slot]));
+    r = resident_call(r, (uint16_t)(build->at + 0x3), build->calls[0]);
+    r = resident_call(r, (uint16_t)(build->at + 0x6), build->calls[1]);
+    r = resident_call(r, (uint16_t)(build->at + 0x9), build->calls[2]);
+    r = resident_call(r, (uint16_t)(build->at + 0xC), build->calls[3]);
+    for (slot = build->count; slot != 0; slot--) {
+        r = loaded(r, RD8_IDX(build->slots, slot));
         r.x = slot;
         if ((r.a & 0x80) == 0 && r.a != 0) {
             return r;
         }
     }
     r.x = 0;
-    wr8(STAGE_FLAG_2743, 0);
+    wr8(build->flag, 0);
     r.nz = (uint8_t)(rd8(SUB3_STEP) + 1);
     wr8(SUB3_STEP, r.nz);
     return r;

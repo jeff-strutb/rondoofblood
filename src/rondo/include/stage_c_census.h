@@ -394,4 +394,9 @@ StageRegs StageFadeStart3CDAt(StageRegs r, uint16_t at);
 typedef struct { uint16_t at, frame, overlay, ready, busy, timer; } BossDoorBuild;
 StageRegs StageBossWaitDoor3CDAt(StageRegs r, const BossDoorBuild *build);
 
+/* A build of the cleared stage's wait for its objects: where it runs, the routines it calls first, the bytes it scans
+ * (slots + 1 to slots + count) and the flag it clears. */
+typedef struct { uint16_t at, calls[4], slots; uint8_t count; uint16_t flag; } WaitObjectsBuild;
+StageRegs StageClearedWaitObjects3CDAt(StageRegs r, const WaitObjectsBuild *build);
+
 #endif

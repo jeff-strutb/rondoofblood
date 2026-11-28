@@ -6372,3 +6372,107 @@ void abi_FileMenuMapPage(void)
 
     menu_regs_shim(&r);
 }
+
+/*
+ * @routine 00C3:1E2 FileMenuFrame
+ * @run 6B:91E2
+ * @stop 9230
+ * WHAT IT DOES: A frame of the file menu (mode 4): the menu's second overlay bank mapped; away from pages 0 and 12,
+ * when object $26 shows, objects $26 and $27 given attribute $88 and the tick's frame, and likewise $3A to $3D when
+ * $3A shows; then the handler of page zGameSubMode.
+ * HOW: Bank 7 plus zRamBaseBank at MPR5; ObjectFrameFromTick; zGameSubMode in A and a JSR to MenuStepDispatch, the 17
+ * pages' words after it.
+ * WAITS: yes, where a page waits.
+ * Entry: from the overlay's $800C. Exit: as the page leaves them.
+ */
+MenuRegs FileMenuFrame(MenuRegs r)
+{
+    uint8_t base, page, value, x, high;
+    uint16_t target;
+    unsigned total;
+
+    base = RD8(ZP->ram_base_bank);
+    total = (unsigned)7 + base;
+    ra(&r, (uint8_t)total);
+    rc(&r, total > 0xFF);
+    rv(&r, ((7 ^ total) & (base ^ total) & 0x80) != 0);
+    tam(0x20, (uint8_t)total);
+    page = RD8(ZP->game_sub_mode);
+    ra(&r, page);
+    if (page != 0) {
+        rcmp(&r, page, 0x0C);
+        if (page != 0x0C) {
+            value = RD8(OBJ->frame[0x26]);
+            ra(&r, value);
+            if (value != 0) {
+                ra(&r, 0x88);
+                WR8(OBJ->sprite_attr[0x26], 0x88);
+                WR8(OBJ->sprite_attr[0x27], 0x88);
+                for (x = 0x26; x != 0x28; x++) {
+                    ValueCarry tick;
+
+                    rx(&r, x);
+                    jsr_push(x == 0x26 ? 0x9203 : 0x9207);
+                    tick = ObjectFrameFromTick(x);
+                    jsr_pop();
+                    ra(&r, tick.value);
+                    rc(&r, tick.carry);
+                }
+                value = RD8(OBJ->frame[0x3A]);
+                ra(&r, value);
+                if (value != 0) {
+                    ra(&r, 0x88);
+                    WR8(OBJ->sprite_attr[0x3A], 0x88);
+                    WR8(OBJ->sprite_attr[0x3B], 0x88);
+                    WR8(OBJ->sprite_attr[0x3C], 0x88);
+                    WR8(OBJ->sprite_attr[0x3D], 0x88);
+                    for (x = 0x3A; x != 0x3E; x++) {
+                        ValueCarry tick;
+
+                        rx(&r, x);
+                        jsr_push((uint16_t)(0x921F + 4 * (x - 0x3A)));
+                        tick = ObjectFrameFromTick(x);
+                        jsr_pop();
+                        ra(&r, tick.value);
+                        rc(&r, tick.carry);
+                    }
+                }
+            }
+        }
+    }
+    page = RD8(ZP->game_sub_mode);
+    ra(&r, page);
+    jsr_push(0x9230);
+    target = MenuStepDispatch(page, &high);
+    ra(&r, high);
+    r.x = (uint8_t)((uint8_t)(page << 1) + 1);
+    r.set |= REG_X;
+    rc(&r, (page & 0x80) != 0);
+    switch (target) {
+    case 0x9255: return FileMenuReadSavePage(r);
+    case 0x9C24: return FileMenuOpenPage(r);
+    case 0x9930: return FileMenuSlidePage(r);
+    case 0x9327: return FileMenuPickEmpty(r);
+    case 0x933A: return FileMenuPickUsed(r);
+    case 0x9341: return FileMenuErasePage(r);
+    case 0x93D2: return FileMenuCopyPage(r);
+    case 0x94B2: return FileMenuCharacterPage(r);
+    case 0x9B37: return FileMenuBackToStartPage(r);
+    case 0x9858: return FileMenuListPage(r);
+    case 0x9B07: return FileMenuBackPage(r);
+    case 0x958E: return FileMenuNamePage(r);
+    case 0xAD9B: return FileMenuMapPage(r);
+    case 0xBD14: return FileMenuNoticePage(r);
+    case 0xB68B: return MusicSelectStep(r);
+    case 0xB712: return FileMenuShopPage(r);
+    case 0xBB1D: return FileMenuLeaveStep(r);
+    default: return menu_elsewhere(r, target);
+    }
+}
+
+void abi_FileMenuFrame(void)
+{
+    MenuRegs r = FileMenuFrame(menu_regs_cpu());
+
+    menu_regs_shim(&r);
+}

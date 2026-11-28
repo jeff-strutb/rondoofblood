@@ -3259,3 +3259,50 @@ DrawMapStrings_tB227:
     sta z:zTemp01
     jsr DrawGlyphText
     rts
+
+; @routine 00C3:1E2 FileMenuFrame
+; @run 6B:91E2
+; @stop 9230
+; WHAT IT DOES: A frame of the file menu (mode 4): the menu's second overlay bank mapped; away from pages 0 and 12,
+; when object $26 shows, objects $26 and $27 given attribute $88 and the tick's frame, and likewise $3A to $3D when
+; $3A shows; then the handler of page zGameSubMode.
+; HOW: Bank 7 plus zRamBaseBank at MPR5; ObjectFrameFromTick; zGameSubMode in A and a JSR to MenuStepDispatch, the 17
+; pages' words after it.
+; WAITS: yes, where a page waits.
+; Entry: from the overlay's $800C. Exit: as the page leaves them.
+FileMenuFrame:
+    lda #$07
+    clc
+    adc z:zRamBaseBank
+    tam #$20
+    lda z:zGameSubMode
+    beq FileMenuFrame_at0
+    cmp #$0C
+    beq FileMenuFrame_at0
+    lda a:OBJ_FRAME+$26
+    beq FileMenuFrame_at0
+    lda #$88
+    sta a:OBJ_SPRITE_ATTR+$26
+    sta a:OBJ_SPRITE_ATTR+$27
+    ldx #$26
+    jsr ObjectFrameFromTick
+    inx
+    jsr ObjectFrameFromTick
+    lda a:OBJ_FRAME+$3A
+    beq FileMenuFrame_at0
+    lda #$88
+    sta a:OBJ_SPRITE_ATTR+$3A
+    sta a:OBJ_SPRITE_ATTR+$3B
+    sta a:OBJ_SPRITE_ATTR+$3C
+    sta a:OBJ_SPRITE_ATTR+$3D
+    ldx #$3A
+    jsr ObjectFrameFromTick
+    inx
+    jsr ObjectFrameFromTick
+    inx
+    jsr ObjectFrameFromTick
+    inx
+    jsr ObjectFrameFromTick
+FileMenuFrame_at0:
+    lda z:zGameSubMode
+    jsr MenuStepDispatch

@@ -350,4 +350,37 @@ void abi_TerrainLookup10E0(void);
 LookupEnd TerrainLookupAlt10E0(uint8_t probe, uint8_t object);
 void abi_TerrainLookupAlt10E0(void);
 
+HandlerExit TileStepC026F(void);
+void abi_TileStepC026F(void);
+HandlerExit TileRowA026F(void);
+void abi_TileRowA026F(void);
+HandlerExit TileRowB026F(void);
+void abi_TileRowB026F(void);
+HandlerExit TileHalfStepA026F(uint8_t tile);
+void abi_TileHalfStepA026F(void);
+HandlerExit TileHalfStepB026F(uint8_t tile);
+void abi_TileHalfStepB026F(void);
+HandlerExit TileStepD026F(void);
+void abi_TileStepD026F(void);
+HandlerExit TileRowC026F(void);
+void abi_TileRowC026F(void);
+HandlerExit TileRowD026F(void);
+void abi_TileRowD026F(void);
+HandlerExit TileStepC0320(void);
+void abi_TileStepC0320(void);
+HandlerExit TileRowA0320(void);
+void abi_TileRowA0320(void);
+HandlerExit TileRowB0320(void);
+void abi_TileRowB0320(void);
+HandlerExit TileHalfStepA0320(uint8_t tile);
+void abi_TileHalfStepA0320(void);
+HandlerExit TileHalfStepB0320(uint8_t tile);
+void abi_TileHalfStepB0320(void);
+HandlerExit TileStepD0320(void);
+void abi_TileStepD0320(void);
+HandlerExit TileRowC0320(void);
+void abi_TileRowC0320(void);
+HandlerExit TileRowD0320(void);
+void abi_TileRowD0320(void);
+
 #endif

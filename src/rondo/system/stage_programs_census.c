@@ -3330,3 +3330,307 @@ void abi_TerrainLookupAlt10E0(void)
 {
     lookup_exit_shim(TerrainLookupAlt10E0(cpu.a, cpu.x));
 }
+
+/*
+ * @routine 026F:774 TileStepC026F
+ * @run 6B:9774
+ * WHAT IT DOES: A slope tile: moves the point's row by the table at $980F on its column (as TileStepC, 050F:752).
+ * HOW: TileStepAt (terrain.c), the body of 050F:752, with this program's table at $980F.
+ * WAITS: no.
+ * Entry and exit: as TileStepC.
+ * Nothing the game does loads this program (codemap.unloaded_programs), so nothing is known to reach it.
+ */
+HandlerExit TileStepC026F(void)
+{
+    return TileStepAt(0x980F);
+}
+
+void abi_TileStepC026F(void)
+{
+    handler_exit_shim(TileStepC026F());
+}
+
+/*
+ * @routine 026F:781 TileRowA026F
+ * @run 6B:9781
+ * WHAT IT DOES: A slope tile: the point's new row from the eight by eight table at $9817 on its row and column (as TileRowA, 050F:75F).
+ * HOW: TileRowAt (terrain.c), the body of 050F:75F, with this program's table at $9817.
+ * WAITS: no.
+ * Entry and exit: as TileRowA.
+ * Nothing the game does loads this program (codemap.unloaded_programs), so nothing is known to reach it.
+ */
+HandlerExit TileRowA026F(void)
+{
+    return TileRowAt(0x9817);
+}
+
+void abi_TileRowA026F(void)
+{
+    handler_exit_shim(TileRowA026F());
+}
+
+/*
+ * @routine 026F:792 TileRowB026F
+ * @run 6B:9792
+ * WHAT IT DOES: As TileRowB (050F:770), with the table at $9857.
+ * HOW: TileRowAt (terrain.c), the body of 050F:770, with this program's table at $9857.
+ * WAITS: no.
+ * Entry and exit: as TileRowB.
+ * Nothing the game does loads this program (codemap.unloaded_programs), so nothing is known to reach it.
+ */
+HandlerExit TileRowB026F(void)
+{
+    return TileRowAt(0x9857);
+}
+
+void abi_TileRowB026F(void)
+{
+    handler_exit_shim(TileRowB026F());
+}
+
+/*
+ * @routine 026F:7A3 TileHalfStepA026F
+ * @run 6B:97A3
+ * WHAT IT DOES: The tiles $87-$8A: a step from the pairs at $97FF that differs between the tile's halves (as TileHalfStepA, 050F:781).
+ * HOW: TileHalfStepAt (terrain.c), the body of 050F:781, with this program's table at $97FF.
+ * WAITS: no.
+ * Entry and exit: as TileHalfStepA.
+ * Nothing the game does loads this program (codemap.unloaded_programs), so nothing is known to reach it.
+ */
+HandlerExit TileHalfStepA026F(uint8_t tile)
+{
+    return TileHalfStepAt(0x97FF, 0x83, tile, true);
+}
+
+void abi_TileHalfStepA026F(void)
+{
+    handler_exit_shim(TileHalfStepA026F(cpu.a));
+}
+
+/*
+ * @routine 026F:7B7 TileHalfStepB026F
+ * @run 6B:97B7
+ * WHAT IT DOES: The tiles $8C-$8F: a step from the pairs at $9807 that differs between the tile's halves (as TileHalfStepB, 050F:795).
+ * HOW: TileHalfStepAt (terrain.c), the body of 050F:795, with this program's table at $9807.
+ * WAITS: no.
+ * Entry and exit: as TileHalfStepB.
+ * Nothing the game does loads this program (codemap.unloaded_programs), so nothing is known to reach it.
+ */
+HandlerExit TileHalfStepB026F(uint8_t tile)
+{
+    return TileHalfStepAt(0x9807, 0x8C, tile, false);
+}
+
+void abi_TileHalfStepB026F(void)
+{
+    handler_exit_shim(TileHalfStepB026F(cpu.a));
+}
+
+/*
+ * @routine 026F:7D0 TileStepD026F
+ * @run 6B:97D0
+ * WHAT IT DOES: As TileStepD (050F:7AE), with the table at $9897.
+ * HOW: TileStepAt (terrain.c), the body of 050F:7AE, with this program's table at $9897.
+ * WAITS: no.
+ * Entry and exit: as TileStepD.
+ * Nothing the game does loads this program (codemap.unloaded_programs), so nothing is known to reach it.
+ */
+HandlerExit TileStepD026F(void)
+{
+    return TileStepAt(0x9897);
+}
+
+void abi_TileStepD026F(void)
+{
+    handler_exit_shim(TileStepD026F());
+}
+
+/*
+ * @routine 026F:7DD TileRowC026F
+ * @run 6B:97DD
+ * WHAT IT DOES: As TileRowC (050F:7BB), with the table at $989F.
+ * HOW: TileRowAt (terrain.c), the body of 050F:7BB, with this program's table at $989F.
+ * WAITS: no.
+ * Entry and exit: as TileRowC.
+ * Nothing the game does loads this program (codemap.unloaded_programs), so nothing is known to reach it.
+ */
+HandlerExit TileRowC026F(void)
+{
+    return TileRowAt(0x989F);
+}
+
+void abi_TileRowC026F(void)
+{
+    handler_exit_shim(TileRowC026F());
+}
+
+/*
+ * @routine 026F:7EE TileRowD026F
+ * @run 6B:97EE
+ * WHAT IT DOES: As TileRowD (050F:7CC), with the table at $98DF.
+ * HOW: TileRowAt (terrain.c), the body of 050F:7CC, with this program's table at $98DF.
+ * WAITS: no.
+ * Entry and exit: as TileRowD.
+ * Nothing the game does loads this program (codemap.unloaded_programs), so nothing is known to reach it.
+ */
+HandlerExit TileRowD026F(void)
+{
+    return TileRowAt(0x98DF);
+}
+
+void abi_TileRowD026F(void)
+{
+    handler_exit_shim(TileRowD026F());
+}
+
+/*
+ * @routine 0320:1F6 TileStepC0320
+ * @run 6B:99F6
+ * WHAT IT DOES: A slope tile: moves the point's row by the table at $9A91 on its column (as TileStepC, 050F:752).
+ * HOW: TileStepAt (terrain.c), the body of 050F:752, with this program's table at $9A91.
+ * WAITS: no.
+ * Entry and exit: as TileStepC.
+ * Nothing the game does loads this program (codemap.unloaded_programs), so nothing is known to reach it.
+ */
+HandlerExit TileStepC0320(void)
+{
+    return TileStepAt(0x9A91);
+}
+
+void abi_TileStepC0320(void)
+{
+    handler_exit_shim(TileStepC0320());
+}
+
+/*
+ * @routine 0320:203 TileRowA0320
+ * @run 6B:9A03
+ * WHAT IT DOES: A slope tile: the point's new row from the eight by eight table at $9A99 on its row and column (as TileRowA, 050F:75F).
+ * HOW: TileRowAt (terrain.c), the body of 050F:75F, with this program's table at $9A99.
+ * WAITS: no.
+ * Entry and exit: as TileRowA.
+ * Nothing the game does loads this program (codemap.unloaded_programs), so nothing is known to reach it.
+ */
+HandlerExit TileRowA0320(void)
+{
+    return TileRowAt(0x9A99);
+}
+
+void abi_TileRowA0320(void)
+{
+    handler_exit_shim(TileRowA0320());
+}
+
+/*
+ * @routine 0320:214 TileRowB0320
+ * @run 6B:9A14
+ * WHAT IT DOES: As TileRowB (050F:770), with the table at $9AD9.
+ * HOW: TileRowAt (terrain.c), the body of 050F:770, with this program's table at $9AD9.
+ * WAITS: no.
+ * Entry and exit: as TileRowB.
+ * Nothing the game does loads this program (codemap.unloaded_programs), so nothing is known to reach it.
+ */
+HandlerExit TileRowB0320(void)
+{
+    return TileRowAt(0x9AD9);
+}
+
+void abi_TileRowB0320(void)
+{
+    handler_exit_shim(TileRowB0320());
+}
+
+/*
+ * @routine 0320:225 TileHalfStepA0320
+ * @run 6B:9A25
+ * WHAT IT DOES: The tiles $87-$8A: a step from the pairs at $9A81 that differs between the tile's halves (as TileHalfStepA, 050F:781).
+ * HOW: TileHalfStepAt (terrain.c), the body of 050F:781, with this program's table at $9A81.
+ * WAITS: no.
+ * Entry and exit: as TileHalfStepA.
+ * Nothing the game does loads this program (codemap.unloaded_programs), so nothing is known to reach it.
+ */
+HandlerExit TileHalfStepA0320(uint8_t tile)
+{
+    return TileHalfStepAt(0x9A81, 0x83, tile, true);
+}
+
+void abi_TileHalfStepA0320(void)
+{
+    handler_exit_shim(TileHalfStepA0320(cpu.a));
+}
+
+/*
+ * @routine 0320:239 TileHalfStepB0320
+ * @run 6B:9A39
+ * WHAT IT DOES: The tiles $8C-$8F: a step from the pairs at $9A89 that differs between the tile's halves (as TileHalfStepB, 050F:795).
+ * HOW: TileHalfStepAt (terrain.c), the body of 050F:795, with this program's table at $9A89.
+ * WAITS: no.
+ * Entry and exit: as TileHalfStepB.
+ * Nothing the game does loads this program (codemap.unloaded_programs), so nothing is known to reach it.
+ */
+HandlerExit TileHalfStepB0320(uint8_t tile)
+{
+    return TileHalfStepAt(0x9A89, 0x8C, tile, false);
+}
+
+void abi_TileHalfStepB0320(void)
+{
+    handler_exit_shim(TileHalfStepB0320(cpu.a));
+}
+
+/*
+ * @routine 0320:252 TileStepD0320
+ * @run 6B:9A52
+ * WHAT IT DOES: As TileStepD (050F:7AE), with the table at $9B19.
+ * HOW: TileStepAt (terrain.c), the body of 050F:7AE, with this program's table at $9B19.
+ * WAITS: no.
+ * Entry and exit: as TileStepD.
+ * Nothing the game does loads this program (codemap.unloaded_programs), so nothing is known to reach it.
+ */
+HandlerExit TileStepD0320(void)
+{
+    return TileStepAt(0x9B19);
+}
+
+void abi_TileStepD0320(void)
+{
+    handler_exit_shim(TileStepD0320());
+}
+
+/*
+ * @routine 0320:25F TileRowC0320
+ * @run 6B:9A5F
+ * WHAT IT DOES: As TileRowC (050F:7BB), with the table at $9B21.
+ * HOW: TileRowAt (terrain.c), the body of 050F:7BB, with this program's table at $9B21.
+ * WAITS: no.
+ * Entry and exit: as TileRowC.
+ * Nothing the game does loads this program (codemap.unloaded_programs), so nothing is known to reach it.
+ */
+HandlerExit TileRowC0320(void)
+{
+    return TileRowAt(0x9B21);
+}
+
+void abi_TileRowC0320(void)
+{
+    handler_exit_shim(TileRowC0320());
+}
+
+/*
+ * @routine 0320:270 TileRowD0320
+ * @run 6B:9A70
+ * WHAT IT DOES: As TileRowD (050F:7CC), with the table at $9B61.
+ * HOW: TileRowAt (terrain.c), the body of 050F:7CC, with this program's table at $9B61.
+ * WAITS: no.
+ * Entry and exit: as TileRowD.
+ * Nothing the game does loads this program (codemap.unloaded_programs), so nothing is known to reach it.
+ */
+HandlerExit TileRowD0320(void)
+{
+    return TileRowAt(0x9B61);
+}
+
+void abi_TileRowD0320(void)
+{
+    handler_exit_shim(TileRowD0320());
+}

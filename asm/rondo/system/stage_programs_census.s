@@ -5496,3 +5496,331 @@ TerrainLookupAlt10E0_at0:
     iny
     iny
     bra TerrainLookupAlt10E0_at3
+
+; @routine 026F:774 TileStepC026F
+; @run 6B:9774
+; WHAT IT DOES: A slope tile: moves the point's row by the table at $980F on its column (as TileStepC, 050F:752).
+; HOW: TileStepC's code with this program's table.
+; WAITS: no.
+; Entry and exit: as TileStepC.
+; Nothing the game does loads this program (codemap.unloaded_programs), so nothing is known to reach it.
+TileStepsC026F = $980F ; the tile's table in this program
+TileStepC026F:
+    ldy z:zTemp00
+    lda a:TileStepsC026F,y
+    clc
+    adc z:zTemp02
+    sta z:zTemp02
+    lda #$81
+    rts
+
+; @routine 026F:781 TileRowA026F
+; @run 6B:9781
+; WHAT IT DOES: A slope tile: the point's new row from the eight by eight table at $9817 on its row and column (as TileRowA, 050F:75F).
+; HOW: TileRowA's code with this program's table.
+; WAITS: no.
+; Entry and exit: as TileRowA.
+; Nothing the game does loads this program (codemap.unloaded_programs), so nothing is known to reach it.
+TileRowsA026F = $9817 ; the tile's table in this program
+TileRowA026F:
+    lda z:zTemp02
+    asl a
+    asl a
+    asl a
+    clc
+    adc z:zTemp00
+    tay
+    lda a:TileRowsA026F,y
+    sta z:zTemp02
+    lda #$81
+    rts
+
+; @routine 026F:792 TileRowB026F
+; @run 6B:9792
+; WHAT IT DOES: As TileRowB (050F:770), with the table at $9857.
+; HOW: TileRowB's code with this program's table.
+; WAITS: no.
+; Entry and exit: as TileRowB.
+; Nothing the game does loads this program (codemap.unloaded_programs), so nothing is known to reach it.
+TileRowsB026F = $9857 ; the tile's table in this program
+TileRowB026F:
+    lda z:zTemp02
+    asl a
+    asl a
+    asl a
+    clc
+    adc z:zTemp00
+    tay
+    lda a:TileRowsB026F,y
+    sta z:zTemp02
+    lda #$81
+    rts
+
+; @routine 026F:7A3 TileHalfStepA026F
+; @run 6B:97A3
+; WHAT IT DOES: The tiles $87-$8A: a step from the pairs at $97FF that differs between the tile's halves (as TileHalfStepA, 050F:781).
+; HOW: TileHalfStepA's code with this program's table.
+; WAITS: no.
+; Entry and exit: as TileHalfStepA.
+; Nothing the game does loads this program (codemap.unloaded_programs), so nothing is known to reach it.
+TileHalfStepsA026F = $97FF ; the tile's table in this program
+TileHalfStepA026F:
+    sec
+    sbc #$83
+    asl a
+    tay
+    bbr2 zTemp00,TileHalfStepA026F_at0
+    iny
+TileHalfStepA026F_at0:
+    lda a:TileHalfStepsA026F,y
+    clc
+    adc z:zTemp02
+    sta z:zTemp02
+    lda #$81
+    rts
+
+; @routine 026F:7B7 TileHalfStepB026F
+; @run 6B:97B7
+; WHAT IT DOES: The tiles $8C-$8F: a step from the pairs at $9807 that differs between the tile's halves (as TileHalfStepB, 050F:795).
+; HOW: TileHalfStepB's code with this program's table.
+; WAITS: no.
+; Entry and exit: as TileHalfStepB.
+; Nothing the game does loads this program (codemap.unloaded_programs), so nothing is known to reach it.
+TileHalfStepsB026F = $9807 ; the tile's table in this program
+TileHalfStepB026F:
+    sec
+    sbc #$8C
+    asl a
+    tay
+    bbs2 zTemp00,TileHalfStepB026F_at0
+    iny
+TileHalfStepB026F_at0:
+    lda a:TileHalfStepsB026F,y
+    clc
+    adc z:zTemp02
+    sta z:zTemp02
+    lda #$81
+    rts
+
+; @routine 026F:7D0 TileStepD026F
+; @run 6B:97D0
+; WHAT IT DOES: As TileStepD (050F:7AE), with the table at $9897.
+; HOW: TileStepD's code with this program's table.
+; WAITS: no.
+; Entry and exit: as TileStepD.
+; Nothing the game does loads this program (codemap.unloaded_programs), so nothing is known to reach it.
+TileStepsD026F = $9897 ; the tile's table in this program
+TileStepD026F:
+    ldy z:zTemp00
+    lda a:TileStepsD026F,y
+    clc
+    adc z:zTemp02
+    sta z:zTemp02
+    lda #$81
+    rts
+
+; @routine 026F:7DD TileRowC026F
+; @run 6B:97DD
+; WHAT IT DOES: As TileRowC (050F:7BB), with the table at $989F.
+; HOW: TileRowC's code with this program's table.
+; WAITS: no.
+; Entry and exit: as TileRowC.
+; Nothing the game does loads this program (codemap.unloaded_programs), so nothing is known to reach it.
+TileRowsC026F = $989F ; the tile's table in this program
+TileRowC026F:
+    lda z:zTemp02
+    asl a
+    asl a
+    asl a
+    clc
+    adc z:zTemp00
+    tay
+    lda a:TileRowsC026F,y
+    sta z:zTemp02
+    lda #$81
+    rts
+
+; @routine 026F:7EE TileRowD026F
+; @run 6B:97EE
+; WHAT IT DOES: As TileRowD (050F:7CC), with the table at $98DF.
+; HOW: TileRowD's code with this program's table.
+; WAITS: no.
+; Entry and exit: as TileRowD.
+; Nothing the game does loads this program (codemap.unloaded_programs), so nothing is known to reach it.
+TileRowsD026F = $98DF ; the tile's table in this program
+TileRowD026F:
+    lda z:zTemp02
+    asl a
+    asl a
+    asl a
+    clc
+    adc z:zTemp00
+    tay
+    lda a:TileRowsD026F,y
+    sta z:zTemp02
+    lda #$81
+    rts
+
+; @routine 0320:1F6 TileStepC0320
+; @run 6B:99F6
+; WHAT IT DOES: A slope tile: moves the point's row by the table at $9A91 on its column (as TileStepC, 050F:752).
+; HOW: TileStepC's code with this program's table.
+; WAITS: no.
+; Entry and exit: as TileStepC.
+; Nothing the game does loads this program (codemap.unloaded_programs), so nothing is known to reach it.
+TileStepsC0320 = $9A91 ; the tile's table in this program
+TileStepC0320:
+    ldy z:zTemp00
+    lda a:TileStepsC0320,y
+    clc
+    adc z:zTemp02
+    sta z:zTemp02
+    lda #$81
+    rts
+
+; @routine 0320:203 TileRowA0320
+; @run 6B:9A03
+; WHAT IT DOES: A slope tile: the point's new row from the eight by eight table at $9A99 on its row and column (as TileRowA, 050F:75F).
+; HOW: TileRowA's code with this program's table.
+; WAITS: no.
+; Entry and exit: as TileRowA.
+; Nothing the game does loads this program (codemap.unloaded_programs), so nothing is known to reach it.
+TileRowsA0320 = $9A99 ; the tile's table in this program
+TileRowA0320:
+    lda z:zTemp02
+    asl a
+    asl a
+    asl a
+    clc
+    adc z:zTemp00
+    tay
+    lda a:TileRowsA0320,y
+    sta z:zTemp02
+    lda #$81
+    rts
+
+; @routine 0320:214 TileRowB0320
+; @run 6B:9A14
+; WHAT IT DOES: As TileRowB (050F:770), with the table at $9AD9.
+; HOW: TileRowB's code with this program's table.
+; WAITS: no.
+; Entry and exit: as TileRowB.
+; Nothing the game does loads this program (codemap.unloaded_programs), so nothing is known to reach it.
+TileRowsB0320 = $9AD9 ; the tile's table in this program
+TileRowB0320:
+    lda z:zTemp02
+    asl a
+    asl a
+    asl a
+    clc
+    adc z:zTemp00
+    tay
+    lda a:TileRowsB0320,y
+    sta z:zTemp02
+    lda #$81
+    rts
+
+; @routine 0320:225 TileHalfStepA0320
+; @run 6B:9A25
+; WHAT IT DOES: The tiles $87-$8A: a step from the pairs at $9A81 that differs between the tile's halves (as TileHalfStepA, 050F:781).
+; HOW: TileHalfStepA's code with this program's table.
+; WAITS: no.
+; Entry and exit: as TileHalfStepA.
+; Nothing the game does loads this program (codemap.unloaded_programs), so nothing is known to reach it.
+TileHalfStepsA0320 = $9A81 ; the tile's table in this program
+TileHalfStepA0320:
+    sec
+    sbc #$83
+    asl a
+    tay
+    bbr2 zTemp00,TileHalfStepA0320_at0
+    iny
+TileHalfStepA0320_at0:
+    lda a:TileHalfStepsA0320,y
+    clc
+    adc z:zTemp02
+    sta z:zTemp02
+    lda #$81
+    rts
+
+; @routine 0320:239 TileHalfStepB0320
+; @run 6B:9A39
+; WHAT IT DOES: The tiles $8C-$8F: a step from the pairs at $9A89 that differs between the tile's halves (as TileHalfStepB, 050F:795).
+; HOW: TileHalfStepB's code with this program's table.
+; WAITS: no.
+; Entry and exit: as TileHalfStepB.
+; Nothing the game does loads this program (codemap.unloaded_programs), so nothing is known to reach it.
+TileHalfStepsB0320 = $9A89 ; the tile's table in this program
+TileHalfStepB0320:
+    sec
+    sbc #$8C
+    asl a
+    tay
+    bbs2 zTemp00,TileHalfStepB0320_at0
+    iny
+TileHalfStepB0320_at0:
+    lda a:TileHalfStepsB0320,y
+    clc
+    adc z:zTemp02
+    sta z:zTemp02
+    lda #$81
+    rts
+
+; @routine 0320:252 TileStepD0320
+; @run 6B:9A52
+; WHAT IT DOES: As TileStepD (050F:7AE), with the table at $9B19.
+; HOW: TileStepD's code with this program's table.
+; WAITS: no.
+; Entry and exit: as TileStepD.
+; Nothing the game does loads this program (codemap.unloaded_programs), so nothing is known to reach it.
+TileStepsD0320 = $9B19 ; the tile's table in this program
+TileStepD0320:
+    ldy z:zTemp00
+    lda a:TileStepsD0320,y
+    clc
+    adc z:zTemp02
+    sta z:zTemp02
+    lda #$81
+    rts
+
+; @routine 0320:25F TileRowC0320
+; @run 6B:9A5F
+; WHAT IT DOES: As TileRowC (050F:7BB), with the table at $9B21.
+; HOW: TileRowC's code with this program's table.
+; WAITS: no.
+; Entry and exit: as TileRowC.
+; Nothing the game does loads this program (codemap.unloaded_programs), so nothing is known to reach it.
+TileRowsC0320 = $9B21 ; the tile's table in this program
+TileRowC0320:
+    lda z:zTemp02
+    asl a
+    asl a
+    asl a
+    clc
+    adc z:zTemp00
+    tay
+    lda a:TileRowsC0320,y
+    sta z:zTemp02
+    lda #$81
+    rts
+
+; @routine 0320:270 TileRowD0320
+; @run 6B:9A70
+; WHAT IT DOES: As TileRowD (050F:7CC), with the table at $9B61.
+; HOW: TileRowD's code with this program's table.
+; WAITS: no.
+; Entry and exit: as TileRowD.
+; Nothing the game does loads this program (codemap.unloaded_programs), so nothing is known to reach it.
+TileRowsD0320 = $9B61 ; the tile's table in this program
+TileRowD0320:
+    lda z:zTemp02
+    asl a
+    asl a
+    asl a
+    clc
+    adc z:zTemp00
+    tay
+    lda a:TileRowsD0320,y
+    sta z:zTemp02
+    lda #$81
+    rts

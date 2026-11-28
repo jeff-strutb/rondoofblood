@@ -6193,12 +6193,18 @@ static Regs tally_count_cells(Regs r, uint8_t value, uint8_t limit, uint8_t cell
  */
 StageRegs TallyHealth3CD(StageRegs r)
 {
-    r = map_stage_banks_call(r, 0x9359);
-    CALL(0x935C, TallyDigits3CD(r));
+    return TallyHealth3CDAt(r, 0x9356, &tally_3cd);
+}
+
+/* TallyHealth3CD's body, for the builds of it elsewhere: where the build runs and what it uses. */
+StageRegs TallyHealth3CDAt(StageRegs r, uint16_t at, const TallyBuild *build)
+{
+    r = map_stage_banks_call(r, at + 0x3);
+    CALL(at + 0x6, TallyDigits3CDAt(r, (uint16_t)(at - 0x1E1), build));
     r.x = 0x12;
     r.nz = 0x12;
-    CALL(0x9360, TallyDigitCell3CD(r));
-    return tally_count_cells(r, RD8(ZP->player_health), 0x0A, 0x11, 0x54, 0x9390, &tally_3cd);
+    CALL(at + 0xA, TallyDigitCell3CDAt(r, (uint16_t)(at + 0x3A), build));
+    return tally_count_cells(r, RD8(ZP->player_health), 0x0A, 0x11, 0x54, (uint16_t)(at + 0x3A), build);
 }
 
 void abi_TallyHealth3CD(void)

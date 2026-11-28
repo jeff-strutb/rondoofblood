@@ -67,4 +67,9 @@ StageRegs StageSubStepFadeOutAt(StageRegs r, uint16_t site, uint16_t scroll_off)
  * scroll_off the address that JMP goes to. */
 StageRegs StageSubStepFadeOutLateAt(StageRegs r, uint16_t site, uint16_t scroll_off);
 
+
+/* system/stage_flow.c: StageForcedWalk and StageForcedWalkB (024D:31D, 024D:340) with init_ret the address after their
+ * JSR to InitStage, init the address it goes to, and pads their table of forced pads. */
+StageRegs StageForcedWalkAt(StageRegs r, uint16_t init_ret, uint16_t init, uint16_t pads);
+
 #endif

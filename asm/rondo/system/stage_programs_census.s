@@ -2206,3 +2206,57 @@ StageSubStepFadeOutLate026D:
     sta z:zField80
     stz z:zField89
     jmp StageScrollSpeedsOff026D
+
+; @routine 026D:2F5 StageForcedWalk026D
+; @run 6B:82F5
+; WHAT IT DOES: A sub-mode 3 start: the stage set up (InitStage026E), sub-mode 1, and the player walked by a forced pad away from
+; the side he faces: $18 frames when zField8C is set (it is cleared). As StageForcedWalk, 024D:31D. Programs 031D, 043D, 064D, 10DD, 122D, 1A2D, 1B8D and 1CED hold the same bytes.
+; HOW: JSR InitStage026E; zGameSubMode 1; OBJ_PAD_FORCE_FRAMES; facing XOR 1 picks the pad from ForcedWalkPads026D.
+; WAITS: where InitStage026E waits.
+; Entry: nothing. Exit: A the pad, N and Z from it, X the table index; Y, C and V as InitStage026E left them.
+; Nothing the game does loads this program (codemap.unloaded_programs), so nothing is known to reach it.
+ForcedWalkPads026D = $8316 ; the forced pad by the side the player faces, $80 then $20, in the 026D programs
+StageForcedWalk026D:
+    jsr InitStage026E
+    lda #$01
+    sta z:zGameSubMode
+    lda z:zField8C
+    beq StageForcedWalk026D_at0
+    stz z:zField8C
+    lda #$18
+    sta a:OBJ_PAD_FORCE_FRAMES
+StageForcedWalk026D_at0:
+    lda a:OBJ_FACING_LEFT
+    eor #$01
+    and #$01
+    tax
+    lda a:ForcedWalkPads026D,x
+    sta a:OBJ_PAD_FORCED
+    rts
+
+; @routine 026D:318 StageForcedWalkB026D
+; @run 6B:8318
+; WHAT IT DOES: A sub-mode 3 start: the stage set up (InitStage026E), sub-mode 1, and the player walked by a forced pad away from
+; the side he faces: $18 frames when zField8C is set (it is cleared). As StageForcedWalk, 024D:31D. These bytes are 026D:2F5's at
+; $8318; their C is filed again because the JSR's return address is its own. Programs 031D, 043D, 064D, 10DD, 122D, 1A2D, 1B8D and 1CED hold the same bytes.
+; HOW: JSR InitStage026E; zGameSubMode 1; OBJ_PAD_FORCE_FRAMES; facing XOR 1 picks the pad from ForcedWalkPads026D.
+; WAITS: where InitStage026E waits.
+; Entry: nothing. Exit: A the pad, N and Z from it, X the table index; Y, C and V as InitStage026E left them.
+; Nothing the game does loads this program (codemap.unloaded_programs), so nothing is known to reach it.
+StageForcedWalkB026D:
+    jsr InitStage026E
+    lda #$01
+    sta z:zGameSubMode
+    lda z:zField8C
+    beq StageForcedWalkB026D_at0
+    stz z:zField8C
+    lda #$18
+    sta a:OBJ_PAD_FORCE_FRAMES
+StageForcedWalkB026D_at0:
+    lda a:OBJ_FACING_LEFT
+    eor #$01
+    and #$01
+    tax
+    lda a:ForcedWalkPads026D,x
+    sta a:OBJ_PAD_FORCED
+    rts

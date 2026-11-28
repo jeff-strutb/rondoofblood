@@ -163,4 +163,10 @@ void abi_StageSubStepFadeOut026D(void);
 StageRegs StageSubStepFadeOutLate026D(StageRegs r);
 void abi_StageSubStepFadeOutLate026D(void);
 
+StageRegs StageForcedWalk026D(StageRegs r);
+void abi_StageForcedWalk026D(void);
+
+StageRegs StageForcedWalkB026D(StageRegs r);
+void abi_StageForcedWalkB026D(void);
+
 #endif

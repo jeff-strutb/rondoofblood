@@ -557,12 +557,14 @@ static Regs map_banks_5_6(Regs r, uint16_t ret)
     return r;
 }
 
-/* The body of StageForcedWalk and StageForcedWalkB, whose bytes are the same (both read the table at $833E). */
-static Regs forced_walk(Regs r, uint16_t init_ret)
+/* The body of StageForcedWalk and StageForcedWalkB, whose bytes are the same (both read the table at $833E): init_ret
+ * the address after the JSR to InitStage, init where it goes, pads the table of forced pads. The builds of the overlay
+ * that hold these instructions at other addresses (stage_programs_census.c) pass their own. */
+StageRegs StageForcedWalkAt(StageRegs r, uint16_t init_ret, uint16_t init, uint16_t pads)
 {
     uint8_t side;
 
-    r = call_to(r, init_ret, 0x88EC);
+    r = call_to(r, init_ret, init);
     r = loaded(r, 0x01);
     WR8(ZP->game_sub_mode, 0x01);
     r = loaded(r, RD8(ZP->field8c));
@@ -573,7 +575,7 @@ static Regs forced_walk(Regs r, uint16_t init_ret)
     }
     side = (uint8_t)((RD8(OBJ->f2ac0[0]) ^ 0x01) & 0x01);
     r.x = side;
-    r = loaded(r, rd8((uint16_t)(ForcedWalkPads + side)));
+    r = loaded(r, rd8((uint16_t)(pads + side)));
     WR8(OBJ->pad_forced[0], r.a);
     return r;
 }
@@ -589,7 +591,7 @@ static Regs forced_walk(Regs r, uint16_t init_ret)
  */
 StageRegs StageForcedWalk(StageRegs r)
 {
-    return forced_walk(r, 0x8320);
+    return StageForcedWalkAt(r, 0x8320, 0x88EC, ForcedWalkPads);
 }
 
 void abi_StageForcedWalk(void)
@@ -607,7 +609,7 @@ void abi_StageForcedWalk(void)
  */
 StageRegs StageForcedWalkB(StageRegs r)
 {
-    return forced_walk(r, 0x8343);
+    return StageForcedWalkAt(r, 0x8343, 0x88EC, ForcedWalkPads);
 }
 
 void abi_StageForcedWalkB(void)

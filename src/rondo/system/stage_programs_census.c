@@ -1752,3 +1752,46 @@ void abi_StageSubStepFadeOutLate026D(void)
 {
     stage_regs_load_shim(StageSubStepFadeOutLate026D(stage_regs_entry_shim()));
 }
+
+/*
+ * @routine 026D:2F5 StageForcedWalk026D
+ * @run 6B:82F5
+ * WHAT IT DOES: A sub-mode 3 start: the stage set up (InitStage026E), sub-mode 1, and the player walked by a forced pad away from
+ * the side he faces: $18 frames when zField8C is set (it is cleared). As StageForcedWalk, 024D:31D. Programs 031D, 043D, 064D, 10DD, 122D, 1A2D, 1B8D and 1CED hold the same bytes.
+ * HOW: StageForcedWalkAt (stage_flow.c), the body of 024D:31D, with this program's JSR at $82F5 to InitStage026E at
+ * $88A2 (the C of the routine loaded there) and its table of pads at $8316.
+ * WAITS: where InitStage026E waits.
+ * Entry: nothing. Exit: A the pad, N and Z from it, X the table index; Y, C and V as InitStage026E left them.
+ * Nothing the game does loads this program (codemap.unloaded_programs), so nothing is known to reach it.
+ */
+StageRegs StageForcedWalk026D(StageRegs r)
+{
+    return StageForcedWalkAt(r, 0x82F8, 0x88A2, 0x8316);
+}
+
+void abi_StageForcedWalk026D(void)
+{
+    stage_regs_load_shim(StageForcedWalk026D(stage_regs_entry_shim()));
+}
+
+/*
+ * @routine 026D:318 StageForcedWalkB026D
+ * @run 6B:8318
+ * WHAT IT DOES: A sub-mode 3 start: the stage set up (InitStage026E), sub-mode 1, and the player walked by a forced pad away from
+ * the side he faces: $18 frames when zField8C is set (it is cleared). As StageForcedWalk, 024D:31D. These bytes are 026D:2F5's at
+ * $8318; their C is filed again because the JSR's return address is its own. Programs 031D, 043D, 064D, 10DD, 122D, 1A2D, 1B8D and 1CED hold the same bytes.
+ * HOW: StageForcedWalkAt (stage_flow.c), the body of 024D:31D, with this program's JSR at $8318 to InitStage026E at
+ * $88A2 (the C of the routine loaded there) and its table of pads at $8316.
+ * WAITS: where InitStage026E waits.
+ * Entry: nothing. Exit: A the pad, N and Z from it, X the table index; Y, C and V as InitStage026E left them.
+ * Nothing the game does loads this program (codemap.unloaded_programs), so nothing is known to reach it.
+ */
+StageRegs StageForcedWalkB026D(StageRegs r)
+{
+    return StageForcedWalkAt(r, 0x831B, 0x88A2, 0x8316);
+}
+
+void abi_StageForcedWalkB026D(void)
+{
+    stage_regs_load_shim(StageForcedWalkB026D(stage_regs_entry_shim()));
+}

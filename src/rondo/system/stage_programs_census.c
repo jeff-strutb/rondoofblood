@@ -4655,3 +4655,27 @@ void abi_StageSubModeFade026D(void)
 {
     stage_regs_load_shim(StageSubModeFade026D(stage_regs_entry_shim()));
 }
+
+/* StageSubStepPlay's build in the program at 026D. */
+static const PlayStepBuild play_step_026d = {
+    0x80D1, 0x8161, 0x818B, 0x8EAC, 0x8094, 0x86F6, 0x80A8, 0x809A, 0x8A05, 0x9415, 0x8B23, 0x8089, 0x8216
+};
+
+/*
+ * @routine 026D:1A3 StageSubStepPlay026D
+ * @run 6B:81A3
+ * WHAT IT DOES: StageSubStepPlay's code in the program at 026D, calling this program's routines.
+ * HOW: StageSubStepPlayAt (stage_play.c) with play_step_026d.
+ * WAITS: where the routines it calls wait.
+ * Entry: as StageSubStepPlay.
+ * Nothing the game does loads this program (codemap.unloaded_programs), so nothing is known to reach it.
+ */
+StageRegs StageSubStepPlay026D(StageRegs r)
+{
+    return StageSubStepPlayAt(r, 0x81A3, &play_step_026d);
+}
+
+void abi_StageSubStepPlay026D(void)
+{
+    stage_regs_load_shim(StageSubStepPlay026D(stage_regs_entry_shim()));
+}

@@ -7070,3 +7070,67 @@ StageSubModeFade026D_at0:
     asl a
     tax
     jmp (StageFadeSteps026D,x)
+
+; @routine 026D:1A3 StageSubStepPlay026D
+; @run 6B:81A3
+; WHAT IT DOES: StageSubStepPlay's code in the program at 026D, calling this program's routines.
+; HOW: StageSubStepPlay's code with this program's routines and table.
+; WAITS: where the routines it calls wait.
+; Entry: as StageSubStepPlay.
+; Nothing the game does loads this program (codemap.unloaded_programs), so nothing is known to reach it.
+StageDemoPadStep026DAt = $80D1 ; the demo's pad step in this program
+HitTestAllObjectsAt026D = $9415 ; the hit tests in this program
+StagePausedStepAt026D = $8EAC ; the paused step
+StagePlayHandlers026D = $8216 ; the play sub-step's next sub-steps by zSubStep
+StageSubStepPlay026D:
+    jsr StageDemoPadStep026DAt
+    jsr StageFadeTimer026D
+    jsr StagePauseToggle026D
+    bbr0 zPaused,StageSubStepPlay026D_run
+    jmp StagePausedStepAt026D
+StageSubStepPlay026D_run:
+    inc z:zWaveCounter
+    lda a:PlayerSlowTimerLo
+    ora a:PlayerSlowTimerHi
+    beq StageSubStepPlay026D_at0
+    dec a:PlayerSlowTimerLo
+    bne StageSubStepPlay026D_at1
+    dec a:PlayerSlowTimerHi
+    bne StageSubStepPlay026D_at1
+    lda #$09
+    ldx #$07
+    jsr VecStartScriptSlotKind1
+StageSubStepPlay026D_at1:
+    stz a:ScrollStepXHi
+    stz a:ScrollStepXLo
+    stz a:ScrollStepYHi
+    stz a:ScrollStepYLo
+    tst #$01,a:PlayerSlowTimerLo
+    bne StageSubStepPlay026D_at2
+StageSubStepPlay026D_at0:
+    jsr StagePlayerFrame026D
+    lda z:zSubStep
+    bne StageSubStepPlay026D_next
+    jsr VecPlayerAndCameraFrame
+StageSubStepPlay026D_at2:
+    lda z:zField8E
+    bpl StageSubStepPlay026D_at3
+    jsr StagePlayerToCentre026D
+    bra StageSubStepPlay026D_at4
+StageSubStepPlay026D_at3:
+    jsr StageCameraStep026D
+    tst #$01,a:PlayerSlowTimerLo
+    bne StageSubStepPlay026D_at4
+    jsr StagePlayerFrameB026D
+StageSubStepPlay026D_at4:
+    jsr StepScrollAndRunObjects026E
+    jsr HitTestAllObjectsAt026D
+    jsr StepStageFrameAt026D
+    jsr MapOverlayBanks5And6At026D
+    jsr PlayerProgramMoveAndPush
+StageSubStepPlay026D_next:
+    lda z:zSubStep
+    stz z:zSubStep
+    asl a
+    tax
+    jmp (StagePlayHandlers026D,x)

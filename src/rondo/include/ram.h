@@ -1116,5 +1116,10 @@
 #define MariaKind19TargetsY 0xDBBF /* the Y low byte each kind 19 object aims at and stops past, by slot less 5 (MariaObjectAimAtPlace, MariaKind19Aim) */
 #define MariaKind19Animations 0xDBC9 /* each kind 19 object's animation at its start, by slot less 5 (MariaKind19Start) */
 #define MariaKind19Waits 0xDBD3 /* each kind 19 object's wait once it has arrived, by slot less 5 (MariaKind19Aim) */
+#define MariaKind23SpeedsYLo 0xDCEF /* kind 23's Y speed low byte at its start, by slot less 6 (MariaKind23) */
+#define MariaKind23SpeedsYHi 0xDCF8 /* kind 23's Y speed high byte at its start, by slot less 6 (MariaKind23) */
+#define MariaKind23SpeedsXLo 0xDD01 /* kind 23's X speed low byte at its start, by slot less 6 (MariaKind23) */
+#define MariaKind23SpeedsXHi 0xDD0A /* kind 23's X speed high byte at its start, by slot less 6 (MariaKind23) */
+#define MariaKind24Speeds 0xDD74 /* kind 24's X and Y speed words at its start, four bytes by slot less 11 (MariaKind24) */
 
 #endif

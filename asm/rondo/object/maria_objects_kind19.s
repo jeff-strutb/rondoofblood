@@ -201,7 +201,7 @@ MariaKind19Wait_at1:
     lda #$C8
     sta a:OBJ_FALL_LO,x
     lda #$FF
-    sta a:OBJ_RAIN_COUNT,x
+    sta a:OBJ_FALL_HI,x
     jmp MariaObjectNextState
 
 ; @routine 01E4:32D MariaKind19Fall

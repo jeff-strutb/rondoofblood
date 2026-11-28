@@ -24,6 +24,12 @@ enum { CARD_RETURN = 0x883C, CARD_CALL = 0xE018, DISPLAY_DELAY = 2, FIELD8E_ENDI
  */
 StageExit EnterStageState(StageRegs entry)
 {
+    return EnterStageStateAt(entry, CARD_RETURN);
+}
+
+/* EnterStageState's body, for the copies of it that run at another address: the return of its card call. */
+StageExit EnterStageStateAt(StageRegs entry, uint16_t card_return)
+{
     StageExit end = { 0, 0, 0, false, false, 0, 0 };
     StageRegs r = entry;
     StageExit card;
@@ -42,7 +48,7 @@ StageExit EnterStageState(StageRegs entry)
         r.nz = a;
         do {
             stage_regs_load_shim(r);
-            call_orig(CARD_RETURN, CARD_CALL);
+            call_orig(card_return, CARD_CALL);
             card = stage_exit_from_cpu_shim();
             r = stage_regs_after(card, r);
             r.x = r.a;

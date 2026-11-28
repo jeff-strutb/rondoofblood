@@ -352,4 +352,6 @@ typedef struct {
 } StepFrameLayout;
 StageExit StepStageFrameBody(uint8_t x, uint8_t y, bool v, SetBarAddress set_bar, const StepFrameLayout *layout);
 
+StageExit EnterStageStateAt(StageRegs entry, uint16_t card_return);
+
 #endif

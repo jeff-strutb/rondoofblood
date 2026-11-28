@@ -63,6 +63,7 @@
 #define zVideoMode 0x204C /* index of the screen timing */
 #define zVdcReg 0x204F /* VDC register last selected */
 #define zWaveCounter 0x208B /* a counter the water effects move with */
+#define zTallyFrames 0x208B /* in the 031D program (031F): a frame counter of the tally screen; 031F:2F1 counts it once per call of the tally dispatcher and 031F:4DA sounds the count every fourth frame */
 #define zRasterStage 0x209E /* stage value one raster effect tests */
 #define zMusicWanted 0x20A2 /* set to $FF at start */
 #define zRamBaseBank 0x20DB /* first Super RAM bank from the card */
@@ -785,6 +786,7 @@
 #define StageVar3566 0x3566 /* the stage overlay's state in the last two slots of an object column ($3566 and $3567) */
 #define StageVar35BE 0x35BE /* the stage overlay's state in the last two slots of an object column: $35BF a toggle */
 #define StageVar3616 0x3616 /* the stage overlay's state in the last two slots of an object column ($3616 and $3617) */
+#define StageShownStock 0x3616 /* in BlendStockRows (05BF:151) and TallyCount031F (031F:4AB): the stock as the stage's tile rows last drew it; BlendStockRows compares it with zStock, TallyCount031F stores zStock there after an extra life */
 #define StageBlendOn 0x366E /* the stage overlay: nonzero blends two five-entry tile colour rows; $366F is set to 1 by the event code routine */
 #define StageBlendStep 0x36C6 /* the stage overlay's blend step, 0 to 5 (5 none); $36C7 keeps MPR5 across a stage routine */
 #define StageVar371E 0x371E /* the stage overlay's state in the last two slots of an object column; $371F keeps MPR6 across a stage routine */

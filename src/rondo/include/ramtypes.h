@@ -105,7 +105,7 @@ typedef struct {
     uint8_t fall_step; /* zFallStep */
     uint8_t field89; /* zField89 */
     union { uint8_t field8a; uint8_t field8_a; }; /* zField8A */
-    uint8_t wave_counter; /* zWaveCounter */
+    union { uint8_t wave_counter; uint8_t tally_frames; }; /* zWaveCounter */
     union { uint8_t field8c; uint8_t field8_c; }; /* zField8C */
     uint8_t stock; /* zStock */
     union { uint8_t field8e; uint8_t field8_e; }; /* zField8E */
@@ -263,6 +263,7 @@ _Static_assert(ZeroPageRec_BASE + offsetof(ZeroPageRec, field89) + 0 == zField89
 _Static_assert(ZeroPageRec_BASE + offsetof(ZeroPageRec, field8a) + 0 == zField8A, "ZeroPageRec.field8a is not at zField8A");
 _Static_assert(ZeroPageRec_BASE + offsetof(ZeroPageRec, field8_a) + 0 == zField8A, "ZeroPageRec.field8_a is not at zField8A");
 _Static_assert(ZeroPageRec_BASE + offsetof(ZeroPageRec, wave_counter) + 0 == zWaveCounter, "ZeroPageRec.wave_counter is not at zWaveCounter");
+_Static_assert(ZeroPageRec_BASE + offsetof(ZeroPageRec, tally_frames) == zTallyFrames, "ZeroPageRec.tally_frames is not at zTallyFrames");
 _Static_assert(ZeroPageRec_BASE + offsetof(ZeroPageRec, field8c) + 0 == zField8C, "ZeroPageRec.field8c is not at zField8C");
 _Static_assert(ZeroPageRec_BASE + offsetof(ZeroPageRec, field8_c) + 0 == zField8C, "ZeroPageRec.field8_c is not at zField8C");
 _Static_assert(ZeroPageRec_BASE + offsetof(ZeroPageRec, stock) + 0 == zStock, "ZeroPageRec.stock is not at zStock");
@@ -1015,7 +1016,7 @@ typedef struct {
     uint8_t _gap_005A[86]; /* no name yet: $3568-$35BD */
     uint8_t state_35be[2]; /* StageVar35BE */
     uint8_t _gap_00B2[86]; /* no name yet: $35C0-$3615 */
-    uint8_t state_3616[2]; /* StageVar3616 */
+    union { uint8_t state_3616[2]; uint8_t shown_stock[2]; }; /* StageVar3616 */
     uint8_t _gap_010A[86]; /* no name yet: $3618-$366D */
     uint8_t blend_on[2]; /* StageBlendOn */
     uint8_t _gap_0162[86]; /* no name yet: $3670-$36C5 */
@@ -1028,6 +1029,7 @@ _Static_assert(StageVars_BASE + offsetof(StageVars, state_350e) + 0 == StageVar3
 _Static_assert(StageVars_BASE + offsetof(StageVars, state_3566) + 0 == StageVar3566, "StageVars.state_3566 is not at StageVar3566");
 _Static_assert(StageVars_BASE + offsetof(StageVars, state_35be) + 0 == StageVar35BE, "StageVars.state_35be is not at StageVar35BE");
 _Static_assert(StageVars_BASE + offsetof(StageVars, state_3616) + 0 == StageVar3616, "StageVars.state_3616 is not at StageVar3616");
+_Static_assert(StageVars_BASE + offsetof(StageVars, shown_stock) == StageShownStock, "StageVars.shown_stock is not at StageShownStock");
 _Static_assert(StageVars_BASE + offsetof(StageVars, blend_on) + 0 == StageBlendOn, "StageVars.blend_on is not at StageBlendOn");
 _Static_assert(StageVars_BASE + offsetof(StageVars, blend_step) + 0 == StageBlendStep, "StageVars.blend_step is not at StageBlendStep");
 _Static_assert(StageVars_BASE + offsetof(StageVars, state_371e) + 0 == StageVar371E, "StageVars.state_371e is not at StageVar371E");

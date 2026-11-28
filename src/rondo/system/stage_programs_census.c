@@ -2700,9 +2700,6 @@ void abi_ClearStageBitRowsFour031F(void)
     stage_exit_shim(ClearStageBitRowsFour031F(cpu.x));
 }
 
-/* The byte the programs' build of the store handler tests before the first object takes the hitter's bytes. */
-enum { HIT_STORE_GATE = 0x2745 };
-
 /*
  * @routine 026F:560 HitStoreHandler026F
  * @run 6B:9560
@@ -2719,7 +2716,7 @@ enum { HIT_STORE_GATE = 0x2745 };
 StageExit HitStoreHandler026F(uint8_t x, uint8_t y)
 {
     const HitStoreColumns c = { COL(OBJ->work_n), COL(OBJ->hit_taken), COL(OBJ->work_c), COL(OBJ->work_b),
-                                ADDR_OF8(OBJ->health[0]), HIT_STORE_GATE };
+                                ADDR_OF8(OBJ->health[0]), HitStoreGate };
 
     return HitStoreHandlerAt(x, y, &c);
 }

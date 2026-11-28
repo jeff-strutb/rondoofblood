@@ -2147,7 +2147,7 @@ StageBossBarReset152D:
     ldx #$02
     jsr StageDrawPiece152D
     lda #$5C
-    sta a:LevelFullWalk+1
+    sta a:BossBarLength
 
 ; @routine 152E:0CC StageBossBar152D
 ; @run 6B:88CC
@@ -2197,14 +2197,14 @@ StageBossBarStep152D:
 StageBossBarStep152D_at0:
     lda a:$3128
     bmi StageBossBarStep152D_at1
-    cmp a:LevelFullWalk+1
+    cmp a:BossBarLength
     beq StageBossBarStep152D_at2
     bcs StageBossBarStep152D_at3
     bsr StageBossBarAddress152D
     ldx #$0F
     ldy #$FF
     jsr $942A
-    dec a:LevelFullWalk+1
+    dec a:BossBarLength
     rts
 StageBossBarStep152D_at1:
     pha
@@ -2212,12 +2212,12 @@ StageBossBarStep152D_at1:
     bsr StageBossBarStep152D
     pla
     sta a:$3128
-    ldy a:LevelFullWalk+1
+    ldy a:BossBarLength
     bne StageBossBarStep152D_at2
     sta a:$330D
     rts
 StageBossBarStep152D_at3:
-    inc a:LevelFullWalk+1
+    inc a:BossBarLength
     bsr StageBossBarAddress152D
     ldx #$F0
     ldy #$00
@@ -2243,7 +2243,7 @@ StageBossBarStep152D_at2:
 ; Entry: nothing. Exit, length 0: A 0, N and Z from it. Else: A 2, N and Z clear; X and Y the address, C and V from the
 ; last add. Clobbers zTemp00-01 and zTemp08-09.
 StageBossBarAddress152D:
-    lda a:LevelFullWalk+1
+    lda a:BossBarLength
     beq StageBossBarStep152D_at2
     stz z:zTemp08
     stz z:zTemp09
@@ -2255,7 +2255,7 @@ StageBossBarAddress152D:
 StageBossBarAddress152D_at0:
     lda #$5E
     sec
-    sbc a:LevelFullWalk+1
+    sbc a:BossBarLength
     pha
     and #$0F
     clc
@@ -4719,7 +4719,7 @@ HitKindSpawn152D:
     sta a:$31F0,x
     lda a:$31F0
     bne HitKindSpawn152D_at0
-    lda a:LevelFullWalk+4
+    lda a:HitStoreGateB
     bne HitKindSpawn152D_at0
     lda a:OBJ_HIT_STATUS+8,x
     sta a:$31F0

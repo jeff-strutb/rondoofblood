@@ -28,8 +28,8 @@ enum {
     
     SUB_MODE_TABLE = 0x8013, SUB_STEP_TABLE = 0x8112, DEATH_PHASE_TABLE = 0x81E8, FACING_SPEEDS = 0x8209,
     HIT_X = 0x2713, HIT_Y = 0x2723, HIT_HI = 0x2733, TEST_X = 0x2702, TEST_Y = 0x2703, REACH_X = 0x2704,
-    REACH_Y = 0x2705, HIT_GATE = 0x2748, PROBE_HIT = 0x26F6, PROBE_X = 0x26FA, PROBE_Y = 0x26FE, PROBE_LISTS = 0xDB54,
-    ROW_MAP = 0x3A00, TALLY_CELLS = 0x3980, BOSS_BAR = 0x2745, ROW_BUFFER = 0x397E, SCREEN_3EB4 = 0x3EB4,
+    REACH_Y = 0x2705, PROBE_HIT = 0x26F6, PROBE_X = 0x26FA, PROBE_Y = 0x26FE, PROBE_LISTS = 0xDB54,
+    ROW_MAP = 0x3A00, TALLY_CELLS = 0x3980, ROW_BUFFER = 0x397E, SCREEN_3EB4 = 0x3EB4,
     SCREEN_3EC4 = 0x3EC4, GATE_BUSY = 0x2746
 };
 
@@ -3310,7 +3310,7 @@ StageRegs StageBossBarReset152D(StageRegs r)
     r.nz = 2;
     CALL(0x88C7, StageDrawPiece152D(r));
     r = loaded(r, 0x5C);
-    wr8(BOSS_BAR, 0x5C);
+    wr8(BossBarLength, 0x5C);
     return StageBossBar152D(r);
 }
 
@@ -3392,7 +3392,7 @@ StageRegs StageBossBarStep152D(StageRegs r)
         health = pull8();
         r = loaded(r, health);
         WR8(OBJ->loop_flags[56], health);
-        r.y = rd8(BOSS_BAR);
+        r.y = rd8(BossBarLength);
         r.nz = r.y;
         if (r.y != 0) {
             return r;
@@ -3400,14 +3400,14 @@ StageRegs StageBossBarStep152D(StageRegs r)
         WR8(OBJ->work_b[13], r.a);
         return r;
     }
-    bar = rd8(BOSS_BAR);
+    bar = rd8(BossBarLength);
     r = compared(r, bar);
     if (r.nz == 0) {
         return r;
     }
     if (r.c) {
-        r.nz = (uint8_t)(rd8(BOSS_BAR) + 1);
-        wr8(BOSS_BAR, r.nz);
+        r.nz = (uint8_t)(rd8(BossBarLength) + 1);
+        wr8(BossBarLength, r.nz);
         CALL(0x8914, StageBossBarAddress152D(r));
         r.x = 0xF0;
         r.y = 0;
@@ -3419,8 +3419,8 @@ StageRegs StageBossBarStep152D(StageRegs r)
     r.y = 0xFF;
     r.nz = 0xFF;
     r = and_vram(r, 0x88F8);
-    r.nz = (uint8_t)(rd8(BOSS_BAR) - 1);
-    wr8(BOSS_BAR, r.nz);
+    r.nz = (uint8_t)(rd8(BossBarLength) - 1);
+    wr8(BossBarLength, r.nz);
     return r;
 }
 
@@ -3453,7 +3453,7 @@ StageRegs StageBossBarAddress152D(StageRegs r)
     Sum sum;
     uint8_t length, value;
 
-    r = loaded(r, rd8(BOSS_BAR));
+    r = loaded(r, rd8(BossBarLength));
     if (r.a == 0) {
         return r;
     }
@@ -3465,7 +3465,7 @@ StageRegs StageBossBarAddress152D(StageRegs r)
         WR8(ZP->temp08, 0xC0);
         r.nz = INC8(ZP->temp09);
     }
-    length = rd8(BOSS_BAR);
+    length = rd8(BossBarLength);
     r = bar_address(r, length, 0x40, 0);
     WR8(ZP->temp00, r.a);
     value = RD8(ZP->temp01);
@@ -6728,7 +6728,7 @@ void abi_StageHitHandler152D(void)
 StageRegs HitKindSpawn152D(StageRegs r)
 {
     const HitStoreColumns c = { ADDR_OF8(OBJ->angle_hi[48]), ADDR_OF8(OBJ->hit_status[80]), ADDR_OF8(OBJ->hit_status[8]),
-                                ADDR_OF8(OBJ->pace[24]), ADDR_OF8(OBJ->loop_flags[40]), HIT_GATE };
+                                ADDR_OF8(OBJ->pace[24]), ADDR_OF8(OBJ->loop_flags[40]), HitStoreGateB };
     StageExit end = HitStoreHandlerAt(r.x, r.y, &c);
 
     return loaded(r, end.a);

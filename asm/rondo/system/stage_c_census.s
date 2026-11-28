@@ -2670,7 +2670,7 @@ StageHealthBarAddress3CD_at0:
 StageBossBarReset3CD:
     ldx #$02
     jsr StageDrawPiece3CD
-    stz a:LevelFullWalk+1
+    stz a:BossBarLength
 
 ; @routine 03CE:36A StageBossBar3CD
 ; @run 6B:8B6A
@@ -2719,14 +2719,14 @@ StageBossBarStep3CD:
 StageBossBarStep3CD_at0:
     lda a:$3128
     bmi StageBossBarStep3CD_at1
-    cmp a:LevelFullWalk+1
+    cmp a:BossBarLength
     beq StageBossBarStep3CD_at2
     bcs StageBossBarStep3CD_at3
     bsr StageBossBarAddress3CD
     ldx #$0F
     ldy #$FF
     jsr $9425
-    dec a:LevelFullWalk+1
+    dec a:BossBarLength
     rts
 StageBossBarStep3CD_at1:
     pha
@@ -2734,12 +2734,12 @@ StageBossBarStep3CD_at1:
     bsr StageBossBarStep3CD
     pla
     sta a:$3128
-    ldy a:LevelFullWalk+1
+    ldy a:BossBarLength
     bne StageBossBarStep3CD_at2
     sta a:$330D
     rts
 StageBossBarStep3CD_at3:
-    inc a:LevelFullWalk+1
+    inc a:BossBarLength
     bsr StageBossBarAddress3CD
     ldx #$F0
     ldy #$00
@@ -2764,7 +2764,7 @@ StageBossBarStep3CD_at2:
 ; WAITS: no.
 ; Entry: nothing. Exit, length 0: A 0, N and Z from it. Else: as SetVramAddresses3CD. Clobbers zTemp00-01, zTemp08-09.
 StageBossBarAddress3CD:
-    lda a:LevelFullWalk+1
+    lda a:BossBarLength
     beq StageBossBarStep3CD_at2
     stz z:zTemp08
     stz z:zTemp09
@@ -2776,7 +2776,7 @@ StageBossBarAddress3CD:
 StageBossBarAddress3CD_at0:
     lda #$5E
     sec
-    sbc a:LevelFullWalk+1
+    sbc a:BossBarLength
     pha
     and #$0F
     clc
@@ -5691,7 +5691,7 @@ HitKindSpawn3CD:
     sta a:OBJ_HIT_STATUS+80,x
     lda a:OBJ_HIT_STATUS+80
     bne HitKindSpawn3CD_at0
-    lda a:LevelFullWalk+4
+    lda a:HitStoreGateB
     bne HitKindSpawn3CD_at0
     lda a:OBJ_HIT_STATUS+8,x
     sta a:OBJ_HIT_STATUS+80

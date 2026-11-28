@@ -29,8 +29,8 @@ enum {
     DEMO_PAGE = 0x207F, PAD_HELD = 0x2229, PAD_NEW = 0x222E, DEMO_BUFFER = 0xA000,
     
     HIT_X = 0x2713, HIT_Y = 0x2723, HIT_HI = 0x2733, TEST_X = 0x2702, TEST_Y = 0x2703, REACH_X = 0x2704,
-    REACH_Y = 0x2705, HIT_GATE = 0x2748, PROBE_HIT = 0x26F6, PROBE_X = 0x26FA, PROBE_Y = 0x26FE,
-    ROW_MAP = 0x3A00, TALLY_CELLS = 0x3980, BOSS_BAR = 0x2745, ROW_BUFFER = 0x397E, SCREEN_3EB4 = 0x3EB4,
+    REACH_Y = 0x2705, PROBE_HIT = 0x26F6, PROBE_X = 0x26FA, PROBE_Y = 0x26FE,
+    ROW_MAP = 0x3A00, TALLY_CELLS = 0x3980, ROW_BUFFER = 0x397E, SCREEN_3EB4 = 0x3EB4,
     SCREEN_3EC4 = 0x3EC4, CENTER_GATE = 0x2860, PROBE_LISTS_3CD = 0xD756, GATE_BUSY = 0x2746
 };
 
@@ -3999,7 +3999,7 @@ StageRegs StageBossBarReset3CD(StageRegs r)
     r.x = 2;
     r.nz = 2;
     CALL(0x8B67, StageDrawPiece3CD(r));
-    wr8(BOSS_BAR, 0);
+    wr8(BossBarLength, 0);
     return StageBossBar3CD(r);
 }
 
@@ -4080,7 +4080,7 @@ StageRegs StageBossBarStep3CD(StageRegs r)
         health = pull8();
         r = loaded(r, health);
         WR8(OBJ->loop_flags[56], health);
-        r.y = rd8(BOSS_BAR);
+        r.y = rd8(BossBarLength);
         r.nz = r.y;
         if (r.y != 0) {
             return r;
@@ -4088,14 +4088,14 @@ StageRegs StageBossBarStep3CD(StageRegs r)
         WR8(OBJ->work_b[13], r.a);
         return r;
     }
-    bar = rd8(BOSS_BAR);
+    bar = rd8(BossBarLength);
     r = compared(r, bar);
     if (r.nz == 0) {
         return r;
     }
     if (r.c) {
-        r.nz = (uint8_t)(rd8(BOSS_BAR) + 1);
-        wr8(BOSS_BAR, r.nz);
+        r.nz = (uint8_t)(rd8(BossBarLength) + 1);
+        wr8(BossBarLength, r.nz);
         CALL(0x8BB2, StageBossBarAddress3CD(r));
         r.x = 0xF0;
         r.y = 0;
@@ -4107,8 +4107,8 @@ StageRegs StageBossBarStep3CD(StageRegs r)
     r.y = 0xFF;
     r.nz = 0xFF;
     r = and_vram(r, 0x8B96);
-    r.nz = (uint8_t)(rd8(BOSS_BAR) - 1);
-    wr8(BOSS_BAR, r.nz);
+    r.nz = (uint8_t)(rd8(BossBarLength) - 1);
+    wr8(BossBarLength, r.nz);
     return r;
 }
 
@@ -4140,7 +4140,7 @@ StageRegs StageBossBarAddress3CD(StageRegs r)
     Sum sum;
     uint8_t length, value;
 
-    r = loaded(r, rd8(BOSS_BAR));
+    r = loaded(r, rd8(BossBarLength));
     if (r.a == 0) {
         return r;
     }
@@ -4152,7 +4152,7 @@ StageRegs StageBossBarAddress3CD(StageRegs r)
         WR8(ZP->temp08, 0xC0);
         r.nz = INC8(ZP->temp09);
     }
-    length = rd8(BOSS_BAR);
+    length = rd8(BossBarLength);
     r = bar_address(r, length, 0x40, 0);
     WR8(ZP->temp00, r.a);
     value = RD8(ZP->temp01);

@@ -103,6 +103,9 @@
 #define HitAttackFlags 0x2740 /* the byte before the object table that the hit handler tests: bit 0 and bit 1 mark the player attacks that hit objects this frame (an object hit by bit 0 is marked $20 and by bit 1 $40 in its status flags) */
 #define HitboxHi 0x2730 /* per slot of 16: the high bytes: X high plus the sign of the X offset, ORed with Y high plus the sign of the Y offset */
 #define LevelFullWalk 0x2744 /* set during a whole-screen stream walk */
+#define HitStoreGate 0x2745 /* in the 026F family of stage programs and its copies (064F 122F 1A2F 1B8F 1CEF; 031F 043F 10DF at $97E2): non-zero keeps the first object from taking the hitter's bytes in the hit store handler (026F:56B) */
+#define BossBarLength 0x2745 /* in the 152D stage programs: the boss bar's length; set to $5C when the bar is drawn anew and moved one step toward the boss's health (152E) */
+#define HitStoreGateB 0x2748 /* in the 152D stage programs: non-zero keeps the first object from taking the hitter's bytes in the hit store handler (152F:5D2), as HitStoreGate does in the 026F family */
 #define Field2742 0x2742 /* a stage overlay byte (six uses in 024F:67F); no meaning found yet */
 #define OBJ_KIND 0x2750 /* the object's kind: 0 an empty slot; it picks the object's code (RunObjects, DispatchByKind) */
 #define OBJ_STATE 0x27A8 /* the object's state: stepped with INC, compared, and doubled to pick its handler from a table */

@@ -3735,7 +3735,7 @@ HitStoreHandler026F:
     sta a:OBJ_HIT_TAKEN,x
     lda a:OBJ_HIT_TAKEN
     bne HitStoreHandler026F_at0
-    lda a:LevelFullWalk+1
+    lda a:HitStoreGate
     bne HitStoreHandler026F_at0
     lda a:OBJ_WORK_C,x
     sta a:OBJ_HIT_TAKEN

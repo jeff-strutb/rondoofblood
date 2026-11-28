@@ -125,6 +125,8 @@ member,ZeroPageRec,bios_c,u16le,FC,zBiosCl|zBiosCh,
 member,ZeroPageRec,bios_d,u16le,FE,zBiosDl|zBiosDh,
 member,ZeroPageRec,script_ptr,u8,7E,zScriptPtr,the pointer scripts and demo records are read through; low
 member,ZeroPageRec,script_ptr_hi,u8,7F,zScriptPtrHi,
+member,ZeroPageRec,demo_pad_last,u8,7C,zDemoPadLast,
+member,ZeroPageRec,demo_pad_frames,u8,7D,zDemoPadFrames,
 
 record,ObjectTable,soa,2750,58,1398,OBJ
 member,ObjectTable,kind,u8,0000,OBJ_KIND,
@@ -334,6 +336,12 @@ member,CdPorts,adpcm_rate,u8,0E,AdpcmRate,
 # The System Card's own RAM that the game sets.
 record,BiosState,aos,2214,1,2,BIOS
 member,BiosState,screen,u16le,00,BiosScreenLo|BiosScreenHi,
+
+# The card's pad bytes as the game reads them: the first pad's buttons, the first and second pads' new presses.
+record,BiosPads,aos,2228,1,7,PADS
+member,BiosPads,now,u8,00,BiosPadState,
+member,BiosPads,trigger,u8,05,BiosJoyTrigger,
+member,BiosPads,trigger2,u8,06,BiosJoyTrigger2,
 
 # The script slots: eight columns of twelve (channels.c clears them 12 bytes apart up to +$54), 3C00 to 3C5F.
 record,ScriptSlots,soa,3C00,C,60,SLOTS

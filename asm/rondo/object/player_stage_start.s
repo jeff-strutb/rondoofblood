@@ -13,8 +13,8 @@ ResetStageVariables024D:
     stz z:zRandom3
     stz z:zWaveCounter
     stz z:zFrameTick
-    stz z:$7C
-    stz z:$7D
+    stz z:zDemoPadLast
+    stz z:zDemoPadFrames
     lda #$0D
     sta z:zScriptPtr
     lda #$C2
@@ -37,8 +37,8 @@ ResetStageVariables050D:
     stz z:zRandom3
     stz z:zWaveCounter
     stz z:zFrameTick
-    stz z:$7C
-    stz z:$7D
+    stz z:zDemoPadLast
+    stz z:zDemoPadFrames
     lda #$66
     sta z:zScriptPtr
     lda #$CE
@@ -61,8 +61,8 @@ ResetStageVariables05BD:
     stz z:zRandom3
     stz z:zWaveCounter
     stz z:zFrameTick
-    stz z:$7C
-    stz z:$7D
+    stz z:zDemoPadLast
+    stz z:zDemoPadFrames
     lda #$15
     sta z:zScriptPtr
     lda #$BE
@@ -85,8 +85,8 @@ ResetStageVariables071D:
     stz z:zRandom3
     stz z:zWaveCounter
     stz z:zFrameTick
-    stz z:$7C
-    stz z:$7D
+    stz z:zDemoPadLast
+    stz z:zDemoPadFrames
     lda #$4E
     sta z:zScriptPtr
     lda #$C2
@@ -109,8 +109,8 @@ ResetStageVariables07CD:
     stz z:zRandom3
     stz z:zWaveCounter
     stz z:zFrameTick
-    stz z:$7C
-    stz z:$7D
+    stz z:zDemoPadLast
+    stz z:zDemoPadFrames
     lda #$50
     sta z:zScriptPtr
     lda #$DC
@@ -133,8 +133,8 @@ ResetStageVariables087D:
     stz z:zRandom3
     stz z:zWaveCounter
     stz z:zFrameTick
-    stz z:$7C
-    stz z:$7D
+    stz z:zDemoPadLast
+    stz z:zDemoPadFrames
     lda #$AA
     sta z:zScriptPtr
     lda #$C3
@@ -157,8 +157,8 @@ ResetStageVariables092D:
     stz z:zRandom3
     stz z:zWaveCounter
     stz z:zFrameTick
-    stz z:$7C
-    stz z:$7D
+    stz z:zDemoPadLast
+    stz z:zDemoPadFrames
     lda #$8F
     sta z:zScriptPtr
     lda #$DB
@@ -181,8 +181,8 @@ ResetStageVariables09DD:
     stz z:zRandom3
     stz z:zWaveCounter
     stz z:zFrameTick
-    stz z:$7C
-    stz z:$7D
+    stz z:zDemoPadLast
+    stz z:zDemoPadFrames
     lda #$74
     sta z:zScriptPtr
     lda #$C2
@@ -205,8 +205,8 @@ ResetStageVariables0A8D:
     stz z:zRandom3
     stz z:zWaveCounter
     stz z:zFrameTick
-    stz z:$7C
-    stz z:$7D
+    stz z:zDemoPadLast
+    stz z:zDemoPadFrames
     lda #$D7
     sta z:zScriptPtr
     lda #$DD
@@ -229,8 +229,8 @@ ResetStageVariables0B3D:
     stz z:zRandom3
     stz z:zWaveCounter
     stz z:zFrameTick
-    stz z:$7C
-    stz z:$7D
+    stz z:zDemoPadLast
+    stz z:zDemoPadFrames
     lda #$6F
     sta z:zScriptPtr
     lda #$D4
@@ -253,8 +253,8 @@ ResetStageVariables0BED:
     stz z:zRandom3
     stz z:zWaveCounter
     stz z:zFrameTick
-    stz z:$7C
-    stz z:$7D
+    stz z:zDemoPadLast
+    stz z:zDemoPadFrames
     lda #$06
     sta z:zScriptPtr
     lda #$DA
@@ -277,8 +277,8 @@ ResetStageVariables0C9D:
     stz z:zRandom3
     stz z:zWaveCounter
     stz z:zFrameTick
-    stz z:$7C
-    stz z:$7D
+    stz z:zDemoPadLast
+    stz z:zDemoPadFrames
     lda #$1A
     sta z:zScriptPtr
     lda #$C3
@@ -301,8 +301,8 @@ ResetStageVariables0D4D:
     stz z:zRandom3
     stz z:zWaveCounter
     stz z:zFrameTick
-    stz z:$7C
-    stz z:$7D
+    stz z:zDemoPadLast
+    stz z:zDemoPadFrames
     lda #$37
     sta z:zScriptPtr
     lda #$D9
@@ -325,8 +325,8 @@ ResetStageVariables0DFD:
     stz z:zRandom3
     stz z:zWaveCounter
     stz z:zFrameTick
-    stz z:$7C
-    stz z:$7D
+    stz z:zDemoPadLast
+    stz z:zDemoPadFrames
     lda #$5C
     sta z:zScriptPtr
     lda #$C1
@@ -349,8 +349,8 @@ ResetStageVariables0EAD:
     stz z:zRandom3
     stz z:zWaveCounter
     stz z:zFrameTick
-    stz z:$7C
-    stz z:$7D
+    stz z:zDemoPadLast
+    stz z:zDemoPadFrames
     lda #$89
     sta z:zScriptPtr
     lda #$B3
@@ -373,8 +373,8 @@ ResetStageVariables0F5D:
     stz z:zRandom3
     stz z:zWaveCounter
     stz z:zFrameTick
-    stz z:$7C
-    stz z:$7D
+    stz z:zDemoPadLast
+    stz z:zDemoPadFrames
     lda #$F3
     sta z:zScriptPtr
     lda #$B1
@@ -397,8 +397,8 @@ ResetStageVariables100D:
     stz z:zRandom3
     stz z:zWaveCounter
     stz z:zFrameTick
-    stz z:$7C
-    stz z:$7D
+    stz z:zDemoPadLast
+    stz z:zDemoPadFrames
     lda #$56
     sta z:zScriptPtr
     lda #$D5
@@ -421,8 +421,8 @@ ResetStageVariables10BD:
     stz z:zRandom3
     stz z:zWaveCounter
     stz z:zFrameTick
-    stz z:$7C
-    stz z:$7D
+    stz z:zDemoPadLast
+    stz z:zDemoPadFrames
     lda #$8C
     sta z:zScriptPtr
     lda #$C5
@@ -445,8 +445,8 @@ ResetStageVariables116D:
     stz z:zRandom3
     stz z:zWaveCounter
     stz z:zFrameTick
-    stz z:$7C
-    stz z:$7D
+    stz z:zDemoPadLast
+    stz z:zDemoPadFrames
     lda #$63
     sta z:zScriptPtr
     lda #$DB
@@ -469,8 +469,8 @@ ResetStageVariables12CD:
     stz z:zRandom3
     stz z:zWaveCounter
     stz z:zFrameTick
-    stz z:$7C
-    stz z:$7D
+    stz z:zDemoPadLast
+    stz z:zDemoPadFrames
     lda #$5A
     sta z:zScriptPtr
     lda #$D2
@@ -493,8 +493,8 @@ ResetStageVariables160D:
     stz z:zRandom3
     stz z:zWaveCounter
     stz z:zFrameTick
-    stz z:$7C
-    stz z:$7D
+    stz z:zDemoPadLast
+    stz z:zDemoPadFrames
     lda #$16
     sta z:zScriptPtr
     lda #$D9
@@ -517,8 +517,8 @@ ResetStageVariables16BD:
     stz z:zRandom3
     stz z:zWaveCounter
     stz z:zFrameTick
-    stz z:$7C
-    stz z:$7D
+    stz z:zDemoPadLast
+    stz z:zDemoPadFrames
     lda #$26
     sta z:zScriptPtr
     lda #$BF
@@ -541,8 +541,8 @@ ResetStageVariables18CD:
     stz z:zRandom3
     stz z:zWaveCounter
     stz z:zFrameTick
-    stz z:$7C
-    stz z:$7D
+    stz z:zDemoPadLast
+    stz z:zDemoPadFrames
     lda #$73
     sta z:zScriptPtr
     lda #$C3

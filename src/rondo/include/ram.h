@@ -347,6 +347,7 @@
 #define zBiosDl 0x20FE /* BIOS argument _DL */
 #define zBiosDh 0x20FF /* BIOS argument _DH */
 #define BiosJoyTrigger 0x222D /* the BIOS's joypad byte for the first pad */
+#define BiosJoyTrigger2 0x222E /* the BIOS's newly pressed buttons of the second pad (the card's five bytes from $222D): bit 2 select ends a demo record (StageDemoPadRecord) */
 #define BiosAdpcmBusy 0x25FB /* cleared after an ADPCM load */
 #define ContinueChoice 0x3F24 /* what the continue screen chose */
 #define ProgressCharacter 0x3F40 /* saved to the slot's first byte */
@@ -380,6 +381,7 @@
 #define SceneCallTable 0x72C8 /* pointers for the scene overlay */
 #define StageVecTerrainTileRead 0x8006 /* the stage overlay's vector to its terrain tile read (TerrainTileRead, overlay_vectors.c): the player's terrain reads call it */
 #define FrameOverlay8006 0x8006 /* a mode overlay's entry; the scene overlay's call */
+#define StagePlayHandlers 0x822D /* the play sub-step's next sub-steps by zSubStep, a word each (StageSubStepPlay) */
 #define StageVecClearBitRows 0x8009 /* the stage overlay's vector at $8009: all 41 stage overlays jump to ClearStageBitRowsFour (StageVec8009_024D); Richter's death point rows call it */
 #define FrameOverlay8009 0x8009 /* a mode overlay's entry */
 #define BiosCdRead 0xE009 /* cd_read */
@@ -767,6 +769,8 @@
 #define zWaitTimer2 0x2079 /* frames or steps left in a second wait */
 #define zWaitTimer3 0x207A /* steps left in a third wait */
 #define zWaitTimer4 0x207B /* frames left in a fourth wait */
+#define zDemoPadLast 0x207C /* the pad a demo's record gave the frame before: the bits the next pad adds are its new presses (StageDemoPadPlay) */
+#define zDemoPadFrames 0x207D /* frames left of the demo record's current pad (StageDemoPadPlay) */
 #define zScriptPtr 0x207E /* the pointer a scene script, the ending's script or a demo's pad record is read through; low */
 #define zScriptPtrHi 0x207F /* zScriptPtr's high byte */
 #define PaletteWork 0x3B00 /* 32 bytes: a palette of 16 colours read from the VCE to be worked on */
@@ -962,6 +966,9 @@
 #define LayerPlaceOffsetsLo 0xA780 /* the place offsets' low bytes by the index word (0 ahead, 1 behind): ScrollXPlusOffset, ScrollYPlusOffset, and DrawBlockColumn and DrawBlockRow for a ScrollColumnBlocks with bit 7 */
 #define LayerPlaceOffsetsHi 0xA782 /* the place offsets' high bytes by the index word, for LayerPlaceOffsetsLo and LayerPlaceOffsetsLoAlt */
 #define CameraWavePhase 0x3EBD /* the phase of the water camera's wave (CameraWaterWave counts it on) */
+#define PlayerProgramFrame 0xA000 /* the player program's vector to its frame at $A000 under MPR5 (RichterVecFrame and MariaVecFrame; StagePlayerFrame) */
+#define PlayerProgramObjects 0xA009 /* the player program's vector to the run of its objects at $A009 under MPR5 (RichterVecC3A7 and MariaVecRunObjects; StagePlayerObjects) */
+#define PlayerProgramMoveAndPush 0xA027 /* the player program's vector to its move and push at $A027 under MPR5 (RichterApplyMoveAndPushGoTo and MariaVecApplyMoveAndPush; StageSubStepPlay) */
 #define CameraModes 0xA0E6 /* the camera mode handlers by CameraMode, a word each (StageCameraModeDispatch) */
 #define StageTerrainRead 0x8006 /* in a stage overlay: its terrain read at the point in zTemp00-03 (StageTileRead; Maria's object probes jump to it) */
 #define MariaCompanionYOffsets 0xC63D /* a companion's Y offset from her by OBJ_WORK_E (its slot less one and bit 1 of the frame tick) (MariaObjectKind1) */

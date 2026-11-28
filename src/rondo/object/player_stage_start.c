@@ -7,15 +7,14 @@
  * game running), so their drafts stop there (liftcmp counts 360 untraced cases and one unreached line each): the shared body is
  * compared in the eleven whose stores a script ran, and the two immediates of each copy are the disc's bytes 21 and 25.
  *
- * Bytes $207C to $207F have no names yet: they keep the old address form (rows asked of the typed access owner).
+ * $207C-$207D are the demo's pad bytes (zDemoPadLast, zDemoPadFrames) and $207E the pointer its record is read through
+ * (zScriptPtr): the reset starts the demo's record at the overlay's own table.
  */
 #include "machine.h"
 #include "ram.h"
 #include "access.h"
 #include "routines.h"
 #include "enemy_objects.h"
-
-enum { STAGE_POINTER_LO = 0x207E, STAGE_POINTER_HI = 0x207F, STAGE_CLEAR_7C = 0x207C, STAGE_CLEAR_7D = 0x207D };
 
 /* The one test of zGameRunning, and when the game runs the stores: what the routine ended on. */
 ObjArm reset_stage_variables(uint8_t pointer_lo, uint8_t pointer_hi)
@@ -32,10 +31,10 @@ ObjArm reset_stage_variables(uint8_t pointer_lo, uint8_t pointer_hi)
     WR8(ZP->random3, 0);
     WR8(ZP->wave_counter, 0);
     WR8(ZP->frame_tick, 0);
-    wr8(STAGE_CLEAR_7C, 0);
-    wr8(STAGE_CLEAR_7D, 0);
-    wr8(STAGE_POINTER_LO, pointer_lo);
-    wr8(STAGE_POINTER_HI, pointer_hi);
+    WR8(ZP->demo_pad_last, 0);
+    WR8(ZP->demo_pad_frames, 0);
+    WR8(ZP->script_ptr, pointer_lo);
+    WR8(ZP->script_ptr_hi, pointer_hi);
     r.second = pointer_hi;
     r.flag = true;
     return r;

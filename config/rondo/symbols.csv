@@ -354,6 +354,7 @@ FD,zp,zBiosCh,BIOS argument _CH
 FE,zp,zBiosDl,BIOS argument _DL
 FF,zp,zBiosDh,BIOS argument _DH
 222D,abs,BiosJoyTrigger,the BIOS's joypad byte for the first pad
+222E,abs,BiosJoyTrigger2,the BIOS's newly pressed buttons of the second pad (the card's five bytes from $222D): bit 2 select ends a demo record (StageDemoPadRecord)
 25FB,abs,BiosAdpcmBusy,cleared after an ADPCM load
 3F24,abs,ContinueChoice,what the continue screen chose
 3F40,abs,ProgressCharacter,saved to the slot's first byte
@@ -387,6 +388,7 @@ FF,zp,zBiosDh,BIOS argument _DH
 72C8,abs,SceneCallTable,pointers for the scene overlay
 8006,abs,StageVecTerrainTileRead,the stage overlay's vector to its terrain tile read (TerrainTileRead, overlay_vectors.c): the player's terrain reads call it
 8006,abs,FrameOverlay8006,a mode overlay's entry; the scene overlay's call
+822D,abs,StagePlayHandlers,the play sub-step's next sub-steps by zSubStep, a word each (StageSubStepPlay)
 8009,abs,StageVecClearBitRows,the stage overlay's vector at $8009: all 41 stage overlays jump to ClearStageBitRowsFour (StageVec8009_024D); Richter's death point rows call it
 8009,abs,FrameOverlay8009,a mode overlay's entry
 E009,abs,BiosCdRead,cd_read
@@ -776,6 +778,8 @@ AF4C,abs,RichterCrashFrames,an item crash's frame by its pair of states and the 
 79,zp,zWaitTimer2,frames or steps left in a second wait
 7A,zp,zWaitTimer3,steps left in a third wait
 7B,zp,zWaitTimer4,frames left in a fourth wait
+7C,zp,zDemoPadLast,the pad a demo's record gave the frame before: the bits the next pad adds are its new presses (StageDemoPadPlay)
+7D,zp,zDemoPadFrames,frames left of the demo record's current pad (StageDemoPadPlay)
 7E,zp,zScriptPtr,the pointer a scene script, the ending's script or a demo's pad record is read through; low
 7F,zp,zScriptPtrHi,zScriptPtr's high byte
 3B00,abs,PaletteWork,32 bytes: a palette of 16 colours read from the VCE to be worked on
@@ -976,6 +980,9 @@ A77E,abs,LayerPlaceOffsetsLoAlt,the place offsets' low bytes ScrollXPlusOffset t
 A780,abs,LayerPlaceOffsetsLo,the place offsets' low bytes by the index word (0 ahead, 1 behind): ScrollXPlusOffset, ScrollYPlusOffset, and DrawBlockColumn and DrawBlockRow for a ScrollColumnBlocks with bit 7
 A782,abs,LayerPlaceOffsetsHi,the place offsets' high bytes by the index word, for LayerPlaceOffsetsLo and LayerPlaceOffsetsLoAlt
 3EBD,abs,CameraWavePhase,the phase of the water camera's wave (CameraWaterWave counts it on)
+A000,abs,PlayerProgramFrame,the player program's vector to its frame at $A000 under MPR5 (RichterVecFrame and MariaVecFrame; StagePlayerFrame)
+A009,abs,PlayerProgramObjects,the player program's vector to the run of its objects at $A009 under MPR5 (RichterVecC3A7 and MariaVecRunObjects; StagePlayerObjects)
+A027,abs,PlayerProgramMoveAndPush,the player program's vector to its move and push at $A027 under MPR5 (RichterApplyMoveAndPushGoTo and MariaVecApplyMoveAndPush; StageSubStepPlay)
 A0E6,abs,CameraModes,the camera mode handlers by CameraMode, a word each (StageCameraModeDispatch)
 8006,abs,StageTerrainRead,in a stage overlay: its terrain read at the point in zTemp00-03 (StageTileRead; Maria's object probes jump to it)
 C63D,abs,MariaCompanionYOffsets,a companion's Y offset from her by OBJ_WORK_E (its slot less one and bit 1 of the frame tick) (MariaObjectKind1)

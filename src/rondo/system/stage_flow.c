@@ -31,7 +31,7 @@ StageRegs StageFallPose(StageRegs r);
 
 /* Defined elsewhere, typed, and not declared in a header. */
 ObjArm MapOverlayBank7(void);                       /* object/player_leaves.c */
-Ended MapOverlayBanks5And6(void);                   /* object/player_leaves.c */
+ObjArm MapOverlayBanks5And6(void);                  /* object/player_leaves.c */
 
 enum {
     PAD_RUN = 0x08, FIELD8E_SOUND = 0x08, FIELD8E_KEEP_CD = 0x10, FIELD8E_NO_FADE = 0x18,
@@ -548,23 +548,14 @@ void abi_StageCameraStep(void)
 /* JSR MapOverlayBanks5And6 at ret: A the second bank, N and Z from it, C and V from the add. */
 static Regs map_banks_5_6(Regs r, uint16_t ret)
 {
-    Ended e;
+    ObjArm e;
 
     jsr_push(ret);
     e = MapOverlayBanks5And6();
     jsr_pop();
-    if (e.a_set) {
-        r.a = e.a;
-    }
-    if (e.nz_set) {
-        r.nz = e.nz;
-    }
-    if (e.c_set) {
-        r.c = e.c;
-    }
-    if (e.v_set) {
-        r.v = e.v;
-    }
+    r = loaded(r, e.first);
+    r.c = e.sum.carry;
+    r.v = e.sum.overflow;
     return r;
 }
 

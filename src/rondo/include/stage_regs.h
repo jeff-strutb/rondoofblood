@@ -189,4 +189,13 @@ StageExit ClearStageBitRowsAt(uint8_t x, void (*set)(uint8_t lo, uint8_t hi), ui
 /* system/stage_clear_bits.c: ClearStageBitRowsFour (024F:2D9) run at `at`, with the C of the rows it runs. */
 StageExit ClearStageBitRowsFourAt(uint8_t x, uint16_t at, StageExit (*run)(uint8_t x));
 
+
+/* system/stage_play.c: StagePlayerFrame and StagePlayerObjects (024D:0AB, 024D:0B1) with ret the address after their
+ * JSR to MapOverlayBanks5And6. */
+StageRegs StagePlayerFrameAt(StageRegs r, uint16_t ret);
+StageRegs StagePlayerObjectsAt(StageRegs r, uint16_t ret);
+
+/* system/stage_play.c: StageDemoPadRecord (024D:0F8) run at `at`. */
+StageRegs StageDemoPadRecordAt(StageRegs r, uint16_t at);
+
 #endif

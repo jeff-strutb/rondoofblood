@@ -90,7 +90,8 @@ typedef struct {
     uint8_t wait_timer2; /* zWaitTimer2 */
     uint8_t wait_timer3; /* zWaitTimer3 */
     uint8_t wait_timer4; /* zWaitTimer4 */
-    uint8_t _gap_007C[2]; /* no name yet: $207C-$207D */
+    uint8_t demo_pad_last; /* zDemoPadLast */
+    uint8_t demo_pad_frames; /* zDemoPadFrames */
     uint8_t script_ptr; /* zScriptPtr: the pointer scripts and demo records are read through; low */
     uint8_t script_ptr_hi; /* zScriptPtrHi */
     uint8_t field80; /* zField80 */
@@ -245,6 +246,8 @@ _Static_assert(ZeroPageRec_BASE + offsetof(ZeroPageRec, wait_timer) + 0 == zWait
 _Static_assert(ZeroPageRec_BASE + offsetof(ZeroPageRec, wait_timer2) + 0 == zWaitTimer2, "ZeroPageRec.wait_timer2 is not at zWaitTimer2");
 _Static_assert(ZeroPageRec_BASE + offsetof(ZeroPageRec, wait_timer3) + 0 == zWaitTimer3, "ZeroPageRec.wait_timer3 is not at zWaitTimer3");
 _Static_assert(ZeroPageRec_BASE + offsetof(ZeroPageRec, wait_timer4) + 0 == zWaitTimer4, "ZeroPageRec.wait_timer4 is not at zWaitTimer4");
+_Static_assert(ZeroPageRec_BASE + offsetof(ZeroPageRec, demo_pad_last) + 0 == zDemoPadLast, "ZeroPageRec.demo_pad_last is not at zDemoPadLast");
+_Static_assert(ZeroPageRec_BASE + offsetof(ZeroPageRec, demo_pad_frames) + 0 == zDemoPadFrames, "ZeroPageRec.demo_pad_frames is not at zDemoPadFrames");
 _Static_assert(ZeroPageRec_BASE + offsetof(ZeroPageRec, script_ptr) + 0 == zScriptPtr, "ZeroPageRec.script_ptr is not at zScriptPtr");
 _Static_assert(ZeroPageRec_BASE + offsetof(ZeroPageRec, script_ptr_hi) + 0 == zScriptPtrHi, "ZeroPageRec.script_ptr_hi is not at zScriptPtrHi");
 _Static_assert(ZeroPageRec_BASE + offsetof(ZeroPageRec, field80) + 0 == zField80, "ZeroPageRec.field80 is not at zField80");
@@ -860,6 +863,21 @@ _Static_assert(sizeof(BiosState) == 0x2, "BiosState size");
 _Static_assert(BiosState_BASE + offsetof(BiosState, screen) + 0 == BiosScreenLo, "BiosState.screen is not at BiosScreenLo");
 _Static_assert(BiosState_BASE + offsetof(BiosState, screen) + 1 == BiosScreenHi, "BiosState.screen is not at BiosScreenHi");
 #define BIOS ((BiosState *)BiosState_BASE)
+
+/* BiosPads: one struct at $2228, 1 element(s), 7 bytes */
+#define BiosPads_BASE 0x2228
+#define BiosPads_COUNT 1
+typedef struct {
+    uint8_t now; /* BiosPadState */
+    uint8_t _gap_0001[4]; /* no name yet: $2229-$222C */
+    uint8_t trigger; /* BiosJoyTrigger */
+    uint8_t trigger2; /* BiosJoyTrigger2 */
+} BiosPads;
+_Static_assert(sizeof(BiosPads) == 0x7, "BiosPads size");
+_Static_assert(BiosPads_BASE + offsetof(BiosPads, now) + 0 == BiosPadState, "BiosPads.now is not at BiosPadState");
+_Static_assert(BiosPads_BASE + offsetof(BiosPads, trigger) + 0 == BiosJoyTrigger, "BiosPads.trigger is not at BiosJoyTrigger");
+_Static_assert(BiosPads_BASE + offsetof(BiosPads, trigger2) + 0 == BiosJoyTrigger2, "BiosPads.trigger2 is not at BiosJoyTrigger2");
+#define PADS ((BiosPads *)BiosPads_BASE)
 
 /* ScriptSlots: parallel byte arrays at $3C00, 12 slots, 96 bytes */
 #define ScriptSlots_BASE 0x3C00

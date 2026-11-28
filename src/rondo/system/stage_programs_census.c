@@ -1795,3 +1795,24 @@ void abi_StageForcedWalkB026D(void)
 {
     stage_regs_load_shim(StageForcedWalkB026D(stage_regs_entry_shim()));
 }
+
+/*
+ * @routine 026D:358 StageFallRightLand026D
+ * @run 6B:8358
+ * WHAT IT DOES: The fall to the right's middle step: the player idle, his animation sound, and until his X passes $10 on a
+ * screen past the first the step counts on; else his landing (as StageFallRightLand, 024D:380). Programs 031D, 043D, 064D, 10DD, 122D, 1A2D, 1B8D and 1CED hold the same bytes.
+ * HOW: StageFallRightLandAt (stage_flow.c), the body of 024D:380, at $8358. Its JSR to $8089 goes to
+ * MapOverlayBanks5And6's bytes (024D:0A0) in all nine programs, so its C is MapOverlayBanks5And6's.
+ * WAITS: no.
+ * Entry: nothing. Exit: counting: N and Z from the new step; else as $A01E.
+ * Nothing the game does loads this program (codemap.unloaded_programs), so nothing is known to reach it.
+ */
+StageRegs StageFallRightLand026D(StageRegs r)
+{
+    return StageFallRightLandAt(r, 0x8358);
+}
+
+void abi_StageFallRightLand026D(void)
+{
+    stage_regs_load_shim(StageFallRightLand026D(stage_regs_entry_shim()));
+}

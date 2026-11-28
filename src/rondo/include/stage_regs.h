@@ -76,4 +76,8 @@ StageRegs StageForcedWalkAt(StageRegs r, uint16_t init_ret, uint16_t init, uint1
 /* system/stage_flow.c: StageFallPose (024D:373) run at `at`. */
 StageRegs StageFallPoseAt(StageRegs r, uint16_t at);
 
+
+/* system/stage_flow.c: StageFallRightLand (024D:380) run at `at`. */
+StageRegs StageFallRightLandAt(StageRegs r, uint16_t at);
+
 #endif

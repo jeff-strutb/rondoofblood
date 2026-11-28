@@ -667,8 +667,9 @@ void abi_StageFallLeftDone(void)
     stage_regs_load_shim(StageFallLeftDone(entry_shim()));
 }
 
-/* The player's X against `limit` past which the fall goes on to its landing ($A01E, X 0); else zFallStep counts on. */
-static Regs fall_until(Regs r, bool right, uint8_t limit)
+/* The player's X against `limit` past which the fall goes on to its landing ($A01E, X 0, by the tail JMP at site);
+ * else zFallStep counts on. */
+static Regs fall_until(Regs r, bool right, uint8_t limit, uint16_t site)
 {
     r = loaded(r, RD8(OBJ->x_hi[0]));
     if (r.a != 0) {
@@ -679,7 +680,7 @@ static Regs fall_until(Regs r, bool right, uint8_t limit)
         }
     }
     r.x = 0;
-    return tail_to(r, 0x8396, 0xA01E);
+    return tail_to(r, site, 0xA01E);
 }
 
 /*
@@ -693,10 +694,18 @@ static Regs fall_until(Regs r, bool right, uint8_t limit)
  */
 StageRegs StageFallRightLand(StageRegs r)
 {
-    r = map_banks_5_6(r, 0x8383);
-    r = call_to(r, 0x8386, 0xA01B);
-    r = call_to(r, 0x8389, 0xA012);
-    return fall_until(r, true, 0x10);
+    return StageFallRightLandAt(r, 0x8380);
+}
+
+/* StageFallRightLand's body, at the address it runs at (its JSRs return to at + 3, + 6 and + 9, its tail JMP is at
+ * at + $16): the builds of the overlay that hold these instructions at another address (stage_programs_census.c) pass
+ * their own. */
+StageRegs StageFallRightLandAt(StageRegs r, uint16_t at)
+{
+    r = map_banks_5_6(r, (uint16_t)(at + 3));
+    r = call_to(r, (uint16_t)(at + 6), 0xA01B);
+    r = call_to(r, (uint16_t)(at + 9), 0xA012);
+    return fall_until(r, true, 0x10, (uint16_t)(at + 0x16));
 }
 
 void abi_StageFallRightLand(void)
@@ -717,7 +726,7 @@ StageRegs StageFallLeftLand(StageRegs r)
     r = map_banks_5_6(r, 0x83D3);
     r = call_to(r, 0x83D6, 0xA01B);
     r = call_to(r, 0x83D9, 0xA012);
-    return fall_until(r, false, 0xF0);
+    return fall_until(r, false, 0xF0, 0x8396);
 }
 
 void abi_StageFallLeftLand(void)

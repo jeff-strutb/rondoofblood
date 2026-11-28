@@ -405,8 +405,8 @@ enum { LAST_OBJECT = 0x57, FIRST_OBJECT = 0x10 };
  * Works out the hitbox positions, then tests each object from the last down to $10, clearing its
  * hit-taken byte and counting its timer down when the timer is not zero.
  */
-static StageExit hit_test_all(uint8_t entry_x, HitboxEnd (*compute)(void), StageExit (*test)(uint8_t x), uint16_t compute_return,
-                              uint16_t test_return)
+StageExit HitTestAllObjectsAt(uint8_t entry_x, HitboxEnd (*compute)(void), StageExit (*test)(uint8_t x),
+                             uint16_t compute_return, uint16_t test_return)
 {
     StageExit end = { 0, 0, 0, false, false, 0, 0 };
     StageExit step;
@@ -477,7 +477,7 @@ static StageExit hit_test_all(uint8_t entry_x, HitboxEnd (*compute)(void), Stage
  */
 StageExit HitTestAllObjects(uint8_t x)
 {
-    return hit_test_all(x, ComputeHitboxPositions, HitTestObject, 0x93FC, 0x9401);
+    return HitTestAllObjectsAt(x, ComputeHitboxPositions, HitTestObject, 0x93FC, 0x9401);
 }
 
 void abi_HitTestAllObjects(void)
@@ -495,7 +495,7 @@ void abi_HitTestAllObjects(void)
  */
 StageExit HitTestAllObjectsLong(uint8_t x)
 {
-    return hit_test_all(x, ComputeHitboxPositionsLong, HitTestObjectLong, 0x970E, 0x9713);
+    return HitTestAllObjectsAt(x, ComputeHitboxPositionsLong, HitTestObjectLong, 0x970E, 0x9713);
 }
 
 void abi_HitTestAllObjectsLong(void)

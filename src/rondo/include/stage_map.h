@@ -264,8 +264,11 @@ typedef struct {
     StageExit (*store_c)(uint8_t x, uint8_t y);
     StageExit (*report_c)(uint8_t x, uint8_t y);
 } HitHandlers;
-/* The hit test's body (hit_test.c) for a build with its jump table at table. */
+/* The hit test's body (hit_test.c) for a build with its jump table at table, and the hit-test-all body with the
+ * build's two callees and the return addresses of its two JSRs. */
 StageExit HitTestObjectAt(uint8_t x, uint16_t table, const HitHandlers *handlers);
+StageExit HitTestAllObjectsAt(uint8_t entry_x, HitboxEnd (*compute)(void), StageExit (*test)(uint8_t x),
+                              uint16_t compute_return, uint16_t test_return);
 StageExit HitTestAllObjects(uint8_t x);
 StageExit HitTestAllObjectsLong(uint8_t x);
 

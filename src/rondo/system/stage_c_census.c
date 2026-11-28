@@ -5634,28 +5634,34 @@ void abi_TallyBoard3CD(void)
  */
 StageRegs TallyDigits3CD(StageRegs r)
 {
+    return TallyDigits3CDAt(r, 0x9175, &tally_3cd);
+}
+
+/* TallyDigits3CD's body, for the builds of it elsewhere: where the build runs and what it uses. */
+StageRegs TallyDigits3CDAt(StageRegs r, uint16_t at, const TallyBuild *build)
+{
     uint8_t hearts;
 
     r = loaded(r, RD8(ZP->player_health));
-    CALL(0x917A, StageSplitTens152D(r));
+    CALL(at + 0x5, StageSplitTens152D(r));
     r.x++;
     r.c = r.x >= 0x01;
     r.nz = (uint8_t)(r.x - 0x01);
     if (r.nz != 0) {
-        wr8((uint16_t)(TALLY_CELLS + 0x11), r.x);
+        wr8((uint16_t)(build->cells + 0x11), r.x);
     }
     r = loaded(r, (uint8_t)(r.a + 1));
-    wr8((uint16_t)(TALLY_CELLS + 0x12), r.a);
+    wr8((uint16_t)(build->cells + 0x12), r.a);
     hearts = RD8(ZP->field94);
     r.c = (hearts & 0x08) != 0;
     r = loaded(r, (uint8_t)((hearts >> 4) + 1));
     r = compared(r, 0x01);
     if (r.nz != 0) {
-        wr8((uint16_t)(TALLY_CELLS + 0x21), r.a);
+        wr8((uint16_t)(build->cells + 0x21), r.a);
     }
     hearts = RD8(ZP->field94);
     r = loaded(r, (uint8_t)((hearts & 0x0F) + 1));
-    wr8((uint16_t)(TALLY_CELLS + 0x22), r.a);
+    wr8((uint16_t)(build->cells + 0x22), r.a);
     return r;
 }
 

@@ -1349,14 +1349,31 @@ def progress(disc, mems, maps, cps):
             done.add(root(x))
     names, order = areas(mems)
     out = {n: [0, 0, 0] for n in order}
+    # each counted byte belongs to one routine: the filed routine that holds it, else the first reached body
+    # that holds it; the map picture draws one box per routine and status
+    owner = {}
+    for d in sorted(bodies):
+        if d not in pieces:
+            for x in range(d, d + bodies[d]):
+                owner.setdefault(x, d)
+    for d, n in pieces.items():
+        for x in range(d, d + n):
+            owner[x] = d
+    pname = {p["disc"]: p["name"] for p in filed_}
+    boxes = collections.Counter()
     for x in srt:
         if x in canon:
             continue
-        row = out[names.get(x // SECTOR, "Not loaded")]
+        area = names.get(x // SECTOR, "Not loaded")
+        row = out[area]
         row[0] += 1
         row[1] += x in done1
         row[2] += x in done2
-    return {n: tuple(v) for n, v in out.items() if v[0]}, [n for n in order if out[n][0]]
+        o = owner.get(x)
+        st_ = ("M2" if x in done2 else "M1" if x in done1 else "filed" if o in pieces else "to do")
+        boxes[(area, o, st_)] += 1
+    routines = [(area, o, pname.get(o, ""), runs_at.get(o), st_, n) for (area, o, st_), n in boxes.items()]
+    return {n: tuple(v) for n, v in out.items() if v[0]}, [n for n in order if out[n][0]], routines
 
 
 def svg(rows, order, total):
@@ -1391,6 +1408,93 @@ def svg(rows, order, total):
     bar(y0, "Whole game", t, True)
     for i, n in enumerate(order):
         bar(y0 + (i + 1) * (H + G) + 6, n, rows[n])
+    o.append("</svg>")
+    return "\n".join(o) + "\n"
+
+
+def squarify(items, x, y, w, h):
+    """Squarified treemap: [(weight, payload)] largest first -> (x, y, w, h, payload) filling the rectangle."""
+    items = [it for it in items if it[0] > 0]
+    total = sum(it[0] for it in items)
+    if not items or w <= 0 or h <= 0:
+        return
+    scale = w * h / total
+    i = 0
+    while i < len(items):
+        vertical = w < h
+        side = w if vertical else h
+        row, rs, worst, j = [], 0.0, None, i
+        while j < len(items):
+            nrs = rs + items[j][0] * scale
+            thick = nrs / side
+            wr = max(max(items[k][0] * scale / thick / thick, thick * thick / (items[k][0] * scale))
+                     for k in range(i, j + 1))
+            if worst is not None and wr > worst:
+                break
+            worst, rs = wr, nrs
+            row.append(items[j])
+            j += 1
+        thick = rs / side
+        off = 0.0
+        for wt, payload in row:
+            length = wt * scale / thick
+            yield (x + off, y, length, thick, payload) if vertical else (x, y + off, thick, length, payload)
+            off += length
+        if vertical:
+            y += thick
+            h -= thick
+        else:
+            x += thick
+            w -= thick
+        i = j
+
+
+MAP_COLOUR = {"M2": "#1f6feb", "M1": "#8cb4f5", "filed": "#e3b341", "to do": "#d0d7de"}
+MAP_ORDER = ("M2", "M1", "filed", "to do")
+
+
+def map_svg(routines, title):
+    """The code map picture: one box per routine (and status), sized by its code bytes, grouped by area.
+    routines: [(area, key, name, run, status, bytes)]; a routine with bytes of two statuses has two boxes."""
+    import html
+    W, H, T = 1200, 760, 52
+    ink, sub = "#24292f", "#57606a"
+    groups = collections.defaultdict(list)
+    for r in routines:
+        groups[r[0]].append(r)
+    total = sum(r[5] for r in routines)
+    by = collections.Counter()
+    for r in routines:
+        by[r[4]] += r[5]
+    o = [f'<svg xmlns="http://www.w3.org/2000/svg" width="{W}" height="{H + T}" viewBox="0 0 {W} {H + T}" '
+         f'font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif">',
+         f'<rect width="{W}" height="{H + T}" fill="#ffffff"/>',
+         f'<text x="8" y="22" font-size="16" font-weight="600" fill="{ink}">{html.escape(title)}: '
+         f'every routine, sized by its code bytes</text>']
+    lx = 8
+    for k in MAP_ORDER:
+        lab = {"M2": "M2", "M1": "M1 only", "filed": "assembly filed, C not finished", "to do": "to do"}[k]
+        o.append(f'<rect x="{lx}" y="32" width="12" height="12" fill="{MAP_COLOUR[k]}"/>')
+        txt = f"{lab} {100 * by[k] / total:.1f}%" if total else lab
+        o.append(f'<text x="{lx + 16}" y="42" font-size="12" fill="{sub}">{txt}</text>')
+        lx += 30 + 7 * len(txt)
+    gitems = sorted(((sum(r[5] for r in rs), (k, rs)) for k, rs in groups.items()), key=lambda it: -it[0])
+    for gx, gy, gw, gh, (gname, rs) in squarify(gitems, 0, T, W, H):
+        pad = 1.5
+        label = gw > 60 and gh > 24
+        top = 14 if label else 0
+        o.append(f'<rect x="{gx:.1f}" y="{gy:.1f}" width="{gw:.1f}" height="{gh:.1f}" fill="#f6f8fa" stroke="#ffffff"/>')
+        if label:
+            o.append(f'<text x="{gx + 3:.1f}" y="{gy + 11:.1f}" font-size="10" fill="{ink}">{html.escape(gname)}</text>')
+        # a routine's boxes lie together, M2 first
+        items = sorted(((r[5], r) for r in rs), key=lambda it: (-sum(q[5] for q in rs if q[1] == it[1][1]),
+                                                                 str(it[1][1]), MAP_ORDER.index(it[1][4])))
+        for x, y, w, h, r in squarify(items, gx + pad, gy + pad + top, max(gw - 2 * pad, .1), max(gh - 2 * pad - top, .1)):
+            place = f"{r[1] // SECTOR:04X}:{r[1] % SECTOR:03X}" if r[1] is not None else "loose code"
+            run = f" at {r[3]:04X}" if r[3] is not None else ""
+            tip = f"{r[2] or '(not filed)'}  {place}{run}  {r[5]} B  {r[4]}  [{gname}]"
+            o.append(f'<rect x="{x:.1f}" y="{y:.1f}" width="{max(w - .5, .3):.1f}" height="{max(h - .5, .3):.1f}" '
+                     f'fill="{MAP_COLOUR[r[4]]}"><title>{html.escape(tip)}</title></rect>')
     o.append("</svg>")
     return "\n".join(o) + "\n"
 
@@ -1445,17 +1549,24 @@ def todo(disc, mems, maps):
 
 README = os.path.join(TOP, "README.md")
 PICTURE = os.path.join(TOP, "docs", "rondo", "progress.svg")
+MAP_PICTURE = os.path.join(TOP, "docs", "rondo", "progress-map.svg")
 
 
-def write_progress(rows, order):
+def write_progress(rows, order, routines):
     total = tuple(sum(rows[n][i] for n in order) for i in range(3))
     with open(PICTURE, "w", encoding="utf-8", newline="\n") as f:
         f.write(svg(rows, order, total))
+    with open(MAP_PICTURE, "w", encoding="utf-8", newline="\n") as f:
+        f.write(map_svg(routines, "Rondo of Blood"))
     pct = lambda a: 100.0 * a / total[0]
     block = ["<!-- progress:start -->", "![Progress by disc area](docs/rondo/progress.svg)", "",
              f"**M1 {pct(total[1]):.1f}%, M2 {pct(total[2]):.1f}%** of {total[0]:,} B of distinct code found so far by "
              f"the static code map (every copy counted once). The map is not finished, so the total will grow and the "
-             f"percentages fall. Generated by `tools/rondo/codemap.py --progress`.", "<!-- progress:end -->"]
+             f"percentages fall. Generated by `tools/rondo/codemap.py --progress`.", "",
+             "![Every routine of the game by disc area, coloured by status](docs/rondo/progress-map.svg)", "",
+             "Every box is one routine, sized by its code bytes and grouped by disc area: dark blue M2, light blue "
+             "M1 only, amber assembly filed but C not finished, grey not filed yet. Hover a box for its name and place.",
+             "<!-- progress:end -->"]
     t = open(README, encoding="utf-8").read()
     a, b = t.find("<!-- progress:start -->"), t.find("<!-- progress:end -->")
     if a < 0 or b < 0:
@@ -1492,8 +1603,8 @@ def main():
     print(f"bytes that copy reached code moved to another address: {len(rel):,}")
     check.rel = rel
     if "--progress" in sys.argv[1:]:
-        rows, order = progress(disc, mems, maps, cps)
-        total = write_progress(rows, order)
+        rows, order, routines = progress(disc, mems, maps, cps)
+        total = write_progress(rows, order, routines)
         for n in order:
             r = rows[n]
             print(f"  {n:24} {r[0]:8,} B  M1 {100 * r[1] / r[0]:5.1f}%  M2 {100 * r[2] / r[0]:5.1f}%")

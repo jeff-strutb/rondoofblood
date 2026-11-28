@@ -1,11 +1,11 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="760" height="990" viewBox="0 0 760 990" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif">
 <rect width="760" height="990" fill="#ffffff"/>
-<text x="16" y="28" font-size="17" font-weight="600" fill="#24292f">Rondo of Blood: M1 81.0%  M2 62.1%</text>
+<text x="16" y="28" font-size="17" font-weight="600" fill="#24292f">Rondo of Blood: M1 81.3%  M2 62.4%</text>
 <text x="16" y="48" font-size="12" fill="#57606a">311,066 B of distinct code found so far, every copy counted once. Dark: M2. Light: M1 only. Grey: to do.</text>
 <text x="182" y="82" font-size="12" text-anchor="end" fill="#24292f" font-weight="600">Whole game</text>
 <rect x="190" y="70" width="480" height="16" rx="3" fill="#e6e9ed"/>
-<rect x="190" y="70" width="389.0" height="16" rx="3" fill="#8cb4f5"/>
-<rect x="190" y="70" width="297.9" height="16" rx="3" fill="#1f6feb"/>
+<rect x="190" y="70" width="390.5" height="16" rx="3" fill="#8cb4f5"/>
+<rect x="190" y="70" width="299.4" height="16" rx="3" fill="#1f6feb"/>
 <text x="678" y="82" font-size="11" fill="#57606a">81% of 303.8 KB</text>
 <text x="182" y="110" font-size="12" text-anchor="end" fill="#24292f">Boot</text>
 <rect x="190" y="98" width="480" height="16" rx="3" fill="#e6e9ed"/>
@@ -54,9 +54,9 @@
 <text x="678" y="286" font-size="11" fill="#57606a">95% of 10.2 KB</text>
 <text x="182" y="308" font-size="12" text-anchor="end" fill="#24292f">Stage 05</text>
 <rect x="190" y="296" width="480" height="16" rx="3" fill="#e6e9ed"/>
-<rect x="190" y="296" width="415.0" height="16" rx="3" fill="#8cb4f5"/>
-<rect x="190" y="296" width="313.3" height="16" rx="3" fill="#1f6feb"/>
-<text x="678" y="308" font-size="11" fill="#57606a">86% of 10.2 KB</text>
+<rect x="190" y="296" width="459.1" height="16" rx="3" fill="#8cb4f5"/>
+<rect x="190" y="296" width="357.4" height="16" rx="3" fill="#1f6feb"/>
+<text x="678" y="308" font-size="11" fill="#57606a">96% of 10.2 KB</text>
 <text x="182" y="330" font-size="12" text-anchor="end" fill="#24292f">Stage 06</text>
 <rect x="190" y="318" width="480" height="16" rx="3" fill="#e6e9ed"/>
 <rect x="190" y="318" width="464.2" height="16" rx="3" fill="#8cb4f5"/>

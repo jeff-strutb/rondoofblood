@@ -3268,14 +3268,14 @@ static void clear_scroll_bytes_3cd(Regs r)
     tai_shim(r, KernelZeros, ADDR_OF8(SCROLLE->f3e66[0]), 0x0088);
 }
 
-/* StageLoadScreen3CD called by BSR with zField8E kept on the stack across it and put back. */
-static Regs load_screen_keeping_flags(Regs r, uint16_t ret)
+/* The build's StageLoadScreen3CD called by BSR with zField8E kept on the stack across it and put back. */
+static Regs load_screen_keeping_flags(Regs r, uint16_t ret, const StageRouteBuild *build)
 {
     uint8_t flags;
 
     r = loaded(r, RD8(ZP->field8e));
     push8(r.a);
-    CALL(ret, StageLoadScreen3CD(r));
+    CALL(ret, StageLoadScreen3CDAt(r, build));
     flags = pull8();
     r = loaded(r, flags);
     WR8(ZP->field8e, flags);
@@ -3304,6 +3304,12 @@ static Regs load_screen_keeping_flags(Regs r, uint16_t ret)
  */
 StageRegs StageResetScroll3CD(StageRegs r)
 {
+    return StageResetScroll3CDAt(r, &route_3cd);
+}
+
+/* StageResetScroll3CD's body, for the builds of it with their own tables. */
+StageRegs StageResetScroll3CDAt(StageRegs r, const StageRouteBuild *build)
+{
     r = loaded(r, RD8(SCROLLE->x_hi_screen[0]));
     WR8(ZP->bios_a.lo, r.a);
     r = loaded(r, RD8(SCROLL->x_lo[0]));
@@ -3311,18 +3317,18 @@ StageRegs StageResetScroll3CD(StageRegs r)
     r = vector_call(r, 0x8885, abi_VecClearScreenState);
     clear_scroll_bytes_3cd(r);
     WR8(OBJ->vy_lo[80], 0);
-    r = load_screen_keeping_flags(r, 0x889B);
+    r = load_screen_keeping_flags(r, 0x889B, build);
     r = map_bank_7(r, 0x88A1);
     r = resident_call(r, 0x88A4, 0xA74E);
     r.y = RD8(ZP->raster_effect);
     r = loaded(r, rd8((uint16_t)(0x886A + r.y)));
     if (r.a != 0) {
         clear_scroll_bytes_3cd(r);
-        r = load_screen_keeping_flags(r, 0x88BE);
+        r = load_screen_keeping_flags(r, 0x88BE, build);
         r = resident_call(r, 0x88C4, 0xA79D);
     }
     clear_scroll_bytes_3cd(r);
-    return StageLoadScreen3CD(r);
+    return StageLoadScreen3CDAt(r, build);
 }
 
 void abi_StageResetScroll3CD(void)

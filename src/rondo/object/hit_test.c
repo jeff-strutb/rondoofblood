@@ -19,6 +19,33 @@ static StageExit hit_exit(uint8_t a, uint8_t y, bool c, bool v, uint8_t nz, uint
 }
 
 /*
+ * The store handler's body, for the builds of it that keep their columns elsewhere or test a gate byte first: the
+ * slot's value (kind, by Y) into the object's byte (taken, by X); when the first object's byte is empty and the gate
+ * byte, if the build has one, is 0, the first object's byte and the byte at to_b take the object's from_a and from_b.
+ * gate 0 is the build without the test (HitStoreHandler's), whose bytes have no load of a gate.
+ */
+StageExit HitStoreHandlerAt(uint8_t x, uint8_t y, const HitStoreColumns *c)
+{
+    uint8_t a = RD8_IDX(c->kind, y);
+
+    WR8_IDX(c->taken, x, a);
+    a = RD8_IDX(c->taken, 0);
+    if (a == 0) {
+        if (c->gate != 0) {
+            a = RD8_IDX(c->gate, 0);
+            if (a != 0) {
+                return hit_exit(a, 0, false, false, a, 0);
+            }
+        }
+        a = RD8_IDX(c->from_a, x);
+        WR8_IDX(c->taken, 0, a);
+        a = RD8_IDX(c->from_b, x);
+        WR8_IDX(c->to_b, 0, a);
+    }
+    return hit_exit(a, 0, false, false, a, 0);
+}
+
+/*
  * @routine 024F:543 HitStoreHandler
  * @run 6B:9543
  * WHAT IT DOES: What a hit does for the kinds that take the hit's value: the hit slot's value
@@ -31,17 +58,10 @@ static StageExit hit_exit(uint8_t a, uint8_t y, bool c, bool v, uint8_t nz, uint
  */
 static StageExit hit_store(uint8_t x, uint8_t y)
 {
-    uint8_t a = RD8(OBJ->work_n[y]);
+    const HitStoreColumns c = { COL(OBJ->work_n), COL(OBJ->hit_taken), COL(OBJ->work_c), COL(OBJ->work_b),
+                                ADDR_OF8(OBJ->health[0]), 0 };
 
-    WR8(OBJ->hit_taken[x], a);
-    a = RD8(OBJ->hit_taken[0]);
-    if (a == 0) {
-        a = RD8(OBJ->work_c[x]);
-        WR8(OBJ->hit_taken[0], a);
-        a = RD8(OBJ->work_b[x]);
-        WR8(OBJ->health[0], a);
-    }
-    return hit_exit(a, 0, false, false, a, 0);
+    return HitStoreHandlerAt(x, y, &c);
 }
 
 StageExit HitStoreHandler(uint8_t x, uint8_t y)

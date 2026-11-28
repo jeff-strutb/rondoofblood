@@ -249,6 +249,10 @@ StageExit StepStageFrameLong(uint8_t x, uint8_t y, bool v);
 StageExit HitTestObject(uint8_t x);
 StageExit HitTestObjectLong(uint8_t x);
 StageExit HitTestObjectLongB(uint8_t x);
+/* The columns of a build of the hit store handler: kind (by Y), taken (by X, and its first byte), from_a and from_b
+ * (by X), to_b (one byte), and gate (a byte tested first when it is not 0). */
+typedef struct { uint16_t kind, taken, from_a, from_b, to_b, gate; } HitStoreColumns;
+StageExit HitStoreHandlerAt(uint8_t x, uint8_t y, const HitStoreColumns *c);
 StageExit HitStoreHandler(uint8_t x, uint8_t y);
 StageExit HitReportHandler(uint8_t x, uint8_t y);
 StageExit HitStoreHandlerLong(uint8_t x, uint8_t y);

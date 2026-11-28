@@ -6721,27 +6721,17 @@ void abi_StageHitHandler152D(void)
  * WHAT IT DOES: Hit kinds 1 to 4: the object's state at $31F0 takes the slot's kind; when the first object's state at
  * $31F0 is 0 and the gate at $2748 is 0, the first object takes this object's bytes at $31A8 and $3160 (its state at
  * $31F0 and its byte at $3118).
- * HOW: Loads and stores; two tests.
+ * HOW: HitStoreHandlerAt (hit_test.c), the body of 024F:543, with this program's columns and the gate at $2748.
  * WAITS: no.
  * Entry: X the object, Y the slot. Exit: A the last byte loaded, N and Z from it. X, Y, C and V kept.
  */
 StageRegs HitKindSpawn152D(StageRegs r)
 {
-    r = loaded(r, rd8((uint16_t)(ADDR_OF8(OBJ->angle_hi[48]) + r.y)));
-    WR8(OBJ->hit_status[80 + r.x], r.a);
-    r = loaded(r, RD8(OBJ->hit_status[80]));
-    if (r.a != 0) {
-        return r;
-    }
-    r = loaded(r, rd8(HIT_GATE));
-    if (r.a != 0) {
-        return r;
-    }
-    r = loaded(r, RD8(OBJ->hit_status[8 + r.x]));
-    WR8(OBJ->hit_status[80], r.a);
-    r = loaded(r, RD8(OBJ->pace[24 + r.x]));
-    WR8(OBJ->loop_flags[40], r.a);
-    return r;
+    const HitStoreColumns c = { ADDR_OF8(OBJ->angle_hi[48]), ADDR_OF8(OBJ->hit_status[80]), ADDR_OF8(OBJ->hit_status[8]),
+                                ADDR_OF8(OBJ->pace[24]), ADDR_OF8(OBJ->loop_flags[40]), HIT_GATE };
+    StageExit end = HitStoreHandlerAt(r.x, r.y, &c);
+
+    return loaded(r, end.a);
 }
 
 void abi_HitKindSpawn152D(void)

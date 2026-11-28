@@ -3128,6 +3128,12 @@ void abi_StageSubModeOpening3CD(void)
  */
 StageRegs StageLoadRowMap3CD(StageRegs r)
 {
+    return StageLoadRowMap3CDAt(r, &route_3cd);
+}
+
+/* StageLoadRowMap3CD's body, for the builds of it with their own tables. */
+StageRegs StageLoadRowMap3CDAt(StageRegs r, const StageRouteBuild *build)
+{
     uint8_t route, index, old;
 
     tai_shim(r, KernelZeros, ROW_MAP, 0x00FF);
@@ -3136,9 +3142,9 @@ StageRegs StageLoadRowMap3CD(StageRegs r)
     r.c = (route & 0x80) != 0;
     r = loaded(r, index);
     r.y = index;
-    r = loaded(r, rd8((uint16_t)(0x9D69 + r.y)));
+    r = loaded(r, rd8((uint16_t)(build->row_maps + r.y)));
     WR8(ZP->temp00, r.a);
-    r = loaded(r, rd8((uint16_t)(0x9D6A + r.y)));
+    r = loaded(r, rd8((uint16_t)(build->row_maps + 1 + r.y)));
     WR8(ZP->temp01, r.a);
     r.y = 0;
     for (;;) {

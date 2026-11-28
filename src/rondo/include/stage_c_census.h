@@ -307,5 +307,6 @@ typedef struct {
     uint16_t unpack_lists, row_maps, route_a, route_b, screens, levels, next_stage, probe_lists;
 } StageRouteBuild;
 StageRegs StageUnpackList3CDAt(StageRegs r, const StageRouteBuild *build);
+StageRegs StageLoadRowMap3CDAt(StageRegs r, const StageRouteBuild *build);
 
 #endif

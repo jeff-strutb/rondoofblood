@@ -360,8 +360,8 @@ typedef struct {
     union { uint8_t hit_taken[88]; uint8_t f33b0[88]; }; /* OBJ_HIT_TAKEN */
     union { uint8_t anim_step[88]; uint8_t f3408[88]; }; /* OBJ_ANIM_STEP */
     union { uint8_t anim_timer[88]; uint8_t f3460[88]; }; /* OBJ_ANIM_TIMER */
-    union { uint8_t work_d[88]; uint8_t f34b8[88]; uint8_t life_timer[88]; uint8_t fling_source[88]; uint8_t fall_drift_delay[88]; }; /* OBJ_WORK_D */
-    union { uint8_t work_e[88]; uint8_t fling_wait[88]; uint8_t pad_force_frames[88]; }; /* OBJ_WORK_E */
+    union { uint8_t work_d[88]; uint8_t f34b8[88]; uint8_t life_timer[88]; uint8_t fling_source[88]; uint8_t pickup_timer[88]; uint8_t fall_drift_delay[88]; }; /* OBJ_WORK_D */
+    union { uint8_t work_e[88]; uint8_t fling_wait[88]; uint8_t pickup_count[88]; uint8_t pad_force_frames[88]; }; /* OBJ_WORK_E */
     union { uint8_t work_f[88]; uint8_t f3568[88]; uint8_t angle_hi[88]; uint8_t pad_forced[88]; }; /* OBJ_WORK_F */
     union { uint8_t work_g[88]; uint8_t f35c0[88]; uint8_t angle_lo[88]; uint8_t state_before_hit[88]; }; /* OBJ_WORK_G */
     union { uint8_t work_h[88]; uint8_t step_before_hit[88]; }; /* OBJ_WORK_H */
@@ -433,9 +433,11 @@ _Static_assert(ObjectTable_BASE + offsetof(ObjectTable, work_d) + 0 == OBJ_WORK_
 _Static_assert(ObjectTable_BASE + offsetof(ObjectTable, f34b8) + 0 == OBJ_WORK_D, "ObjectTable.f34b8 is not at OBJ_WORK_D");
 _Static_assert(ObjectTable_BASE + offsetof(ObjectTable, life_timer) + 0 == OBJ_WORK_D, "ObjectTable.life_timer is not at OBJ_WORK_D");
 _Static_assert(ObjectTable_BASE + offsetof(ObjectTable, fling_source) == OBJ_FLING_SOURCE, "ObjectTable.fling_source is not at OBJ_FLING_SOURCE");
+_Static_assert(ObjectTable_BASE + offsetof(ObjectTable, pickup_timer) == OBJ_PICKUP_TIMER, "ObjectTable.pickup_timer is not at OBJ_PICKUP_TIMER");
 _Static_assert(ObjectTable_BASE + offsetof(ObjectTable, fall_drift_delay) == OBJ_FALL_DRIFT_DELAY, "ObjectTable.fall_drift_delay is not at OBJ_FALL_DRIFT_DELAY");
 _Static_assert(ObjectTable_BASE + offsetof(ObjectTable, work_e) + 0 == OBJ_WORK_E, "ObjectTable.work_e is not at OBJ_WORK_E");
 _Static_assert(ObjectTable_BASE + offsetof(ObjectTable, fling_wait) == OBJ_FLING_WAIT, "ObjectTable.fling_wait is not at OBJ_FLING_WAIT");
+_Static_assert(ObjectTable_BASE + offsetof(ObjectTable, pickup_count) == OBJ_PICKUP_COUNT, "ObjectTable.pickup_count is not at OBJ_PICKUP_COUNT");
 _Static_assert(ObjectTable_BASE + offsetof(ObjectTable, pad_force_frames) == OBJ_PAD_FORCE_FRAMES, "ObjectTable.pad_force_frames is not at OBJ_PAD_FORCE_FRAMES");
 _Static_assert(ObjectTable_BASE + offsetof(ObjectTable, work_f) + 0 == OBJ_WORK_F, "ObjectTable.work_f is not at OBJ_WORK_F");
 _Static_assert(ObjectTable_BASE + offsetof(ObjectTable, f3568) + 0 == OBJ_WORK_F, "ObjectTable.f3568 is not at OBJ_WORK_F");

@@ -777,5 +777,11 @@
 #define SectionOrder 0x9B90 /* the stage's section record (zField83) by its step through the stage (zField82) */
 #define EffectColumnBlocks 0xA994 /* the second set-up's ScrollColumnBlocks of entry 0 by raster effect (StageSetUpScrollByEffect) */
 #define EffectSecondSetUp 0x88CE /* not zero when the section's raster effect has a second set-up (InitStage), by effect */
+#define MariaFootYByState 0xA118 /* the row below her the spike check reads, by state (MariaSpikeBelow) */
+#define MariaStartHandlers 0xA131 /* four words by zField8A: a new run, the health, the stand, the clear (MariaStart) */
+#define MariaAnimationSounds 0xC1A8 /* the list started on the player's channel, by animation (MariaAnimationSound) */
+#define MariaAnimationHitboxIndex 0xC200 /* hitbox index by animation (MariaFrame) */
+#define MariaAnimationHitbox 0xC258 /* her hitboxes, four bytes each: X and Y offsets, half width and half height (MariaFrame) */
+#define PlayerItemFirstUse 0x3BD6 /* not zero: the item in hand has not been used; its first use starts its sound list and script and clears this (set at the start and when the pause screen changes the item) */
 
 #endif

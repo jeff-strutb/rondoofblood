@@ -787,3 +787,10 @@ AE85,abs,PieceRecords18DA,overlay 18DA's tile piece records, 16 bytes by OBJ_304
 9B90,abs,SectionOrder,the stage's section record (zField83) by its step through the stage (zField82)
 A994,abs,EffectColumnBlocks,the second set-up's ScrollColumnBlocks of entry 0 by raster effect (StageSetUpScrollByEffect)
 88CE,abs,EffectSecondSetUp,not zero when the section's raster effect has a second set-up (InitStage), by effect
+# Maria's player overlay (01DD, $A000-$DFFF): her tables, and her routines' names for what they share.
+A118,abs,MariaFootYByState,the row below her the spike check reads, by state (MariaSpikeBelow)
+A131,abs,MariaStartHandlers,four words by zField8A: a new run, the health, the stand, the clear (MariaStart)
+C1A8,abs,MariaAnimationSounds,the list started on the player's channel, by animation (MariaAnimationSound)
+C200,abs,MariaAnimationHitboxIndex,hitbox index by animation (MariaFrame)
+C258,abs,MariaAnimationHitbox,her hitboxes, four bytes each: X and Y offsets, half width and half height (MariaFrame)
+3BD6,abs,PlayerItemFirstUse,not zero: the item in hand has not been used; its first use starts its sound list and script and clears this (set at the start and when the pause screen changes the item)

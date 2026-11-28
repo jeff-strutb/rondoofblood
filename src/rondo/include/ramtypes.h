@@ -1076,4 +1076,79 @@ _Static_assert(SavedColours_BASE + offsetof(SavedColours, lo) + 0 == SavedColour
 _Static_assert(SavedColours_BASE + offsetof(SavedColours, hi) + 0 == SavedColoursHi, "SavedColours.hi is not at SavedColoursHi");
 #define SAVCOL ((SavedColours *)SavedColours_BASE)
 
+/* PlayerVars: one struct at $3BC0, 1 element(s), 43 bytes */
+#define PlayerVars_BASE 0x3BC0
+#define PlayerVars_COUNT 1
+typedef struct {
+    uint8_t _gap_0000[3]; /* no name yet: $3BC0-$3BC2 */
+    uint8_t column_hit[5]; /* RichterColumnHit */
+    uint8_t column_row[5]; /* RichterColumnRow */
+    uint8_t column_x[5]; /* RichterColumnX */
+    uint8_t climb_reach; /* PlayerClimbReach */
+    uint8_t may_leave_top; /* PlayerMayLeaveTop */
+    uint8_t _gap_0014[1]; /* no name yet: $3BD4-$3BD4 */
+    uint8_t f3bd5; /* PlayerByte3BD5 */
+    uint8_t item_first_use; /* PlayerItemFirstUse */
+    uint8_t f3bd7; /* PlayerByte3BD7 */
+    uint8_t time_slow_mode; /* TimeSlowMode */
+    uint8_t pad_overrides[4]; /* PadOverrides */
+    uint8_t forced_press; /* PadForcedPress */
+    uint8_t invincible_timer; /* PlayerInvincibleTimer */
+    uint8_t forced_press_b; /* PadForcedPressB */
+    uint8_t item_ready; /* RichterItemReady */
+    uint8_t f3be1; /* PlayerByte3BE1 */
+    uint8_t f3be2; /* PlayerByte3BE2 */
+    uint8_t f3be3; /* PlayerByte3BE3 */
+    uint8_t _gap_0024[4]; /* no name yet: $3BE4-$3BE7 */
+    uint8_t f3be8; /* PlayerByte3BE8 */
+    uint8_t f3be9; /* PlayerByte3BE9 */
+    uint8_t _gap_002A[1]; /* no name yet: $3BEA-$3BEA */
+} PlayerVars;
+_Static_assert(sizeof(PlayerVars) == 0x2B, "PlayerVars size");
+_Static_assert(PlayerVars_BASE + offsetof(PlayerVars, column_hit) + 0 == RichterColumnHit, "PlayerVars.column_hit is not at RichterColumnHit");
+_Static_assert(PlayerVars_BASE + offsetof(PlayerVars, column_row) + 0 == RichterColumnRow, "PlayerVars.column_row is not at RichterColumnRow");
+_Static_assert(PlayerVars_BASE + offsetof(PlayerVars, column_x) + 0 == RichterColumnX, "PlayerVars.column_x is not at RichterColumnX");
+_Static_assert(PlayerVars_BASE + offsetof(PlayerVars, climb_reach) + 0 == PlayerClimbReach, "PlayerVars.climb_reach is not at PlayerClimbReach");
+_Static_assert(PlayerVars_BASE + offsetof(PlayerVars, may_leave_top) + 0 == PlayerMayLeaveTop, "PlayerVars.may_leave_top is not at PlayerMayLeaveTop");
+_Static_assert(PlayerVars_BASE + offsetof(PlayerVars, f3bd5) + 0 == PlayerByte3BD5, "PlayerVars.f3bd5 is not at PlayerByte3BD5");
+_Static_assert(PlayerVars_BASE + offsetof(PlayerVars, item_first_use) + 0 == PlayerItemFirstUse, "PlayerVars.item_first_use is not at PlayerItemFirstUse");
+_Static_assert(PlayerVars_BASE + offsetof(PlayerVars, f3bd7) + 0 == PlayerByte3BD7, "PlayerVars.f3bd7 is not at PlayerByte3BD7");
+_Static_assert(PlayerVars_BASE + offsetof(PlayerVars, time_slow_mode) + 0 == TimeSlowMode, "PlayerVars.time_slow_mode is not at TimeSlowMode");
+_Static_assert(PlayerVars_BASE + offsetof(PlayerVars, pad_overrides) + 0 == PadOverrides, "PlayerVars.pad_overrides is not at PadOverrides");
+_Static_assert(PlayerVars_BASE + offsetof(PlayerVars, forced_press) + 0 == PadForcedPress, "PlayerVars.forced_press is not at PadForcedPress");
+_Static_assert(PlayerVars_BASE + offsetof(PlayerVars, invincible_timer) + 0 == PlayerInvincibleTimer, "PlayerVars.invincible_timer is not at PlayerInvincibleTimer");
+_Static_assert(PlayerVars_BASE + offsetof(PlayerVars, forced_press_b) + 0 == PadForcedPressB, "PlayerVars.forced_press_b is not at PadForcedPressB");
+_Static_assert(PlayerVars_BASE + offsetof(PlayerVars, item_ready) + 0 == RichterItemReady, "PlayerVars.item_ready is not at RichterItemReady");
+_Static_assert(PlayerVars_BASE + offsetof(PlayerVars, f3be1) + 0 == PlayerByte3BE1, "PlayerVars.f3be1 is not at PlayerByte3BE1");
+_Static_assert(PlayerVars_BASE + offsetof(PlayerVars, f3be2) + 0 == PlayerByte3BE2, "PlayerVars.f3be2 is not at PlayerByte3BE2");
+_Static_assert(PlayerVars_BASE + offsetof(PlayerVars, f3be3) + 0 == PlayerByte3BE3, "PlayerVars.f3be3 is not at PlayerByte3BE3");
+_Static_assert(PlayerVars_BASE + offsetof(PlayerVars, f3be8) + 0 == PlayerByte3BE8, "PlayerVars.f3be8 is not at PlayerByte3BE8");
+_Static_assert(PlayerVars_BASE + offsetof(PlayerVars, f3be9) + 0 == PlayerByte3BE9, "PlayerVars.f3be9 is not at PlayerByte3BE9");
+#define PVARS ((PlayerVars *)PlayerVars_BASE)
+
+/* PlayerVarsB: one struct at $3BEF, 1 element(s), 17 bytes */
+#define PlayerVarsB_BASE 0x3BEF
+#define PlayerVarsB_COUNT 1
+typedef struct {
+    uint8_t _gap_0000[1]; /* no name yet: $3BEF-$3BEF */
+    uint8_t f3bf0; /* PlayerByte3BF0 */
+    uint8_t f3bf1; /* PlayerByte3BF1 */
+    uint8_t _gap_0003[2]; /* no name yet: $3BF2-$3BF3 */
+    uint8_t dying; /* PlayerDying */
+    uint8_t dying_timer; /* PlayerDyingTimer */
+    uint8_t anchor_object; /* PlayerAnchorObject */
+    uint8_t f3bf7; /* PlayerByte3BF7 */
+    uint8_t pad_history[4]; /* PadHistory */
+    uint8_t _gap_000D[4]; /* no name yet: $3BFC-$3BFF */
+} PlayerVarsB;
+_Static_assert(sizeof(PlayerVarsB) == 0x11, "PlayerVarsB size");
+_Static_assert(PlayerVarsB_BASE + offsetof(PlayerVarsB, f3bf0) + 0 == PlayerByte3BF0, "PlayerVarsB.f3bf0 is not at PlayerByte3BF0");
+_Static_assert(PlayerVarsB_BASE + offsetof(PlayerVarsB, f3bf1) + 0 == PlayerByte3BF1, "PlayerVarsB.f3bf1 is not at PlayerByte3BF1");
+_Static_assert(PlayerVarsB_BASE + offsetof(PlayerVarsB, dying) + 0 == PlayerDying, "PlayerVarsB.dying is not at PlayerDying");
+_Static_assert(PlayerVarsB_BASE + offsetof(PlayerVarsB, dying_timer) + 0 == PlayerDyingTimer, "PlayerVarsB.dying_timer is not at PlayerDyingTimer");
+_Static_assert(PlayerVarsB_BASE + offsetof(PlayerVarsB, anchor_object) + 0 == PlayerAnchorObject, "PlayerVarsB.anchor_object is not at PlayerAnchorObject");
+_Static_assert(PlayerVarsB_BASE + offsetof(PlayerVarsB, f3bf7) + 0 == PlayerByte3BF7, "PlayerVarsB.f3bf7 is not at PlayerByte3BF7");
+_Static_assert(PlayerVarsB_BASE + offsetof(PlayerVarsB, pad_history) + 0 == PadHistory, "PlayerVarsB.pad_history is not at PadHistory");
+#define PVARS2 ((PlayerVarsB *)PlayerVarsB_BASE)
+
 #endif

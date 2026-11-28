@@ -4406,9 +4406,7 @@ static StageRegs boss_walk_end_026d(StageRegs r)
     WR8(OBJ->tally_wait[0], 0);
     wr8(HitAttackFlags, 0);
     WR8(OBJ->work_f[0], 0);
-    jsr_push(0x862E);
-    r = StageSectionNext026D(r);
-    jsr_pop();
+    r = call_at(r, 0x862E, 0x8634);      /* each program sharing these bytes has its own section table */
     WR8(ZP->clear_kind, 0);
     WR8(OBJ->frame[0], 0);
     return r;

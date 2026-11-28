@@ -2065,3 +2065,51 @@ StageCameraStep026D:
 StageScrollSpeedsOff026D:
     jsr MapOverlayBank7_026D
     jmp ClearScrollSpeeds
+
+; @routine 026D:249 StageChooseClearKind026D
+; @run 6B:8249
+; WHAT IT DOES: Chooses how the cleared stage plays out (zClearKind) from zField8C: 0 gives 2, negative 4; else 1 for 1, 2, 7 to
+; $0A, $0D and $0E, and 3 for 3 to 6, $0B, $0C and $0F up; then sub-mode 3 with the scroll stopped and the forced
+; presses and time-slowing cleared (as StageChooseClearKind, 024D:260). Programs 031D, 043D, 064D,
+; 10DD, 122D, 1A2D, 1B8D and 1CED hold the same bytes.
+; HOW: CMP chain on zField8C read once; StageScrollSpeedsOff026D.
+; WAITS: no.
+; Entry: nothing. Exit: as StageScrollSpeedsOff026D and the stores leave them; A, N and Z as that left them.
+; Nothing the game does loads this program (codemap.unloaded_programs), so nothing is known to reach it.
+StageChooseClearKind026D:
+    lda z:zField8C
+    beq StageChooseClearKind026D_at0
+    bmi StageChooseClearKind026D_at1
+    ldx #$01
+    stx a:HitAttackFlags
+    cmp #$03
+    bcc StageChooseClearKind026D_at2
+    cmp #$07
+    bcc StageChooseClearKind026D_at3
+    cmp #$0B
+    beq StageChooseClearKind026D_at3
+    cmp #$0C
+    beq StageChooseClearKind026D_at3
+    cmp #$0F
+    bcs StageChooseClearKind026D_at3
+StageChooseClearKind026D_at2:
+    lda #$01
+    bra StageChooseClearKind026D_at4
+StageChooseClearKind026D_at3:
+    lda #$03
+    bra StageChooseClearKind026D_at4
+StageChooseClearKind026D_at1:
+    lda #$04
+    bra StageChooseClearKind026D_at4
+StageChooseClearKind026D_at0:
+    lda #$02
+StageChooseClearKind026D_at4:
+    sta z:zClearKind
+    lda #$03
+    sta z:zGameSubMode
+    stz z:zField85
+    jsr StageScrollSpeedsOff026D
+    stz a:PadForcedPress
+    stz a:PadForcedPressB
+    stz a:TimeSlowMode
+    rts

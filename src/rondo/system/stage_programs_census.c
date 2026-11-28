@@ -1637,3 +1637,26 @@ void abi_StageScrollSpeedsOff026D(void)
 {
     stage_regs_load_shim(StageScrollSpeedsOff026D(stage_regs_entry_shim()));
 }
+
+/*
+ * @routine 026D:249 StageChooseClearKind026D
+ * @run 6B:8249
+ * WHAT IT DOES: Chooses how the cleared stage plays out (zClearKind) from zField8C: 0 gives 2, negative 4; else 1 for 1, 2, 7 to
+ * $0A, $0D and $0E, and 3 for 3 to 6, $0B, $0C and $0F up; then sub-mode 3 with the scroll stopped and the forced
+ * presses and time-slowing cleared (as StageChooseClearKind, 024D:260). Programs 031D, 043D, 064D,
+ * 10DD, 122D, 1A2D, 1B8D and 1CED hold the same bytes.
+ * HOW: StageChooseClearKindAt (stage_flow.c), the body of 024D:260, with this program's JSR at $827E to its
+ * StageScrollSpeedsOff026D at $80AE, the C of the routine loaded there.
+ * WAITS: no.
+ * Entry: nothing. Exit: as StageScrollSpeedsOff026D and the stores leave them; A, N and Z as that left them.
+ * Nothing the game does loads this program (codemap.unloaded_programs), so nothing is known to reach it.
+ */
+StageRegs StageChooseClearKind026D(StageRegs r)
+{
+    return StageChooseClearKindAt(r, 0x8281, 0x80AE);
+}
+
+void abi_StageChooseClearKind026D(void)
+{
+    stage_regs_load_shim(StageChooseClearKind026D(stage_regs_entry_shim()));
+}

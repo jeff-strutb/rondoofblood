@@ -865,6 +865,13 @@ void abi_StageShowStartFrame(void)
  */
 StageRegs StageChooseClearKind(StageRegs r)
 {
+    return StageChooseClearKindAt(r, 0x8298, SCROLL_SPEEDS_OFF_RUN);
+}
+
+/* StageChooseClearKind's body, ret the address after its JSR to StageScrollSpeedsOff and scroll_off where that JSR
+ * goes: the builds of the overlay that hold these instructions at other addresses (stage_programs_census.c) pass their own. */
+StageRegs StageChooseClearKindAt(StageRegs r, uint16_t ret, uint16_t scroll_off)
+{
     uint8_t kind;
 
     r = loaded(r, RD8(ZP->field8c));
@@ -903,7 +910,7 @@ StageRegs StageChooseClearKind(StageRegs r)
     r = loaded(r, 0x03);
     WR8(ZP->game_sub_mode, 0x03);
     WR8(ZP->field85, 0);
-    r = call_to(r, 0x8298, SCROLL_SPEEDS_OFF_RUN);
+    r = call_to(r, ret, scroll_off);
     wr8(PadForcedPress, 0);
     wr8(PadForcedPressB, 0);
     wr8(TimeSlowMode, 0);

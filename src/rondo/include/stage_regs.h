@@ -42,4 +42,9 @@ StageRegs StagePauseToggleAt(StageRegs r, uint16_t ret);
 StageRegs StageScrollSpeedsOffAt(StageRegs r, uint16_t ret);
 StageRegs StageCameraStepAt(StageRegs r, uint16_t ret);
 
+
+/* system/stage_flow.c: StageChooseClearKind (024D:260) with ret the address after its JSR to StageScrollSpeedsOff
+ * and scroll_off the address that JSR goes to. */
+StageRegs StageChooseClearKindAt(StageRegs r, uint16_t ret, uint16_t scroll_off);
+
 #endif

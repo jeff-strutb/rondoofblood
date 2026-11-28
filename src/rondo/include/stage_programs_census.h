@@ -148,4 +148,7 @@ void abi_StageCameraStep026D(void);
 StageRegs StageScrollSpeedsOff026D(StageRegs r);
 void abi_StageScrollSpeedsOff026D(void);
 
+StageRegs StageChooseClearKind026D(StageRegs r);
+void abi_StageChooseClearKind026D(void);
+
 #endif

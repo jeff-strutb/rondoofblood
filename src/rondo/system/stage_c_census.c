@@ -1904,12 +1904,12 @@ StageRegs StageClearedWalkOut3CD(StageRegs r)
 {
     static const StepEntry steps[] = {
         { 0x846C, StageClearedWaitObjects3CD }, { 0x848A, StageClearedWalk3CD }, { 0x84C4, StageClearedWaitScroll3CD },
-        { 0x84CE, StageClearedWalkBack3CD }, { 0x8511, StageClearedWalkOn3CD }
+        { 0x84CE, StageClearedWalkBack3CD }
     };
 
     r = map_bank_7(r, 0x8458);
     r = vector_call(r, 0x845B, abi_VecStreamScrollStep);
-    return step_by_table(r, rd8(SUB3_STEP), 0x8462, steps, 5);
+    return step_by_table(r, rd8(SUB3_STEP), 0x8462, steps, 4);
 }
 
 void abi_StageClearedWalkOut3CD(void)
@@ -2266,11 +2266,11 @@ void abi_StageClearedWalkOn3CD(void)
 StageRegs StageClearedBossWalk3CD(StageRegs r)
 {
     static const StepEntry steps[] = {
-        { 0x85B3, StageBossScrollToDoor3CD }, { 0x85E3, StageBossWaitDoor3CD }, { 0x85FD, StageBossWalkOut3CD }
+        { 0x85B3, StageBossScrollToDoor3CD }, { 0x85E3, StageBossWaitDoor3CD }
     };
 
     CALL(0x85A6, StageFadeTimer3CD(r));
-    return step_by_table(r, rd8(SUB3_STEP), 0x85AD, steps, 3);
+    return step_by_table(r, rd8(SUB3_STEP), 0x85AD, steps, 2);
 }
 
 void abi_StageClearedBossWalk3CD(void)

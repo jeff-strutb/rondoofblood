@@ -55,12 +55,12 @@ StateTableHurtFlag_at0:
 
 ; @routine 0B4B:5F2 EnterState0FWhenFlagged
 ; @run 70:B5F2
-; WHAT IT DOES: When bit 7 of OBJ_31A0 is set and the state is not $0F, plays sound $B7, clears the animation and the speed and goes to state $0F with OBJ_SUBSTATE 0.
+; WHAT IT DOES: When bit 7 of OBJ_HIT_STATUS is set and the state is not $0F, plays sound $B7, clears the animation and the speed and goes to state $0F with OBJ_SUBSTATE 0.
 ; HOW: Two tests, SoundCommand, stores.
 ; WAITS: no.
 ; Entry: X object, Y kept for the sound. Exit: as the last instruction that ran. The arm past the flag test ran in no script; the draft stops there.
 EnterState0FWhenFlagged:
-    lda a:OBJ_31A0,x
+    lda a:OBJ_HIT_STATUS,x
     and #$80
     beq EnterState0FWhenFlagged_at0
     lda a:OBJ_STATE,x

@@ -215,7 +215,7 @@ bool RecordObjectEvent(uint8_t object, uint8_t *stored, uint8_t *event, uint8_t 
 {
     uint8_t flags, bit;
 
-    flags = RD8(OBJ->flags[object]);
+    flags = RD8(OBJ->scroll_band[object]);
     bit = (uint8_t)(flags & 0x80);
     if (bit == 0) {
         return false;

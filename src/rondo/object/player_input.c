@@ -129,7 +129,7 @@ static AnimationStep animation_exit(uint8_t a, uint8_t nz, bool c, bool y_set, u
  * @routine 01BB:69C RichterAnimationPoint
  * @run 6D:B69C
  * WHAT IT DOES: Points zTemp00-01 at the list of the animation in play and gives Y twice the step in play.
- * HOW: OBJ_FIELDS_2EE0 doubled indexes AnimationLists; the step in OBJ_FLAGS_2F38 doubled.
+ * HOW: OBJ_FIELDS_2EE0 doubled indexes AnimationLists; the step in OBJ_SCROLL_BAND doubled.
  * WAITS: no.
  * Entry: nothing. Exit: A and Y twice the step, N and Z from it, C the step's bit 7. X and V kept.
  */
@@ -142,7 +142,7 @@ static ObjectListStep animation_point(uint16_t lists)
 
     WR8(ZP->temp00, rd8((uint16_t)(lists + doubled)));
     WR8(ZP->temp01, rd8((uint16_t)(lists + 1 + doubled)));
-    step = RD8(OBJ->flags[0]);
+    step = RD8(OBJ->scroll_band[0]);
     r.y = (uint8_t)(step << 1);
     r.carry = (step & 0x80) != 0;
     return r;
@@ -222,7 +222,7 @@ static AnimationStep animation_read_entry(const AnimationLayout *layout)
         y = animation_list_and_step(layout, &carry);
         jsr_pop();
         time = RD8_PTR_Y(ZP->temp00, y);
-        WR8(OBJ->f2f90[0], time);
+        WR8(OBJ->hurt_timer[0], time);
         if (time == ANIMATION_STOPPED) {
             result = animation_exit(ANIMATION_STOPPED, 0, true, true, y);
             result.how = FRAME_END_MARK;
@@ -232,7 +232,7 @@ static AnimationStep animation_read_entry(const AnimationLayout *layout)
         if (time != ANIMATION_LOOPS) {
             break;
         }
-        WR8(OBJ->flags[0], 0);
+        WR8(OBJ->scroll_band[0], 0);
     }
     y++;
     frame = RD8_PTR_Y(ZP->temp00, y);
@@ -305,7 +305,7 @@ static AnimationStep animation_running(const AnimationLayout *layout)
     jsr_push(layout->running_ret);
     tick = animation_tick(layout);
     jsr_pop();
-    time = RD8(OBJ->f2f90[0]);
+    time = RD8(OBJ->hurt_timer[0]);
     return animation_exit(time, (uint8_t)(time - ANIMATION_STOPPED), time >= ANIMATION_STOPPED, tick.y_set, tick.y);
 }
 
@@ -329,7 +329,7 @@ void abi_RichterAnimationRunning(void)
  * @run 6D:B669
  * WHAT IT DOES: Counts down the frame on show; at zero moves to the next step of the list.
  * A timer of $FF means the animation has stopped.
- * HOW: The timer in OBJ_2F90, the step in OBJ_FLAGS_2F38, the frame shown in OBJ_FRAME.
+ * HOW: The timer in OBJ_HURT_TIMER, the step in OBJ_SCROLL_BAND, the frame shown in OBJ_FRAME.
  * WAITS: no.
  * Entry: nothing. Exit: A the frame or $FF; Y twice the step, plus one with a frame; C and N, Z
  * from what was read. X and V kept. Clobbers zTemp00-01.
@@ -337,16 +337,16 @@ void abi_RichterAnimationRunning(void)
 static AnimationStep animation_tick(const AnimationLayout *layout)
 {
     AnimationStep result;
-    uint8_t time = RD8(OBJ->f2f90[0]);
+    uint8_t time = RD8(OBJ->hurt_timer[0]);
     uint8_t left, y, frame;
     bool carry;
 
     if (time == ANIMATION_STOPPED) {
         return animation_exit(ANIMATION_STOPPED, 0, true, false, 0);
     }
-    left = DEC8(OBJ->f2f90[0]);
+    left = DEC8(OBJ->hurt_timer[0]);
     if (left == 0) {
-        INC8(OBJ->flags[0]);
+        INC8(OBJ->scroll_band[0]);
         return animation_read_entry(layout);
     }
     jsr_push(layout->tick_ret);
@@ -418,7 +418,7 @@ void abi_RichterAnimationTick(void)
 static AnimationStep set_animation(const AnimationLayout *layout, uint8_t animation)
 {
     WR8(OBJ->fields_2ee0[0], animation);
-    WR8(OBJ->flags[0], 0);
+    WR8(OBJ->scroll_band[0], 0);
     return animation_read_entry(layout);
 }
 

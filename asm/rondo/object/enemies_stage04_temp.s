@@ -215,7 +215,7 @@ ChangeToType9B:
 ; WAITS: no.
 ; Entry: X object. Exit: A the masked bit, or 6 when entered; N, Z from it; X, Y and C kept.
 EnterState6IfFlagged:
-    lda a:OBJ_31A0,x
+    lda a:OBJ_HIT_STATUS,x
     and #$80
     beq EnterState6IfFlagged_at0
     lda #$06
@@ -458,7 +458,7 @@ SpawnSixPiecesA_at0:
 ; last add; Y 11; X kept.
 LoadRecordFacingAndRandomFrame:
     jsr VecLoadObjectRecord
-    lda a:OBJ_3040,x
+    lda a:OBJ_START_ARG,x
     and #$01
     sta a:OBJ_FACING_LEFT,x
     jsr VecNextRandom
@@ -664,7 +664,7 @@ BurstWhenFlaggedHit:
     lda a:OBJ_STATE,x
     cmp #$06
     beq BurstWhenFlaggedHit_at0
-    lda a:OBJ_31A0,x
+    lda a:OBJ_HIT_STATUS,x
     and #$80
     beq BurstWhenFlaggedHit_at0
     lda #$8B
@@ -692,20 +692,20 @@ BurstWhenFlaggedHit_at0:
 ChargeWhenPlayerNear:
     cly
     jsr StepFramesFacingPlayer
-    lda a:OBJ_3040,x
+    lda a:OBJ_START_ARG,x
     bmi ChargeWhenPlayerNear_at0
     jsr VecDistanceXToPlayer
     cmp #$68
     bcs ChargeWhenPlayerNear_at0
     stz a:OBJ_ANIM_STEP,x
     stz a:OBJ_ANIM_TIMER,x
-    lda a:OBJ_FLAGS_2F38,x
+    lda a:OBJ_SCROLL_BAND,x
     and #$80
-    sta a:OBJ_FLAGS_2F38,x
+    sta a:OBJ_SCROLL_BAND,x
     ldy a:OBJ_FACING_LEFT,x
     lda a:$B3E7,y
     sta a:OBJ_VX_HI,x
-    lda a:OBJ_3040,x
+    lda a:OBJ_START_ARG,x
     lsr a
     asl a
     tay

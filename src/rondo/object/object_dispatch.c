@@ -141,8 +141,8 @@ BlinkCheck SetBlinkFlash(uint8_t slot)
     BlinkCheck result;
     uint8_t timer, wave;
 
-    WR8(OBJ->flash_flags[slot], 0);
-    timer = RD8(OBJ->timer[slot]);
+    WR8(OBJ->sprite_attr[slot], 0);
+    timer = RD8(OBJ->invuln_timer[slot]);
     result.value = timer;
     if (timer < BLINK_LIMIT) {
         result.end = BLINK_TIMER_LOW;
@@ -154,7 +154,7 @@ BlinkCheck SetBlinkFlash(uint8_t slot)
         result.end = BLINK_WAVE_BIT;
         return result;
     }
-    WR8(OBJ->flash_flags[slot], BLINK_FLAG);
+    WR8(OBJ->sprite_attr[slot], BLINK_FLAG);
     result.end = BLINK_SET;
     return result;
 }
@@ -398,9 +398,9 @@ ReleaseResult StepReleaseOnHit(uint8_t slot, uint8_t y)
         RecordObjectEvent(slot, &stored, &event, &byte);
         jsr_pop();
     }
-    kind = RD8(OBJ->next_kind[slot]);
+    kind = RD8(OBJ->start_arg[slot]);
     WR8(OBJ->kind[slot], kind);
-    WR8(OBJ->timer[slot], 0x10);
+    WR8(OBJ->invuln_timer[slot], 0x10);
     WR8(OBJ->state[slot], 0);
     jsr_push(0xA35D);
     found_slot = FindFreeSlotFrom50(&result.last_type, &found);
@@ -489,7 +489,7 @@ FallingItem StepFallingItem(uint8_t slot, uint8_t y)
     jsr_push(0xA393);
     ApplyVelocityY(slot);
     jsr_pop();
-    WR8(OBJ->flash_flags[slot], 0);
+    WR8(OBJ->sprite_attr[slot], 0);
     kind = RD8(OBJ->kind[slot]);
     sum = sub_bytes(kind, 0x9B, true);
     index = (uint8_t)(sum.value << 1);
@@ -569,7 +569,7 @@ KindChange ChangeKindFromTable(uint8_t slot, uint8_t y)
     result.cleared = false;
     WR8(OBJ->kind[slot], next);
     WR8(OBJ->state[slot], 0);
-    WR8(OBJ->timer[slot], 0x60);
+    WR8(OBJ->invuln_timer[slot], 0x60);
     jsr_push(0xA622);
     CopyObjectPlace(0, slot);
     jsr_pop();

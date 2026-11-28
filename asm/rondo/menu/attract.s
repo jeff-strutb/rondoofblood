@@ -256,10 +256,10 @@ ScriptPlaceObjectKind2:
     jsr ScriptPlaceObject
     iny
     lda (zScriptPtr),y
-    sta a:OBJ_3040,x
+    sta a:OBJ_START_ARG,x
     iny
     lda (zScriptPtr),y
-    sta a:OBJ_2A10,x
+    sta a:OBJ_SPRITE_SET,x
     lda #$02
     sta a:OBJ_KIND,x
     jmp ScriptAdvance
@@ -280,7 +280,7 @@ ScriptPlaceObjectFrame:
     sta a:OBJ_FRAME,x
     iny
     lda (zScriptPtr),y
-    sta a:OBJ_2A10,x
+    sta a:OBJ_SPRITE_SET,x
     jmp ScriptAdvance
 
 ; @routine 00C2:0F7 ClearAllObjects
@@ -335,7 +335,7 @@ ScriptPlaceTitleObjectA:
     jsr VecClearObject
     inc a:OBJ_KIND,x
     lda (zScriptPtr),y
-    sta a:OBJ_3040,x
+    sta a:OBJ_START_ARG,x
     iny
     lda (zScriptPtr),y
     sta a:OBJ_34B8,x
@@ -360,7 +360,7 @@ ScriptPlaceTitleObjectB:
     jsr VecClearObject
     inc a:OBJ_KIND,x
     lda (zScriptPtr),y
-    sta a:OBJ_3040,x
+    sta a:OBJ_START_ARG,x
     iny
     lda (zScriptPtr),y
     sta a:OBJ_34B8,x
@@ -378,13 +378,13 @@ ScriptPlaceTitleObjectB:
 ; @run 6B:89B0
 ; WHAT IT DOES: An object handler: once the object has no state yet, plays the animation the
 ; object's next kind names until it ends, then moves the object to its next state.
-; HOW: OBJ->state nonzero returns; ObjectFrameList with OBJ->next_kind; at its end (A 0), state +1.
+; HOW: OBJ->state nonzero returns; ObjectFrameList with OBJ->start_arg; at its end (A 0), state +1.
 ; WAITS: no.
 ; Entry: X the object. Exit: as the last test left them.
 PlayFrameListOnce:
     lda a:OBJ_STATE,x
     bne PlayFrameListOnce_at0
-    lda a:OBJ_3040,x
+    lda a:OBJ_START_ARG,x
     jsr ObjectFrameList
     bne PlayFrameListOnce_at0
     inc a:OBJ_STATE,x
@@ -404,7 +404,7 @@ AnimateAndCueSeven:
     lda a:OBJ_STATE,x
     bne AnimateAndCueSeven_at0
     lda #$03
-    sta a:OBJ_2A10,x
+    sta a:OBJ_SPRITE_SET,x
     inc a:OBJ_STATE,x
 AnimateAndCueSeven_at0:
     cla
@@ -430,7 +430,7 @@ AnimateList1AndCueSeven:
     lda a:OBJ_STATE,x
     bne AnimateList1AndCueSeven_at0
     lda #$03
-    sta a:OBJ_2A10,x
+    sta a:OBJ_SPRITE_SET,x
     inc a:OBJ_STATE,x
 AnimateList1AndCueSeven_at0:
     lda #$01
@@ -449,7 +449,7 @@ AnimateAndCueNine:
     lda a:OBJ_STATE,x
     bne AnimateAndCueNine_at0
     lda #$03
-    sta a:OBJ_2A10,x
+    sta a:OBJ_SPRITE_SET,x
     inc a:OBJ_STATE,x
 AnimateAndCueNine_at0:
     lda a:ScrollXHi
@@ -481,7 +481,7 @@ AnimateList9AndCueNine:
     lda a:OBJ_STATE,x
     bne AnimateList9AndCueNine_at0
     lda #$03
-    sta a:OBJ_2A10,x
+    sta a:OBJ_SPRITE_SET,x
     inc a:OBJ_STATE,x
 AnimateList9AndCueNine_at0:
     lda a:ScrollXHi
@@ -692,7 +692,7 @@ BreakApartOnFrame:
     lda a:OBJ_STATE,x
     bne BreakApartOnFrame_at0
     lda #$03
-    sta a:OBJ_2A10,x
+    sta a:OBJ_SPRITE_SET,x
 BreakApartOnFrame_at2:
     inc a:OBJ_STATE,x
     rts
@@ -753,7 +753,7 @@ ScatterDebris_at0:
     sta a:OBJ_FRAME,x
     iny
     lda #$03
-    sta a:OBJ_2A10,x
+    sta a:OBJ_SPRITE_SET,x
     lda #$08
     sta a:OBJ_KIND,x
     dex
@@ -809,7 +809,7 @@ IntroSceneObject:
     lda #$2F
     sta a:OBJ_FRAME,x
     lda #$03
-    sta a:OBJ_2A10,x
+    sta a:OBJ_SPRITE_SET,x
     inc a:ScrollXHi
     inc a:ScrollYHi
     phx
@@ -876,7 +876,7 @@ RiseAndFallObject:
     lda a:OBJ_STATE,x
     bne RiseAndFallObject_at0
     lda #$03
-    sta a:OBJ_2A10,x
+    sta a:OBJ_SPRITE_SET,x
     inc a:ScrollXHi
     lda #$FF
     sta a:OBJ_VY_HI,x
@@ -1050,7 +1050,7 @@ FlingObjectRight:
     lda a:OBJ_STATE,x
     bne FlingObjectRight_at0
     lda #$03
-    sta a:OBJ_2A10,x
+    sta a:OBJ_SPRITE_SET,x
     lda #$70
     sta a:OBJ_VX_LO,x
 FlingObjectRight_at5:
@@ -1100,7 +1100,7 @@ FlingObjectLeft:
     lda a:OBJ_STATE,x
     bne FlingObjectLeft_at1
     lda #$03
-    sta a:OBJ_2A10,x
+    sta a:OBJ_SPRITE_SET,x
     lda #$90
     sta a:OBJ_VX_LO,x
     dec a:OBJ_VX_HI,x

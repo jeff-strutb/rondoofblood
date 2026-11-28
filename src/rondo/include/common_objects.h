@@ -279,7 +279,7 @@ typedef struct {
     bool above;           /* the state was above 4 (its compare's carry) */
 } State4Result;
 
-/* An object not yet in state 4 whose OBJ_31A0 bit 7 is set restarts its animation in state 4. */
+/* An object not yet in state 4 whose OBJ_HIT_STATUS bit 7 is set restarts its animation in state 4. */
 State4Result EnterStateFourOnFlag(uint8_t slot);
 
 /* How a table lookup by animation frame ended: what the wrapper needs of the last values. */

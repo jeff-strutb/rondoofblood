@@ -1095,7 +1095,7 @@ static Regs fall_moves(Regs r, uint16_t at, bool right)
     r = map_banks_5_6(r, at);
     r = orig_shim(r, (uint16_t)(at + 3), 0xA01B);
     r = orig_shim(r, (uint16_t)(at + 6), 0xA012);
-    r = loaded(r, RD8(OBJ->flash_flags[24]));
+    r = loaded(r, RD8(OBJ->sprite_attr[24]));
     if (r.a != 0) {
         r = loaded(r, RD8(OBJ->x_hi[8]));
         r = compared(r, right ? 0xF0 : 0x10);
@@ -2022,12 +2022,12 @@ StageRegs StageClearedWalkOff152D(StageRegs r)
     WR8(OBJ->x_hi[8], sum.value);
     if (sum.value == 0) {
         step = rd8((uint16_t)(0x82F0 + side));
-        value = RD8(OBJ->flash_flags[24]);
+        value = RD8(OBJ->sprite_attr[24]);
         sum = add_bytes(step, value, false);
         r = loaded(r, sum.value);
         r.c = sum.carry;
         r.v = sum.overflow;
-        WR8(OBJ->flash_flags[24], sum.value);
+        WR8(OBJ->sprite_attr[24], sum.value);
     }
     side = walk_side();
     r.y = side;
@@ -2731,7 +2731,7 @@ StageRegs StageLoadScreen152D(StageRegs r)
         r = screen_byte(r);
         WR8(OBJ->x_frac[48], r.a);
         WR8(OBJ->x_lo[64], 0);
-        WR8(OBJ->flash_flags[24], 0);
+        WR8(OBJ->sprite_attr[24], 0);
         r = loaded(r, RD8(ZP->character));
         if (r.a != 0) {
             r = loaded(r, RD8(OBJ->substate[24]));
@@ -2897,7 +2897,7 @@ static Regs unpack_door(Regs r, uint16_t ret, bool third)
     }
     r.c = carry;
     r = loaded(r, (uint8_t)(rolled & 0x03));
-    WR8(OBJ->f32a8[32 + slot], r.a);
+    WR8(OBJ->health[32 + slot], r.a);
     return r;
 }
 
@@ -2910,14 +2910,14 @@ static Regs take_door(Regs r, bool by_pad)
 
     WR8(OBJ->f3778[24 + slot], 0);
     if (by_pad) {
-        r.y = RD8(OBJ->f32a8[32 + slot]);
+        r.y = RD8(OBJ->health[32 + slot]);
         r.nz = r.y;
         r = loaded(r, rd8((uint16_t)(PadOverrides + r.y)));
     } else {
         r = loaded(r, rd8(PlayerByte3BD7));
     }
     if (r.a != 0) {
-        r = loaded(r, RD8(OBJ->status_flags[80 + slot]));
+        r = loaded(r, RD8(OBJ->hit_status[80 + slot]));
         if (r.a != 0) {
             r = compared(r, 0x05);
             if (!r.c) {
@@ -2931,7 +2931,7 @@ static Regs take_door(Regs r, bool by_pad)
             }
         }
     }
-    WR8(OBJ->status_flags[80 + slot], 0);
+    WR8(OBJ->hit_status[80 + slot], 0);
     return r;
 }
 
@@ -3344,15 +3344,15 @@ StageRegs StageBossBarStep152D(StageRegs r)
     if (r.a != 0) {
         return StageBossBarFlash152D(r);
     }
-    health = RD8(OBJ->f30f0[56]);
+    health = RD8(OBJ->loop_flags[56]);
     r = loaded(r, health);
     if ((health & 0x80) != 0) {
         push8(r.a);
-        WR8(OBJ->f30f0[56], 0);
+        WR8(OBJ->loop_flags[56], 0);
         CALL(0x8902, StageBossBarStep152D(r));
         health = pull8();
         r = loaded(r, health);
-        WR8(OBJ->f30f0[56], health);
+        WR8(OBJ->loop_flags[56], health);
         r.y = rd8(BOSS_BAR);
         r.nz = r.y;
         if (r.y != 0) {
@@ -4746,7 +4746,7 @@ StageRegs ContinueStart152D(StageRegs r)
         r.c = true;
         r.x = RD8(ZP->temp10);
         r = orig_shim(r, 0x8F34, 0x4054);
-        WR8(OBJ->f32a8[32 + r.x], (uint8_t)(r.x << 1));
+        WR8(OBJ->health[32 + r.x], (uint8_t)(r.x << 1));
         sum = add_bytes(r.x, 0x0D, false);
         WR8(OBJ->sprite_set[72 + r.x], sum.value);
         WR8(OBJ->sprite_set[r.x], 0x05);
@@ -4790,7 +4790,7 @@ StageRegs ContinueReveal152D(StageRegs r)
 {
     r = loaded(r, (uint8_t)(rd8(BiosJoyTrigger) & 0x08));
     if (r.a != 0) {
-        r = loaded(r, RD8(OBJ->f32a8[39]));
+        r = loaded(r, RD8(OBJ->health[39]));
         r = compared(r, 0x11);
         if (r.nz == 0) {
             r.nz = INC8(ZP->game_sub_mode);
@@ -4803,12 +4803,12 @@ StageRegs ContinueReveal152D(StageRegs r)
         r.x--;
         r.nz = r.x;
     } while ((r.x & 0x80) == 0);
-    r = loaded(r, RD8(OBJ->f32a8[39]));
+    r = loaded(r, RD8(OBJ->health[39]));
     r = compared(r, 0x10);
     if (r.nz != 0) {
         return r;
     }
-    r.nz = INC8(OBJ->f32a8[39]);
+    r.nz = INC8(OBJ->health[39]);
     return r;
 }
 
@@ -4873,7 +4873,7 @@ StageRegs ContinueRowStep152D(StageRegs r)
 
     r = loaded(r, RD8(OBJ->substate[24 + row]));
     if (r.a == 0) {
-        r = loaded(r, RD8(OBJ->f32a8[32 + row]));
+        r = loaded(r, RD8(OBJ->health[32 + row]));
         if (r.a == 0) {
             r.nz = INC8(OBJ->substate[24 + row]);
             return r;
@@ -4884,10 +4884,10 @@ StageRegs ContinueRowStep152D(StageRegs r)
         r.c = sum.carry;
         r.v = sum.overflow;
         WR8(OBJ->x_hi[8 + row], sum.value);
-        r.nz = DEC8(OBJ->f32a8[32 + row]);
+        r.nz = DEC8(OBJ->health[32 + row]);
         return r;
     }
-    r = loaded(r, RD8(OBJ->f32a8[32 + row]));
+    r = loaded(r, RD8(OBJ->health[32 + row]));
     r = compared(r, 0x10);
     if (r.c) {
         return r;
@@ -4902,13 +4902,13 @@ StageRegs ContinueRowStep152D(StageRegs r)
     r.c = sum.carry;
     r.v = sum.overflow;
     WR8(ZP->temp01, sum.value);
-    r = loaded(r, RD8(OBJ->f32a8[32 + row]));
+    r = loaded(r, RD8(OBJ->health[32 + row]));
     r = compared(r, 0x0F);
     if (r.nz != 0) {
         r = orig_shim(r, 0x8FC7, 0x4021);
         value = RD8(ZP->temp00);
         sum = add_bytes(value, 0x0E, false);
-        value = RD8(OBJ->f32a8[32 + r.x]);
+        value = RD8(OBJ->health[32 + r.x]);
         sum = sub_bytes(sum.value, value, true);
         WR8(VDC->data_lo, sum.value);
         r = loaded(r, RD8(ZP->temp01));
@@ -4945,7 +4945,7 @@ StageRegs ContinueRowStep152D(StageRegs r)
     r = loaded(r, 0x3F);
     CALL(0x900E, ContinueRowDraw152D(r));
     r.nz = INC8(OBJ->x_frac[48 + r.x]);
-    r.nz = INC8(OBJ->f32a8[32 + r.x]);
+    r.nz = INC8(OBJ->health[32 + r.x]);
     return r;
 }
 
@@ -4981,7 +4981,7 @@ StageRegs ContinueRowDraw152D(StageRegs r)
     r = orig_shim(r, 0x901A, 0x4021);
     value = RD8(ZP->temp00);
     sum = add_bytes(value, RD8(ZP->temp10), false);
-    value = RD8(OBJ->f32a8[32 + r.x]);
+    value = RD8(OBJ->health[32 + r.x]);
     sum = sub_bytes(sum.value, value, true);
     WR8(VDC->data_lo, sum.value);
     r = loaded(r, RD8(ZP->temp01));
@@ -4990,7 +4990,7 @@ StageRegs ContinueRowDraw152D(StageRegs r)
     WR8(VDC->data_hi, r.a);
     r = orig_shim(r, 0x902E, 0x4027);
     value = RD8(ZP->temp10);
-    sum = sub_bytes(value, RD8(OBJ->f32a8[32 + r.x]), true);
+    sum = sub_bytes(value, RD8(OBJ->health[32 + r.x]), true);
     r.c = (sum.value & 0x80) != 0;
     r.v = sum.overflow;
     r.y = (uint8_t)(sum.value << 1);
@@ -5159,17 +5159,17 @@ StageRegs ContinueBlink152D(StageRegs r)
     if (r.a != 0) {
         return r;
     }
-    r.y = RD8(OBJ->f32a8[40]);
+    r.y = RD8(OBJ->health[40]);
     r = loaded(r, rd8((uint16_t)(0x90EE + r.y)));
     r.x = 0;
     r = orig_shim(r, 0x90E0, 0x4018);
-    r.nz = INC8(OBJ->f32a8[40]);
-    r = loaded(r, RD8(OBJ->f32a8[40]));
+    r.nz = INC8(OBJ->health[40]);
+    r = loaded(r, RD8(OBJ->health[40]));
     r = compared(r, 0x0A);
     if (!r.c) {
         return r;
     }
-    WR8(OBJ->f32a8[40], 0);
+    WR8(OBJ->health[40], 0);
     return r;
 }
 
@@ -6318,7 +6318,7 @@ static bool test_hit_boxes(Regs *r)
         *r = loaded(*r, RD8(OBJ->f3778[24 + r->x]));
         if (r->a != 0) {
             r->nz = DEC8(OBJ->f3778[24 + r->x]);
-            WR8(OBJ->status_flags[80 + r->x], 0);
+            WR8(OBJ->hit_status[80 + r->x], 0);
         }
         return true;
     }
@@ -6334,12 +6334,12 @@ static bool test_event_object(Regs *r)
     Sum sum;
     uint8_t x = r->x, offset, value;
 
-    WR8(OBJ->status_flags[80 + x], 0);
+    WR8(OBJ->hit_status[80 + x], 0);
     offset = signed_offset(ADDR_OF8(OBJ->f3670[x]));
     value = RD8(OBJ->x_hi[8 + x]);
     sum = add_bytes(offset, value, false);
     wr8(TEST_X, sum.value);
-    value = RD8(OBJ->flash_flags[24 + x]);
+    value = RD8(OBJ->sprite_attr[24 + x]);
     sum = add_bytes(value, RD8(ZP->temp00), sum.carry);
     *r = loaded(*r, sum.value);
     r->c = sum.carry;
@@ -6378,7 +6378,7 @@ static Regs hit_loop(Regs r, HitEntry entry)
         if (entry == HIT_AT_TIMER) {
             r = loaded(r, RD8(OBJ->f3778[24 + r.x]));
             if (r.a != 0) {
-                WR8(OBJ->status_flags[80 + r.x], 0);
+                WR8(OBJ->hit_status[80 + r.x], 0);
                 r.nz = DEC8(OBJ->f3778[24 + r.x]);
             }
         }
@@ -6581,7 +6581,7 @@ StageRegs StagePlaceHitBox152D(StageRegs r)
     offset = RD8(OBJ->f3670[x]);
     sum = add_bytes(value, offset, false);
     wr8((uint16_t)(HIT_X + x), sum.value);
-    value = RD8(OBJ->flash_flags[24 + x]);
+    value = RD8(OBJ->sprite_attr[24 + x]);
     sum = add_bytes(value, RD8(ZP->temp00), sum.carry);
     wr8((uint16_t)(HIT_HI + x), sum.value);
     WR8(ZP->temp00, 0);
@@ -6689,8 +6689,8 @@ void abi_StageHitHandler152D(void)
 StageRegs HitKindSpawn152D(StageRegs r)
 {
     r = loaded(r, rd8((uint16_t)(ADDR_OF8(OBJ->angle_hi[48]) + r.y)));
-    WR8(OBJ->status_flags[80 + r.x], r.a);
-    r = loaded(r, RD8(OBJ->status_flags[80]));
+    WR8(OBJ->hit_status[80 + r.x], r.a);
+    r = loaded(r, RD8(OBJ->hit_status[80]));
     if (r.a != 0) {
         return r;
     }
@@ -6698,10 +6698,10 @@ StageRegs HitKindSpawn152D(StageRegs r)
     if (r.a != 0) {
         return r;
     }
-    r = loaded(r, RD8(OBJ->status_flags[8 + r.x]));
-    WR8(OBJ->status_flags[80], r.a);
-    r = loaded(r, RD8(OBJ->f3148[24 + r.x]));
-    WR8(OBJ->f30f0[40], r.a);
+    r = loaded(r, RD8(OBJ->hit_status[8 + r.x]));
+    WR8(OBJ->hit_status[80], r.a);
+    r = loaded(r, RD8(OBJ->pace[24 + r.x]));
+    WR8(OBJ->loop_flags[40], r.a);
     return r;
 }
 
@@ -6770,7 +6770,7 @@ void abi_HitKindFacing152D(void)
 StageRegs HitKindState152D(StageRegs r)
 {
     r = loaded(r, rd8((uint16_t)(ADDR_OF8(OBJ->angle_hi[48]) + r.y)));
-    WR8(OBJ->status_flags[80 + r.x], r.a);
+    WR8(OBJ->hit_status[80 + r.x], r.a);
     return r;
 }
 
@@ -6820,7 +6820,7 @@ static Regs probe_point(Regs r)
     WR8(ZP->temp00, sum.value);
     r.y++;
     offset = RD8_PTR_Y(ZP->temp0c, r.y);
-    value = RD8(OBJ->flash_flags[24 + r.x]);
+    value = RD8(OBJ->sprite_attr[24 + r.x]);
     sum = add_bytes(offset, value, sum.carry);
     WR8(ZP->temp01, sum.value);
     r.y++;
@@ -7271,7 +7271,7 @@ StageRegs GateWaitPlayer152D(StageRegs r)
     if (r.a == 0) {
         return r;
     }
-    r = loaded(r, RD8(OBJ->status_flags[80 + r.x]));
+    r = loaded(r, RD8(OBJ->hit_status[80 + r.x]));
     if (r.a == 0) {
         return r;
     }
@@ -7286,7 +7286,7 @@ StageRegs GateWaitPlayer152D(StageRegs r)
     r.nz = INC8(OBJ->substate[24 + r.x]);
     WR8(OBJ->f3300[16 + r.x], 0);
     r = loaded(r, 0x04);
-    WR8(OBJ->f32a8[32 + r.x], 0x04);
+    WR8(OBJ->health[32 + r.x], 0x04);
     r = loaded(r, (uint8_t)(RD8(OBJ->fields_2ee0[64 + r.x]) & 0xF0));
     if (r.a == 0) {
         return r;
@@ -7353,7 +7353,7 @@ static Regs gate_frame(Regs r, uint16_t ret)
     uint8_t base, count, step;
 
     r = loaded(r, 0x04);
-    WR8(OBJ->f32a8[32 + r.x], 0x04);
+    WR8(OBJ->health[32 + r.x], 0x04);
     r.y = (uint8_t)(RD8(OBJ->fields_2ee0[64 + r.x]) & 0x01);
     base = rd8((uint16_t)(0x9927 + r.y));
     count = RD8(OBJ->f3300[16 + r.x]);
@@ -7392,7 +7392,7 @@ static Regs gate_frame(Regs r, uint16_t ret)
  */
 StageRegs GateOpen152D(StageRegs r)
 {
-    r.nz = DEC8(OBJ->f32a8[32 + r.x]);
+    r.nz = DEC8(OBJ->health[32 + r.x]);
     if (r.nz != 0) {
         return r;
     }
@@ -7438,7 +7438,7 @@ StageRegs GateWaitClear152D(StageRegs r)
     }
     r.nz = INC8(OBJ->substate[24 + r.x]);
     r = loaded(r, 0x04);
-    WR8(OBJ->f32a8[32 + r.x], 0x04);
+    WR8(OBJ->health[32 + r.x], 0x04);
     return r;
 }
 
@@ -7466,7 +7466,7 @@ void abi_GateWaitClear152D(void)
  */
 StageRegs GateClose152D(StageRegs r)
 {
-    r.nz = DEC8(OBJ->f32a8[32 + r.x]);
+    r.nz = DEC8(OBJ->health[32 + r.x]);
     if (r.nz != 0) {
         return r;
     }

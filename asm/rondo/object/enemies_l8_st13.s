@@ -250,7 +250,7 @@ CountDownThenClearAndAdvanceSlot10_at0:
 
 ; @routine 025C:2EA SoundWhenHurtInStatesOneToThree
 ; @run 70:BAEA
-; WHAT IT DOES: In states 1 to 3, when OBJ_3568 is 1 or 2 or bit 7 of OBJ_31A0 is set, plays sound $43 and goes to state 4 (state 5 when OBJ_3568 is 2).
+; WHAT IT DOES: In states 1 to 3, when OBJ_3568 is 1 or 2 or bit 7 of OBJ_HIT_STATUS is set, plays sound $43 and goes to state 4 (state 5 when OBJ_3568 is 2).
 ; HOW: Compares, SoundCommand, a store.
 ; WAITS: no.
 ; Entry: X object, Y kept for the sound. Exit: as the last instruction that ran. The OBJ_3568 = 2 arm ran in no script; the draft stops there.
@@ -264,7 +264,7 @@ SoundWhenHurtInStatesOneToThree:
     beq SoundWhenHurtInStatesOneToThree_at1
     cmp #$02
     beq SoundWhenHurtInStatesOneToThree_at2
-    lda a:OBJ_31A0,x
+    lda a:OBJ_HIT_STATUS,x
     and #$80
     beq SoundWhenHurtInStatesOneToThree_at0
 SoundWhenHurtInStatesOneToThree_at1:
@@ -490,7 +490,7 @@ FallAlongListUntilGround:
     cmp #$B8
     bcc FallAlongListUntilGround_at0
     lda #$03
-    sta a:OBJ_2A10,x
+    sta a:OBJ_SPRITE_SET,x
     stz a:OBJ_FRAME,x
     lda #$FC
     sta a:OBJ_VX_HI,x
@@ -561,7 +561,7 @@ FallThenTurnAtTimerEnd:
     dec a:OBJ_3510,x
     bne FallThenTurnAtTimerEnd_at0
     lda #$03
-    sta a:OBJ_2A10,x
+    sta a:OBJ_SPRITE_SET,x
     stz a:OBJ_FRAME,x
     lda #$FC
     sta a:OBJ_VX_HI,x
@@ -684,7 +684,7 @@ FollowObject19ThenLaunch_at0:
 
 ; @routine 025C:757 StepListThenSpawnUntilHurt
 ; @run 70:BF57
-; WHAT IT DOES: Steps the animation list at $BF8E, moves the object and may spawn a piece (SpawnType30EveryFourthFrame); once bit 7 of OBJ_31A0 is set it takes the speed X $00C0, Y -$0300, clears OBJ_3250 and the animation and goes to the next state.
+; WHAT IT DOES: Steps the animation list at $BF8E, moves the object and may spawn a piece (SpawnType30EveryFourthFrame); once bit 7 of OBJ_HIT_STATUS is set it takes the speed X $00C0, Y -$0300, clears OBJ_3250 and the animation and goes to the next state.
 ; HOW: StepObjectFrames, ApplyVelocity, a call, a test, stores, an INC.
 ; WAITS: no.
 ; Entry: X object, Y kept unless the step sets it. Exit: as the last instruction that ran.
@@ -696,7 +696,7 @@ StepListThenSpawnUntilHurt:
     jsr VecStepObjectFrames
     jsr VecApplyVelocity
     jsr SpawnType30EveryFourthFrame
-    lda a:OBJ_31A0,x
+    lda a:OBJ_HIT_STATUS,x
     and #$80
     beq StepListThenSpawnUntilHurt_at0
     lda #$00

@@ -42,7 +42,7 @@ L8Arm LoadRecordFlashByNumberThenMoveOrClear(uint8_t slot, uint8_t y_entry)
         WR8(OBJ->vx_hi[slot], 0xFC);
         y = RD8(OBJ->f34b8[slot]);
         r.first = rd8((uint16_t)(0xC061 + y));
-        WR8(OBJ->flash_flags[slot], r.first);
+        WR8(OBJ->sprite_attr[slot], r.first);
         r.y = y;
         r.arm = FLASH_START;
         return r;

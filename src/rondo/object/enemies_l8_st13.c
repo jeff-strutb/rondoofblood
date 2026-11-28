@@ -545,7 +545,7 @@ void abi_CountDownThenClearAndAdvanceSlot10(void)
 /*
  * @routine 025C:2EA SoundWhenHurtInStatesOneToThree
  * @run 70:BAEA
- * WHAT IT DOES: In states 1 to 3, when OBJ_3568 is 1 or 2 or bit 7 of OBJ_31A0 is set, plays sound $43 and goes to state 4 (state 5 when OBJ_3568 is 2).
+ * WHAT IT DOES: In states 1 to 3, when OBJ_3568 is 1 or 2 or bit 7 of OBJ_HIT_STATUS is set, plays sound $43 and goes to state 4 (state 5 when OBJ_3568 is 2).
  * HOW: Compares, SoundCommand, a store.
  * WAITS: no.
  * Entry: X object, Y kept for the sound. Exit: as the last instruction that ran (l8_hurt_sound_exit_shim). The OBJ_3568 = 2 arm ran in no script; the draft stops there.
@@ -575,7 +575,7 @@ L8St13SoundArm SoundWhenHurtInStatesOneToThree(uint8_t slot, uint8_t y_entry)
             next = 5;
             ret = 0xBB15;
         } else {
-            r.third = RD8(OBJ->status_flags[slot]);
+            r.third = RD8(OBJ->hit_status[slot]);
             if ((r.third & 0x80) == 0) {
                 r.arm = HURT_NOT_HURT;
                 return r;
@@ -1307,7 +1307,7 @@ void abi_SpawnType30EveryFourthFrame(void)
 /*
  * @routine 025C:757 StepListThenSpawnUntilHurt
  * @run 70:BF57
- * WHAT IT DOES: Steps the animation list at $BF8E, moves the object and may spawn a piece (SpawnType30EveryFourthFrame); once bit 7 of OBJ_31A0 is set it takes the speed X $00C0, Y -$0300, clears OBJ_3250 and the animation and goes to the next state.
+ * WHAT IT DOES: Steps the animation list at $BF8E, moves the object and may spawn a piece (SpawnType30EveryFourthFrame); once bit 7 of OBJ_HIT_STATUS is set it takes the speed X $00C0, Y -$0300, clears OBJ_3250 and the animation and goes to the next state.
  * HOW: StepObjectFrames, ApplyVelocity, a call, a test, stores, an INC.
  * WAITS: no.
  * Entry: X object, Y kept unless the step sets it. Exit: as the last instruction that ran (l8_spawn_until_hurt_exit_shim).
@@ -1323,7 +1323,7 @@ L8St13UntilHurtArm StepListThenSpawnUntilHurt(uint8_t slot, uint8_t y_entry)
     jsr_push(0xBF68);
     r.spawn = SpawnType30EveryFourthFrame(slot);
     jsr_pop();
-    r.flags = RD8(OBJ->status_flags[slot]);
+    r.flags = RD8(OBJ->hit_status[slot]);
     if ((r.flags & 0x80) == 0) {
         r.arm = UNTIL_HURT_GOING;
         return r;

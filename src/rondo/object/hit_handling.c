@@ -154,7 +154,7 @@ void abi_ScoreForKind(void)
  * @routine 0259:186 ObjectHit
  * @run 70:A186
  * WHAT IT DOES: What an object does with the hits it has taken this frame (the handler every enemy's state runs): its two attack marks are cleared; an object already marked dead (status bit 7) is left;
- * the player's attacks (HitAttackFlags bits 0 and 1) mark it and decide whether it is hit; a hit with damage (HitDamage) shortens its health OBJ_32A8, flashes it ($86) and gives it a hurt timer;
+ * the player's attacks (HitAttackFlags bits 0 and 1) mark it and decide whether it is hit; a hit with damage (HitDamage) shortens its health OBJ_HEALTH, flashes it ($86) and gives it a hurt timer;
  * when the health runs out or an attack kills it outright it records its event, scores (ScoreForKind), may drop an item (DropItemWhenHitF) and plays its hit sound (PlayHitSoundA), then turns into
  * the kind $9B plus its death number (or is cleared when that number is 7), or, with no number, is marked dead and its hit state cleared.
  * HOW: Bit tests and stores in the order of the assembly; the steps are returned as an exit chain.
@@ -180,9 +180,9 @@ HitArm ObjectHit(uint8_t slot, uint8_t y)
     bool marked;
     bool record_now = false;
 
-    status = RD8(OBJ->status_flags[slot]);
+    status = RD8(OBJ->hit_status[slot]);
     status = (uint8_t)(status & 0x9F);
-    WR8(OBJ->status_flags[slot], status);
+    WR8(OBJ->hit_status[slot], status);
     r->bytes[OH_STATUS1] = status;
     bits = RD8(OBJ->hit_reaction[slot]);
     bits = (uint8_t)(bits & 0x03);
@@ -194,10 +194,10 @@ HitArm ObjectHit(uint8_t slot, uint8_t y)
         r->bytes[OH_BITS3] = bits;
         if (bits == 0) {
             r->bytes[OH_FLASH] = RD8_IDX(0x3AE8, slot);
-            WR8(OBJ->flash_flags[slot], r->bytes[OH_FLASH]);
+            WR8(OBJ->sprite_attr[slot], r->bytes[OH_FLASH]);
         }
     }
-    status = RD8(OBJ->status_flags[slot]);
+    status = RD8(OBJ->hit_status[slot]);
     status = (uint8_t)(status & 0x80);
     r->bytes[OH_STATUS2] = status;
     if (status != 0) {
@@ -207,11 +207,11 @@ HitArm ObjectHit(uint8_t slot, uint8_t y)
     bits = (uint8_t)(rd8(HitAttackFlags) & 0x01);
     r->bytes[OH_ATTACK1] = bits;
     if (bits != 0) {
-        status = RD8(OBJ->status_flags[slot]);
+        status = RD8(OBJ->hit_status[slot]);
         status = (uint8_t)(status | 0x20);
-        WR8(OBJ->status_flags[slot], status);
+        WR8(OBJ->hit_status[slot], status);
         r->bytes[OH_STATUS_A] = status;
-        flags = RD8(OBJ->f30f0[slot]);
+        flags = RD8(OBJ->loop_flags[slot]);
         flags = (uint8_t)(flags & 0x20);
         r->bytes[OH_FLAGS_A] = flags;
         record_now = flags != 0;
@@ -220,18 +220,18 @@ HitArm ObjectHit(uint8_t slot, uint8_t y)
         bits = (uint8_t)(rd8(HitAttackFlags) & 0x02);
         r->bytes[OH_ATTACK2] = bits;
         if (bits != 0) {
-            status = RD8(OBJ->status_flags[slot]);
+            status = RD8(OBJ->hit_status[slot]);
             status = (uint8_t)(status | 0x40);
-            WR8(OBJ->status_flags[slot], status);
+            WR8(OBJ->hit_status[slot], status);
             r->bytes[OH_STATUS_B] = status;
-            flags = RD8(OBJ->f30f0[slot]);
+            flags = RD8(OBJ->loop_flags[slot]);
             flags = (uint8_t)(flags & 0x40);
             r->bytes[OH_FLAGS_B] = flags;
             record_now = flags != 0;
         }
     }
     if (!record_now) {
-        r->bytes[OH_HP] = RD8(OBJ->f32a8[slot]);
+        r->bytes[OH_HP] = RD8(OBJ->health[slot]);
         if ((r->bytes[OH_HP] & 0x80) != 0) {
             r->arm = OH_HP_NEGATIVE;
             return h;
@@ -257,24 +257,24 @@ HitArm ObjectHit(uint8_t slot, uint8_t y)
         y = RD8(OBJ->hit_taken[slot]);
         r->bytes[OH_HIT_Y] = y;
         byte = rd8((uint16_t)(0xA26D + y));
-        WR8(OBJ->timer[slot], byte);
+        WR8(OBJ->invuln_timer[slot], byte);
         r->bytes[OH_BYTE1] = byte;
         byte = rd8((uint16_t)(0xA27D + y));
-        WR8(OBJ->f2f90[slot], byte);
+        WR8(OBJ->hurt_timer[slot], byte);
         r->bytes[OH_BYTE2] = byte;
-        r->bytes[OH_FLASH] = RD8(OBJ->flash_flags[slot]);
+        r->bytes[OH_FLASH] = RD8(OBJ->sprite_attr[slot]);
         WR8_IDX(0x3AE8, slot, r->bytes[OH_FLASH]);
-        WR8(OBJ->flash_flags[slot], 0x86);
+        WR8(OBJ->sprite_attr[slot], 0x86);
         flags = RD8(OBJ->hit_reaction[slot]);
         flags = (uint8_t)(flags | 0x03);
         WR8(OBJ->hit_reaction[slot], flags);
         r->bytes[OH_FLAGS3] = flags;
-        hp = RD8(OBJ->f32a8[slot]);
+        hp = RD8(OBJ->health[slot]);
         damage = RD8(ZP->temp00);
         r->sum = sub_bytes(hp, damage, true);
-        WR8(OBJ->f32a8[slot], r->sum.value);
+        WR8(OBJ->health[slot], r->sum.value);
         if (r->sum.carry) {
-            status = RD8(OBJ->status_flags[slot]);
+            status = RD8(OBJ->hit_status[slot]);
             r->bytes[OH_STATUS_C] = status;
             bits = (uint8_t)((status >> 3) & 0x03);
             r->bytes[OH_SHOUT_BITS] = bits;
@@ -306,23 +306,23 @@ HitArm ObjectHit(uint8_t slot, uint8_t y)
     jsr_push(0xA235);
     r->sub2 = obj_sub(play_hit_sound_loaded(slot));
     jsr_pop();
-    status = RD8(OBJ->status_flags[slot]);
+    status = RD8(OBJ->hit_status[slot]);
     number = (uint8_t)(status & 0x07);
     r->bytes[OH_NUMBER] = number;
     if (number == 0) {
-        flags = RD8(OBJ->f30f0[slot]);
+        flags = RD8(OBJ->loop_flags[slot]);
         flags = (uint8_t)(flags & 0xFB);
-        WR8(OBJ->f30f0[slot], flags);
+        WR8(OBJ->loop_flags[slot], flags);
         r->bytes[OH_FLAGS_N] = flags;
-        kind = RD8(OBJ->f3148[slot]);
+        kind = RD8(OBJ->pace[slot]);
         kind = (uint8_t)(kind & 0x87);
         r->bytes[OH_KIND1] = kind;
         kind = (uint8_t)(kind | 0x04);
         r->bytes[OH_KIND2] = kind;
-        WR8(OBJ->f3148[slot], kind);
-        status = RD8(OBJ->status_flags[slot]);
+        WR8(OBJ->pace[slot], kind);
+        status = RD8(OBJ->hit_status[slot]);
         status = (uint8_t)(status | 0x80);
-        WR8(OBJ->status_flags[slot], status);
+        WR8(OBJ->hit_status[slot], status);
         r->bytes[OH_STATUS_N] = status;
         r->arm = OH_TAIL_NO_NUMBER;
         return h;

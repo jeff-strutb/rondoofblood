@@ -453,7 +453,7 @@ void abi_ClearWhenHurtThenWait(void)
 /*
  * @routine 0B4A:5A3 DrawTileScriptStepsThenScatter
  * @run 70:ADA3
- * WHAT IT DOES: When the object's X high byte is not 0 draws tile script $02 plus OBJ_34B8. Otherwise, at 5 hits taken, it sets OBJ_3A90 $18, draws the next tile script, plays sound $19, scatters pieces (ScatterPiecesDownward) and advances OBJ_34B8; below 3 steps it takes OBJ_HITBOX_DY and the frame from the table at $AE02; at 3 it sets zField92 1, clears OBJ_HITBOX_DY, sets the hit box $10 by $10 and frame $17 and goes to the next state.
+ * WHAT IT DOES: When the object's X high byte is not 0 draws tile script $02 plus OBJ_34B8. Otherwise, at 5 hits taken, it sets OBJ_INVULN_TIMER $18, draws the next tile script, plays sound $19, scatters pieces (ScatterPiecesDownward) and advances OBJ_34B8; below 3 steps it takes OBJ_HITBOX_DY and the frame from the table at $AE02; at 3 it sets zField92 1, clears OBJ_HITBOX_DY, sets the hit box $10 by $10 and frame $17 and goes to the next state.
  * HOW: DrawTileScript, SoundCommand, ScatterPiecesDownward, table reads, stores.
  * WAITS: no.
  * Entry: X object, Y kept for the sound. Exit: as the last instruction that ran (l8_steps_scatter_exit_shim).
@@ -478,7 +478,7 @@ L8St17StepsArm DrawTileScriptStepsThenScatter(uint8_t slot, uint8_t y_entry)
         r.arm = ST17_STEPS_WAITING;
         return r;
     }
-    WR8(OBJ->timer[slot], 0x18);
+    WR8(OBJ->invuln_timer[slot], 0x18);
     r.steps = RD8(OBJ->f34b8[slot]);
     r.sum = add_bytes(2, r.steps, false);
     r.item = (uint8_t)(r.sum.value + 1);

@@ -3,7 +3,7 @@
 ; @routine 093C:068 EnterStateFourOnFlag
 ; @run 70:B868
 ; WHAT IT DOES: Switches an object that is not yet in state 4 into state 4, with its animation
-; list restarted, once bit 7 of OBJ_31A0 is set.
+; list restarted, once bit 7 of OBJ_HIT_STATUS is set.
 ; HOW: Reads the state and the flag once each; clears the two animation counters and stores 4.
 ; WAITS: no.
 ; Entry: X object. Exit: A and flags as the last compare, AND or load left them. X and Y kept.
@@ -12,7 +12,7 @@ EnterStateFourOnFlag:
     lda a:OBJ_STATE,x
     cmp #$04
     beq EnterStateFourOnFlag_out
-    lda a:OBJ_31A0,x
+    lda a:OBJ_HIT_STATUS,x
     and #$80
     beq EnterStateFourOnFlag_out
     stz a:OBJ_ANIM_STEP,x
@@ -100,7 +100,7 @@ TurnAngleBack_out:
 AdvanceOnTimer:
     dec a:OBJ_34B8,x
     bne AdvanceOnTimer_out
-    lda a:OBJ_3040,x
+    lda a:OBJ_START_ARG,x
     asl a
     asl a
     tay
@@ -129,11 +129,11 @@ AdvanceOnTimer_out:
 LaunchOnTimer:
     dec a:OBJ_34B8,x
     bne LaunchOnTimer_out
-    lda a:OBJ_3040,x
+    lda a:OBJ_START_ARG,x
     clc
     adc #$12
     sta a:OBJ_FRAME,x
-    lda a:OBJ_3040,x
+    lda a:OBJ_START_ARG,x
     asl a
     tay
     lda a:$B59B,y

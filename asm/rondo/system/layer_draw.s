@@ -38,11 +38,11 @@ EmitObjectSprites:
     sta z:zTemp0D
     lda a:OBJ_SPRITE_FLIP,x
     sta z:zProduct1
-    lda a:OBJ_2B18,x
+    lda a:OBJ_SPRITE_ATTR,x
     sta z:zTemp0E
     and #$0F
     sta z:zTemp0F
-    lda a:OBJ_2A10,x
+    lda a:OBJ_SPRITE_SET,x
     asl a
     tay
     lda a:$81A3,y
@@ -241,7 +241,7 @@ WriteObjectSprites_at0:
     sty z:$DA
     lda a:OBJ_FRAME,x
     beq WriteObjectSprites_at2
-    lda a:OBJ_2B18,x
+    lda a:OBJ_SPRITE_ATTR,x
     and #$10
     beq WriteObjectSprites_at1
     txa

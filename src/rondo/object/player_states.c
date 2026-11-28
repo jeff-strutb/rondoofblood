@@ -26,7 +26,7 @@ static ObjArm flash_restart(uint8_t slot, uint16_t ret)
     Sum frame;
 
     WR8(OBJ->life_timer[slot], FLASH_FRAME_TIME);
-    kind = RD8(OBJ->next_kind[slot]);
+    kind = RD8(OBJ->start_arg[slot]);
     r.first = (uint8_t)(kind & 1);
     base = rd8((uint16_t)(FLASH_FRAMES + r.first));
     step = RD8(OBJ->f3510[slot]);
@@ -169,7 +169,7 @@ ObjArm NextStateByKindBits(uint8_t slot)
     }
     INC8(OBJ->state[slot]);
     WR8(OBJ->life_timer[slot], FLASH_FRAME_TIME);
-    r.second = (uint8_t)(RD8(OBJ->next_kind[slot]) & 0x0F);
+    r.second = (uint8_t)(RD8(OBJ->start_arg[slot]) & 0x0F);
     r.arm = PS_NK_LOW;
     if (r.second < 2) {
         return r;

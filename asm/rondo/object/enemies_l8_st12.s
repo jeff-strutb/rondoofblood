@@ -70,8 +70,8 @@ StepVerticalScrollTable_at2:
 
 ; @routine 025B:148 LoadRecordPlaceByKind
 ; @run 70:B148
-; WHAT IT DOES: In state 0 loads the record, sets sprite set 6 and the frame from a table by OBJ_3040; when the object's flags are 0 it is placed at X $0120 with a Y from a second table, and its flags take the low nibble 6.
-; HOW: LoadObjectRecord, two table reads indexed by OBJ_3040, stores.
+; WHAT IT DOES: In state 0 loads the record, sets sprite set 6 and the frame from a table by OBJ_START_ARG; when the object's flags are 0 it is placed at X $0120 with a Y from a second table, and its flags take the low nibble 6.
+; HOW: LoadObjectRecord, two table reads indexed by OBJ_START_ARG, stores.
 ; WAITS: no.
 ; Entry: X object. Exit: as the last instruction that ran.
 LoadRecordPlaceByKind:
@@ -79,11 +79,11 @@ LoadRecordPlaceByKind:
     bne LoadRecordPlaceByKind_at0
     jsr VecLoadObjectRecord
     lda #$06
-    sta a:OBJ_2A10,x
-    ldy a:OBJ_3040,x
+    sta a:OBJ_SPRITE_SET,x
+    ldy a:OBJ_START_ARG,x
     lda a:$B17E,y
     sta a:OBJ_FRAME,x
-    lda a:OBJ_FLAGS_2F38,x
+    lda a:OBJ_SCROLL_BAND,x
     bne LoadRecordPlaceByKind_at0
     lda #$20
     sta a:OBJ_X_LO,x
@@ -91,10 +91,10 @@ LoadRecordPlaceByKind:
     sta a:OBJ_X_HI,x
     lda a:$B180,y
     sta a:OBJ_Y_LO,x
-    lda a:OBJ_FLAGS_2F38,x
+    lda a:OBJ_SCROLL_BAND,x
     and #$F0
     ora #$06
-    sta a:OBJ_FLAGS_2F38,x
+    sta a:OBJ_SCROLL_BAND,x
 LoadRecordPlaceByKind_at0:
     rts
 
@@ -112,10 +112,10 @@ LoadRecordAtPlayerPlace:
     sta a:OBJ_X_LO,x
     lda a:OBJ_Y_LO
     sta a:OBJ_Y_LO,x
-    lda a:OBJ_FLAGS_2F38,x
+    lda a:OBJ_SCROLL_BAND,x
     and #$F0
     ora #$01
-    sta a:OBJ_FLAGS_2F38,x
+    sta a:OBJ_SCROLL_BAND,x
 LoadRecordAtPlayerPlace_at0:
     rts
 
@@ -140,7 +140,7 @@ LoadRecordThenSinkByF3520:
 
 ; @routine 025B:1BC LoadRecordThenStepListByKind
 ; @run 70:B1BC
-; WHAT IT DOES: In state 0 loads the record and moves the object one left; then steps an animation list picked by OBJ_3040 (two bytes an entry) and, from the table's second half when slot $10's state is below 4 and OBJ_34B8 is 0.
+; WHAT IT DOES: In state 0 loads the record and moves the object one left; then steps an animation list picked by OBJ_START_ARG (two bytes an entry) and, from the table's second half when slot $10's state is below 4 and OBJ_34B8 is 0.
 ; HOW: LoadObjectRecord, a decrement, table reads, a tail jump into StepObjectFrames.
 ; WAITS: no.
 ; Entry: X object, Y kept unless the step sets it. Exit: the step.
@@ -149,7 +149,7 @@ LoadRecordThenStepListByKind:
     bne SwingAndPick
     jsr VecLoadObjectRecord
     dec a:OBJ_X_HI,x
-    lda a:OBJ_3040,x
+    lda a:OBJ_START_ARG,x
     asl a
     tay
     lda a:OBJ_34B8,x
@@ -173,7 +173,7 @@ LoadRecordThenStepListByKind:
 
 ; @routine 025B:229 LoadRecordSinkThenStepListByKind
 ; @run 70:B229
-; WHAT IT DOES: In state 0 loads the record and moves the object one left; then adds OBJ_3510 of slot $10 to its OBJ_Y_LO and steps the animation list picked by OBJ_3040 from the table at $B250.
+; WHAT IT DOES: In state 0 loads the record and moves the object one left; then adds OBJ_3510 of slot $10 to its OBJ_Y_LO and steps the animation list picked by OBJ_START_ARG from the table at $B250.
 ; HOW: LoadObjectRecord, a decrement, an add, table reads, a tail jump into StepObjectFrames.
 ; WAITS: no.
 ; Entry: X object, Y kept unless the step sets it. Exit: the step.
@@ -187,7 +187,7 @@ LoadRecordSinkThenStepListByKind_at0:
     clc
     adc a:OBJ_Y_LO,x
     sta a:OBJ_Y_LO,x
-    lda a:OBJ_3040,x
+    lda a:OBJ_START_ARG,x
     asl a
     tay
     lda a:$B250,y
@@ -252,10 +252,10 @@ StateMachineWithSoundAndList_at1:
     bne StateMachineWithSoundAndList_at8
     dec a:OBJ_3510,x
     bne StateMachineWithSoundAndList_at7
-    lda a:OBJ_FLAGS_2F38,x
+    lda a:OBJ_SCROLL_BAND,x
     and #$F0
     ora #$05
-    sta a:OBJ_FLAGS_2F38,x
+    sta a:OBJ_SCROLL_BAND,x
     inc a:OBJ_STATE,x
     rts
 StateMachineWithSoundAndList_at6:
@@ -280,7 +280,7 @@ StateMachineWithSoundAndList_at8:
 
 ; @routine 025B:308 DriftRecordThenMoveWithJitter
 ; @run 70:B308
-; WHAT IT DOES: In state 0 loads the record and sets the speed X -$18, Y $0C. When slot $10's state is 4 or more and OBJ_3040 is 0 it waits one round, shows frame $1D, then moves by its speed, nudging X and Y back by random amounts of up to 15 when they are off the edge.
+; WHAT IT DOES: In state 0 loads the record and sets the speed X -$18, Y $0C. When slot $10's state is 4 or more and OBJ_START_ARG is 0 it waits one round, shows frame $1D, then moves by its speed, nudging X and Y back by random amounts of up to 15 when they are off the edge.
 ; HOW: LoadObjectRecord, ApplyVelocity, NextRandom, adds and a subtract with a zero page temporary.
 ; WAITS: no.
 ; Entry: X object. Exit: as the last instruction that ran.
@@ -296,7 +296,7 @@ DriftRecordThenMoveWithJitter:
     lda a:$27B8
     cmp #$04
     bcc DriftRecordThenMoveWithJitter_at0
-    lda a:OBJ_3040,x
+    lda a:OBJ_START_ARG,x
     bne DriftRecordThenMoveWithJitter_at0
     lda a:OBJ_34B8,x
     bne DriftRecordThenMoveWithJitter_at1
@@ -437,12 +437,12 @@ HitSoundThenSpawnPieces_at1:
 
 ; @routine 025B:52E EnterState0BWhenFlagged
 ; @run 70:B52E
-; WHAT IT DOES: When bit 7 of OBJ_31A0 is set and the state is below $0B, sets the state $0B and OBJ_SUBSTATE 0.
+; WHAT IT DOES: When bit 7 of OBJ_HIT_STATUS is set and the state is below $0B, sets the state $0B and OBJ_SUBSTATE 0.
 ; HOW: Two tests, two stores.
 ; WAITS: no.
 ; Entry: X object. Exit: as the last instruction that ran. The stores ran in no script; the draft stops there.
 EnterState0BWhenFlagged:
-    lda a:OBJ_31A0,x
+    lda a:OBJ_HIT_STATUS,x
     and #$80
     beq EnterState0BWhenFlagged_at0
     lda a:OBJ_STATE,x

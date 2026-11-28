@@ -9,7 +9,7 @@ WaitForPressThenAnimate:
     bne WaitForPressThenAnimate_at0
     jsr VecLoadObjectRecord
     lda #$06
-    sta a:OBJ_2A10,x
+    sta a:OBJ_SPRITE_SET,x
     rts
 WaitForPressThenAnimate_at0:
     lda a:OBJ_SUBSTATE,x
@@ -97,12 +97,12 @@ HalveDirectionWhenHurt_at0:
 
 ; @routine 0E0B:0AB StateSevenOnStatusBit7
 ; @run 70:B0AB
-; WHAT IT DOES: An object in a state under 7 whose OBJ_31A0 has bit 7 set goes to state 7 and clears OBJ_SUBSTATE. (The part after the test ran in no script; it is written from the bytes.)
+; WHAT IT DOES: An object in a state under 7 whose OBJ_HIT_STATUS has bit 7 set goes to state 7 and clears OBJ_SUBSTATE. (The part after the test ran in no script; it is written from the bytes.)
 ; HOW: A test, a compare, two stores.
 ; WAITS: no.
 ; Entry: X object. Exit: the test, the compare, or A 7.
 StateSevenOnStatusBit7:
-    lda a:OBJ_31A0,x
+    lda a:OBJ_HIT_STATUS,x
     and #$80
     beq StateSevenOnStatusBit7_at0
     lda a:OBJ_STATE,x
@@ -211,7 +211,7 @@ StepListB1BAThenSound:
     lda #$46
     jsr VecSoundCommand
     lda #$04
-    sta a:OBJ_2A10,x
+    sta a:OBJ_SPRITE_SET,x
     lda #$01
     sta a:OBJ_FRAME,x
     inc a:OBJ_SUBSTATE,x

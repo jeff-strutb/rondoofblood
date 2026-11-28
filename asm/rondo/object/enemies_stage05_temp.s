@@ -342,7 +342,7 @@ SetHitboxFromFrameRows:
 ; WAITS: no.
 ; Entry: X object. Exit: A and N, Z from the last load; X, Y, C and V kept.
 EnterState7OnFlagOrYSignChange:
-    lda a:OBJ_31A0,x
+    lda a:OBJ_HIT_STATUS,x
     and #$80
     bne EnterState7OnFlagOrYSignChange_at0
     lda a:OBJ_Y_HI,x
@@ -455,12 +455,12 @@ StartWithFrame1A_at0:
 ; Entry: X object. Exit: A, N, Z, C and V from ApplyVelocity's add; Y bit 0 of f3040; X kept.
 ; Clobbers zTemp10.
 ThrowByNextKind:
-    lda a:OBJ_3040,x
+    lda a:OBJ_START_ARG,x
     and #$01
     tay
     lda a:$B9A3,y
     sta a:OBJ_VX_HI,x
-    lda a:OBJ_3040,x
+    lda a:OBJ_START_ARG,x
     asl a
     asl a
     asl a
@@ -844,9 +844,9 @@ StartChargeWhenPlayerNear:
     bcs StartChargeWhenPlayerNear_at0
     stz a:OBJ_ANIM_STEP,x
     stz a:OBJ_ANIM_TIMER,x
-    lda a:OBJ_FLAGS_2F38,x
+    lda a:OBJ_SCROLL_BAND,x
     and #$80
-    sta a:OBJ_FLAGS_2F38,x
+    sta a:OBJ_SCROLL_BAND,x
     lda #$03
     sta a:OBJ_VY_HI,x
     jsr VecNextRandom
@@ -1181,7 +1181,7 @@ StartThenAnimateAndExpire:
     lda a:OBJ_34B8,x
     clc
     adc #$03
-    sta a:OBJ_2A10,x
+    sta a:OBJ_SPRITE_SET,x
     lda #$28
     sta a:OBJ_3510,x
     rts
@@ -1363,7 +1363,7 @@ AnimateThenNumberGroupAndLeave:
     sty z:zTemp03
 AnimateThenNumberGroupAndLeave_at2:
     lda z:zTemp00
-    sta a:OBJ_3040,y
+    sta a:OBJ_START_ARG,y
     lda z:zTemp03
     sta a:OBJ_37D0,y
     inc z:zTemp00
@@ -1592,12 +1592,12 @@ BurstIntoEightPieces_at0:
 ; Entry: X object, D clear. Exit: as PickAngleAtRandom.
 StartGroupThenThrow:
     jsr VecLoadObjectRecord
-    lda a:OBJ_3040,x
+    lda a:OBJ_START_ARG,x
     bmi StartGroupThenThrow_at0
     txa
     sta a:OBJ_37D0,x
     clc
-    adc a:OBJ_3040,x
+    adc a:OBJ_START_ARG,x
     sta a:OBJ_3828,x
     txa
     tay
@@ -1609,19 +1609,19 @@ StartGroupThenThrow_at1:
     lda #$26
     jsr VecStartObjectAtPlace
     lda z:zTemp00
-    sta a:OBJ_3040,y
+    sta a:OBJ_START_ARG,y
     txa
     sta a:OBJ_37D0,y
     lda a:OBJ_3828,x
     sta a:OBJ_3828,y
     inc z:zTemp00
     iny
-    dec a:OBJ_3040,x
+    dec a:OBJ_START_ARG,x
     bne StartGroupThenThrow_at1
 StartGroupThenThrow_at0:
-    lda a:OBJ_3040,x
+    lda a:OBJ_START_ARG,x
     and #$7F
-    sta a:OBJ_3040,x
+    sta a:OBJ_START_ARG,x
     and #$01
     eor #$01
     sta a:OBJ_FACING_LEFT,x

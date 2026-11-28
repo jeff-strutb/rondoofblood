@@ -500,7 +500,7 @@ void abi_EndingPlayList0EThenClear(void)
  * @run 6B:84DE
  * WHAT IT DOES: An object handler: shows picture kind 3, waits a frame, then shows frame $0D and moves the object up
  * a line each frame until its Y low byte is $40, then sets flash flags $8D and moves to the next state.
- * HOW: OBJ->state, OBJ->sprite_set, OBJ->frame, OBJ->y_lo and OBJ->flash_flags.
+ * HOW: OBJ->state, OBJ->sprite_set, OBJ->frame, OBJ->y_lo and OBJ->sprite_attr.
  * WAITS: no.
  * Entry: X the object. Exit: as the last test left them.
  */
@@ -529,7 +529,7 @@ ObjExit EndingRiseToY40(uint8_t object)
     if (low != 0x40) {
         return result;
     }
-    WR8(OBJ->flash_flags[object], 0x8D);
+    WR8(OBJ->sprite_attr[object], 0x8D);
     result.exit.a = 0x8D;
     result.exit.nz = INC8(OBJ->state[object]);
     return result;
@@ -1716,7 +1716,7 @@ void abi_EndingScrollSqueeze(void)
  * @run 6B:899C
  * WHAT IT DOES: An object handler: in its first state plays the ending's list its next kind names, and when the list has ended
  * and the kind is not negative moves to the next state.
- * HOW: OBJ->state and OBJ->next_kind; EndingFrameList.
+ * HOW: OBJ->state and OBJ->start_arg; EndingFrameList.
  * WAITS: no.
  * Entry: X the object. Exit: as the last test left them.
  */
@@ -1729,14 +1729,14 @@ ObjExit EndingWaitForList(uint8_t object)
     if (state != 0) {
         return object_exit(state, state);
     }
-    kind = RD8(OBJ->next_kind[object]);
+    kind = RD8(OBJ->start_arg[object]);
     jsr_push(0x89A7);
     list = EndingFrameList(kind, object);
     jsr_pop();
     if (list.exit.a != 0) {
         return list;
     }
-    kind = RD8(OBJ->next_kind[object]);
+    kind = RD8(OBJ->start_arg[object]);
     list.exit.a = kind;
     list.exit.nz = kind;
     if ((kind & 0x80) != 0) {
@@ -1756,7 +1756,7 @@ void abi_EndingWaitForList(void)
  * @run 6B:89B2
  * WHAT IT DOES: An object handler of two stages: the first takes its speed from four tables at $89E2 by its next kind; the second
  * moves the object until its hold has run out.
- * HOW: OBJ->state and OBJ->next_kind; ApplyVelocity; OBJ->life_timer.
+ * HOW: OBJ->state and OBJ->start_arg; ApplyVelocity; OBJ->life_timer.
  * WAITS: no.
  * Entry: X the object. Exit: as the last test left them.
  */
@@ -1768,7 +1768,7 @@ ObjExit EndingFlyOff(uint8_t object)
 
     state = RD8(OBJ->state[object]);
     if (state == 0) {
-        kind = RD8(OBJ->next_kind[object]);
+        kind = RD8(OBJ->start_arg[object]);
         WR8(OBJ->vx_lo[object], rd8((uint16_t)(0x89E2 + kind)));
         WR8(OBJ->vx_hi[object], rd8((uint16_t)(0x89E7 + kind)));
         WR8(OBJ->vy_lo[object], rd8((uint16_t)(0x89EC + kind)));
@@ -2028,7 +2028,7 @@ void abi_EndingCreditScrollStart(void)
  * WHAT IT DOES: An object handler of two stages: the first takes its Y speed from a table at $82D5 by its number, shows picture kind 3
  * and frame $72 plus its number and moves on; after that each frame it sets flash flags from a table at $82DA by bit 2 of its number
  * plus the frame count, moves, and clears the object's Y high byte to 1 once it is negative with a non-negative Y low byte.
- * HOW: OBJ->state; OBJ->flash_flags; ApplyVelocity.
+ * HOW: OBJ->state; OBJ->sprite_attr; ApplyVelocity.
  * WAITS: no.
  * Entry: X the object. Exit: as the last test left them.
  */
@@ -2054,7 +2054,7 @@ EndingArm EndingFallingPiece(uint8_t object)
     }
     tick = RD8(ZP->frame_tick);
     index = (uint8_t)((((uint8_t)(object + tick)) >> 2) & 1);
-    WR8(OBJ->flash_flags[object], rd8((uint16_t)(0x82DA + index)));
+    WR8(OBJ->sprite_attr[object], rd8((uint16_t)(0x82DA + index)));
     jsr_push(0x82C5);
     r.move = ApplyVelocity(object);
     jsr_pop();
@@ -2399,7 +2399,7 @@ static Exit place_command(uint8_t fields, uint16_t first_ret)
     case 1:
         y++;
         value = RD8_PTR_Y(ZP->ENDING_PTR, y);
-        WR8(OBJ->next_kind[object], value);
+        WR8(OBJ->start_arg[object], value);
         y++;
         value = RD8_PTR_Y(ZP->ENDING_PTR, y);
         WR8(OBJ->sprite_set[object], value);
@@ -2422,7 +2422,7 @@ static Exit place_command(uint8_t fields, uint16_t first_ret)
         WR8(OBJ->sprite_set[object], value);
         y++;
         value = RD8_PTR_Y(ZP->ENDING_PTR, y);
-        WR8(OBJ->next_kind[object], value);
+        WR8(OBJ->start_arg[object], value);
         y++;
         value = RD8_PTR_Y(ZP->ENDING_PTR, y);
         WR8(OBJ->life_timer[object], value);

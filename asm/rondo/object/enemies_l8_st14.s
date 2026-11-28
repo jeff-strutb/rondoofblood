@@ -16,7 +16,7 @@ LoadRecordFlashByNumberThenMoveOrClear:
     sta a:OBJ_VX_HI,x
     ldy a:OBJ_34B8,x
     lda a:$C061,y
-    sta a:OBJ_2B18,x
+    sta a:OBJ_SPRITE_ATTR,x
     rts
     smb0 z:zTemp00
 LoadRecordFlashByNumberThenMoveOrClear_at0:

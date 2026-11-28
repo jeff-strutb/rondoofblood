@@ -1,7 +1,7 @@
 ; @routine 0259:186 ObjectHit
 ; @run 70:A186
 ; WHAT IT DOES: What an object does with the hits it has taken this frame (the handler every enemy's state runs): its two attack marks are cleared; an object already marked dead (status bit 7) is left;
-; the player's attacks (HitAttackFlags bits 0 and 1) mark it and decide whether it is hit; a hit with damage (HitDamage) shortens its health OBJ_32A8, flashes it ($86) and gives it a hurt timer;
+; the player's attacks (HitAttackFlags bits 0 and 1) mark it and decide whether it is hit; a hit with damage (HitDamage) shortens its health OBJ_HEALTH, flashes it ($86) and gives it a hurt timer;
 ; when the health runs out or an attack kills it outright it records its event, scores (ScoreForKind), may drop an item (DropItemWhenHitF) and plays its hit sound (PlayHitSoundA), then turns into
 ; the kind $9B plus its death number (or is cleared when that number is 7), or, with no number, is marked dead and its hit state cleared.
 ; HOW: Bit tests and stores in the order of the assembly; the steps are returned as an exit chain.
@@ -9,9 +9,9 @@
 ; WAITS: no.
 ; Entry: X object, Y the registers' Y for the sound calls. Exit: see abi_chain.
 ObjectHit:
-    lda a:OBJ_31A0,x
+    lda a:OBJ_HIT_STATUS,x
     and #$9F
-    sta a:OBJ_31A0,x
+    sta a:OBJ_HIT_STATUS,x
     lda a:OBJ_HIT_REACTION,x
     and #$03
     beq ObjectHit_at0
@@ -19,10 +19,10 @@ ObjectHit:
     lda a:OBJ_HIT_REACTION,x
     and #$03
     bne ObjectHit_at0
-    lda a:OBJ_3AE8,x
-    sta a:OBJ_2B18,x
+    lda a:OBJ_SAVED_ATTR,x
+    sta a:OBJ_SPRITE_ATTR,x
 ObjectHit_at0:
-    lda a:OBJ_31A0,x
+    lda a:OBJ_HIT_STATUS,x
     and #$80
     beq ObjectHit_at1
     jmp ObjectHit_at2
@@ -30,24 +30,24 @@ ObjectHit_at1:
     lda a:HitAttackFlags
     and #$01
     beq ObjectHit_at3
-    lda a:OBJ_31A0,x
+    lda a:OBJ_HIT_STATUS,x
     ora #$20
-    sta a:OBJ_31A0,x
-    lda a:OBJ_30F0,x
+    sta a:OBJ_HIT_STATUS,x
+    lda a:OBJ_LOOP_FLAGS,x
     and #$20
     bne ObjectHit_at4
 ObjectHit_at3:
     lda a:HitAttackFlags
     and #$02
     beq ObjectHit_at5
-    lda a:OBJ_31A0,x
+    lda a:OBJ_HIT_STATUS,x
     ora #$40
-    sta a:OBJ_31A0,x
-    lda a:OBJ_30F0,x
+    sta a:OBJ_HIT_STATUS,x
+    lda a:OBJ_LOOP_FLAGS,x
     and #$40
     bne ObjectHit_at4
 ObjectHit_at5:
-    lda a:OBJ_32A8,x
+    lda a:OBJ_HEALTH,x
     bmi ObjectHit_at2
     lda a:OBJ_HIT_TAKEN,x
     beq ObjectHit_at2
@@ -58,22 +58,22 @@ ObjectHit_at5:
 ObjectHit_at6:
     ldy a:OBJ_HIT_TAKEN,x
     lda a:$A26D,y
-    sta a:OBJ_3A90,x
+    sta a:OBJ_INVULN_TIMER,x
     lda a:$A27D,y
-    sta a:OBJ_2F90,x
-    lda a:OBJ_2B18,x
-    sta a:OBJ_3AE8,x
+    sta a:OBJ_HURT_TIMER,x
+    lda a:OBJ_SPRITE_ATTR,x
+    sta a:OBJ_SAVED_ATTR,x
     lda #$86
-    sta a:OBJ_2B18,x
+    sta a:OBJ_SPRITE_ATTR,x
     lda a:OBJ_HIT_REACTION,x
     ora #$03
     sta a:OBJ_HIT_REACTION,x
-    lda a:OBJ_32A8,x
+    lda a:OBJ_HEALTH,x
     sec
     sbc z:zTemp00
-    sta a:OBJ_32A8,x
+    sta a:OBJ_HEALTH,x
     bcc ObjectHit_at4
-    lda a:OBJ_31A0,x
+    lda a:OBJ_HIT_STATUS,x
     lsr a
     lsr a
     lsr a
@@ -86,7 +86,7 @@ ObjectHit_at4:
     jsr ScoreForKind
     jsr DropItemWhenHitF
     jsr PlayHitSoundA
-    lda a:OBJ_31A0,x
+    lda a:OBJ_HIT_STATUS,x
     and #$07
     beq ObjectHit_at7
     cmp #$07
@@ -101,16 +101,16 @@ ObjectHit_at8:
 ObjectHit_at2:
     rts
 ObjectHit_at7:
-    lda a:OBJ_30F0,x
+    lda a:OBJ_LOOP_FLAGS,x
     and #$FB
-    sta a:OBJ_30F0,x
-    lda a:OBJ_3148,x
+    sta a:OBJ_LOOP_FLAGS,x
+    lda a:OBJ_PACE,x
     and #$87
     ora #$04
-    sta a:OBJ_3148,x
-    lda a:OBJ_31A0,x
+    sta a:OBJ_PACE,x
+    lda a:OBJ_HIT_STATUS,x
     ora #$80
-    sta a:OBJ_31A0,x
+    sta a:OBJ_HIT_STATUS,x
     rts
 
 ; @routine 0259:28D HitDamage

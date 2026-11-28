@@ -17,7 +17,7 @@ StageTriggerObject:
     clc
     adc a:OBJ_3250,x
     sta a:OBJ_3250,x
-    lda a:OBJ_3040,x
+    lda a:OBJ_START_ARG,x
     tay
     and #$0F
     sta a:OBJ_3510,x
@@ -37,7 +37,7 @@ StageTriggerObject:
     stz a:OBJ_HIT_TAKEN,x
     rts
 StageTriggerObject_at0:
-    stz a:OBJ_3A90,x
+    stz a:OBJ_INVULN_TIMER,x
     ldy a:OBJ_34B8,x
     lda a:PadOverrides,y
     beq ClearHitsTaken
@@ -85,7 +85,7 @@ StageTriggerObjectB:
     clc
     adc a:OBJ_3250,x
     sta a:OBJ_3250,x
-    lda a:OBJ_3040,x
+    lda a:OBJ_START_ARG,x
     tay
     and #$1F
     sta a:OBJ_3510,x
@@ -98,8 +98,8 @@ StageTriggerObjectB:
 StageTriggerObjectB_at2:
     rts
 StageTriggerObjectB_at0:
-    stz a:OBJ_3A90,x
-    lda a:OBJ_3040,x
+    stz a:OBJ_INVULN_TIMER,x
+    lda a:OBJ_START_ARG,x
     bpl StageTriggerObjectB_at1
     lda a:PlayerByte3BD7
     beq ClearHitsTaken

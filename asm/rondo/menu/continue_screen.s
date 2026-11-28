@@ -65,7 +65,7 @@ ContinueStartRichter_at0:
     adc #$0D
     sta a:OBJ_FRAME,x
     lda #$05
-    sta a:OBJ_2A10,x
+    sta a:OBJ_SPRITE_SET,x
     lda #$48
     sta a:OBJ_X_LO,x
     lda #$59
@@ -266,7 +266,7 @@ ContinueStartMaria_at0:
     adc #$48
     sta a:OBJ_X_LO,x
     lda #$05
-    sta a:OBJ_2A10,x
+    sta a:OBJ_SPRITE_SET,x
     lda #$68
     sta a:OBJ_Y_LO,x
     dec z:zTemp10
@@ -806,7 +806,7 @@ ContinueClear_at1:
     lda #$04
     sta a:OBJ_FRAME+8
     lda #$03
-    sta a:OBJ_2A10+8
+    sta a:OBJ_SPRITE_SET+8
     lda #$4F
     sta a:OBJ_X_LO+8
     stz a:ContinueChoice

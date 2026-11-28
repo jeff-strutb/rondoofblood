@@ -4442,7 +4442,7 @@ StageDrawPiece3CD:
     lda a:$946B,x
     sta a:$2A58,y
     lda a:$9473,x
-    sta a:OBJ_2A10,y
+    sta a:OBJ_SPRITE_SET,y
     lda a:$947B,x
     sta a:OBJ_X_HI+8,y
     lda a:$9483,x

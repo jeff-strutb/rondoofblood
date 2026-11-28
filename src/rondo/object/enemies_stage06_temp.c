@@ -177,7 +177,7 @@ static ObjArm drift_start(uint8_t slot, uint8_t frame, uint16_t table, uint8_t v
     LoadObjectRecord(slot, &nz, &carry);
     jsr_pop();
     WR8(OBJ->frame[slot], frame);
-    r.first = RD8(OBJ->next_kind[slot]);
+    r.first = RD8(OBJ->start_arg[slot]);
     r.second = (uint8_t)(r.first << 1);
     byte = rd8((uint16_t)(table + 1 + r.second));
     WR8(OBJ->y_hi[slot], byte);
@@ -1592,7 +1592,7 @@ ObjArm StepFallingPieceStream(uint8_t slot)
     jsr_pop();
     r.first = RD8(OBJ->y_hi[slot]);
     if (r.first == 8) {
-        WR8(OBJ->flash_flags[slot], 0);
+        WR8(OBJ->sprite_attr[slot], 0);
         WR8(OBJ->substate[slot], 0);
     }
     return r;
@@ -1885,22 +1885,22 @@ ObjArm FlashByHeight(uint8_t slot)
 {
     ObjArm r = { 0 };
 
-    r.first = RD8(OBJ->flash_flags[0x10]);
+    r.first = RD8(OBJ->sprite_attr[0x10]);
     r.arm = FB_COPY;
     if (r.first == 0x86) {
-        WR8(OBJ->flash_flags[slot], 0x86);
+        WR8(OBJ->sprite_attr[slot], 0x86);
         return r;
     }
     r.second = RD8(OBJ->state[0x10]);
     r.arm = FB_NONE;
     if (r.second != 2) {
-        WR8(OBJ->flash_flags[slot], 0);
+        WR8(OBJ->sprite_attr[slot], 0);
         return r;
     }
     r.third = RD8(OBJ->y_lo[slot]);
     r.fourth = (uint8_t)(r.third >> 4);
     r.fifth = rd8((uint16_t)(0xB3CB + r.fourth));
-    WR8(OBJ->flash_flags[slot], r.fifth);
+    WR8(OBJ->sprite_attr[slot], r.fifth);
     r.arm = FB_BY_HEIGHT;
     return r;
 }
@@ -1971,7 +1971,7 @@ ObjArm RaiseStateOnFlag(uint8_t slot)
 {
     ObjArm r = { 0 };
 
-    r.first = RD8(OBJ->status_flags[slot]);
+    r.first = RD8(OBJ->hit_status[slot]);
     r.first = (uint8_t)(r.first & 0x80);
     r.arm = RF_NO_FLAG;
     if (r.first == 0) {
@@ -2604,7 +2604,7 @@ void abi_StartScriptsAndLists(void)
  * @routine 072B:76E StepThenMusicAgain
  * @run 70:B76E
  * WHAT IT DOES: Steps the animation list at $B7AD; on the new frame with animation step 2 it sets bit 4 of zField8E and plays sound $FE; when the list ends it turns on the object's
- * hitbox flag (2), clears bits 3 and 4 of zField8E, plays the music again (CdPlayAgain), clears the object flags (OBJ_2F38), sets bit 2 of zField8E and bit 4 and 6 of OBJ_3148, and enters its next state.
+ * hitbox flag (2), clears bits 3 and 4 of zField8E, plays the music again (CdPlayAgain), clears the object flags (OBJ_2F38), sets bit 2 of zField8E and bit 4 and 6 of OBJ_PACE, and enters its next state.
  * HOW: StepObjectFrames, SoundCommand, CdPlayAgain.
  * WAITS: no.
  * Entry: X object, Y kept unless the step sets it. Exit: see the wrapper.
@@ -2639,13 +2639,13 @@ ObjArm StepThenMusicAgain(uint8_t slot, uint8_t y)
     r.track = CdPlayAgain(slot, y);
     jsr_pop();
     r.flag = true;
-    WR8(OBJ->flags[slot], 0);
+    WR8(OBJ->scroll_band[slot], 0);
     flags = RD8(ZP->field8_e);
     flags = (uint8_t)(flags | 0x04);
     WR8(ZP->field8_e, flags);
-    r.second = RD8(OBJ->f3148[slot]);
+    r.second = RD8(OBJ->pace[slot]);
     r.second = (uint8_t)(r.second | 0x50);
-    WR8(OBJ->f3148[slot], r.second);
+    WR8(OBJ->pace[slot], r.second);
     r.third = INC8(OBJ->state[slot]);
     return r;
 }
@@ -3132,8 +3132,8 @@ void abi_TilePieceInRange072A(void)
  * @routine 072A:01D TilePieceObject072A
  * @run 70:A81D
  * @stop A855
- * WHAT IT DOES: A piece of the scenery drawn from a tile script. In state 0 the object is cleared when the bit its OBJ_3040 names is set in zField8F; otherwise it loads
- * its record, takes OBJ_3510 as OBJ_3040 times 16, copies two bytes of the table at $AE95 into its hit box and draws the tile script the table's third byte (plus
+ * WHAT IT DOES: A piece of the scenery drawn from a tile script. In state 0 the object is cleared when the bit its OBJ_START_ARG names is set in zField8F; otherwise it loads
+ * its record, takes OBJ_3510 as OBJ_START_ARG times 16, copies two bytes of the table at $AE95 into its hit box and draws the tile script the table's third byte (plus
  * OBJ_34B8) names. In later states TilePieceInRange072A.
  * HOW: BitMaskFromIndex, ClearObject, LoadObjectRecord, DrawTileScript.
  * WAITS: no.

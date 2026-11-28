@@ -1,8 +1,8 @@
 ; @routine 072A:01D TilePieceObject072A
 ; @run 70:A81D
 ; @stop A855
-; WHAT IT DOES: A piece of the scenery drawn from a tile script. In state 0 the object is cleared when the bit its OBJ_3040 names is set in zField8F; otherwise it loads
-; its record, takes OBJ_3510 as OBJ_3040 times 16, copies two bytes of the table at $AE95 into its hit box and draws the tile script the table's third byte (plus
+; WHAT IT DOES: A piece of the scenery drawn from a tile script. In state 0 the object is cleared when the bit its OBJ_START_ARG names is set in zField8F; otherwise it loads
+; its record, takes OBJ_3510 as OBJ_START_ARG times 16, copies two bytes of the table at $AE95 into its hit box and draws the tile script the table's third byte (plus
 ; OBJ_34B8) names. In later states TilePieceInRange072A.
 ; HOW: BitMaskFromIndex, ClearObject, LoadObjectRecord, DrawTileScript.
 ; WAITS: no.
@@ -10,14 +10,14 @@
 TilePieceObject072A:
     lda a:OBJ_STATE,x
     bne TilePieceInRange072A
-    ldy a:OBJ_3040,x
+    ldy a:OBJ_START_ARG,x
     jsr BitMaskFromIndex072A
     and z:zField8F
     beq TilePieceObject072A_at0
     jmp VecClearObject
 TilePieceObject072A_at0:
     jsr VecLoadObjectRecord
-    lda a:OBJ_3040,x
+    lda a:OBJ_START_ARG,x
     asl a
     asl a
     asl a
@@ -287,7 +287,7 @@ RisingDriftBlock:
     jsr VecLoadObjectRecord
     lda #$12
     sta a:OBJ_FRAME,x
-    lda a:OBJ_3040,x
+    lda a:OBJ_START_ARG,x
     asl a
     tay
     lda a:$B145,y
@@ -356,7 +356,7 @@ LevelDriftBlock:
     jsr VecLoadObjectRecord
     lda #$13
     sta a:OBJ_FRAME,x
-    lda a:OBJ_3040,x
+    lda a:OBJ_START_ARG,x
     asl a
     tay
     lda a:$B1A3,y
@@ -679,7 +679,7 @@ RunDriftObject_at0:
 ; WAITS: no.
 ; Entry: X object. Exit: the last AND, compare or load.
 RaiseStateOnFlag:
-    lda a:OBJ_31A0,x
+    lda a:OBJ_HIT_STATUS,x
     and #$80
     beq RaiseStateOnFlag_at0
     lda a:OBJ_STATE,x
@@ -712,14 +712,14 @@ FlashByHeight:
     lsr a
     tay
     lda a:$B3CB,y
-    sta a:OBJ_2B18,x
+    sta a:OBJ_SPRITE_ATTR,x
     rts
 FlashByHeight_at1:
-    stz a:OBJ_2B18,x
+    stz a:OBJ_SPRITE_ATTR,x
     rts
 FlashByHeight_at0:
     lda #$86
-    sta a:OBJ_2B18,x
+    sta a:OBJ_SPRITE_ATTR,x
     rts
 
 ; @routine 072B:3DB FaceByVelocityAndCatch
@@ -829,7 +829,7 @@ StartPieceChain_at1:
 ; @routine 072B:76E StepThenMusicAgain
 ; @run 70:B76E
 ; WHAT IT DOES: Steps the animation list at $B7AD; on the new frame with animation step 2 it sets bit 4 of zField8E and plays sound $FE; when the list ends it turns on the object's
-; hitbox flag (2), clears bits 3 and 4 of zField8E, plays the music again (CdPlayAgain), clears OBJ_2F38, sets bit 2 of zField8E and bit 4 and 6 of OBJ_3148, and enters its next state.
+; hitbox flag (2), clears bits 3 and 4 of zField8E, plays the music again (CdPlayAgain), clears OBJ_2F38, sets bit 2 of zField8E and bit 4 and 6 of OBJ_PACE, and enters its next state.
 ; HOW: StepObjectFrames, SoundCommand, CdPlayAgain.
 ; WAITS: no.
 ; Entry: X object, Y kept unless the step sets it. Exit: see the wrapper.
@@ -854,13 +854,13 @@ StepThenMusicAgain_at0:
     rmb3 z:zField8E
     rmb4 z:zField8E
     jsr VecCdPlayAgain
-    stz a:OBJ_FLAGS_2F38,x
+    stz a:OBJ_SCROLL_BAND,x
     lda z:zField8E
     ora #$04
     sta z:zField8E
-    lda a:OBJ_3148,x
+    lda a:OBJ_PACE,x
     ora #$50
-    sta a:OBJ_3148,x
+    sta a:OBJ_PACE,x
     inc a:OBJ_STATE,x
 StepThenMusicAgain_at1:
     rts
@@ -1053,7 +1053,7 @@ StepFallingPieceStream:
     lda a:OBJ_Y_HI,x
     cmp #$08
     bne StepFallingPieceStream_at0
-    stz a:OBJ_2B18,x
+    stz a:OBJ_SPRITE_ATTR,x
     stz a:OBJ_SUBSTATE,x
 StepFallingPieceStream_at0:
     rts

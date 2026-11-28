@@ -203,7 +203,7 @@ ObjArm EnterStateSevenOnFlag(uint8_t slot)
 {
     ObjArm r = { 0 };
 
-    r.first = RD8(OBJ->status_flags[slot]);
+    r.first = RD8(OBJ->hit_status[slot]);
     r.first = (uint8_t)(r.first & 0x80);
     r.arm = E7_NO_FLAG;
     if (r.first == 0) {
@@ -542,7 +542,7 @@ ObjArm PickNextMoveBySide(uint8_t slot)
     jsr_pop();
     r.first = (uint8_t)(r.side.sides & 0x01);
     WR8(OBJ->facing_left[slot], r.first);
-    r.second = RD8(OBJ->f32a8[slot]);
+    r.second = RD8(OBJ->health[slot]);
     r.third = (uint8_t)((r.second >> 1) & 0xF0);
     WR8(ZP->temp00, r.third);
     r.fourth = RD8(OBJ->f3720[slot]);
@@ -1235,7 +1235,7 @@ ObjArm ShootEveryFourth(uint8_t slot, uint8_t y)
     WR8(OBJ->facing_left[found_slot], r.sixth);
     count = RD8(OBJ->f3778[slot]);
     r.seventh = (uint8_t)(count & 0x07);
-    WR8(OBJ->next_kind[found_slot], r.seventh);
+    WR8(OBJ->start_arg[found_slot], r.seventh);
     r.eighth = INC8(OBJ->f3778[slot]);
     return r;
 }
@@ -1473,7 +1473,7 @@ ObjArm ShatterOnHits(uint8_t slot)
         WR8(OBJ->anim_timer[slot], 0);
         WR8(OBJ->vy_hi[slot], 0xFB);
         WR8(OBJ->vy_lo[slot], 0);
-        WR8(OBJ->timer[slot], 0x16);
+        WR8(OBJ->invuln_timer[slot], 0x16);
         jsr_push(0xC10B);
         found_slot = FindFreeSlotFrom50(&r.ninth, &found);
         jsr_pop();
@@ -1815,7 +1815,7 @@ ObjArm StartFromTable(uint8_t slot)
     r.first = LoadObjectRecord(slot, &r.second, &r.flag);
     jsr_pop();
     WR8(OBJ->angle_lo[slot], 0x80);
-    r.third = RD8(OBJ->next_kind[slot]);
+    r.third = RD8(OBJ->start_arg[slot]);
     byte = rd8((uint16_t)(0xBEF2 + r.third));
     r.sum = sub_bytes(byte, 0xA0, true);
     WR8(OBJ->angle_hi[slot], r.sum.value);
@@ -1914,8 +1914,8 @@ ObjArm FollowAndFacePlayer(uint8_t slot)
     if (r.fourth == 0) {
         return r;
     }
-    flash = RD8(OBJ->flash_flags[0x10]);
-    WR8(OBJ->flash_flags[slot], flash);
+    flash = RD8(OBJ->sprite_attr[0x10]);
+    WR8(OBJ->sprite_attr[slot], flash);
     r.fifth = flash;
     jsr_push(0xBAA0);
     r.sixth = CopyObjectPlaceBack(0x10, slot);
@@ -2094,7 +2094,7 @@ ObjArm StartThrownPiece(uint8_t slot)
     WR8(ZP->temp00, byte);
     byte = rd8((uint16_t)(0xBCD4 + r.fourth));
     WR8(ZP->temp01, byte);
-    kind = RD8(OBJ->next_kind[slot]);
+    kind = RD8(OBJ->start_arg[slot]);
     angle = rd8((uint16_t)(0xBCE3 + kind));
     jsr_push(0xBCC8);
     r.scale = SetVelocityFromAngle(angle, slot);
@@ -2731,7 +2731,7 @@ ObjArm OrbitThenLeave(uint8_t slot)
     ObjArm r = { 0 };
     uint8_t kind, y, byte;
 
-    kind = RD8(OBJ->next_kind[slot]);
+    kind = RD8(OBJ->start_arg[slot]);
     y = (uint8_t)(kind << 1);
     r.first = y;
     r.flag = (kind & 0x80) != 0;
@@ -3091,7 +3091,7 @@ ObjArm StartTileScriptByKind(uint8_t slot)
     jsr_push(0xB14A);
     r.first = LoadObjectRecord(slot, &r.second, &r.flag);
     jsr_pop();
-    r.third = RD8(OBJ->next_kind[slot]);
+    r.third = RD8(OBJ->start_arg[slot]);
     r.fourth = rd8((uint16_t)(0xB15D + r.third));
     WR8(OBJ->life_timer[slot], r.fourth);
     r.arm = TK_OTHER;
@@ -3140,7 +3140,7 @@ ObjArm CountThenTileScript(uint8_t slot)
     if (r.first != 0) {
         return r;
     }
-    r.second = RD8(OBJ->next_kind[slot]);
+    r.second = RD8(OBJ->start_arg[slot]);
     r.sum = add_bytes(r.second, 6, false);
     r.third = (uint8_t)(r.sum.value + 1);
     jsr_push(0xB171);

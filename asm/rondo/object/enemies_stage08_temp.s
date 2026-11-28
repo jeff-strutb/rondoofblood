@@ -198,7 +198,7 @@ SetSpeedFromPhaseTable:
 ; WAITS: no.
 ; Entry: X object. Exit: A the masked bit, or 6 when entered; N, Z from it; X, Y and C kept.
 EnterState6IfFlaggedB:
-    lda a:OBJ_31A0,x
+    lda a:OBJ_HIT_STATUS,x
     and #$80
     beq EnterState6IfFlaggedB_at0
     lda #$06
@@ -281,7 +281,7 @@ StartFacingPlayerThenCheck:
     sta a:OBJ_FACING_LEFT,x
     lda #$18
     sta a:OBJ_3510,x
-    lda a:OBJ_3040,x
+    lda a:OBJ_START_ARG,x
     cmp #$01
     bne StartFacingPlayerThenCheck_at0
     jsr VecDistanceXToPlayer
@@ -312,7 +312,7 @@ AnimateThenCountToState3:
     lda #$7B
     sta z:zTemp10
     jsr VecStepObjectFrames
-    lda a:OBJ_3040,x
+    lda a:OBJ_START_ARG,x
     cmp #$FF
     beq AnimateThenCountToState3_at0
     lda a:OBJ_X_HI,x
@@ -380,7 +380,7 @@ PickPhaseAtRandomB_at0:
 ; Entry: X object, D clear. Exit: A the timer, N, Z from it; C from the record; Y the next_kind.
 StartWithTimerByNextKind:
     jsr VecLoadObjectRecord
-    ldy a:OBJ_3040,x
+    ldy a:OBJ_START_ARG,x
     lda a:$C96F,y
     sta a:OBJ_34B8,x
     stz a:OBJ_3510,x
@@ -433,7 +433,7 @@ StepFramesFacingPlayerE:
 StartWithFrameByNextKind:
     jsr VecLoadObjectRecord
     stz a:OBJ_3568,x
-    lda a:OBJ_3040,x
+    lda a:OBJ_START_ARG,x
     lsr a
     lsr a
     lsr a
@@ -454,7 +454,7 @@ StartWithFrameByNextKind:
 ; Entry: X object, D clear. Exit: as StepObjectFrames, or at the end A 2 and N, Z from the new
 ; state. Clobbers zTemp10-11.
 AnimateByKindThenNextState:
-    lda a:OBJ_3040,x
+    lda a:OBJ_START_ARG,x
     lsr a
     lsr a
     lsr a
@@ -485,7 +485,7 @@ AnimateByKindThenNextState_at0:
 ; Entry: X object, D clear. Exit: after a spawn as StartObjectAtPlace left them; pausing: A the timer, N, Z from it,
 ; Y the table index; otherwise the failing test or the step's flags.
 AnimateAndSpawnThenPause:
-    lda a:OBJ_3040,x
+    lda a:OBJ_START_ARG,x
     bne AnimateAndSpawnThenPause_at0
     jsr VecDistanceXToPlayer
     cmp #$70

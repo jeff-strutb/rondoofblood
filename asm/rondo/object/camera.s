@@ -21,7 +21,7 @@ PlayerDistanceSum:
     sbc a:OBJ_Y_LO+$33
     adc a:OBJ_FIELDS_2EE0
     sec
-    sbc a:OBJ_2F90
+    sbc a:OBJ_HURT_TIMER
     rts
 
 ; @routine 0047:589 SoundIfOnFirstScreen

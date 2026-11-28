@@ -60,7 +60,7 @@ SetBossFixedFields:
 
 ; @routine 025A:730 StartBossWhenStageC0OrLoad
 ; @run 70:AF30
-; WHAT IT DOES: Sets the fixed fields (SetBossFixedFields). When the requested stage zStageRequested is $C0 it starts list $84 on channel 0 and script $8E in slot 5, clears the enemy slots, clears the frames of slots $56 and $57, starts five objects of type $2B from the slots 0 to 4 into free slots of $30 to $3F (OBJ_3040 the number), advances ScrollXHi+1 and plays the track again (CdPlayAgain). Otherwise it loads the object's record, sets OBJ_34B8 $80 and advances ScrollXHi+1.
+; WHAT IT DOES: Sets the fixed fields (SetBossFixedFields). When the requested stage zStageRequested is $C0 it starts list $84 on channel 0 and script $8E in slot 5, clears the enemy slots, clears the frames of slots $56 and $57, starts five objects of type $2B from the slots 0 to 4 into free slots of $30 to $3F (OBJ_START_ARG the number), advances ScrollXHi+1 and plays the track again (CdPlayAgain). Otherwise it loads the object's record, sets OBJ_34B8 $80 and advances ScrollXHi+1.
 ; HOW: SetBossFixedFields, StartListChannelKind2, StartScriptSlotKind1, ClearEnemySlots, a loop of FindFreeSlotFrom30 and StartObjectAtPlace, CdPlayAgain, LoadObjectRecord.
 ; WAITS: no. (CdPlayAgain starts a disc command; it does not wait.)
 ; Entry: X object, Y kept for the track call. Exit: as the last instruction that ran. The $C0 arm ran in no script; the draft stops there and the arm is written from the decoded bytes.
@@ -85,7 +85,7 @@ StartBossWhenStageC0OrLoad_at1:
     lda #$2B
     jsr VecStartObjectAtPlace
     txa
-    sta a:OBJ_3040,y
+    sta a:OBJ_START_ARG,y
     inx
     cpx #$05
     bne StartBossWhenStageC0OrLoad_at1
@@ -170,7 +170,7 @@ CountdownThenSpawnPieces_at0:
     lda #$21
     jsr VecStartObjectAtPlace
     lda #$01
-    sta a:OBJ_3040,y
+    sta a:OBJ_START_ARG,y
     rts
 
 ; @routine 025A:7C1 HoldScrollStepThenNextState
@@ -196,7 +196,7 @@ HoldScrollStepThenNextState_at0:
 
 ; @routine 025A:7DE StepScrollThenMoveOrFadeOut
 ; @run 70:AFDE
-; WHAT IT DOES: Runs StepVerticalScrollTable. When slots 0's state and OBJ_SUBSTATE and Y speed high byte are all 0 and the byte at $3BC3 is not 0 it acts by OBJ_3670: at 0 it speeds up the object named by OBJ_3040 by $0010, sets ScrollStepXHi+1 to the negative of its X speed high byte, sets slot 0's OBJ_3510 $10 and OBJ_3568 0, hands slot 0's sprite set, frame and facing to the object named by OBJ_3040 and clears slot 0's frame; when ScrollXHi+1 is $FE it then sets the timer $40 and goes to the next state. At 1 it clears OBJ_3670, clears the object named by OBJ_3040, makes it kind $31, sets slot 0's OBJ_3510 $10 and OBJ_3568 0 and fades the CD with type $0C.
+; WHAT IT DOES: Runs StepVerticalScrollTable. When slots 0's state and OBJ_SUBSTATE and Y speed high byte are all 0 and the byte at $3BC3 is not 0 it acts by OBJ_3670: at 0 it speeds up the object named by OBJ_START_ARG by $0010, sets ScrollStepXHi+1 to the negative of its X speed high byte, sets slot 0's OBJ_3510 $10 and OBJ_3568 0, hands slot 0's sprite set, frame and facing to the object named by OBJ_START_ARG and clears slot 0's frame; when ScrollXHi+1 is $FE it then sets the timer $40 and goes to the next state. At 1 it clears OBJ_3670, clears the object named by OBJ_START_ARG, makes it kind $31, sets slot 0's OBJ_3510 $10 and OBJ_3568 0 and fades the CD with type $0C.
 ; HOW: StepVerticalScrollTable, tests, 16-bit adds in memory, ClearObjectInY, cd_fade (the card's volume fade), a tail jump into SetTimerThenNextState.
 ; WAITS: no.
 ; Entry: X object. Exit: as the last instruction that ran; with the fade, as cd_fade leaves them. The byte at $3BC3 and $3BF0 keep their address form until they have names. The OBJ_3670 not 0 arm ran in no script; the draft stops there.
@@ -212,7 +212,7 @@ StepScrollThenMoveOrFadeOut:
     lda a:OBJ_3670,x
     bne StepScrollThenMoveOrFadeOut_at0
     phx
-    lda a:OBJ_3040,x
+    lda a:OBJ_START_ARG,x
     tax
     lda #$10
     clc
@@ -231,9 +231,9 @@ StepScrollThenMoveOrFadeOut:
     lda #$02
     sta a:PlayerByte3BF0
     stz a:OBJ_3568
-    ldy a:OBJ_3040,x
-    lda a:OBJ_2A10
-    sta a:OBJ_2A10,y
+    ldy a:OBJ_START_ARG,x
+    lda a:OBJ_SPRITE_SET
+    sta a:OBJ_SPRITE_SET,y
     lda a:OBJ_FRAME
     sta a:OBJ_FRAME,y
     lda a:OBJ_FACING_LEFT
@@ -249,7 +249,7 @@ StepScrollThenMoveOrFadeOut_at1:
     rts
 StepScrollThenMoveOrFadeOut_at0:
     stz a:OBJ_3670,x
-    ldy a:OBJ_3040,x
+    ldy a:OBJ_START_ARG,x
     jsr VecClearObjectInY
     lda #$31
     sta a:OBJ_KIND,y

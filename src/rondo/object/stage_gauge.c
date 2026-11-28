@@ -170,18 +170,18 @@ StageExit GaugeStep(void)
 {
     StageExit end = { 0, 0, 0, false, false, 0, 0 };
     StageExit address;
-    uint8_t a = RD8(OBJ->f32a8[TARGET_SLOT]);
+    uint8_t a = RD8(OBJ->health[TARGET_SLOT]);
     uint8_t m;
     uint8_t y;
 
     if ((a & 0x80) != 0) {
         push8(a);
-        WR8(OBJ->f32a8[TARGET_SLOT], 0);
+        WR8(OBJ->health[TARGET_SLOT], 0);
         jsr_push(TIMER_RETURN);
         end = gauge_timer_check(end);
         jsr_pop();
         a = pull8();
-        WR8(OBJ->f32a8[TARGET_SLOT], a);
+        WR8(OBJ->health[TARGET_SLOT], a);
         y = RD8(LEVEL->field2742);
         end.a = a;
         end.y = y;

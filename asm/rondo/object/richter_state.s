@@ -234,7 +234,7 @@ RichterHitWhilePushed:
     lda #$06
     sta a:OBJ_HIT_TAKEN
     lda #$10
-    sta a:OBJ_32A8
+    sta a:OBJ_HEALTH
     stz a:OBJ_STATE
 RichterHitWhilePushed_at0:
     rts
@@ -491,7 +491,7 @@ RichterStateFrame_at1:
 RichterStateFrame_at3:
     lda z:zPlayerHealth
     sec
-    sbc a:OBJ_32A8
+    sbc a:OBJ_HEALTH
     sta z:zPlayerHealth
     bcs RichterStateFrame_at4
     jmp RichterOutOfHealth
@@ -630,7 +630,7 @@ RichterTurnOnPress_at1:
 ; WHAT IT DOES: The standing state's attacking step: reads the ground, falls if nothing is
 ; below; turns with a press while the attack is young; with the whip out and up held early,
 ; crouches; otherwise waits for the animation's end, then stands.
-; HOW: OBJ_FLAGS_2F38 counts the attack's progress; object 3 is the whip; PlayerByte3BD5
+; HOW: OBJ_SCROLL_BAND counts the attack's progress; object 3 is the whip; PlayerByte3BD5
 ; set skips to the wait. RichterAnimationWait returns past this routine while it runs.
 ; WAITS: no.
 ; Entry: nothing. Exit: falling, as $A9DD. Crouched, A 2, N and Z clear, as the animation's
@@ -643,7 +643,7 @@ RichterStandStep1:
     jmp EventFlagsClear_at1
 RichterStandStep1_at0:
     jsr RichterLandOnFloor
-    lda a:OBJ_FLAGS_2F38
+    lda a:OBJ_SCROLL_BAND
     cmp #$03
     bcs RichterStandStep1_at1
     bsr RichterTurnOnPress
@@ -653,7 +653,7 @@ RichterStandStep1_at1:
     lda a:OBJ_KIND+3
     cmp #$01
     bne RichterStandStep1_at2
-    lda a:OBJ_FLAGS_2F38
+    lda a:OBJ_SCROLL_BAND
     cmp #$06
     bcs RichterStandStep1_at3
     jsr RichterUpHeld
@@ -670,7 +670,7 @@ RichterStandStep1_at4:
     sta a:OBJ_STATE
     rts
 RichterStandStep1_at3:
-    lda a:OBJ_2F90
+    lda a:OBJ_HURT_TIMER
     cmp #$04
     bcs RichterStandStep1_at2
     bra RichterStandStep1_at2
@@ -701,7 +701,7 @@ RichterOrphanClearWhipAir:
 ; runs reads the ground (in state 0) and falls if nothing is below, jumps on a press, or steps
 ; the animation and spawns object $0C in the first free slot from 5. When the timer has run
 ; out, stands, or ends the item crash outside state 0.
-; HOW: OBJ_30F0 is the timer. Ending, falling and jumping count PlayerByte3BD6 up. A jump in
+; HOW: OBJ_LOOP_FLAGS is the timer. Ending, falling and jumping count PlayerByte3BD6 up. A jump in
 ; the crash's states goes up the ledge by the first table below state 7, the second from it.
 ; WAITS: no.
 ; Entry: nothing. Exit: as the transition taken, after what the steps before it left. Spawned,
@@ -720,9 +720,9 @@ RichterStandStep2_at0:
     beq RichterStandStep2_at1
     stz a:OBJ_FACING_LEFT
 RichterStandStep2_at1:
-    lda a:OBJ_30F0
+    lda a:OBJ_LOOP_FLAGS
     beq RichterStandStep2_at2
-    dec a:OBJ_30F0
+    dec a:OBJ_LOOP_FLAGS
     lda a:OBJ_STATE
     cmp #$00
     bne RichterStandStep2_at3
@@ -1081,7 +1081,7 @@ RichterLedgeHurtB_at2:
     lda #$05
     sta a:OBJ_SUBSTATE
     lda #$60
-    sta a:OBJ_30F0
+    sta a:OBJ_LOOP_FLAGS
     rts
 RichterLedgeHurtB_at1:
     lda #$2C
@@ -1258,7 +1258,7 @@ RichterItemCrashFive:
     lda #$02
     sta a:OBJ_SUBSTATE
     lda #$60
-    sta a:OBJ_30F0
+    sta a:OBJ_LOOP_FLAGS
     rts
 
 ; @routine 01B9:661 RichterReactE
@@ -1690,7 +1690,7 @@ RichterCrouchAttack:
 ; WHAT IT DOES: Attacking from the crouch: reads the ground (nothing below goes to $A9DD); turns
 ; with a press while the attack is young; with up let go before it is far along, stands; else
 ; waits for the animation's end, then is down again, animation $0E, step 0.
-; HOW: OBJ_FLAGS_2F38 against 3 and 6. RichterAnimationWait returns past this routine while it
+; HOW: OBJ_SCROLL_BAND against 3 and 6. RichterAnimationWait returns past this routine while it
 ; runs.
 ; WAITS: no.
 ; Entry: nothing. Exit: falling, as $A9DD. Stood, as RichterAnimationTick, state 0 and
@@ -1703,12 +1703,12 @@ RichterCrouchStep1:
     jmp EventFlagsClear_at1
 RichterCrouchStep1_at0:
     jsr RichterLandOnFloor
-    lda a:OBJ_FLAGS_2F38
+    lda a:OBJ_SCROLL_BAND
     cmp #$03
     bcs RichterCrouchStep1_at1
     jsr RichterTurnOnPress
 RichterCrouchStep1_at1:
-    lda a:OBJ_FLAGS_2F38
+    lda a:OBJ_SCROLL_BAND
     cmp #$06
     bcs RichterCrouchStep1_at2
     jsr RichterUpHeld
@@ -1842,7 +1842,7 @@ RichterFallGravity_at0:
 ; @routine 01BA:62F RichterMoveStopped
 ; @run 6D:AE2F
 ; WHAT IT DOES: Moves him along X, stops his animation and sets the state's step back to 0.
-; HOW: A added to OBJ_X_LO; OBJ_2F90 $FF; OBJ_SUBSTATE 0.
+; HOW: A added to OBJ_X_LO; OBJ_HURT_TIMER $FF; OBJ_SUBSTATE 0.
 ; WAITS: no.
 ; Entry: A the move. Exit: A $FF, X the facing, N and Z from it, C and V from the add. Y kept.
 RichterMoveStopped:
@@ -1850,7 +1850,7 @@ RichterMoveStopped:
     adc a:OBJ_X_LO
     sta a:OBJ_X_LO
     lda #$FF
-    sta a:OBJ_2F90
+    sta a:OBJ_HURT_TIMER
     stz a:OBJ_SUBSTATE
     ldx a:OBJ_FACING_LEFT
     rts
@@ -1896,7 +1896,7 @@ RichterEndItemCrash:
     lda a:RichterCrashEndAnimations,y
     sta a:OBJ_FIELDS_2EE0
     lda #$FF
-    sta a:OBJ_2F90
+    sta a:OBJ_HURT_TIMER
     stz a:OBJ_SUBSTATE
     rts
 

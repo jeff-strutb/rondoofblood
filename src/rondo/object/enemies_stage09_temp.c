@@ -651,12 +651,12 @@ ObjArm StepThenQuarterWait(uint8_t slot)
     r.first = LSR8_VALUE(OBJ->f3510[slot], r.flag);
     r.second = LSR8_VALUE(OBJ->f3510[slot], r.other);
     WR8(OBJ->state[slot], 2);
-    r.third = RD8(OBJ->timer[slot]);
+    r.third = RD8(OBJ->invuln_timer[slot]);
     r.arm = QW_TIMER_OK;
     if (r.third >= 3) {
         return r;
     }
-    WR8(OBJ->timer[slot], 3);
+    WR8(OBJ->invuln_timer[slot], 3);
     r.arm = QW_RAISED;
     return r;
 }
@@ -2422,11 +2422,11 @@ void abi_StepShootOnCue(void)
 /*
  * @routine 09EA:5CB AdvanceByHealth
  * @run 70:ADCB
- * WHAT IT DOES: An object with a state moves to its next phase (OBJ_3618) when its health OBJ_32A8 falls below the limit a table at $AE09 gives for the phase (phase 2 moves on
- * when bit 7 of the health is set): its state becomes the byte a table at $AE0B gives, the phase goes up, the animation and OBJ_SUBSTATE are reset, and from phase 2 its OBJ_3148 loses
+ * WHAT IT DOES: An object with a state moves to its next phase (OBJ_3618) when its health OBJ_HEALTH falls below the limit a table at $AE09 gives for the phase (phase 2 moves on
+ * when bit 7 of the health is set): its state becomes the byte a table at $AE0B gives, the phase goes up, the animation and OBJ_SUBSTATE are reset, and from phase 2 its OBJ_PACE loses
  * bits 3 to 6.
  * HOW: Table reads (bank 70).
- * Untraced: the phase 2 test (ADD7) and the OBJ_3148 mask (AE00).
+ * Untraced: the phase 2 test (ADD7) and the OBJ_PACE mask (AE00).
  * WAITS: no.
  * Entry: X object. Exit: the last compare, load or AND.
  */
@@ -2443,13 +2443,13 @@ ObjArm AdvanceByHealth(uint8_t slot)
     r.second = RD8(OBJ->f3618[slot]);
     r.arm = AH_BLOCKED;
     if (r.second == 2) {
-        health = RD8(OBJ->f32a8[slot]);
+        health = RD8(OBJ->health[slot]);
         r.third = (uint8_t)(health & 0x80);
         if (r.third == 0) {
             return r;
         }
     } else {
-        r.third = RD8(OBJ->f32a8[slot]);
+        r.third = RD8(OBJ->health[slot]);
         r.fourth = rd8((uint16_t)(0xAE09 + r.second));
         if (r.third >= r.fourth) {
             return r;
@@ -2466,9 +2466,9 @@ ObjArm AdvanceByHealth(uint8_t slot)
     if (r.sixth < 2) {
         return r;
     }
-    r.seventh = RD8(OBJ->f3148[slot]);
+    r.seventh = RD8(OBJ->pace[slot]);
     r.seventh = (uint8_t)(r.seventh & 0x87);
-    WR8(OBJ->f3148[slot], r.seventh);
+    WR8(OBJ->pace[slot], r.seventh);
     r.arm = AH_FLAGGED;
     return r;
 }
@@ -2936,7 +2936,7 @@ ObjArm StartTracker(uint8_t slot)
     WR8(OBJ->frame[slot], 2);
     low = RD8(OBJ->y_lo[slot]);
     WR8(OBJ->angle_lo[slot], low);
-    r.third = RD8(OBJ->next_kind[slot]);
+    r.third = RD8(OBJ->start_arg[slot]);
     WR8(OBJ->f3618[slot], r.third);
     return r;
 }

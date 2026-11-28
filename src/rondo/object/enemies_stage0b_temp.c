@@ -254,7 +254,7 @@ ObjArm EnterState7IfYHighOrFlagged(uint8_t slot)
     r.first = RD8(OBJ->y_hi[slot]);
     r.arm = BB_E7_ENTERED;
     if (r.first == 0) {
-        r.second = (uint8_t)(RD8(OBJ->status_flags[slot]) & 0x80);
+        r.second = (uint8_t)(RD8(OBJ->hit_status[slot]) & 0x80);
         r.arm = BB_E7_NONE;
         if (r.second == 0) {
             return r;
@@ -739,7 +739,7 @@ ObjArm FlashFallAnimateThenRemove(uint8_t slot)
     ObjArm r = { 0 };
     uint8_t exit_y = 0;
 
-    WR8(OBJ->flash_flags[slot], 0x8B);
+    WR8(OBJ->sprite_attr[slot], 0x8B);
     jsr_push(0xBE11);
     r.move = ApplyVelocityY(slot);
     jsr_pop();
@@ -943,7 +943,7 @@ ObjArm StartFlyerAtRandom(uint8_t slot)
     jsr_push(0xBA1C);
     r.first = LoadObjectRecord(slot, &r.second, &r.flag);
     jsr_pop();
-    WR8(OBJ->flash_flags[slot], 0x8F);
+    WR8(OBJ->sprite_attr[slot], 0x8F);
     jsr_push(0xBA24);
     r.sub = obj_sub(PlaceAtRandomOnEdge(slot));
     jsr_pop();
@@ -1104,7 +1104,7 @@ ObjArm BurstWhenFlaggedHitB(uint8_t slot, uint8_t entry_y)
     if (state == 6) {
         return r;
     }
-    r.second = (uint8_t)(RD8(OBJ->status_flags[slot]) & 0x80);
+    r.second = (uint8_t)(RD8(OBJ->hit_status[slot]) & 0x80);
     r.arm = BS_CLEAR;
     if (r.second == 0) {
         return r;
@@ -1258,7 +1258,7 @@ ObjArm SpawnType2AThenRestartTimer(uint8_t slot)
     uint8_t found_slot;
     bool found;
 
-    r.first = RD8(OBJ->next_kind[slot]);
+    r.first = RD8(OBJ->start_arg[slot]);
     if (r.first != 4) {
         r.second = RD8(OBJ->y_lo[0]);
         r.arm = BB_ST_LOW;
@@ -1612,7 +1612,7 @@ ObjArm LoadObjectRecordFromTable(uint8_t slot)
     byte = RD8_PTR_Y(ZP->temp10, 1);
     WR8(OBJ->f3300[slot], byte);
     byte = RD8_PTR_Y(ZP->temp10, 2);
-    WR8(OBJ->f32a8[slot], byte);
+    WR8(OBJ->health[slot], byte);
     packed = RD8_PTR_Y(ZP->temp10, 3);
     WR8(OBJ->hitbox_on[slot], (uint8_t)(packed & 0x0F));
     packed = RD8_PTR_Y(ZP->temp10, 3);
@@ -1627,11 +1627,11 @@ ObjArm LoadObjectRecordFromTable(uint8_t slot)
     byte = RD8_PTR_Y(ZP->temp10, 7);
     WR8(OBJ->frame[slot], byte);
     byte = RD8_PTR_Y(ZP->temp10, 8);
-    WR8(OBJ->f30f0[slot], byte);
+    WR8(OBJ->loop_flags[slot], byte);
     byte = RD8_PTR_Y(ZP->temp10, 9);
-    WR8(OBJ->f3148[slot], byte);
+    WR8(OBJ->pace[slot], byte);
     byte = RD8_PTR_Y(ZP->temp10, 10);
-    WR8(OBJ->status_flags[slot], byte);
+    WR8(OBJ->hit_status[slot], byte);
     byte = RD8_PTR_Y(ZP->temp10, 11);
     r.first = byte;
     WR8(OBJ->hit_reaction[slot], byte);
@@ -1919,8 +1919,8 @@ ObjArm ChargeWhenPlayerNearB(uint8_t slot)
     }
     WR8(OBJ->anim_step[slot], 0);
     WR8(OBJ->anim_timer[slot], 0);
-    flags = (uint8_t)(RD8(OBJ->flags[slot]) & 0x80);
-    WR8(OBJ->flags[slot], flags);
+    flags = (uint8_t)(RD8(OBJ->scroll_band[slot]) & 0x80);
+    WR8(OBJ->scroll_band[slot], flags);
     facing = RD8(OBJ->facing_left[slot]);
     value = rd8((uint16_t)(0xB5F3 + facing));
     WR8(OBJ->vx_hi[slot], value);

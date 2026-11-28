@@ -531,9 +531,9 @@ StreamPlaceObject_at0:
     sta a:OBJ_X_HI,x
 StreamPlaceObject_at1:
     lda z:zTemp0D
-    sta a:OBJ_3040,x
+    sta a:OBJ_START_ARG,x
     lda z:zTemp0E
-    sta a:OBJ_FLAGS_2F38,x
+    sta a:OBJ_SCROLL_BAND,x
     lda z:zTemp0F
     sta a:OBJ_EVENT_ID,x
 

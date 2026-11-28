@@ -629,7 +629,7 @@ static inline SoundEnd sound_every_fourth_frame_exit_shim(ObjArm r)
 static inline ObjArm knock_up_when_flagged(uint8_t slot, uint8_t below, uint8_t state)
 {
     ObjArm r = { 0 };
-    uint8_t bit = (uint8_t)(RD8(OBJ->status_flags[slot]) & 0x80);
+    uint8_t bit = (uint8_t)(RD8(OBJ->hit_status[slot]) & 0x80);
     uint8_t now;
 
     r.second = below;
@@ -958,12 +958,12 @@ static inline SideEnd face_player_in_states_exit_shim(ObjArm r)
 static inline ObjArm throw_by_next_kind(uint8_t slot, uint16_t speeds, uint16_t ret)
 {
     ObjArm r = { 0 };
-    uint8_t kind = RD8(OBJ->next_kind[slot]);
+    uint8_t kind = RD8(OBJ->start_arg[slot]);
     uint8_t index = (uint8_t)(kind & 1);
     uint8_t shifted;
 
     WR8(OBJ->vx_hi[slot], rd8((uint16_t)(speeds + index)));
-    kind = RD8(OBJ->next_kind[slot]);
+    kind = RD8(OBJ->start_arg[slot]);
     shifted = (uint8_t)(kind << 4);
     WR8(OBJ->vy_hi[slot], (uint8_t)((uint8_t)(shifted ^ 0xFF) + 1));
     jsr_push(ret);
@@ -1143,7 +1143,7 @@ static inline ObjArm become_type(uint8_t slot, uint8_t type)
 static inline ObjArm enter_state_if_flagged(uint8_t slot, uint8_t state)
 {
     ObjArm r = { 0 };
-    uint8_t flags = RD8(OBJ->status_flags[slot]);
+    uint8_t flags = RD8(OBJ->hit_status[slot]);
     uint8_t bit = (uint8_t)(flags & 0x80);
 
     r.first = 0;

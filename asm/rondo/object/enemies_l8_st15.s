@@ -1,6 +1,6 @@
 ; @routine 05CB:0E3 LoadRecordThenRecordEventAtFifth
 ; @run 70:B0E3
-; WHAT IT DOES: In state 0 loads the record and sets sprite set 7, frame $12 and the hit height $14. Later it steps the animation list at $B136; once the object has taken 5 hits it records its event, takes the kind of OBJ_3040, sets OBJ_3A90 $10, goes to state 0 and starts an object of type $9C from a free slot of $50 to $53 with the Y speed -$0600, moved once.
+; WHAT IT DOES: In state 0 loads the record and sets sprite set 7, frame $12 and the hit height $14. Later it steps the animation list at $B136; once the object has taken 5 hits it records its event, takes the kind of OBJ_START_ARG, sets OBJ_INVULN_TIMER $10, goes to state 0 and starts an object of type $9C from a free slot of $50 to $53 with the Y speed -$0600, moved once.
 ; HOW: LoadObjectRecord, StepObjectFrames, RecordObjectEvent, FindFreeSlotFrom50, StartObjectAtPlace, ApplyVelocityY with X and Y swapped.
 ; WAITS: no.
 ; Entry: X object, Y kept unless the step sets it. Exit: as the last instruction that ran.
@@ -9,7 +9,7 @@ LoadRecordThenRecordEventAtFifth:
     bne LoadRecordThenRecordEventAtFifth_at0
     jsr VecLoadObjectRecord
     lda #$07
-    sta a:OBJ_2A10,x
+    sta a:OBJ_SPRITE_SET,x
     lda #$12
     sta a:OBJ_FRAME,x
     lda #$14
@@ -25,10 +25,10 @@ LoadRecordThenRecordEventAtFifth_at0:
     cmp #$05
     bcc StepListByTimerWithGravity
     jsr VecRecordObjectEvent
-    lda a:OBJ_3040,x
+    lda a:OBJ_START_ARG,x
     sta a:OBJ_KIND,x
     lda #$10
-    sta a:OBJ_3A90,x
+    sta a:OBJ_INVULN_TIMER,x
     stz a:OBJ_STATE,x
     jsr VecFindFreeSlotFrom50
     bcc StepListByTimerWithGravity
@@ -44,12 +44,12 @@ LoadRecordThenRecordEventAtFifth_at0:
 
 ; @routine 05CB:1A9 FlagThenHitsCompare
 ; @run 70:B1A9
-; WHAT IT DOES: Tests bit 7 of OBJ_31A0 and, when it is clear, compares the hits taken with 5; nothing is stored.
+; WHAT IT DOES: Tests bit 7 of OBJ_HIT_STATUS and, when it is clear, compares the hits taken with 5; nothing is stored.
 ; HOW: An AND and a compare.
 ; WAITS: no.
 ; Entry: X object. Exit: the AND, or the compare.
 FlagThenHitsCompare:
-    lda a:OBJ_31A0,x
+    lda a:OBJ_HIT_STATUS,x
     and #$80
     bne FlagThenHitsCompare_at0
     lda a:OBJ_HIT_TAKEN,x
@@ -60,12 +60,12 @@ FlagThenHitsCompare_at0:
 
 ; @routine 05CB:1B8 EnterState5WhenFlagged
 ; @run 70:B1B8
-; WHAT IT DOES: When bit 7 of OBJ_31A0 is set and the state is below 5, sets the state 5 and OBJ_SUBSTATE 0.
+; WHAT IT DOES: When bit 7 of OBJ_HIT_STATUS is set and the state is below 5, sets the state 5 and OBJ_SUBSTATE 0.
 ; HOW: Two tests, two stores.
 ; WAITS: no.
 ; Entry: X object. Exit: as the last instruction that ran. The stores ran in no script; the draft stops there.
 EnterState5WhenFlagged:
-    lda a:OBJ_31A0,x
+    lda a:OBJ_HIT_STATUS,x
     and #$80
     beq PickPhaseAtRandomA
     lda a:OBJ_STATE,x

@@ -3310,7 +3310,7 @@ ContinueStart152D_at0:
     adc #$0D
     sta a:$2A58,x
     lda #$05
-    sta a:OBJ_2A10,x
+    sta a:OBJ_SPRITE_SET,x
     lda #$48
     sta a:OBJ_X_HI+8,x
     lda #$59
@@ -3562,7 +3562,7 @@ ContinueMenuStart152D_at1:
     lda #$04
     sta a:$2A60
     lda #$03
-    sta a:OBJ_2A10+8
+    sta a:OBJ_SPRITE_SET+8
     lda #$4F
     sta a:$2B80
     stz a:ContinueChoice
@@ -4427,7 +4427,7 @@ StageDrawPiece152D:
     lda a:$9470,x
     sta a:$2A58,y
     lda a:$9478,x
-    sta a:OBJ_2A10,y
+    sta a:OBJ_SPRITE_SET,y
     lda a:$9480,x
     sta a:OBJ_X_HI+8,y
     lda a:$9488,x
@@ -4721,7 +4721,7 @@ HitKindSpawn152D:
     bne HitKindSpawn152D_at0
     lda a:LevelFullWalk+4
     bne HitKindSpawn152D_at0
-    lda a:OBJ_31A0+8,x
+    lda a:OBJ_HIT_STATUS+8,x
     sta a:$31F0
     lda a:$3160,x
     sta a:$3118

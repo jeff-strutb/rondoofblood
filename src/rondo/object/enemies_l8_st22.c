@@ -350,7 +350,7 @@ void abi_StartPieceABInFreeSlot(void)
 /*
  * @routine 0F6B:72F LoadRecordFrameByKindThenFall
  * @run 70:B72F
- * WHAT IT DOES: In state 0 loads the record, sets sprite set 4 and takes the frame and OBJ_3510 from tables at $B76C and $B771 by OBJ_3040. Later, while OBJ_3510 counts down, kind 4 sets bit 4 of zField8E and plays sound $FE at zero; at zero it moves in Y and falls.
+ * WHAT IT DOES: In state 0 loads the record, sets sprite set 4 and takes the frame and OBJ_3510 from tables at $B76C and $B771 by OBJ_START_ARG. Later, while OBJ_3510 counts down, kind 4 sets bit 4 of zField8E and plays sound $FE at zero; at zero it moves in Y and falls.
  * HOW: LoadObjectRecord, table reads, a memory decrement, SoundCommand, ApplyVelocityY, ApplyGravity.
  * WAITS: no.
  * Entry: X object, Y kept for the sound. Exit: as the last instruction that ran (l8_frame_by_kind_exit_shim).
@@ -447,7 +447,7 @@ void abi_LoadRecordFrameByKindThenFall(void)
 /*
  * @routine 0F6B:45D StepListThenStartFivePieces
  * @run 70:B45D
- * WHAT IT DOES: Runs StepListByNumberTable; when the list ends starts objects of type $A9 in the slots $11 to $15 (each cleared first) at the object's place, numbered 0 to 4 in OBJ_3040, sets frame 2 and OBJ_3510 $C0 and goes to the next state.
+ * WHAT IT DOES: Runs StepListByNumberTable; when the list ends starts objects of type $A9 in the slots $11 to $15 (each cleared first) at the object's place, numbered 0 to 4 in OBJ_START_ARG, sets frame 2 and OBJ_3510 $C0 and goes to the next state.
  * HOW: StepListByNumberTable, a loop of ClearObjectInY and StartObjectAtPlace, a counter in zTemp00.
  * WAITS: no.
  * Entry: X object, Y kept unless the step sets it. Exit: as the last instruction that ran (l8_five_pieces_exit_shim).

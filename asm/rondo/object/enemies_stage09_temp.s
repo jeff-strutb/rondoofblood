@@ -163,11 +163,11 @@ SwitchStateOnHitRow:
 
 ; @routine 09EA:5CB AdvanceByHealth
 ; @run 70:ADCB
-; WHAT IT DOES: An object with a state moves to its next phase (OBJ_3618) when its health OBJ_32A8 falls below the limit a table at $AE09 gives for the phase (phase 2 moves on
-; when bit 7 of the health is set): its state becomes the byte a table at $AE0B gives, the phase goes up, the animation and OBJ_SUBSTATE are reset, and from phase 2 its OBJ_3148 loses
+; WHAT IT DOES: An object with a state moves to its next phase (OBJ_3618) when its health OBJ_HEALTH falls below the limit a table at $AE09 gives for the phase (phase 2 moves on
+; when bit 7 of the health is set): its state becomes the byte a table at $AE0B gives, the phase goes up, the animation and OBJ_SUBSTATE are reset, and from phase 2 its OBJ_PACE loses
 ; bits 3 to 6.
 ; HOW: Table reads (bank 70).
-; Untraced: the phase 2 test (ADD7) and the OBJ_3148 mask (AE00).
+; Untraced: the phase 2 test (ADD7) and the OBJ_PACE mask (AE00).
 ; WAITS: no.
 ; Entry: X object. Exit: the last compare, load or AND.
 AdvanceByHealth:
@@ -176,12 +176,12 @@ AdvanceByHealth:
     ldy a:OBJ_3618,x
     cpy #$02
     bne AdvanceByHealth_at1
-    lda a:OBJ_32A8,x
+    lda a:OBJ_HEALTH,x
     and #$80
     bne AdvanceByHealth_at2
     rts
 AdvanceByHealth_at1:
-    lda a:OBJ_32A8,x
+    lda a:OBJ_HEALTH,x
     cmp a:$AE09,y
     bcs AdvanceByHealth_at0
 AdvanceByHealth_at2:
@@ -194,9 +194,9 @@ AdvanceByHealth_at2:
     lda a:OBJ_3618,x
     cmp #$02
     bcc AdvanceByHealth_at0
-    lda a:OBJ_3148,x
+    lda a:OBJ_PACE,x
     and #$87
-    sta a:OBJ_3148,x
+    sta a:OBJ_PACE,x
 AdvanceByHealth_at0:
     rts
 
@@ -506,11 +506,11 @@ StepThenQuarterWait:
     lsr a:OBJ_3510,x
     lda #$02
     sta a:OBJ_STATE,x
-    lda a:OBJ_3A90,x
+    lda a:OBJ_INVULN_TIMER,x
     cmp #$03
     bcs StepThenQuarterWait_at0
     lda #$03
-    sta a:OBJ_3A90,x
+    sta a:OBJ_INVULN_TIMER,x
 StepThenQuarterWait_at0:
     rts
 
@@ -1366,12 +1366,12 @@ JumpByStateTable:
 StartTracker:
     jsr VecLoadObjectRecord
     lda #$06
-    sta a:OBJ_2A10,x
+    sta a:OBJ_SPRITE_SET,x
     lda #$02
     sta a:OBJ_FRAME,x
     lda a:OBJ_Y_LO,x
     sta a:OBJ_35C0,x
-    lda a:OBJ_3040,x
+    lda a:OBJ_START_ARG,x
     sta a:OBJ_3618,x
     rts
 
@@ -1586,7 +1586,7 @@ StartThenStepList:
     bne StartThenStepList_at0
     jsr VecLoadObjectRecord
     lda #$06
-    sta a:OBJ_2A10,x
+    sta a:OBJ_SPRITE_SET,x
 StartThenStepList_at0:
     lda #$C1
     sta z:zTemp11

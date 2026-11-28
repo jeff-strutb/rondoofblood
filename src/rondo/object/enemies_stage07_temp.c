@@ -193,7 +193,7 @@ ObjArm EnterNextStateWhenPlayerNear(uint8_t slot)
     jsr_push(0xB3EC);
     r.distance = DistanceXToPlayer(slot);
     jsr_pop();
-    r.first = RD8(OBJ->next_kind[slot]);
+    r.first = RD8(OBJ->start_arg[slot]);
     r.arm = S7_EN_FAR;
     if (r.distance.distance >= r.first) {
         return r;
@@ -619,7 +619,7 @@ ObjArm SpawnPiecesWhenFlaggedHit(uint8_t slot)
     if (r.first == 0) {
         return r;
     }
-    r.second = (uint8_t)(RD8(OBJ->status_flags[slot]) & 0x80);
+    r.second = (uint8_t)(RD8(OBJ->hit_status[slot]) & 0x80);
     r.arm = S7_SP_NO_FLAG;
     if (r.second == 0) {
         return r;

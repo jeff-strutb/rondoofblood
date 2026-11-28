@@ -289,7 +289,7 @@ EnterState6WhenHitHard_at0:
 EnterState7IfYHighOrFlagged:
     lda a:OBJ_Y_HI,x
     bne EnterState7IfYHighOrFlagged_at0
-    lda a:OBJ_31A0,x
+    lda a:OBJ_HIT_STATUS,x
     and #$80
     beq EnterState7IfYHighOrFlagged_at1
 EnterState7IfYHighOrFlagged_at0:
@@ -596,7 +596,7 @@ TurnOnRandomBeatWalkFollowC_done:
 StartFlyerAtRandom:
     jsr VecLoadObjectRecord
     lda #$8F
-    sta a:OBJ_2B18,x
+    sta a:OBJ_SPRITE_ATTR,x
     jsr PlaceAtRandomOnEdge
     jsr VecNextRandom
     sta a:OBJ_36C8,x
@@ -697,7 +697,7 @@ SwoopOnCosine_at0:
 ; Entry: X object, D clear. Exit: as StepObjectFrames, V from ApplyVelocityY. Clobbers zTemp10-11.
 FlashFallAnimateThenRemove:
     lda #$8B
-    sta a:OBJ_2B18,x
+    sta a:OBJ_SPRITE_ATTR,x
     jsr VecApplyVelocityY
     lda #$22
     sta z:zTemp10
@@ -765,7 +765,7 @@ BurstWhenFlaggedHitB:
     lda a:OBJ_STATE,x
     cmp #$06
     beq BurstWhenFlaggedHitB_at0
-    lda a:OBJ_31A0,x
+    lda a:OBJ_HIT_STATUS,x
     and #$80
     beq BurstWhenFlaggedHitB_at0
     lda #$8B
@@ -929,7 +929,7 @@ StartPieceInSlotsFrom28_at0:
 ; Entry: X object, D clear. Exit: A $C0 and N set, Z clear, C and Y as the last call left them;
 ; with no free slot, as FindFreeSlotFrom30 left them.
 SpawnType2AThenRestartTimer:
-    lda a:OBJ_3040,x
+    lda a:OBJ_START_ARG,x
     cmp #$04
     beq SpawnType2AThenRestartTimer_at0
     lda a:OBJ_Y_LO
@@ -1010,7 +1010,7 @@ AnimateMoveThenSetUpNextStepB:
 ; WAITS: no.
 ; Entry, exit: as KnockedUpWhenHit.
 KnockedUpWhenHitB:
-    lda a:OBJ_31A0,x
+    lda a:OBJ_HIT_STATUS,x
     and #$80
     beq KnockedUpWhenHitB_at0
     lda a:OBJ_STATE,x
@@ -1020,7 +1020,7 @@ KnockedUpWhenHitB:
     stz a:OBJ_ANIM_STEP,x
     stz a:OBJ_ANIM_TIMER,x
     lda #$03
-    sta a:OBJ_2A10,x
+    sta a:OBJ_SPRITE_SET,x
     stz a:OBJ_FRAME,x
     lda #$FE
     sta a:OBJ_VY_HI,x
@@ -1040,7 +1040,7 @@ KnockedUpWhenHitB_at0:
 ; Entry: X object, D clear. Exit: A 9 and N, Z clear when it was knocked up; otherwise A, N, Z, C from
 ; the failing test. X, Y, V kept.
 KnockedUpWhenHit:
-    lda a:OBJ_31A0,x
+    lda a:OBJ_HIT_STATUS,x
     and #$80
     beq KnockedUpWhenHit_at0
     lda a:OBJ_STATE,x
@@ -1050,7 +1050,7 @@ KnockedUpWhenHit:
     stz a:OBJ_ANIM_STEP,x
     stz a:OBJ_ANIM_TIMER,x
     lda #$03
-    sta a:OBJ_2A10,x
+    sta a:OBJ_SPRITE_SET,x
     stz a:OBJ_FRAME,x
     lda #$FE
     sta a:OBJ_VY_HI,x
@@ -1159,7 +1159,7 @@ LoadObjectRecordFromTable:
     sta a:OBJ_3300,x
     iny
     lda (zTemp10),y
-    sta a:OBJ_32A8,x
+    sta a:OBJ_HEALTH,x
     iny
     lda (zTemp10),y
     and #$0F
@@ -1178,19 +1178,19 @@ LoadObjectRecordFromTable:
     sta a:OBJ_HITBOX_HALF_H,x
     iny
     lda (zTemp10),y
-    sta a:OBJ_2A10,x
+    sta a:OBJ_SPRITE_SET,x
     iny
     lda (zTemp10),y
     sta a:OBJ_FRAME,x
     iny
     lda (zTemp10),y
-    sta a:OBJ_30F0,x
+    sta a:OBJ_LOOP_FLAGS,x
     iny
     lda (zTemp10),y
-    sta a:OBJ_3148,x
+    sta a:OBJ_PACE,x
     iny
     lda (zTemp10),y
-    sta a:OBJ_31A0,x
+    sta a:OBJ_HIT_STATUS,x
     iny
     lda (zTemp10),y
     sta a:OBJ_HIT_REACTION,x
@@ -1347,9 +1347,9 @@ ChargeWhenPlayerNearB:
     bcs ChargeWhenPlayerNearB_at0
     stz a:OBJ_ANIM_STEP,x
     stz a:OBJ_ANIM_TIMER,x
-    lda a:OBJ_FLAGS_2F38,x
+    lda a:OBJ_SCROLL_BAND,x
     and #$80
-    sta a:OBJ_FLAGS_2F38,x
+    sta a:OBJ_SCROLL_BAND,x
     ldy a:OBJ_FACING_LEFT,x
     lda a:$B5F3,y
     sta a:OBJ_VX_HI,x

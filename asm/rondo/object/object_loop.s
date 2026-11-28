@@ -21,10 +21,10 @@ RunObjects_at0:
     bne RunObjects_at2
     jmp RunObjects_at3
 RunObjects_at2:
-    lda a:OBJ_30F0,x
+    lda a:OBJ_LOOP_FLAGS,x
     and #$01
     bne RunObjects_at4
-    lda a:OBJ_FLAGS_2F38,x
+    lda a:OBJ_SCROLL_BAND,x
     and #$7F
     tay
     stz z:zTemp00
@@ -56,7 +56,7 @@ RunObjects_at4:
     bne RunObjects_at7
     jmp RunObjects_at3
 RunObjects_at7:
-    lda a:OBJ_30F0,x
+    lda a:OBJ_LOOP_FLAGS,x
     and #$02
     bne RunObjects_at8
     lda a:OBJ_X_HI,x
@@ -85,7 +85,7 @@ RunObjects_at11:
     bcs ScrollSpeedsFromBands
 RunObjects_at8:
     jsr ObjectHit
-    lda a:OBJ_30F0,x
+    lda a:OBJ_LOOP_FLAGS,x
     and #$04
     beq RunObjects_at12
     lda a:OBJ_X_HI,x
@@ -104,10 +104,10 @@ RunObjects_at13:
     cmp #$40
     bcs RunObjects_at1
 RunObjects_at12:
-    lda a:OBJ_2F90,x
+    lda a:OBJ_HURT_TIMER,x
     beq RunObjects_at14
-    dec a:OBJ_2F90,x
-    lda a:OBJ_3148,x
+    dec a:OBJ_HURT_TIMER,x
+    lda a:OBJ_PACE,x
     and #$04
     bne RunObjects_at14
     bra RunObjects_at1
@@ -123,7 +123,7 @@ RunObjects_at14:
 RunObjects_at15:
     cmp #$02
     bne RunObjects_at16
-    lda a:OBJ_3148,x
+    lda a:OBJ_PACE,x
     and #$60
     lsr a
     lsr a
@@ -137,7 +137,7 @@ RunObjects_at15:
     bne RunObjects_at1
     bra RunObjects_at3
 RunObjects_at16:
-    lda a:OBJ_3148,x
+    lda a:OBJ_PACE,x
     and #$18
     sta z:zTemp00
     lda z:zWaveCounter
@@ -188,10 +188,10 @@ RunObjects07D9_at0:
     bne RunObjects07D9_at2
     jmp RunObjects07D9_at3
 RunObjects07D9_at2:
-    lda a:OBJ_30F0,x
+    lda a:OBJ_LOOP_FLAGS,x
     and #$01
     bne RunObjects07D9_at4
-    lda a:OBJ_FLAGS_2F38,x
+    lda a:OBJ_SCROLL_BAND,x
     and #$7F
     tay
     stz z:zTemp00
@@ -223,7 +223,7 @@ RunObjects07D9_at4:
     bne RunObjects07D9_at7
     jmp RunObjects07D9_at3
 RunObjects07D9_at7:
-    lda a:OBJ_30F0,x
+    lda a:OBJ_LOOP_FLAGS,x
     and #$02
     bne RunObjects07D9_at8
     lda a:OBJ_X_HI,x
@@ -252,7 +252,7 @@ RunObjects07D9_at11:
     bcs ScrollSpeedsFromBands
 RunObjects07D9_at8:
     jsr ObjectHit
-    lda a:OBJ_30F0,x
+    lda a:OBJ_LOOP_FLAGS,x
     and #$04
     beq RunObjects07D9_at12
     lda a:OBJ_X_HI,x
@@ -271,10 +271,10 @@ RunObjects07D9_at13:
     cmp #$40
     bcs RunObjects07D9_at1
 RunObjects07D9_at12:
-    lda a:OBJ_2F90,x
+    lda a:OBJ_HURT_TIMER,x
     beq RunObjects07D9_at14
-    dec a:OBJ_2F90,x
-    lda a:OBJ_3148,x
+    dec a:OBJ_HURT_TIMER,x
+    lda a:OBJ_PACE,x
     and #$04
     bne RunObjects07D9_at14
     bra RunObjects07D9_at1
@@ -290,7 +290,7 @@ RunObjects07D9_at14:
 RunObjects07D9_at15:
     cmp #$02
     bne RunObjects07D9_at16
-    lda a:OBJ_3148,x
+    lda a:OBJ_PACE,x
     and #$60
     lsr a
     lsr a
@@ -304,7 +304,7 @@ RunObjects07D9_at15:
     bne RunObjects07D9_at1
     bra RunObjects07D9_at3
 RunObjects07D9_at16:
-    lda a:OBJ_3148,x
+    lda a:OBJ_PACE,x
     and #$18
     sta z:zTemp00
     lda z:zWaveCounter
@@ -356,10 +356,10 @@ RunObjects0889_at0:
     bne RunObjects0889_at2
     jmp RunObjects0889_at3
 RunObjects0889_at2:
-    lda a:OBJ_30F0,x
+    lda a:OBJ_LOOP_FLAGS,x
     and #$01
     bne RunObjects0889_at4
-    lda a:OBJ_FLAGS_2F38,x
+    lda a:OBJ_SCROLL_BAND,x
     and #$7F
     tay
     stz z:zTemp00
@@ -391,7 +391,7 @@ RunObjects0889_at4:
     bne RunObjects0889_at7
     jmp RunObjects0889_at3
 RunObjects0889_at7:
-    lda a:OBJ_30F0,x
+    lda a:OBJ_LOOP_FLAGS,x
     and #$02
     bne RunObjects0889_at8
     lda a:OBJ_X_HI,x
@@ -420,7 +420,7 @@ RunObjects0889_at11:
     bcs ScrollSpeedsFromBands
 RunObjects0889_at8:
     jsr ObjectHit
-    lda a:OBJ_30F0,x
+    lda a:OBJ_LOOP_FLAGS,x
     and #$04
     beq RunObjects0889_at12
     lda a:OBJ_X_HI,x
@@ -439,10 +439,10 @@ RunObjects0889_at13:
     cmp #$40
     bcs RunObjects0889_at1
 RunObjects0889_at12:
-    lda a:OBJ_2F90,x
+    lda a:OBJ_HURT_TIMER,x
     beq RunObjects0889_at14
-    dec a:OBJ_2F90,x
-    lda a:OBJ_3148,x
+    dec a:OBJ_HURT_TIMER,x
+    lda a:OBJ_PACE,x
     and #$04
     bne RunObjects0889_at14
     bra RunObjects0889_at1
@@ -458,7 +458,7 @@ RunObjects0889_at14:
 RunObjects0889_at15:
     cmp #$02
     bne RunObjects0889_at16
-    lda a:OBJ_3148,x
+    lda a:OBJ_PACE,x
     and #$60
     lsr a
     lsr a
@@ -472,7 +472,7 @@ RunObjects0889_at15:
     bne RunObjects0889_at1
     bra RunObjects0889_at3
 RunObjects0889_at16:
-    lda a:OBJ_3148,x
+    lda a:OBJ_PACE,x
     and #$18
     sta z:zTemp00
     lda z:zWaveCounter
@@ -524,10 +524,10 @@ RunObjects0A99_at0:
     bne RunObjects0A99_at2
     jmp RunObjects0A99_at3
 RunObjects0A99_at2:
-    lda a:OBJ_30F0,x
+    lda a:OBJ_LOOP_FLAGS,x
     and #$01
     bne RunObjects0A99_at4
-    lda a:OBJ_FLAGS_2F38,x
+    lda a:OBJ_SCROLL_BAND,x
     and #$7F
     tay
     stz z:zTemp00
@@ -559,7 +559,7 @@ RunObjects0A99_at4:
     bne RunObjects0A99_at7
     jmp RunObjects0A99_at3
 RunObjects0A99_at7:
-    lda a:OBJ_30F0,x
+    lda a:OBJ_LOOP_FLAGS,x
     and #$02
     bne RunObjects0A99_at8
     lda a:OBJ_X_HI,x
@@ -588,7 +588,7 @@ RunObjects0A99_at11:
     bcs ScrollSpeedsFromBands
 RunObjects0A99_at8:
     jsr ObjectHit
-    lda a:OBJ_30F0,x
+    lda a:OBJ_LOOP_FLAGS,x
     and #$04
     beq RunObjects0A99_at12
     lda a:OBJ_X_HI,x
@@ -607,10 +607,10 @@ RunObjects0A99_at13:
     cmp #$40
     bcs RunObjects0A99_at1
 RunObjects0A99_at12:
-    lda a:OBJ_2F90,x
+    lda a:OBJ_HURT_TIMER,x
     beq RunObjects0A99_at14
-    dec a:OBJ_2F90,x
-    lda a:OBJ_3148,x
+    dec a:OBJ_HURT_TIMER,x
+    lda a:OBJ_PACE,x
     and #$04
     bne RunObjects0A99_at14
     bra RunObjects0A99_at1
@@ -626,7 +626,7 @@ RunObjects0A99_at14:
 RunObjects0A99_at15:
     cmp #$02
     bne RunObjects0A99_at16
-    lda a:OBJ_3148,x
+    lda a:OBJ_PACE,x
     and #$60
     lsr a
     lsr a
@@ -640,7 +640,7 @@ RunObjects0A99_at15:
     bne RunObjects0A99_at1
     bra RunObjects0A99_at3
 RunObjects0A99_at16:
-    lda a:OBJ_3148,x
+    lda a:OBJ_PACE,x
     and #$18
     sta z:zTemp00
     lda z:zWaveCounter
@@ -692,10 +692,10 @@ RunObjects0B49_at0:
     bne RunObjects0B49_at2
     jmp RunObjects0B49_at3
 RunObjects0B49_at2:
-    lda a:OBJ_30F0,x
+    lda a:OBJ_LOOP_FLAGS,x
     and #$01
     bne RunObjects0B49_at4
-    lda a:OBJ_FLAGS_2F38,x
+    lda a:OBJ_SCROLL_BAND,x
     and #$7F
     tay
     stz z:zTemp00
@@ -727,7 +727,7 @@ RunObjects0B49_at4:
     bne RunObjects0B49_at7
     jmp RunObjects0B49_at3
 RunObjects0B49_at7:
-    lda a:OBJ_30F0,x
+    lda a:OBJ_LOOP_FLAGS,x
     and #$02
     bne RunObjects0B49_at8
     lda a:OBJ_X_HI,x
@@ -756,7 +756,7 @@ RunObjects0B49_at11:
     bcs ScrollSpeedsFromBands
 RunObjects0B49_at8:
     jsr ObjectHit
-    lda a:OBJ_30F0,x
+    lda a:OBJ_LOOP_FLAGS,x
     and #$04
     beq RunObjects0B49_at12
     lda a:OBJ_X_HI,x
@@ -775,10 +775,10 @@ RunObjects0B49_at13:
     cmp #$40
     bcs RunObjects0B49_at1
 RunObjects0B49_at12:
-    lda a:OBJ_2F90,x
+    lda a:OBJ_HURT_TIMER,x
     beq RunObjects0B49_at14
-    dec a:OBJ_2F90,x
-    lda a:OBJ_3148,x
+    dec a:OBJ_HURT_TIMER,x
+    lda a:OBJ_PACE,x
     and #$04
     bne RunObjects0B49_at14
     bra RunObjects0B49_at1
@@ -794,7 +794,7 @@ RunObjects0B49_at14:
 RunObjects0B49_at15:
     cmp #$02
     bne RunObjects0B49_at16
-    lda a:OBJ_3148,x
+    lda a:OBJ_PACE,x
     and #$60
     lsr a
     lsr a
@@ -808,7 +808,7 @@ RunObjects0B49_at15:
     bne RunObjects0B49_at1
     bra RunObjects0B49_at3
 RunObjects0B49_at16:
-    lda a:OBJ_3148,x
+    lda a:OBJ_PACE,x
     and #$18
     sta z:zTemp00
     lda z:zWaveCounter
@@ -860,10 +860,10 @@ RunObjects0CA9_at0:
     bne RunObjects0CA9_at2
     jmp RunObjects0CA9_at3
 RunObjects0CA9_at2:
-    lda a:OBJ_30F0,x
+    lda a:OBJ_LOOP_FLAGS,x
     and #$01
     bne RunObjects0CA9_at4
-    lda a:OBJ_FLAGS_2F38,x
+    lda a:OBJ_SCROLL_BAND,x
     and #$7F
     tay
     stz z:zTemp00
@@ -895,7 +895,7 @@ RunObjects0CA9_at4:
     bne RunObjects0CA9_at7
     jmp RunObjects0CA9_at3
 RunObjects0CA9_at7:
-    lda a:OBJ_30F0,x
+    lda a:OBJ_LOOP_FLAGS,x
     and #$02
     bne RunObjects0CA9_at8
     lda a:OBJ_X_HI,x
@@ -924,7 +924,7 @@ RunObjects0CA9_at11:
     bcs ScrollSpeedsFromBands
 RunObjects0CA9_at8:
     jsr ObjectHit
-    lda a:OBJ_30F0,x
+    lda a:OBJ_LOOP_FLAGS,x
     and #$04
     beq RunObjects0CA9_at12
     lda a:OBJ_X_HI,x
@@ -943,10 +943,10 @@ RunObjects0CA9_at13:
     cmp #$40
     bcs RunObjects0CA9_at1
 RunObjects0CA9_at12:
-    lda a:OBJ_2F90,x
+    lda a:OBJ_HURT_TIMER,x
     beq RunObjects0CA9_at14
-    dec a:OBJ_2F90,x
-    lda a:OBJ_3148,x
+    dec a:OBJ_HURT_TIMER,x
+    lda a:OBJ_PACE,x
     and #$04
     bne RunObjects0CA9_at14
     bra RunObjects0CA9_at1
@@ -962,7 +962,7 @@ RunObjects0CA9_at14:
 RunObjects0CA9_at15:
     cmp #$02
     bne RunObjects0CA9_at16
-    lda a:OBJ_3148,x
+    lda a:OBJ_PACE,x
     and #$60
     lsr a
     lsr a
@@ -976,7 +976,7 @@ RunObjects0CA9_at15:
     bne RunObjects0CA9_at1
     bra RunObjects0CA9_at3
 RunObjects0CA9_at16:
-    lda a:OBJ_3148,x
+    lda a:OBJ_PACE,x
     and #$18
     sta z:zTemp00
     lda z:zWaveCounter
@@ -1028,10 +1028,10 @@ RunObjects0D59_at0:
     bne RunObjects0D59_at2
     jmp RunObjects0D59_at3
 RunObjects0D59_at2:
-    lda a:OBJ_30F0,x
+    lda a:OBJ_LOOP_FLAGS,x
     and #$01
     bne RunObjects0D59_at4
-    lda a:OBJ_FLAGS_2F38,x
+    lda a:OBJ_SCROLL_BAND,x
     and #$7F
     tay
     stz z:zTemp00
@@ -1063,7 +1063,7 @@ RunObjects0D59_at4:
     bne RunObjects0D59_at7
     jmp RunObjects0D59_at3
 RunObjects0D59_at7:
-    lda a:OBJ_30F0,x
+    lda a:OBJ_LOOP_FLAGS,x
     and #$02
     bne RunObjects0D59_at8
     lda a:OBJ_X_HI,x
@@ -1092,7 +1092,7 @@ RunObjects0D59_at11:
     bcs ScrollSpeedsFromBands
 RunObjects0D59_at8:
     jsr ObjectHit
-    lda a:OBJ_30F0,x
+    lda a:OBJ_LOOP_FLAGS,x
     and #$04
     beq RunObjects0D59_at12
     lda a:OBJ_X_HI,x
@@ -1111,10 +1111,10 @@ RunObjects0D59_at13:
     cmp #$40
     bcs RunObjects0D59_at1
 RunObjects0D59_at12:
-    lda a:OBJ_2F90,x
+    lda a:OBJ_HURT_TIMER,x
     beq RunObjects0D59_at14
-    dec a:OBJ_2F90,x
-    lda a:OBJ_3148,x
+    dec a:OBJ_HURT_TIMER,x
+    lda a:OBJ_PACE,x
     and #$04
     bne RunObjects0D59_at14
     bra RunObjects0D59_at1
@@ -1130,7 +1130,7 @@ RunObjects0D59_at14:
 RunObjects0D59_at15:
     cmp #$02
     bne RunObjects0D59_at16
-    lda a:OBJ_3148,x
+    lda a:OBJ_PACE,x
     and #$60
     lsr a
     lsr a
@@ -1144,7 +1144,7 @@ RunObjects0D59_at15:
     bne RunObjects0D59_at1
     bra RunObjects0D59_at3
 RunObjects0D59_at16:
-    lda a:OBJ_3148,x
+    lda a:OBJ_PACE,x
     and #$18
     sta z:zTemp00
     lda z:zWaveCounter
@@ -1196,10 +1196,10 @@ RunObjects0E09_at0:
     bne RunObjects0E09_at2
     jmp RunObjects0E09_at3
 RunObjects0E09_at2:
-    lda a:OBJ_30F0,x
+    lda a:OBJ_LOOP_FLAGS,x
     and #$01
     bne RunObjects0E09_at4
-    lda a:OBJ_FLAGS_2F38,x
+    lda a:OBJ_SCROLL_BAND,x
     and #$7F
     tay
     stz z:zTemp00
@@ -1231,7 +1231,7 @@ RunObjects0E09_at4:
     bne RunObjects0E09_at7
     jmp RunObjects0E09_at3
 RunObjects0E09_at7:
-    lda a:OBJ_30F0,x
+    lda a:OBJ_LOOP_FLAGS,x
     and #$02
     bne RunObjects0E09_at8
     lda a:OBJ_X_HI,x
@@ -1260,7 +1260,7 @@ RunObjects0E09_at11:
     bcs ScrollSpeedsFromBands
 RunObjects0E09_at8:
     jsr ObjectHit
-    lda a:OBJ_30F0,x
+    lda a:OBJ_LOOP_FLAGS,x
     and #$04
     beq RunObjects0E09_at12
     lda a:OBJ_X_HI,x
@@ -1279,10 +1279,10 @@ RunObjects0E09_at13:
     cmp #$40
     bcs RunObjects0E09_at1
 RunObjects0E09_at12:
-    lda a:OBJ_2F90,x
+    lda a:OBJ_HURT_TIMER,x
     beq RunObjects0E09_at14
-    dec a:OBJ_2F90,x
-    lda a:OBJ_3148,x
+    dec a:OBJ_HURT_TIMER,x
+    lda a:OBJ_PACE,x
     and #$04
     bne RunObjects0E09_at14
     bra RunObjects0E09_at1
@@ -1298,7 +1298,7 @@ RunObjects0E09_at14:
 RunObjects0E09_at15:
     cmp #$02
     bne RunObjects0E09_at16
-    lda a:OBJ_3148,x
+    lda a:OBJ_PACE,x
     and #$60
     lsr a
     lsr a
@@ -1312,7 +1312,7 @@ RunObjects0E09_at15:
     bne RunObjects0E09_at1
     bra RunObjects0E09_at3
 RunObjects0E09_at16:
-    lda a:OBJ_3148,x
+    lda a:OBJ_PACE,x
     and #$18
     sta z:zTemp00
     lda z:zWaveCounter
@@ -1364,10 +1364,10 @@ RunObjects0EB9_at0:
     bne RunObjects0EB9_at2
     jmp RunObjects0EB9_at3
 RunObjects0EB9_at2:
-    lda a:OBJ_30F0,x
+    lda a:OBJ_LOOP_FLAGS,x
     and #$01
     bne RunObjects0EB9_at4
-    lda a:OBJ_FLAGS_2F38,x
+    lda a:OBJ_SCROLL_BAND,x
     and #$7F
     tay
     stz z:zTemp00
@@ -1399,7 +1399,7 @@ RunObjects0EB9_at4:
     bne RunObjects0EB9_at7
     jmp RunObjects0EB9_at3
 RunObjects0EB9_at7:
-    lda a:OBJ_30F0,x
+    lda a:OBJ_LOOP_FLAGS,x
     and #$02
     bne RunObjects0EB9_at8
     lda a:OBJ_X_HI,x
@@ -1428,7 +1428,7 @@ RunObjects0EB9_at11:
     bcs ScrollSpeedsFromBands
 RunObjects0EB9_at8:
     jsr ObjectHit
-    lda a:OBJ_30F0,x
+    lda a:OBJ_LOOP_FLAGS,x
     and #$04
     beq RunObjects0EB9_at12
     lda a:OBJ_X_HI,x
@@ -1447,10 +1447,10 @@ RunObjects0EB9_at13:
     cmp #$40
     bcs RunObjects0EB9_at1
 RunObjects0EB9_at12:
-    lda a:OBJ_2F90,x
+    lda a:OBJ_HURT_TIMER,x
     beq RunObjects0EB9_at14
-    dec a:OBJ_2F90,x
-    lda a:OBJ_3148,x
+    dec a:OBJ_HURT_TIMER,x
+    lda a:OBJ_PACE,x
     and #$04
     bne RunObjects0EB9_at14
     bra RunObjects0EB9_at1
@@ -1466,7 +1466,7 @@ RunObjects0EB9_at14:
 RunObjects0EB9_at15:
     cmp #$02
     bne RunObjects0EB9_at16
-    lda a:OBJ_3148,x
+    lda a:OBJ_PACE,x
     and #$60
     lsr a
     lsr a
@@ -1480,7 +1480,7 @@ RunObjects0EB9_at15:
     bne RunObjects0EB9_at1
     bra RunObjects0EB9_at3
 RunObjects0EB9_at16:
-    lda a:OBJ_3148,x
+    lda a:OBJ_PACE,x
     and #$18
     sta z:zTemp00
     lda z:zWaveCounter
@@ -1532,10 +1532,10 @@ RunObjects0F69_at0:
     bne RunObjects0F69_at2
     jmp RunObjects0F69_at3
 RunObjects0F69_at2:
-    lda a:OBJ_30F0,x
+    lda a:OBJ_LOOP_FLAGS,x
     and #$01
     bne RunObjects0F69_at4
-    lda a:OBJ_FLAGS_2F38,x
+    lda a:OBJ_SCROLL_BAND,x
     and #$7F
     tay
     stz z:zTemp00
@@ -1567,7 +1567,7 @@ RunObjects0F69_at4:
     bne RunObjects0F69_at7
     jmp RunObjects0F69_at3
 RunObjects0F69_at7:
-    lda a:OBJ_30F0,x
+    lda a:OBJ_LOOP_FLAGS,x
     and #$02
     bne RunObjects0F69_at8
     lda a:OBJ_X_HI,x
@@ -1596,7 +1596,7 @@ RunObjects0F69_at11:
     bcs ScrollSpeedsFromBands
 RunObjects0F69_at8:
     jsr ObjectHit
-    lda a:OBJ_30F0,x
+    lda a:OBJ_LOOP_FLAGS,x
     and #$04
     beq RunObjects0F69_at12
     lda a:OBJ_X_HI,x
@@ -1615,10 +1615,10 @@ RunObjects0F69_at13:
     cmp #$40
     bcs RunObjects0F69_at1
 RunObjects0F69_at12:
-    lda a:OBJ_2F90,x
+    lda a:OBJ_HURT_TIMER,x
     beq RunObjects0F69_at14
-    dec a:OBJ_2F90,x
-    lda a:OBJ_3148,x
+    dec a:OBJ_HURT_TIMER,x
+    lda a:OBJ_PACE,x
     and #$04
     bne RunObjects0F69_at14
     bra RunObjects0F69_at1
@@ -1634,7 +1634,7 @@ RunObjects0F69_at14:
 RunObjects0F69_at15:
     cmp #$02
     bne RunObjects0F69_at16
-    lda a:OBJ_3148,x
+    lda a:OBJ_PACE,x
     and #$60
     lsr a
     lsr a
@@ -1648,7 +1648,7 @@ RunObjects0F69_at15:
     bne RunObjects0F69_at1
     bra RunObjects0F69_at3
 RunObjects0F69_at16:
-    lda a:OBJ_3148,x
+    lda a:OBJ_PACE,x
     and #$18
     sta z:zTemp00
     lda z:zWaveCounter
@@ -1700,10 +1700,10 @@ RunObjects1019_at0:
     bne RunObjects1019_at2
     jmp RunObjects1019_at3
 RunObjects1019_at2:
-    lda a:OBJ_30F0,x
+    lda a:OBJ_LOOP_FLAGS,x
     and #$01
     bne RunObjects1019_at4
-    lda a:OBJ_FLAGS_2F38,x
+    lda a:OBJ_SCROLL_BAND,x
     and #$7F
     tay
     stz z:zTemp00
@@ -1735,7 +1735,7 @@ RunObjects1019_at4:
     bne RunObjects1019_at7
     jmp RunObjects1019_at3
 RunObjects1019_at7:
-    lda a:OBJ_30F0,x
+    lda a:OBJ_LOOP_FLAGS,x
     and #$02
     bne RunObjects1019_at8
     lda a:OBJ_X_HI,x
@@ -1764,7 +1764,7 @@ RunObjects1019_at11:
     bcs ScrollSpeedsFromBands
 RunObjects1019_at8:
     jsr ObjectHit
-    lda a:OBJ_30F0,x
+    lda a:OBJ_LOOP_FLAGS,x
     and #$04
     beq RunObjects1019_at12
     lda a:OBJ_X_HI,x
@@ -1783,10 +1783,10 @@ RunObjects1019_at13:
     cmp #$40
     bcs RunObjects1019_at1
 RunObjects1019_at12:
-    lda a:OBJ_2F90,x
+    lda a:OBJ_HURT_TIMER,x
     beq RunObjects1019_at14
-    dec a:OBJ_2F90,x
-    lda a:OBJ_3148,x
+    dec a:OBJ_HURT_TIMER,x
+    lda a:OBJ_PACE,x
     and #$04
     bne RunObjects1019_at14
     bra RunObjects1019_at1
@@ -1802,7 +1802,7 @@ RunObjects1019_at14:
 RunObjects1019_at15:
     cmp #$02
     bne RunObjects1019_at16
-    lda a:OBJ_3148,x
+    lda a:OBJ_PACE,x
     and #$60
     lsr a
     lsr a
@@ -1816,7 +1816,7 @@ RunObjects1019_at15:
     bne RunObjects1019_at1
     bra RunObjects1019_at3
 RunObjects1019_at16:
-    lda a:OBJ_3148,x
+    lda a:OBJ_PACE,x
     and #$18
     sta z:zTemp00
     lda z:zWaveCounter
@@ -1868,10 +1868,10 @@ RunObjects10C9_at0:
     bne RunObjects10C9_at2
     jmp RunObjects10C9_at3
 RunObjects10C9_at2:
-    lda a:OBJ_30F0,x
+    lda a:OBJ_LOOP_FLAGS,x
     and #$01
     bne RunObjects10C9_at4
-    lda a:OBJ_FLAGS_2F38,x
+    lda a:OBJ_SCROLL_BAND,x
     and #$7F
     tay
     stz z:zTemp00
@@ -1903,7 +1903,7 @@ RunObjects10C9_at4:
     bne RunObjects10C9_at7
     jmp RunObjects10C9_at3
 RunObjects10C9_at7:
-    lda a:OBJ_30F0,x
+    lda a:OBJ_LOOP_FLAGS,x
     and #$02
     bne RunObjects10C9_at8
     lda a:OBJ_X_HI,x
@@ -1932,7 +1932,7 @@ RunObjects10C9_at11:
     bcs ScrollSpeedsFromBands
 RunObjects10C9_at8:
     jsr ObjectHit
-    lda a:OBJ_30F0,x
+    lda a:OBJ_LOOP_FLAGS,x
     and #$04
     beq RunObjects10C9_at12
     lda a:OBJ_X_HI,x
@@ -1951,10 +1951,10 @@ RunObjects10C9_at13:
     cmp #$40
     bcs RunObjects10C9_at1
 RunObjects10C9_at12:
-    lda a:OBJ_2F90,x
+    lda a:OBJ_HURT_TIMER,x
     beq RunObjects10C9_at14
-    dec a:OBJ_2F90,x
-    lda a:OBJ_3148,x
+    dec a:OBJ_HURT_TIMER,x
+    lda a:OBJ_PACE,x
     and #$04
     bne RunObjects10C9_at14
     bra RunObjects10C9_at1
@@ -1970,7 +1970,7 @@ RunObjects10C9_at14:
 RunObjects10C9_at15:
     cmp #$02
     bne RunObjects10C9_at16
-    lda a:OBJ_3148,x
+    lda a:OBJ_PACE,x
     and #$60
     lsr a
     lsr a
@@ -1984,7 +1984,7 @@ RunObjects10C9_at15:
     bne RunObjects10C9_at1
     bra RunObjects10C9_at3
 RunObjects10C9_at16:
-    lda a:OBJ_3148,x
+    lda a:OBJ_PACE,x
     and #$18
     sta z:zTemp00
     lda z:zWaveCounter
@@ -2036,10 +2036,10 @@ RunObjects1179_at0:
     bne RunObjects1179_at2
     jmp RunObjects1179_at3
 RunObjects1179_at2:
-    lda a:OBJ_30F0,x
+    lda a:OBJ_LOOP_FLAGS,x
     and #$01
     bne RunObjects1179_at4
-    lda a:OBJ_FLAGS_2F38,x
+    lda a:OBJ_SCROLL_BAND,x
     and #$7F
     tay
     stz z:zTemp00
@@ -2071,7 +2071,7 @@ RunObjects1179_at4:
     bne RunObjects1179_at7
     jmp RunObjects1179_at3
 RunObjects1179_at7:
-    lda a:OBJ_30F0,x
+    lda a:OBJ_LOOP_FLAGS,x
     and #$02
     bne RunObjects1179_at8
     lda a:OBJ_X_HI,x
@@ -2100,7 +2100,7 @@ RunObjects1179_at11:
     bcs ScrollSpeedsFromBands
 RunObjects1179_at8:
     jsr ObjectHit
-    lda a:OBJ_30F0,x
+    lda a:OBJ_LOOP_FLAGS,x
     and #$04
     beq RunObjects1179_at12
     lda a:OBJ_X_HI,x
@@ -2119,10 +2119,10 @@ RunObjects1179_at13:
     cmp #$40
     bcs RunObjects1179_at1
 RunObjects1179_at12:
-    lda a:OBJ_2F90,x
+    lda a:OBJ_HURT_TIMER,x
     beq RunObjects1179_at14
-    dec a:OBJ_2F90,x
-    lda a:OBJ_3148,x
+    dec a:OBJ_HURT_TIMER,x
+    lda a:OBJ_PACE,x
     and #$04
     bne RunObjects1179_at14
     bra RunObjects1179_at1
@@ -2138,7 +2138,7 @@ RunObjects1179_at14:
 RunObjects1179_at15:
     cmp #$02
     bne RunObjects1179_at16
-    lda a:OBJ_3148,x
+    lda a:OBJ_PACE,x
     and #$60
     lsr a
     lsr a
@@ -2152,7 +2152,7 @@ RunObjects1179_at15:
     bne RunObjects1179_at1
     bra RunObjects1179_at3
 RunObjects1179_at16:
-    lda a:OBJ_3148,x
+    lda a:OBJ_PACE,x
     and #$18
     sta z:zTemp00
     lda z:zWaveCounter
@@ -2204,10 +2204,10 @@ RunObjects12D9_at0:
     bne RunObjects12D9_at2
     jmp RunObjects12D9_at3
 RunObjects12D9_at2:
-    lda a:OBJ_30F0,x
+    lda a:OBJ_LOOP_FLAGS,x
     and #$01
     bne RunObjects12D9_at4
-    lda a:OBJ_FLAGS_2F38,x
+    lda a:OBJ_SCROLL_BAND,x
     and #$7F
     tay
     stz z:zTemp00
@@ -2239,7 +2239,7 @@ RunObjects12D9_at4:
     bne RunObjects12D9_at7
     jmp RunObjects12D9_at3
 RunObjects12D9_at7:
-    lda a:OBJ_30F0,x
+    lda a:OBJ_LOOP_FLAGS,x
     and #$02
     bne RunObjects12D9_at8
     lda a:OBJ_X_HI,x
@@ -2268,7 +2268,7 @@ RunObjects12D9_at11:
     bcs ScrollSpeedsFromBands
 RunObjects12D9_at8:
     jsr ObjectHit
-    lda a:OBJ_30F0,x
+    lda a:OBJ_LOOP_FLAGS,x
     and #$04
     beq RunObjects12D9_at12
     lda a:OBJ_X_HI,x
@@ -2287,10 +2287,10 @@ RunObjects12D9_at13:
     cmp #$40
     bcs RunObjects12D9_at1
 RunObjects12D9_at12:
-    lda a:OBJ_2F90,x
+    lda a:OBJ_HURT_TIMER,x
     beq RunObjects12D9_at14
-    dec a:OBJ_2F90,x
-    lda a:OBJ_3148,x
+    dec a:OBJ_HURT_TIMER,x
+    lda a:OBJ_PACE,x
     and #$04
     bne RunObjects12D9_at14
     bra RunObjects12D9_at1
@@ -2306,7 +2306,7 @@ RunObjects12D9_at14:
 RunObjects12D9_at15:
     cmp #$02
     bne RunObjects12D9_at16
-    lda a:OBJ_3148,x
+    lda a:OBJ_PACE,x
     and #$60
     lsr a
     lsr a
@@ -2320,7 +2320,7 @@ RunObjects12D9_at15:
     bne RunObjects12D9_at1
     bra RunObjects12D9_at3
 RunObjects12D9_at16:
-    lda a:OBJ_3148,x
+    lda a:OBJ_PACE,x
     and #$18
     sta z:zTemp00
     lda z:zWaveCounter
@@ -2372,10 +2372,10 @@ RunObjects13F9_at0:
     bne RunObjects13F9_at2
     jmp RunObjects13F9_at3
 RunObjects13F9_at2:
-    lda a:OBJ_30F0,x
+    lda a:OBJ_LOOP_FLAGS,x
     and #$01
     bne RunObjects13F9_at4
-    lda a:OBJ_FLAGS_2F38,x
+    lda a:OBJ_SCROLL_BAND,x
     and #$7F
     tay
     stz z:zTemp00
@@ -2407,7 +2407,7 @@ RunObjects13F9_at4:
     bne RunObjects13F9_at7
     jmp RunObjects13F9_at3
 RunObjects13F9_at7:
-    lda a:OBJ_30F0,x
+    lda a:OBJ_LOOP_FLAGS,x
     and #$02
     bne RunObjects13F9_at8
     lda a:OBJ_X_HI,x
@@ -2436,7 +2436,7 @@ RunObjects13F9_at11:
     bcs ScrollSpeedsFromBands
 RunObjects13F9_at8:
     jsr ObjectHit
-    lda a:OBJ_30F0,x
+    lda a:OBJ_LOOP_FLAGS,x
     and #$04
     beq RunObjects13F9_at12
     lda a:OBJ_X_HI,x
@@ -2455,10 +2455,10 @@ RunObjects13F9_at13:
     cmp #$40
     bcs RunObjects13F9_at1
 RunObjects13F9_at12:
-    lda a:OBJ_2F90,x
+    lda a:OBJ_HURT_TIMER,x
     beq RunObjects13F9_at14
-    dec a:OBJ_2F90,x
-    lda a:OBJ_3148,x
+    dec a:OBJ_HURT_TIMER,x
+    lda a:OBJ_PACE,x
     and #$04
     bne RunObjects13F9_at14
     bra RunObjects13F9_at1
@@ -2474,7 +2474,7 @@ RunObjects13F9_at14:
 RunObjects13F9_at15:
     cmp #$02
     bne RunObjects13F9_at16
-    lda a:OBJ_3148,x
+    lda a:OBJ_PACE,x
     and #$60
     lsr a
     lsr a
@@ -2488,7 +2488,7 @@ RunObjects13F9_at15:
     bne RunObjects13F9_at1
     bra RunObjects13F9_at3
 RunObjects13F9_at16:
-    lda a:OBJ_3148,x
+    lda a:OBJ_PACE,x
     and #$18
     sta z:zTemp00
     lda z:zWaveCounter
@@ -2540,10 +2540,10 @@ RunObjects1619_at0:
     bne RunObjects1619_at2
     jmp RunObjects1619_at3
 RunObjects1619_at2:
-    lda a:OBJ_30F0,x
+    lda a:OBJ_LOOP_FLAGS,x
     and #$01
     bne RunObjects1619_at4
-    lda a:OBJ_FLAGS_2F38,x
+    lda a:OBJ_SCROLL_BAND,x
     and #$7F
     tay
     stz z:zTemp00
@@ -2575,7 +2575,7 @@ RunObjects1619_at4:
     bne RunObjects1619_at7
     jmp RunObjects1619_at3
 RunObjects1619_at7:
-    lda a:OBJ_30F0,x
+    lda a:OBJ_LOOP_FLAGS,x
     and #$02
     bne RunObjects1619_at8
     lda a:OBJ_X_HI,x
@@ -2604,7 +2604,7 @@ RunObjects1619_at11:
     bcs ScrollSpeedsFromBands
 RunObjects1619_at8:
     jsr ObjectHit
-    lda a:OBJ_30F0,x
+    lda a:OBJ_LOOP_FLAGS,x
     and #$04
     beq RunObjects1619_at12
     lda a:OBJ_X_HI,x
@@ -2623,10 +2623,10 @@ RunObjects1619_at13:
     cmp #$40
     bcs RunObjects1619_at1
 RunObjects1619_at12:
-    lda a:OBJ_2F90,x
+    lda a:OBJ_HURT_TIMER,x
     beq RunObjects1619_at14
-    dec a:OBJ_2F90,x
-    lda a:OBJ_3148,x
+    dec a:OBJ_HURT_TIMER,x
+    lda a:OBJ_PACE,x
     and #$04
     bne RunObjects1619_at14
     bra RunObjects1619_at1
@@ -2642,7 +2642,7 @@ RunObjects1619_at14:
 RunObjects1619_at15:
     cmp #$02
     bne RunObjects1619_at16
-    lda a:OBJ_3148,x
+    lda a:OBJ_PACE,x
     and #$60
     lsr a
     lsr a
@@ -2656,7 +2656,7 @@ RunObjects1619_at15:
     bne RunObjects1619_at1
     bra RunObjects1619_at3
 RunObjects1619_at16:
-    lda a:OBJ_3148,x
+    lda a:OBJ_PACE,x
     and #$18
     sta z:zTemp00
     lda z:zWaveCounter
@@ -2708,10 +2708,10 @@ RunObjects16C9_at0:
     bne RunObjects16C9_at2
     jmp RunObjects16C9_at3
 RunObjects16C9_at2:
-    lda a:OBJ_30F0,x
+    lda a:OBJ_LOOP_FLAGS,x
     and #$01
     bne RunObjects16C9_at4
-    lda a:OBJ_FLAGS_2F38,x
+    lda a:OBJ_SCROLL_BAND,x
     and #$7F
     tay
     stz z:zTemp00
@@ -2743,7 +2743,7 @@ RunObjects16C9_at4:
     bne RunObjects16C9_at7
     jmp RunObjects16C9_at3
 RunObjects16C9_at7:
-    lda a:OBJ_30F0,x
+    lda a:OBJ_LOOP_FLAGS,x
     and #$02
     bne RunObjects16C9_at8
     lda a:OBJ_X_HI,x
@@ -2772,7 +2772,7 @@ RunObjects16C9_at11:
     bcs ScrollSpeedsFromBands
 RunObjects16C9_at8:
     jsr ObjectHit
-    lda a:OBJ_30F0,x
+    lda a:OBJ_LOOP_FLAGS,x
     and #$04
     beq RunObjects16C9_at12
     lda a:OBJ_X_HI,x
@@ -2791,10 +2791,10 @@ RunObjects16C9_at13:
     cmp #$40
     bcs RunObjects16C9_at1
 RunObjects16C9_at12:
-    lda a:OBJ_2F90,x
+    lda a:OBJ_HURT_TIMER,x
     beq RunObjects16C9_at14
-    dec a:OBJ_2F90,x
-    lda a:OBJ_3148,x
+    dec a:OBJ_HURT_TIMER,x
+    lda a:OBJ_PACE,x
     and #$04
     bne RunObjects16C9_at14
     bra RunObjects16C9_at1
@@ -2810,7 +2810,7 @@ RunObjects16C9_at14:
 RunObjects16C9_at15:
     cmp #$02
     bne RunObjects16C9_at16
-    lda a:OBJ_3148,x
+    lda a:OBJ_PACE,x
     and #$60
     lsr a
     lsr a
@@ -2824,7 +2824,7 @@ RunObjects16C9_at15:
     bne RunObjects16C9_at1
     bra RunObjects16C9_at3
 RunObjects16C9_at16:
-    lda a:OBJ_3148,x
+    lda a:OBJ_PACE,x
     and #$18
     sta z:zTemp00
     lda z:zWaveCounter
@@ -2876,10 +2876,10 @@ RunObjects18D9_at0:
     bne RunObjects18D9_at2
     jmp RunObjects18D9_at3
 RunObjects18D9_at2:
-    lda a:OBJ_30F0,x
+    lda a:OBJ_LOOP_FLAGS,x
     and #$01
     bne RunObjects18D9_at4
-    lda a:OBJ_FLAGS_2F38,x
+    lda a:OBJ_SCROLL_BAND,x
     and #$7F
     tay
     stz z:zTemp00
@@ -2911,7 +2911,7 @@ RunObjects18D9_at4:
     bne RunObjects18D9_at7
     jmp RunObjects18D9_at3
 RunObjects18D9_at7:
-    lda a:OBJ_30F0,x
+    lda a:OBJ_LOOP_FLAGS,x
     and #$02
     bne RunObjects18D9_at8
     lda a:OBJ_X_HI,x
@@ -2940,7 +2940,7 @@ RunObjects18D9_at11:
     bcs ScrollSpeedsFromBands
 RunObjects18D9_at8:
     jsr ObjectHit
-    lda a:OBJ_30F0,x
+    lda a:OBJ_LOOP_FLAGS,x
     and #$04
     beq RunObjects18D9_at12
     lda a:OBJ_X_HI,x
@@ -2959,10 +2959,10 @@ RunObjects18D9_at13:
     cmp #$40
     bcs RunObjects18D9_at1
 RunObjects18D9_at12:
-    lda a:OBJ_2F90,x
+    lda a:OBJ_HURT_TIMER,x
     beq RunObjects18D9_at14
-    dec a:OBJ_2F90,x
-    lda a:OBJ_3148,x
+    dec a:OBJ_HURT_TIMER,x
+    lda a:OBJ_PACE,x
     and #$04
     bne RunObjects18D9_at14
     bra RunObjects18D9_at1
@@ -2978,7 +2978,7 @@ RunObjects18D9_at14:
 RunObjects18D9_at15:
     cmp #$02
     bne RunObjects18D9_at16
-    lda a:OBJ_3148,x
+    lda a:OBJ_PACE,x
     and #$60
     lsr a
     lsr a
@@ -2992,7 +2992,7 @@ RunObjects18D9_at15:
     bne RunObjects18D9_at1
     bra RunObjects18D9_at3
 RunObjects18D9_at16:
-    lda a:OBJ_3148,x
+    lda a:OBJ_PACE,x
     and #$18
     sta z:zTemp00
     lda z:zWaveCounter

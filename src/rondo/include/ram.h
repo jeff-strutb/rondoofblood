@@ -71,7 +71,7 @@
 #define VCE_DATA_HI 0x0405 /* VCE colour data high */
 #define BiosScreenLo 0x2214 /* the card's RAM: written once at start */
 #define BiosScreenHi 0x2215 /* the card's RAM: written once at start */
-#define BiosExSetvec 0xE05D /* "ex_setvec: sets an interrupt handler: A which, X and Y its address", X and Y its address */
+#define BiosExSetvec 0xE05D /* ex_setvec: sets an interrupt handler: A which, X and Y its address, X and Y its address */
 #define BiosExJoysns 0xE063 /* ex_joysns: reads the pads; called every frame */
 #define BiosExDotmod 0xE06C /* ex_dotmod: sets the dot clock; called once at start */
 #define BiosExScrmod 0xE06F /* ex_scrmod: sets the screen mode; called once at start */
@@ -96,13 +96,13 @@
 #define HitboxHi 0x2730 /* per slot of 16: the high bytes: X high plus the sign of the X offset, ORed with Y high plus the sign of the Y offset */
 #define LevelFullWalk 0x2744 /* set during a whole-screen stream walk */
 #define Field2742 0x2742 /* a stage overlay byte (six uses in 024F:67F); no meaning found yet */
-#define OBJ_KIND 0x2750 /* "the object's kind: 0 an empty slot; it picks the object's code (RunObjects, DispatchByKind)" */
-#define OBJ_STATE 0x27A8 /* "the object's state: stepped with INC, compared, and doubled to pick its handler from a table" */
-#define OBJ_SUBSTATE 0x2800 /* "the object's step within its state: cleared when the state changes, stepped with INC, doubled to pick a handler" */
-#define OBJ_2A10 0x2A10 /* object field not yet identified */
+#define OBJ_KIND 0x2750 /* the object's kind: 0 an empty slot; it picks the object's code (RunObjects, DispatchByKind) */
+#define OBJ_STATE 0x27A8 /* the object's state: stepped with INC, compared, and doubled to pick its handler from a table */
+#define OBJ_SUBSTATE 0x2800 /* the object's step within its state: cleared when the state changes, stepped with INC, doubled to pick a handler */
+#define OBJ_SPRITE_SET 0x2A10 /* the object's sprite pattern set (3 to 7) */
 #define OBJ_FRAME 0x2A68 /* the object's animation frame */
-#define OBJ_FACING_LEFT 0x2AC0 /* "1 when the object faces left, 0 right; turned with EOR #1" */
-#define OBJ_2B18 0x2B18 /* object field not yet identified */
+#define OBJ_FACING_LEFT 0x2AC0 /* 1 when the object faces left, 0 right; turned with EOR #1 */
+#define OBJ_SPRITE_ATTR 0x2B18 /* the object's sprite colour and attribute byte; a damaging hit saves it in OBJ_SAVED_ATTR and sets $86 to flash */
 #define OBJ_X_HI 0x2B70 /* object X position high */
 #define OBJ_X_LO 0x2BC8 /* object X position low */
 #define OBJ_X_FRAC 0x2C20 /* object X position fraction */
@@ -114,17 +114,17 @@
 #define OBJ_VY_HI 0x2E30 /* object Y velocity high */
 #define OBJ_VY_LO 0x2E88 /* object Y velocity low */
 #define OBJ_FIELDS_2EE0 0x2EE0 /* first of the object fields cleared together */
-#define OBJ_FLAGS_2F38 0x2F38 /* bit 7: records an event when told to */
+#define OBJ_SCROLL_BAND 0x2F38 /* bits 0 to 6 the scroll-speed band the object moves with (ScrollSpeedX and Y by it, RunObjects); bit 7 records an event when told to */
 #define OBJ_EVENT_ID 0x3098 /* event this object records */
-#define OBJ_2F90 0x2F90 /* object field not yet identified */
-#define OBJ_SPRITE_FLIP 0x2FE8 /* "the object's sprite flip bits ($80, $C0) for its attribute word" */
-#define OBJ_3040 0x3040 /* object field not yet identified */
-#define OBJ_30F0 0x30F0 /* object field not yet identified */
-#define OBJ_3148 0x3148 /* object field not yet identified */
-#define OBJ_31A0 0x31A0 /* object field not yet identified */
-#define OBJ_HIT_REACTION 0x31F8 /* "what a hit does: bits 2 to 4 the item it may drop (DropItemWhenHit), bits 5 to 7 the sound it plays (PlayHitSound)" */
+#define OBJ_HURT_TIMER 0x2F90 /* frames the object is held after a damaging hit (ObjectHit sets it from a table by the hit); RunObjects counts it down and skips the object meanwhile unless OBJ_PACE bit 2 */
+#define OBJ_SPRITE_FLIP 0x2FE8 /* the object's sprite flip bits ($80, $C0) for its attribute word */
+#define OBJ_START_ARG 0x3040 /* the value the object's creator gave it when it started it: the creator's slot, a group number, a variant; what it means is the kind's */
+#define OBJ_LOOP_FLAGS 0x30F0 /* how RunObjects treats the object: bit 0 it stays put (no scroll), bit 1 it is not cleared far off screen, bit 2 it is held while outside the window */
+#define OBJ_PACE 0x3148 /* how the object runs when the player's time-slowing mode is on: bits 3 and 4 its skip pattern in mode 1, bits 5 and 6 in mode 2 (RunObjects); bit 2 it runs on while hurt */
+#define OBJ_HIT_STATUS 0x31A0 /* bit 7 the object is dead; bits 5 and 6 the player's two attack marks this frame, cleared by ObjectHit */
+#define OBJ_HIT_REACTION 0x31F8 /* what a hit does: bits 0 and 1 the flash frames left (ObjectHit), bits 2 to 4 the item it may drop (DropItemWhenHit), bits 5 to 7 the sound it plays (PlayHitSound) */
 #define OBJ_3250 0x3250 /* object field not yet identified */
-#define OBJ_32A8 0x32A8 /* object field not yet identified */
+#define OBJ_HEALTH 0x32A8 /* the object's health: damage takes from it (ObjectHit, HitDamage); negative, it has none */
 #define OBJ_3300 0x3300 /* object field not yet identified */
 #define OBJ_3358 0x3358 /* object field not yet identified */
 #define OBJ_HIT_TAKEN 0x33B0 /* the hit the object has taken this frame; 5 or more is a damaging hit */
@@ -143,12 +143,12 @@
 #define OBJ_3828 0x3828 /* object field not yet identified */
 #define OBJ_3880 0x3880 /* object field not yet identified */
 #define OBJ_38D8 0x38D8 /* object field not yet identified */
-#define OBJ_HITBOX_DX 0x3930 /* "the hitbox's centre, X offset from the object" */
+#define OBJ_HITBOX_DX 0x3930 /* the hitbox's centre, X offset from the object */
 #define OBJ_HITBOX_HALF_W 0x3988 /* the hitbox's half width; 0 with the half height: no hitbox */
-#define OBJ_HITBOX_DY 0x39E0 /* "the hitbox's centre, Y offset from the object" */
+#define OBJ_HITBOX_DY 0x39E0 /* the hitbox's centre, Y offset from the object */
 #define OBJ_HITBOX_HALF_H 0x3A38 /* the hitbox's half height */
-#define OBJ_3A90 0x3A90 /* object field not yet identified */
-#define OBJ_3AE8 0x3AE8 /* object field not yet identified */
+#define OBJ_INVULN_TIMER 0x3A90 /* frames the object is not hit-tested after a damaging hit (ObjectHit sets it from a table by the hit) */
+#define OBJ_SAVED_ATTR 0x3AE8 /* OBJ_SPRITE_ATTR saved over a hit's flash, put back when the flash frames (OBJ_HIT_REACTION bits 0 and 1) run out */
 #define ScriptSlotKind 0x3C00 /* script slot kind by slot */
 #define ScriptSlotScript 0x3C0C /* script slot script by slot */
 #define ScriptSlotField18 0x3C18 /* script slot field not yet identified */

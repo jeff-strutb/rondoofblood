@@ -55,7 +55,7 @@ CountThenSoleScriptAndSound:
     lda #$E4
     jsr VecSoundCommand
     lda #$81
-    sta a:OBJ_FLAGS_2F38,x
+    sta a:OBJ_SCROLL_BAND,x
     lda #$60
     sta a:OBJ_3510,x
     lda #$04
@@ -132,7 +132,7 @@ RiseThenPlaceWithSound:
     lda #$E7
     jsr VecSoundCommand
     lda #$80
-    sta a:OBJ_FLAGS_2F38,x
+    sta a:OBJ_SCROLL_BAND,x
     lda #$1D
     sta a:OBJ_FRAME,x
     stz a:OBJ_X_HI,x
@@ -256,7 +256,7 @@ RiseThenPlaceAndDrop:
     cmp #$FE
     bne RiseThenPlaceAndDrop_at0
     lda #$81
-    sta a:OBJ_FLAGS_2F38,x
+    sta a:OBJ_SCROLL_BAND,x
     lda #$04
     sta z:zRasterStage
     stz a:OBJ_X_HI,x
@@ -314,7 +314,7 @@ LoadThenFallAndFlash:
     bne StartDriftingPiece
     jsr VecLoadObjectRecord
     lda #$01
-    sta a:OBJ_FLAGS_2F38,x
+    sta a:OBJ_SCROLL_BAND,x
     lda #$59
     sta a:OBJ_FRAME,x
     lda #$00
@@ -340,7 +340,7 @@ LoadThenFallAndFlash:
     cmp #$10
     bcs LoadThenFallAndFlash_at0
     lda #$10
-    sta a:OBJ_2B18,x
+    sta a:OBJ_SPRITE_ATTR,x
 LoadThenFallAndFlash_at0:
     dec a:OBJ_3510,x
     bne LoadThenFallAndFlash_at1
@@ -387,7 +387,7 @@ StepListC103ThenPickAim_at0:
 
 ; @routine 10CD:126 StepListC170ThenMoveAlongAngle
 ; @run 71:C126
-; WHAT IT DOES: Steps the animation list at $C170, sets the object's speed from its angle OBJ_34B8 with the length OBJ_3510:OBJ_3568, moves it and adds $000C to the length. When the object in slot $10 is in state 6 or more, or this object's OBJ_31A0 has bit 7 set, it clears its animation step and timer and goes on to the next state (and writes 0 to the byte at $0002 plus its slot).
+; WHAT IT DOES: Steps the animation list at $C170, sets the object's speed from its angle OBJ_34B8 with the length OBJ_3510:OBJ_3568, moves it and adds $000C to the length. When the object in slot $10 is in state 6 or more, or this object's OBJ_HIT_STATUS has bit 7 set, it clears its animation step and timer and goes on to the next state (and writes 0 to the byte at $0002 plus its slot).
 ; HOW: StepObjectFrames, SetVelocityFromAngle, ApplyVelocity, a 16-bit add, stores, an INC.
 ; WAITS: no.
 ; Entry: X object, Y kept unless the step sets it. Exit: the last test, or the new state's N and Z.
@@ -414,7 +414,7 @@ StepListC170ThenMoveAlongAngle:
     lda a:$27B8
     cmp #$06
     bcs WalkAndAttackB
-    lda a:OBJ_31A0,x
+    lda a:OBJ_HIT_STATUS,x
     and #$80
     beq StepListC170ThenMoveAlongAngle_at0
     stz a:VDC_DATA_LO,x

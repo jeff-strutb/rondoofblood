@@ -105,9 +105,9 @@ ChaseWanderingPointWithSpeedRamp:
     lda a:OBJ_STATE,x
     bne ChaseWanderingPointWithSpeedRamp_at0
     jsr VecLoadObjectRecord
-    lda a:OBJ_2B18,x
+    lda a:OBJ_SPRITE_ATTR,x
     ora #$10
-    sta a:OBJ_2B18,x
+    sta a:OBJ_SPRITE_ATTR,x
     stz a:OBJ_X_HI,x
     lda #$20
     sta a:OBJ_X_LO,x
@@ -229,13 +229,13 @@ SettleWhenLowOnFirstRow:
     cmp #$D0
     bcs SettleWhenLowOnFirstRow_at0
     inc a:OBJ_3670,x
-    stz a:OBJ_2B18,x
+    stz a:OBJ_SPRITE_ATTR,x
 SettleWhenLowOnFirstRow_at0:
     rts
 
 ; @routine 101F:199 LoadRecordFrameFromKind
 ; @run 71:D199
-; WHAT IT DOES: In state 0 loads the record and takes OBJ_3040 as its frame.
+; WHAT IT DOES: In state 0 loads the record and takes OBJ_START_ARG as its frame.
 ; HOW: LoadObjectRecord, a copy.
 ; WAITS: no.
 ; Entry: X object. Exit: as the last instruction that ran.
@@ -243,7 +243,7 @@ LoadRecordFrameFromKind:
     lda a:OBJ_STATE,x
     bne LoadRecordFrameFromKind_at0
     jsr VecLoadObjectRecord
-    lda a:OBJ_3040,x
+    lda a:OBJ_START_ARG,x
     sta a:OBJ_FRAME,x
 LoadRecordFrameFromKind_at0:
     rts
@@ -278,7 +278,7 @@ CapPlayerXOnScreen1_at0:
 
 ; @routine 161B:126 SpawnerWithScrollGates
 ; @run 70:B126
-; WHAT IT DOES: In state 0 loads the record. State 1 starts list $8D on channel 3 when OBJ_3040 is not 0 and goes on. Later it runs CapPlayerXOnScreen1 when OBJ_3040 is 0, waits OBJ_34B8 down, then with OBJ_3040 0 and the scroll in the right window starts an object of type $2C in a free slot of $1A to $1F numbered by OBJ_3510 (which counts up) and takes a random wait of $80 to $BF; with OBJ_3040 not 0 and the scroll's Y in range clears and starts an object of type $55 in the first free slot of $11 to $1F and waits $D0.
+; WHAT IT DOES: In state 0 loads the record. State 1 starts list $8D on channel 3 when OBJ_START_ARG is not 0 and goes on. Later it runs CapPlayerXOnScreen1 when OBJ_START_ARG is 0, waits OBJ_34B8 down, then with OBJ_START_ARG 0 and the scroll in the right window starts an object of type $2C in a free slot of $1A to $1F numbered by OBJ_3510 (which counts up) and takes a random wait of $80 to $BF; with OBJ_START_ARG not 0 and the scroll's Y in range clears and starts an object of type $55 in the first free slot of $11 to $1F and waits $D0.
 ; HOW: LoadObjectRecord, StartListChannelKind2, CapPlayerXOnScreen1, searches of the slot kinds, StartObjectAtPlace, NextRandom, ClearObjectInY.
 ; WAITS: no.
 ; Entry: X object. Exit: as the last instruction that ran. Everything past state 0 ran in no script; the draft stops there and the arms are written from the decoded bytes.
@@ -289,7 +289,7 @@ SpawnerWithScrollGates:
     rts
     dec a
     bne SpawnerWithScrollGates_at0
-    lda a:OBJ_3040,x
+    lda a:OBJ_START_ARG,x
     beq SpawnerWithScrollGates_at1
     phx
     lda #$8D
@@ -300,7 +300,7 @@ SpawnerWithScrollGates_at1:
     inc a:OBJ_STATE,x
     rts
 SpawnerWithScrollGates_at0:
-    lda a:OBJ_3040,x
+    lda a:OBJ_START_ARG,x
     bne MoveAndWrapDriftA
     jsr CapPlayerXOnScreen1
     lda a:OBJ_34B8,x
@@ -317,7 +317,7 @@ SpawnerWithScrollGates_at4:
     bcc SpawnerWithScrollGates_at4
     rts
 SpawnerWithScrollGates_at3:
-    lda a:OBJ_3040,x
+    lda a:OBJ_START_ARG,x
     bne SpawnerWithScrollGates_at5
     lda a:ScrollXHiScreen
     cmp #$09
@@ -337,7 +337,7 @@ SpawnerWithScrollGates_at8:
     lda #$2C
     jsr VecStartObjectAtPlace
     lda a:OBJ_3510,x
-    sta a:OBJ_3040,y
+    sta a:OBJ_START_ARG,y
     inc a:OBJ_3510,x
     jsr VecNextRandom
     and #$3F
@@ -380,7 +380,7 @@ LoadRecordThenDriftAndCount:
     bne LoadRecordThenDriftAndCount_at0
     jsr VecLoadObjectRecord
     lda #$06
-    sta a:OBJ_2A10,x
+    sta a:OBJ_SPRITE_SET,x
     lda #$45
     sta a:OBJ_FRAME,x
     lda #$10

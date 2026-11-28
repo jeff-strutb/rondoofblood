@@ -115,7 +115,7 @@ StepFlashTimer:
 StepFlashTimer_at1:
     lda #$04
     sta a:OBJ_34B8,x
-    lda a:OBJ_3040,x
+    lda a:OBJ_START_ARG,x
     and #$01
     tay
     lda a:$9CFD,y
@@ -146,7 +146,7 @@ NextStateByKindBits:
     inc a:OBJ_STATE,x
     lda #$04
     sta a:OBJ_34B8,x
-    lda a:OBJ_3040,x
+    lda a:OBJ_START_ARG,x
     and #$0F
     cmp #$02
     bcc NextStateByKindBits_at1
@@ -181,7 +181,7 @@ StepFlashTimerDown:
 StepFlashTimerDown_at1:
     lda #$04
     sta a:OBJ_34B8,x
-    lda a:OBJ_3040,x
+    lda a:OBJ_START_ARG,x
     and #$01
     tay
     lda a:$9CFD,y

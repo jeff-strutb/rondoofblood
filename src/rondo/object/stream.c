@@ -266,9 +266,9 @@ static PlaceExit place_new_object(uint8_t slot)
         out.last = high;
     }
     byte = RD8(ZP->temp0d);
-    WR8(OBJ->next_kind[slot], byte);
+    WR8(OBJ->start_arg[slot], byte);
     byte = RD8(ZP->temp0e);
-    WR8(OBJ->flags[slot], byte);
+    WR8(OBJ->scroll_band[slot], byte);
     out.event = RD8(ZP->temp0f);
     WR8(OBJ->event_id[slot], out.event);
     return out;

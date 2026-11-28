@@ -700,7 +700,7 @@ ObjArm PlaceFromTableCopySlot10(uint8_t slot)
     WR8(OBJ->sprite_set[slot], RD8(OBJ->sprite_set[0x10]));
     WR8(OBJ->frame[slot], RD8(OBJ->frame[0x10]));
     WR8(OBJ->facing_left[slot], RD8(OBJ->facing_left[0x10]));
-    WR8(OBJ->flash_flags[slot], 0x10);
+    WR8(OBJ->sprite_attr[slot], 0x10);
     return r;
 }
 
@@ -1201,7 +1201,7 @@ void abi_SoundThenAimRandomLength(void)
 /*
  * @routine 088A:32E DrawStepCountThenClear
  * @run 70:AB2E
- * WHAT IT DOES: On every 32nd frame of the wave counter it draws the tile script of group 0 numbered OBJ_3040, starts a kind $25 object in a free slot from $30 at its place and moves; it counts OBJ_3040 up and clears the object when it reaches 4.
+ * WHAT IT DOES: On every 32nd frame of the wave counter it draws the tile script of group 0 numbered OBJ_START_ARG, starts a kind $25 object in a free slot from $30 at its place and moves; it counts OBJ_START_ARG up and clears the object when it reaches 4.
  * HOW: DrawTileScript, FindFreeSlotFrom30, StartObjectAtPlace, ApplyVelocity, an INC, ClearObject.
  * WAITS: no.
  * Entry: X object. Exit: the compare, or as ClearObject.

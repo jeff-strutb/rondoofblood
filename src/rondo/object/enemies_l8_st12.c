@@ -182,8 +182,8 @@ void abi_CountdownThenStartScript80(void)
 /*
  * @routine 025B:148 LoadRecordPlaceByKind
  * @run 70:B148
- * WHAT IT DOES: In state 0 loads the record, sets sprite set 6 and the frame from a table by OBJ_3040; when the object's flags are 0 it is placed at X $0120 with a Y from a second table, and its flags take the low nibble 6.
- * HOW: LoadObjectRecord, two table reads indexed by OBJ_3040, stores.
+ * WHAT IT DOES: In state 0 loads the record, sets sprite set 6 and the frame from a table by OBJ_START_ARG; when the object's flags are 0 it is placed at X $0120 with a Y from a second table, and its flags take the low nibble 6.
+ * HOW: LoadObjectRecord, two table reads indexed by OBJ_START_ARG, stores.
  * WAITS: no.
  * Entry: X object. Exit: as the last instruction that ran (l8_place_by_kind_exit_shim).
  */
@@ -202,7 +202,7 @@ L8Arm LoadRecordPlaceByKind(uint8_t slot)
     r.first = kind;
     value = rd8((uint16_t)(0xB17E + kind));
     WR8(OBJ->frame[slot], value);
-    r.second = RD8(OBJ->flags[slot]);
+    r.second = RD8(OBJ->scroll_band[slot]);
     if (r.second != 0) {
         r.arm = PLACE_KEPT;
         return r;
@@ -211,9 +211,9 @@ L8Arm LoadRecordPlaceByKind(uint8_t slot)
     WR8(OBJ->x_hi[slot], 0x01);
     value = rd8((uint16_t)(0xB180 + kind));
     WR8(OBJ->y_lo[slot], value);
-    flags = RD8(OBJ->flags[slot]);
+    flags = RD8(OBJ->scroll_band[slot]);
     r.third = (uint8_t)((flags & 0xF0) | 0x06);
-    WR8(OBJ->flags[slot], r.third);
+    WR8(OBJ->scroll_band[slot], r.third);
     r.arm = PLACE_PLACED;
     return r;
 }
@@ -262,9 +262,9 @@ L8Arm LoadRecordAtPlayerPlace(uint8_t slot)
     WR8(OBJ->x_lo[slot], value);
     value = RD8(OBJ->y_lo[0]);
     WR8(OBJ->y_lo[slot], value);
-    flags = RD8(OBJ->flags[slot]);
+    flags = RD8(OBJ->scroll_band[slot]);
     r.first = (uint8_t)((flags & 0xF0) | 0x01);
-    WR8(OBJ->flags[slot], r.first);
+    WR8(OBJ->scroll_band[slot], r.first);
     r.arm = AT_PLAYER_PLACED;
     return r;
 }
@@ -332,7 +332,7 @@ void abi_LoadRecordThenSinkByF3520(void)
 /*
  * @routine 025B:1BC LoadRecordThenStepListByKind
  * @run 70:B1BC
- * WHAT IT DOES: In state 0 loads the record and moves the object one left; then steps an animation list picked by OBJ_3040 (two bytes an entry) and, from the table's second half when slot $10's state is below 4 and OBJ_34B8 is 0.
+ * WHAT IT DOES: In state 0 loads the record and moves the object one left; then steps an animation list picked by OBJ_START_ARG (two bytes an entry) and, from the table's second half when slot $10's state is below 4 and OBJ_34B8 is 0.
  * HOW: LoadObjectRecord, a decrement, table reads, a tail jump into StepObjectFrames.
  * WAITS: no.
  * Entry: X object, Y kept unless the step sets it. Exit: the step (l8_kind_list_exit_shim).
@@ -404,7 +404,7 @@ void abi_LoadRecordThenStepListByKind(void)
 /*
  * @routine 025B:229 LoadRecordSinkThenStepListByKind
  * @run 70:B229
- * WHAT IT DOES: In state 0 loads the record and moves the object one left; then adds OBJ_3510 of slot $10 to its OBJ_Y_LO and steps the animation list picked by OBJ_3040 from the table at $B250.
+ * WHAT IT DOES: In state 0 loads the record and moves the object one left; then adds OBJ_3510 of slot $10 to its OBJ_Y_LO and steps the animation list picked by OBJ_START_ARG from the table at $B250.
  * HOW: LoadObjectRecord, a decrement, an add, table reads, a tail jump into StepObjectFrames.
  * WAITS: no.
  * Entry: X object, Y kept unless the step sets it. Exit: the step (l8_sink_list_exit_shim).
@@ -529,9 +529,9 @@ L8St12PhaseArm StateMachineWithSoundAndList(uint8_t slot, uint8_t y_entry)
     if (state == 2) {
         r.timer = DEC8(OBJ->f3510[slot]);
         if (r.timer == 0) {
-            flags = RD8(OBJ->flags[slot]);
+            flags = RD8(OBJ->scroll_band[slot]);
             r.flags = (uint8_t)((flags & 0xF0) | 0x05);
-            WR8(OBJ->flags[slot], r.flags);
+            WR8(OBJ->scroll_band[slot], r.flags);
             r.counted = INC8(OBJ->state[slot]);
         }
         r.arm = PHASE_TWO;
@@ -633,7 +633,7 @@ void abi_StateMachineWithSoundAndList(void)
 /*
  * @routine 025B:308 DriftRecordThenMoveWithJitter
  * @run 70:B308
- * WHAT IT DOES: In state 0 loads the record and sets the speed X -$18, Y $0C. When slot $10's state is 4 or more and OBJ_3040 is 0 it waits one round, shows frame $1D, then moves by its speed, nudging X and Y back by random amounts of up to 15 when they are off the edge.
+ * WHAT IT DOES: In state 0 loads the record and sets the speed X -$18, Y $0C. When slot $10's state is 4 or more and OBJ_START_ARG is 0 it waits one round, shows frame $1D, then moves by its speed, nudging X and Y back by random amounts of up to 15 when they are off the edge.
  * HOW: LoadObjectRecord, ApplyVelocity, NextRandom, adds and a subtract with a zero page temporary.
  * WAITS: no.
  * Entry: X object. Exit: as the last instruction that ran (l8_drift_exit_shim).
@@ -1015,7 +1015,7 @@ void abi_HitSoundThenSpawnPieces(void)
 /*
  * @routine 025B:52E EnterState0BWhenFlagged
  * @run 70:B52E
- * WHAT IT DOES: When bit 7 of OBJ_31A0 is set and the state is below $0B, sets the state $0B and OBJ_SUBSTATE 0.
+ * WHAT IT DOES: When bit 7 of OBJ_HIT_STATUS is set and the state is below $0B, sets the state $0B and OBJ_SUBSTATE 0.
  * HOW: Two tests, two stores.
  * WAITS: no.
  * Entry: X object. Exit: as the last instruction that ran (l8_enter_state0b_exit_shim). The stores ran in no script; the draft stops there.
@@ -1024,7 +1024,7 @@ L8Arm EnterState0BWhenFlagged(uint8_t slot)
 {
     L8Arm r = { 0 };
 
-    r.first = RD8(OBJ->status_flags[slot]);
+    r.first = RD8(OBJ->hit_status[slot]);
     if ((r.first & 0x80) == 0) {
         r.arm = S0B_CLEAR;
         return r;

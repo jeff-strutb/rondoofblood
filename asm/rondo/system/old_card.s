@@ -474,7 +474,7 @@ DrawObjectSprite:
     sta z:zTemp0D
     lda a:OBJ_SPRITE_FLIP,x
     sta z:SpriteFlipMask
-    lda a:OBJ_2B18,x
+    lda a:OBJ_SPRITE_ATTR,x
     sta z:zTemp0E
     and #$0F
     sta z:zTemp0F

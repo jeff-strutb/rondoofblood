@@ -295,7 +295,7 @@ ObjArm StartFacingPlayerThenCheck(uint8_t slot)
     r.third = (uint8_t)(r.side.sides & 1);
     WR8(OBJ->facing_left[slot], r.third);
     WR8(OBJ->f3510[slot], 0x18);
-    r.fourth = RD8(OBJ->next_kind[slot]);
+    r.fourth = RD8(OBJ->start_arg[slot]);
     r.arm = S8B_SF_OTHER;
     if (r.fourth != 1) {
         return r;
@@ -362,7 +362,7 @@ ObjArm AnimateThenCountToState3(uint8_t slot)
     r.step = StepObjectFrames(slot, &exit_y);
     jsr_pop();
     r.y = exit_y;
-    r.second = RD8(OBJ->next_kind[slot]);
+    r.second = RD8(OBJ->start_arg[slot]);
     r.arm = S8B_AC_KIND;
     if (r.second == 0xFF) {
         return r;
@@ -565,7 +565,7 @@ ObjArm StartWithTimerByNextKind(uint8_t slot)
     jsr_push(0xC95F);
     r.first = LoadObjectRecord(slot, &r.second, &r.flag);
     jsr_pop();
-    r.third = RD8(OBJ->next_kind[slot]);
+    r.third = RD8(OBJ->start_arg[slot]);
     r.fourth = rd8((uint16_t)(TABLE + r.third));
     WR8(OBJ->life_timer[slot], r.fourth);
     WR8(OBJ->f3510[slot], 0);
@@ -601,7 +601,7 @@ ObjArm StartWithFrameByNextKind(uint8_t slot)
     r.first = LoadObjectRecord(slot, &r.second, &r.flag);
     jsr_pop();
     WR8(OBJ->f3568[slot], 0);
-    r.third = RD8(OBJ->next_kind[slot]);
+    r.third = RD8(OBJ->start_arg[slot]);
     r.fourth = (uint8_t)((r.third >> 4) & 1);
     r.fifth = rd8((uint16_t)(TABLE + r.fourth));
     WR8(OBJ->frame[slot], r.fifth);
@@ -633,7 +633,7 @@ ObjArm AnimateByKindThenNextState(uint8_t slot)
 {
     enum { LISTS = 0xCD0F };
     ObjArm r = { 0 };
-    uint8_t kind = RD8(OBJ->next_kind[slot]);
+    uint8_t kind = RD8(OBJ->start_arg[slot]);
     uint8_t exit_y;
 
     r.first = (uint8_t)(((kind >> 4) & 1) << 1);
@@ -755,7 +755,7 @@ ObjArm AnimateAndSpawnThenPause(uint8_t slot)
     enum { TIMERS = 0xCAC7 };
     ObjArm r = { 0 };
     ObjArm frames;
-    uint8_t kind = RD8(OBJ->next_kind[slot]);
+    uint8_t kind = RD8(OBJ->start_arg[slot]);
     uint8_t frame, last, found_slot, count, y, value;
     bool found, pause = false;
 

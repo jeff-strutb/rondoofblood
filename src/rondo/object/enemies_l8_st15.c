@@ -20,7 +20,7 @@ static Ended then(Ended e, Ended next)
 /*
  * @routine 05CB:0E3 LoadRecordThenRecordEventAtFifth
  * @run 70:B0E3
- * WHAT IT DOES: In state 0 loads the record and sets sprite set 7, frame $12 and the hit height $14. Later it steps the animation list at $B136; once the object has taken 5 hits it records its event, takes the kind of OBJ_3040, sets OBJ_3A90 $10, goes to state 0 and starts an object of type $9C from a free slot of $50 to $53 with the Y speed -$0600, moved once.
+ * WHAT IT DOES: In state 0 loads the record and sets sprite set 7, frame $12 and the hit height $14. Later it steps the animation list at $B136; once the object has taken 5 hits it records its event, takes the kind of OBJ_START_ARG, sets OBJ_INVULN_TIMER $10, goes to state 0 and starts an object of type $9C from a free slot of $50 to $53 with the Y speed -$0600, moved once.
  * HOW: LoadObjectRecord, StepObjectFrames, RecordObjectEvent, FindFreeSlotFrom50, StartObjectAtPlace, ApplyVelocityY with X and Y swapped.
  * WAITS: no.
  * Entry: X object, Y kept unless the step sets it. Exit: as the last instruction that ran (l8_record_event_fifth_exit_shim).
@@ -50,7 +50,7 @@ L8St15Fifth LoadRecordThenRecordEventAtFifth(uint8_t slot, uint8_t y_entry)
     jsr_pop();
     r.kind = RD8(OBJ->f3040[slot]);
     WR8(OBJ->kind[slot], r.kind);
-    WR8(OBJ->timer[slot], 0x10);
+    WR8(OBJ->invuln_timer[slot], 0x10);
     WR8(OBJ->state[slot], 0);
     jsr_push(0xB121);
     r.found.slot = FindFreeSlotFrom50(&r.found.last, &r.found.found);
@@ -105,7 +105,7 @@ void abi_LoadRecordThenRecordEventAtFifth(void)
 /*
  * @routine 05CB:1A9 FlagThenHitsCompare
  * @run 70:B1A9
- * WHAT IT DOES: Tests bit 7 of OBJ_31A0 and, when it is clear, compares the hits taken with 5; nothing is stored.
+ * WHAT IT DOES: Tests bit 7 of OBJ_HIT_STATUS and, when it is clear, compares the hits taken with 5; nothing is stored.
  * HOW: An AND and a compare.
  * WAITS: no.
  * Entry: X object. Exit: the AND, or the compare (l8_flag_then_hits_exit_shim).
@@ -116,7 +116,7 @@ L8Arm FlagThenHitsCompare(uint8_t slot)
 {
     L8Arm r = { 0 };
 
-    r.first = RD8(OBJ->status_flags[slot]);
+    r.first = RD8(OBJ->hit_status[slot]);
     if ((r.first & 0x80) != 0) {
         r.arm = ST15_FLAG_SET;
         return r;
@@ -145,7 +145,7 @@ void abi_FlagThenHitsCompare(void)
 /*
  * @routine 05CB:1B8 EnterState5WhenFlagged
  * @run 70:B1B8
- * WHAT IT DOES: When bit 7 of OBJ_31A0 is set and the state is below 5, sets the state 5 and OBJ_SUBSTATE 0.
+ * WHAT IT DOES: When bit 7 of OBJ_HIT_STATUS is set and the state is below 5, sets the state 5 and OBJ_SUBSTATE 0.
  * HOW: Two tests, two stores.
  * WAITS: no.
  * Entry: X object. Exit: as the last instruction that ran (l8_enter_state5_exit_shim). The stores ran in no script; the draft stops there.
@@ -156,7 +156,7 @@ L8Arm EnterState5WhenFlagged(uint8_t slot)
 {
     L8Arm r = { 0 };
 
-    r.first = RD8(OBJ->status_flags[slot]);
+    r.first = RD8(OBJ->hit_status[slot]);
     if ((r.first & 0x80) == 0) {
         r.arm = ST15_ENTER5_UNFLAGGED;
         return r;

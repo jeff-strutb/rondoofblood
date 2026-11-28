@@ -79,7 +79,7 @@ void abi_CountDownOrPickNextTimer(void)
 /*
  * @routine 0B4C:051 StepListThenPickStateByLuck
  * @run 70:B851
- * WHAT IT DOES: In state 0, when the frame is 4, advances OBJ_SUBSTATE; otherwise (and in later states when the animation list at $B8D2 ends) it takes frame 2, the facing of the player's side, clears the animation timer and picks the next state and OBJ_SUBSTATE from the tables at $B8A2 and $B89D by OBJ_32A8 and a random number.
+ * WHAT IT DOES: In state 0, when the frame is 4, advances OBJ_SUBSTATE; otherwise (and in later states when the animation list at $B8D2 ends) it takes frame 2, the facing of the player's side, clears the animation timer and picks the next state and OBJ_SUBSTATE from the tables at $B8A2 and $B89D by OBJ_HEALTH and a random number.
  * HOW: StepObjectFrames, SideOfPlayer, NextRandom, table reads, stores.
  * WAITS: no.
  * Entry: X object, Y kept unless the step sets it. Exit: as the last instruction that ran (l8_luck_exit_shim). The state 0 arm ran in no script; the draft stops there.
@@ -112,7 +112,7 @@ L8LuckArm StepListThenPickStateByLuck(uint8_t slot, uint8_t y_entry)
     r.side_bit = r.side.sides & 0x01;
     WR8(OBJ->facing_left[slot], r.side_bit);
     WR8(OBJ->anim_timer[slot], 0);
-    r.shifted = RD8(OBJ->f32a8[slot]);
+    r.shifted = RD8(OBJ->health[slot]);
     r.aim = (uint8_t)((r.shifted >> 1) & 0xF0);
     WR8(ZP->temp00, r.aim);
     jsr_push(0xB889);

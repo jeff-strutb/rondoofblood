@@ -25,7 +25,7 @@ NextStateOnScrollY_at0:
 
 ; @routine 088A:32E DrawStepCountThenClear
 ; @run 70:AB2E
-; WHAT IT DOES: On every 32nd frame of the wave counter it draws the tile script of group 0 numbered OBJ_3040, starts a kind $25 object in a free slot from $30 at its place and moves; it counts OBJ_3040 up and clears the object when it reaches 4.
+; WHAT IT DOES: On every 32nd frame of the wave counter it draws the tile script of group 0 numbered OBJ_START_ARG, starts a kind $25 object in a free slot from $30 at its place and moves; it counts OBJ_START_ARG up and clears the object when it reaches 4.
 ; HOW: DrawTileScript, FindFreeSlotFrom30, StartObjectAtPlace, ApplyVelocity, an INC, ClearObject.
 ; WAITS: no.
 ; Entry: X object. Exit: the compare, or as ClearObject.
@@ -33,7 +33,7 @@ DrawStepCountThenClear:
     lda z:zWaveCounter
     and #$1F
     bne DrawStepCountThenClear_at0
-    lda a:OBJ_3040,x
+    lda a:OBJ_START_ARG,x
     clc
     adc #$00
     cly
@@ -44,8 +44,8 @@ DrawStepCountThenClear:
     jsr VecStartObjectAtPlace
 DrawStepCountThenClear_at1:
     jsr VecApplyVelocity
-    inc a:OBJ_3040,x
-    lda a:OBJ_3040,x
+    inc a:OBJ_START_ARG,x
+    lda a:OBJ_START_ARG,x
     cmp #$04
     bcc DrawStepCountThenClear_at0
     jmp VecClearObject
@@ -148,7 +148,7 @@ StartThreeNumberedObjects_at0:
     lda #$28
     jsr VecStartObjectAtPlace
     lda #$07
-    sta a:OBJ_2A10,y
+    sta a:OBJ_SPRITE_SET,y
     lda z:zTemp00
     sta a:OBJ_34B8,y
     clc
@@ -553,13 +553,13 @@ PlaceFromTableCopySlot10:
     lda a:$BBA6,y
     sta a:OBJ_Y_LO,x
     lda a:$2A20
-    sta a:OBJ_2A10,x
+    sta a:OBJ_SPRITE_SET,x
     lda a:$2A78
     sta a:OBJ_FRAME,x
     lda a:$2AD0
     sta a:OBJ_FACING_LEFT,x
     lda #$10
-    sta a:OBJ_2B18,x
+    sta a:OBJ_SPRITE_ATTR,x
     rts
 
 ; @routine 088B:705 PlaceFromTableThenStepList
@@ -577,7 +577,7 @@ PlaceFromTableThenStepList:
     lda a:$BBA6,y
     sta a:OBJ_Y_LO,x
     lda #$07
-    sta a:OBJ_2A10,x
+    sta a:OBJ_SPRITE_SET,x
     lda a:$2AD0
     sta a:OBJ_FACING_LEFT,x
     lda a:OBJ_3510,x
@@ -661,7 +661,7 @@ StartThenWaitForField83:
     lda #$02
     sta a:OBJ_FRAME,x
     lda #$06
-    sta a:OBJ_2A10,x
+    sta a:OBJ_SPRITE_SET,x
 StartThenWaitForField83_at0:
     dec a
     bne StartThenWaitForField83_at1
@@ -672,7 +672,7 @@ StartThenWaitForField83_at0:
     lda #$46
     sta a:OBJ_FRAME,x
     lda #$07
-    sta a:OBJ_2A10,x
+    sta a:OBJ_SPRITE_SET,x
     lda #$80
     sta a:OBJ_X_LO,x
     lda #$58

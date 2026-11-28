@@ -433,12 +433,12 @@ FaceThePlayerInSomeStatesD_at0:
 ; WAITS: no.
 ; Entry, exit: as ThrowByNextKind.
 ThrowByNextKindB:
-    lda a:OBJ_3040,x
+    lda a:OBJ_START_ARG,x
     and #$01
     tay
     lda a:$CDB4,y
     sta a:OBJ_VX_HI,x
-    lda a:OBJ_3040,x
+    lda a:OBJ_START_ARG,x
     asl a
     asl a
     asl a

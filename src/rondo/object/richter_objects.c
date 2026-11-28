@@ -48,16 +48,16 @@ static const uint8_t flash_frames[] = { 0x07, 0x0E, 0x15, 0x1C };
 /*
  * @routine 01BD:238 RichterObjectMarkOn
  * @run 6E:C238
- * WHAT IT DOES: Sets bit 4 of an object's OBJ_2B18.
+ * WHAT IT DOES: Sets bit 4 of an object's OBJ_SPRITE_ATTR.
  * HOW: ORed in.
  * WAITS: no.
- * Entry: X object. Exit: A the new OBJ_2B18, N and Z from it. X, Y, C and V kept.
+ * Entry: X object. Exit: A the new OBJ_SPRITE_ATTR, N and Z from it. X, Y, C and V kept.
  */
 static uint8_t object_mark_on_body(uint8_t object)
 {
-    uint8_t flags = (uint8_t)(rd8((uint16_t)(OBJ_2B18 + object)) | OBJECT_MARK);
+    uint8_t flags = (uint8_t)(rd8((uint16_t)(OBJ_SPRITE_ATTR + object)) | OBJECT_MARK);
 
-    wr8((uint16_t)(OBJ_2B18 + object), flags);
+    wr8((uint16_t)(OBJ_SPRITE_ATTR + object), flags);
     return flags;
 }
 
@@ -94,16 +94,16 @@ void abi_MariaObjectMarkOn(void)
 /*
  * @routine 01BD:3EC RichterObjectMarkOff
  * @run 6E:C3EC
- * WHAT IT DOES: Clears bit 4 of an object's OBJ_2B18.
+ * WHAT IT DOES: Clears bit 4 of an object's OBJ_SPRITE_ATTR.
  * HOW: ANDed out.
  * WAITS: no.
- * Entry: X object. Exit: A the new OBJ_2B18, N and Z from it. X, Y, C and V kept.
+ * Entry: X object. Exit: A the new OBJ_SPRITE_ATTR, N and Z from it. X, Y, C and V kept.
  */
 uint8_t RichterObjectMarkOff(uint8_t object)
 {
-    uint8_t flags = (uint8_t)(rd8((uint16_t)(OBJ_2B18 + object)) & ~OBJECT_MARK);
+    uint8_t flags = (uint8_t)(rd8((uint16_t)(OBJ_SPRITE_ATTR + object)) & ~OBJECT_MARK);
 
-    wr8((uint16_t)(OBJ_2B18 + object), flags);
+    wr8((uint16_t)(OBJ_SPRITE_ATTR + object), flags);
     return flags;
 }
 
@@ -313,7 +313,7 @@ void abi_MariaObjectNextState(void)
  * @run 6E:C47C
  * WHAT IT DOES: Once, at its animation's step 6 and while PlayerByte3BE1 is set, makes an object's
  * frame last 4 longer and Richter's one frame shorter than that.
- * HOW: OBJ_35C0 marks it done; OBJ_2F38 the step; OBJ_2F90 the frame's time.
+ * HOW: OBJ_35C0 marks it done; OBJ_2F38 the step; OBJ_HURT_TIMER the frame's time.
  * WAITS: no.
  * Entry: X object. Exit: X and Y kept. Stopped, A what was read last, N and Z from it, or from
  * comparing the step with 6 and C with it. Done, A Richter's new time, N and Z from the mark, C
@@ -327,7 +327,7 @@ Quicken RichterObjectQuicken(uint8_t object)
     quicken.value = rd8((uint16_t)(OBJ_35C0 + object));
     if (quicken.value != 0)
         return quicken;
-    quicken.value = rd8((uint16_t)(OBJ_FLAGS_2F38 + object));
+    quicken.value = rd8((uint16_t)(OBJ_SCROLL_BAND + object));
     quicken.how = QUICKEN_NOT_STEP;
     if (quicken.value != OBJECT_STATE_QUICK)
         return quicken;
@@ -335,10 +335,10 @@ Quicken RichterObjectQuicken(uint8_t object)
     quicken.how = QUICKEN_NOT_ASKED;
     if (quicken.value == 0)
         return quicken;
-    quicken.sum = add_bytes(OBJECT_QUICKEN, rd8((uint16_t)(OBJ_2F90 + object)), false);
-    wr8((uint16_t)(OBJ_2F90 + object), quicken.sum.value);
+    quicken.sum = add_bytes(OBJECT_QUICKEN, rd8((uint16_t)(OBJ_HURT_TIMER + object)), false);
+    wr8((uint16_t)(OBJ_HURT_TIMER + object), quicken.sum.value);
     time = (uint8_t)(quicken.sum.value - 1);
-    wr8(OBJ_2F90 + PLAYER, time);
+    wr8(OBJ_HURT_TIMER + PLAYER, time);
     quicken.value = time;
     quicken.mark = (uint8_t)(rd8((uint16_t)(OBJ_35C0 + object)) + 1);
     wr8((uint16_t)(OBJ_35C0 + object), quicken.mark);
@@ -371,7 +371,7 @@ void abi_RichterObjectQuicken(void)
  * @routine 01BD:49F RichterObjectFlash
  * @run 6E:C49F
  * WHAT IT DOES: While an object is charged, shows the flashing form of its frame, if it is one
- * of the four that have one, with its OBJ_2B18 for the flash.
+ * of the four that have one, with its OBJ_SPRITE_ATTR for the flash.
  * HOW: OBJ_3568 is the charge; frames $07, $0E, $15 and $1C become $8E to $91; RichterFlashFlags
  * by OBJ_34B8 less $0E, with bit 7.
  * WAITS: no.
@@ -395,7 +395,7 @@ Flash RichterObjectFlash(uint8_t object)
             flash.base = rd8((uint16_t)(OBJ_34B8 + object));
             flash.value = (uint8_t)(rd8((uint16_t)(RichterFlashFlags + (uint8_t)(flash.base - OBJECT_FLASH_BASE))) |
                                     OBJECT_FLASH_BIT);
-            wr8((uint16_t)(OBJ_2B18 + object), flash.value);
+            wr8((uint16_t)(OBJ_SPRITE_ATTR + object), flash.value);
             flash.how = FLASH_SHOWN;
             return flash;
         }
@@ -917,7 +917,7 @@ static ObjectListStep object_animation_list(uint8_t object, uint16_t lists)
 
     WR8(ZP->temp00, rd8((uint16_t)(lists + doubled)));
     WR8(ZP->temp01, rd8((uint16_t)(lists + 1 + doubled)));
-    step = RD8(OBJ->flags[object]);
+    step = RD8(OBJ->scroll_band[object]);
     r.y = (uint8_t)(step << 1);
     r.carry = (step & 0x80) != 0;
     return r;
@@ -999,7 +999,7 @@ static AnimationStep object_read_entry(const ObjectAnimationLayout *layout, uint
         jsr_pop();
         y = list.y;
         time = RD8_PTR_Y(ZP->temp00, y);
-        WR8(OBJ->f2f90[object], time);
+        WR8(OBJ->hurt_timer[object], time);
         if (time == OBJECT_ANIMATION_STOPPED) {
             result = object_animation_exit(OBJECT_ANIMATION_STOPPED, 0, true, true, y);
             result.how = FRAME_END_MARK;
@@ -1008,7 +1008,7 @@ static AnimationStep object_read_entry(const ObjectAnimationLayout *layout, uint
         if (time != OBJECT_ANIMATION_LOOPS) {
             break;
         }
-        WR8(OBJ->flags[object], 0);
+        WR8(OBJ->scroll_band[object], 0);
     }
     y++;
     frame = RD8_PTR_Y(ZP->temp00, y);
@@ -1031,7 +1031,7 @@ static AnimationStep object_read_entry(const ObjectAnimationLayout *layout, uint
 static AnimationStep object_set_animation(const ObjectAnimationLayout *layout, uint8_t object, uint8_t animation)
 {
     WR8(OBJ->fields_2ee0[object], animation);
-    WR8(OBJ->flags[object], 0);
+    WR8(OBJ->scroll_band[object], 0);
     return object_read_entry(layout, object);
 }
 
@@ -1050,7 +1050,7 @@ void abi_RichterObjectSetAnimation(void)
  * @run 6E:DA51
  * WHAT IT DOES: Counts down an object's frame on show; at zero moves to the next step of its list.
  * A timer of $FF means its animation has stopped.
- * HOW: OBJ_2F90 the timer, OBJ_FLAGS_2F38 the step, OBJ_FRAME the frame shown.
+ * HOW: OBJ_HURT_TIMER the timer, OBJ_SCROLL_BAND the step, OBJ_FRAME the frame shown.
  * WAITS: no.
  * Entry: X object. Exit: as RichterAnimationTick.
  */
@@ -1058,15 +1058,15 @@ static AnimationStep object_animation_tick(const ObjectAnimationLayout *layout, 
 {
     AnimationStep result;
     ObjectListStep list;
-    uint8_t time = RD8(OBJ->f2f90[object]);
+    uint8_t time = RD8(OBJ->hurt_timer[object]);
     uint8_t left, y, frame;
 
     if (time == OBJECT_ANIMATION_STOPPED) {
         return object_animation_exit(OBJECT_ANIMATION_STOPPED, 0, true, false, 0);
     }
-    left = DEC8(OBJ->f2f90[object]);
+    left = DEC8(OBJ->hurt_timer[object]);
     if (left == 0) {
-        INC8(OBJ->flags[object]);
+        INC8(OBJ->scroll_band[object]);
         return object_read_entry(layout, object);
     }
     jsr_push(layout->tick_ret);
@@ -1109,7 +1109,7 @@ static AnimationStep object_animation_running(const ObjectAnimationLayout *layou
     jsr_push(layout->running_ret);
     tick = object_animation_tick(layout, object);
     jsr_pop();
-    time = RD8(OBJ->f2f90[object]);
+    time = RD8(OBJ->hurt_timer[object]);
     return object_animation_exit(time, (uint8_t)(time - OBJECT_ANIMATION_STOPPED), time >= OBJECT_ANIMATION_STOPPED, tick.y_set, tick.y);
 }
 

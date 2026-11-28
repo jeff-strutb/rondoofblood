@@ -154,7 +154,7 @@ void abi_LoadRecordThenFollowScroll(void)
 /*
  * @routine 0F6B:150 StartPieceWithSpeedFromTable
  * @run 70:B150
- * WHAT IT DOES: Starts an object of type $A4 in a free slot of $20 to $3F at the object's place, $28 lower, with OBJ_3040 the number in zTemp00 plus 3 and the speed from the table at $B18A by twice that number.
+ * WHAT IT DOES: Starts an object of type $A4 in a free slot of $20 to $3F at the object's place, $28 lower, with OBJ_START_ARG the number in zTemp00 plus 3 and the speed from the table at $B18A by twice that number.
  * HOW: FindFreeSlotFrom20, StartObjectAtPlace, table reads, stores between a PHX and a PLX.
  * WAITS: no.
  * Entry: X object, zTemp00 the number. Exit: as the last instruction that ran (l8_piece_speed_exit_shim). The body returns the slot search (found), the X pulled (first), the number (second), the last table byte (third) and the last add (sum).
@@ -218,7 +218,7 @@ void abi_StartPieceWithSpeedFromTable(void)
 /*
  * @routine 0F6B:19A LoadRecordFlipByPlayerThenFall
  * @run 70:B19A
- * WHAT IT DOES: In state 0 loads the record, takes OBJ_3040 as its frame and, when the player is on the left side, faces left and negates (bytes inverted) its speed. Later it falls (ApplyGravity) and moves.
+ * WHAT IT DOES: In state 0 loads the record, takes OBJ_START_ARG as its frame and, when the player is on the left side, faces left and negates (bytes inverted) its speed. Later it falls (ApplyGravity) and moves.
  * HOW: LoadObjectRecord, SideOfPlayer, EORs, ApplyGravity, a tail jump into ApplyVelocity.
  * WAITS: no.
  * Entry: X object. Exit: as the last instruction that ran (l8_flip_then_fall_exit_shim).
@@ -327,7 +327,7 @@ void abi_LoadRecordThenClearAtSubStep3(void)
 /*
  * @routine 0F6B:395 SoundWhenHurtThenFlag
  * @run 70:B395
- * WHAT IT DOES: When bit 7 of OBJ_31A0 is clear and the object has taken 5 hits plays sound $D2 and, when OBJ_32A8 of slot $10 is below 8, sets it to 5, sets OBJ_3618 to 5 and sets bit 7 of OBJ_31A0.
+ * WHAT IT DOES: When bit 7 of OBJ_HIT_STATUS is clear and the object has taken 5 hits plays sound $D2 and, when OBJ_HEALTH of slot $10 is below 8, sets it to 5, sets OBJ_3618 to 5 and sets bit 7 of OBJ_HIT_STATUS.
  * HOW: Tests, SoundCommand, stores.
  * WAITS: no.
  * Entry: X object, Y kept for the sound. Exit: as the last instruction that ran (l8_hurt_then_flag_exit_shim). The stores past the last compare ran in no script; the draft stops there.
@@ -337,7 +337,7 @@ HurtSoundArm SoundWhenHurtThenFlag(uint8_t slot, uint8_t y_entry)
     HurtSoundArm r = { 0 };
     uint8_t flags, value;
 
-    flags = RD8(OBJ->status_flags[slot]);
+    flags = RD8(OBJ->hit_status[slot]);
     r.first = (uint8_t)(flags & 0x80);
     if (r.first != 0) {
         r.arm = HT_FLAGGED;
@@ -351,16 +351,16 @@ HurtSoundArm SoundWhenHurtThenFlag(uint8_t slot, uint8_t y_entry)
     jsr_push(0xB3A8);
     r.call = SoundCommand(0xD2, slot, y_entry);
     jsr_pop();
-    r.value = RD8(OBJ->f32a8[0x10]);
+    r.value = RD8(OBJ->health[0x10]);
     if (r.value >= 8) {
         r.arm = HT_OTHER_HIGH;
         return r;
     }
-    WR8(OBJ->f32a8[0x10], 5);
+    WR8(OBJ->health[0x10], 5);
     WR8(OBJ->f3618[slot], 5);
-    value = RD8(OBJ->status_flags[slot]);
+    value = RD8(OBJ->hit_status[slot]);
     r.value = (uint8_t)(0x80 | value);
-    WR8(OBJ->status_flags[slot], r.value);
+    WR8(OBJ->hit_status[slot], r.value);
     r.arm = HT_SET;
     return r;
 }
@@ -395,7 +395,7 @@ void abi_SoundWhenHurtThenFlag(void)
 /*
  * @routine 0F6B:3C0 SoundAndState6WhenFlagged
  * @run 70:B3C0
- * WHAT IT DOES: Outside state 6: when bit 7 of OBJ_31A0 is set plays sound $D3, goes to state 6 and copies OBJ_3618 to OBJ_32A8; otherwise copies OBJ_32A8 to OBJ_3618.
+ * WHAT IT DOES: Outside state 6: when bit 7 of OBJ_HIT_STATUS is set plays sound $D3, goes to state 6 and copies OBJ_3618 to OBJ_HEALTH; otherwise copies OBJ_HEALTH to OBJ_3618.
  * HOW: Compares, SoundCommand, copies.
  * WAITS: no.
  * Entry: X object, Y kept for the sound. Exit: as the last instruction that ran (l8_state6_when_flagged_exit_shim). The flagged arm ran in no script; the draft stops there.
@@ -410,10 +410,10 @@ HurtSoundArm SoundAndState6WhenFlagged(uint8_t slot, uint8_t y_entry)
         r.arm = S6_IN_STATE6;
         return r;
     }
-    flags = RD8(OBJ->status_flags[slot]);
+    flags = RD8(OBJ->hit_status[slot]);
     r.second = (uint8_t)(flags & 0x80);
     if (r.second == 0) {
-        r.value = RD8(OBJ->f32a8[slot]);
+        r.value = RD8(OBJ->health[slot]);
         WR8(OBJ->f3618[slot], r.value);
         r.arm = S6_NOT_FLAGGED;
         return r;
@@ -425,7 +425,7 @@ HurtSoundArm SoundAndState6WhenFlagged(uint8_t slot, uint8_t y_entry)
     WR8(OBJ->substate[slot], 0);
     WR8(OBJ->hitbox_on[slot], 0);
     r.value = RD8(OBJ->f3618[slot]);
-    WR8(OBJ->f32a8[slot], r.value);
+    WR8(OBJ->health[slot], r.value);
     r.arm = S6_FLAGGED;
     return r;
 }
@@ -660,7 +660,7 @@ void abi_ResetPieceAndAdvance(void)
 /*
  * @routine 0F6B:100 BreakIntoPiecesAtFifthHit
  * @run 70:B100
- * WHAT IT DOES: In state 0 loads the record. Once the object has taken 5 hits it records its event, plays sound $12, takes the kind of OBJ_3040, sets OBJ_3A90 $10, goes to state 0, drops $28 in Y, clears its frame and starts an object of type $9B in a free slot of $50 to $53, then four pieces (StartPieceWithSpeedFromTable for the numbers 0 to 3).
+ * WHAT IT DOES: In state 0 loads the record. Once the object has taken 5 hits it records its event, plays sound $12, takes the kind of OBJ_START_ARG, sets OBJ_INVULN_TIMER $10, goes to state 0, drops $28 in Y, clears its frame and starts an object of type $9B in a free slot of $50 to $53, then four pieces (StartPieceWithSpeedFromTable for the numbers 0 to 3).
  * HOW: LoadObjectRecord, RecordObjectEvent, SoundCommand, FindFreeSlotFrom50, StartObjectAtPlace, four calls.
  * WAITS: no.
  * Entry: X object, Y kept for the sound. Exit: as the last instruction that ran (l8_break_pieces_exit_shim).
@@ -691,7 +691,7 @@ BreakArm BreakIntoPiecesAtFifthHit(uint8_t slot, uint8_t y_entry)
     jsr_pop();
     kind = RD8(OBJ->f3040[slot]);
     WR8(OBJ->kind[slot], kind);
-    WR8(OBJ->timer[slot], 0x10);
+    WR8(OBJ->invuln_timer[slot], 0x10);
     WR8(OBJ->state[slot], 0);
     low = RD8(OBJ->y_lo[slot]);
     r.sum = add_bytes(low, 0xD8, false);

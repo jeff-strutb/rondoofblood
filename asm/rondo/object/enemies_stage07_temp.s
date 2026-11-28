@@ -115,7 +115,7 @@
 ; WAITS: no.
 ; Entry: X object. Exit: A the masked bit, or 4 when entered; N, Z from it; X, Y and C kept.
 EnterState4IfFlagged:
-    lda a:OBJ_31A0,x
+    lda a:OBJ_HIT_STATUS,x
     and #$80
     beq EnterState4IfFlagged_at0
     lda #$04
@@ -204,7 +204,7 @@ ChangeToType9C_at0:
 ; A $20 and N, Z from the new state; X, Y kept.
 EnterNextStateWhenPlayerNear:
     jsr VecDistanceXToPlayer
-    cmp a:OBJ_3040,x
+    cmp a:OBJ_START_ARG,x
     bcs EnterNextStateWhenPlayerNear_at0
     lda #$02
     sta a:OBJ_3250,x
@@ -281,7 +281,7 @@ StartThenAnimate:
     bne StartThenAnimate_at0
     jsr VecLoadObjectRecord
     lda #$06
-    sta a:OBJ_2A10,x
+    sta a:OBJ_SPRITE_SET,x
 StartThenAnimate_at0:
     lda #$D1
     sta z:zTemp11
@@ -324,7 +324,7 @@ RemoveFirstFreeSlotFrom1C_at0:
 SpawnPiecesWhenFlaggedHit:
     lda a:OBJ_STATE,x
     beq SpawnPiecesWhenFlaggedHit_at0
-    lda a:OBJ_31A0,x
+    lda a:OBJ_HIT_STATUS,x
     and #$80
     beq SpawnPiecesWhenFlaggedHit_at0
     jsr SpawnEightPiecesType37

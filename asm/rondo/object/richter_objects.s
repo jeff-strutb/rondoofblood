@@ -61,26 +61,26 @@ RichterObjectFallSlow:
 
 ; @routine 01BD:238 RichterObjectMarkOn
 ; @run 6E:C238
-; WHAT IT DOES: Sets bit 4 of an object's OBJ_2B18.
+; WHAT IT DOES: Sets bit 4 of an object's OBJ_SPRITE_ATTR.
 ; HOW: ORed in.
 ; WAITS: no.
-; Entry: X object. Exit: A the new OBJ_2B18, N and Z from it. X, Y, C and V kept.
+; Entry: X object. Exit: A the new OBJ_SPRITE_ATTR, N and Z from it. X, Y, C and V kept.
 RichterObjectMarkOn:
     lda #$10
-    ora a:OBJ_2B18,x
-    sta a:OBJ_2B18,x
+    ora a:OBJ_SPRITE_ATTR,x
+    sta a:OBJ_SPRITE_ATTR,x
     rts
 
 ; @routine 01BD:3EC RichterObjectMarkOff
 ; @run 6E:C3EC
-; WHAT IT DOES: Clears bit 4 of an object's OBJ_2B18.
+; WHAT IT DOES: Clears bit 4 of an object's OBJ_SPRITE_ATTR.
 ; HOW: ANDed out.
 ; WAITS: no.
-; Entry: X object. Exit: A the new OBJ_2B18, N and Z from it. X, Y, C and V kept.
+; Entry: X object. Exit: A the new OBJ_SPRITE_ATTR, N and Z from it. X, Y, C and V kept.
 RichterObjectMarkOff:
     lda #$EF
-    and a:OBJ_2B18,x
-    sta a:OBJ_2B18,x
+    and a:OBJ_SPRITE_ATTR,x
+    sta a:OBJ_SPRITE_ATTR,x
     rts
 
 ; @routine 01BD:3F8 RichterObjectFromPlayer
@@ -122,7 +122,7 @@ RichterObjectSlot:
 ; @run 6E:C47C
 ; WHAT IT DOES: Once, at its animation's step 6 and while PlayerByte3BE1 is set, makes an object's
 ; frame last 4 longer and Richter's one frame shorter than that.
-; HOW: OBJ_35C0 marks it done; OBJ_2F38 the step; OBJ_2F90 the frame's time.
+; HOW: OBJ_35C0 marks it done; OBJ_2F38 the step; OBJ_HURT_TIMER the frame's time.
 ; WAITS: no.
 ; Entry: X object. Exit: X and Y kept. Stopped, A what was read last, N and Z from it, or from
 ; comparing the step with 6 and C with it. Done, A Richter's new time, N and Z from the mark, C
@@ -130,17 +130,17 @@ RichterObjectSlot:
 RichterObjectQuicken:
     lda a:OBJ_35C0,x
     bne RichterObjectQuicken_at0
-    lda a:OBJ_FLAGS_2F38,x
+    lda a:OBJ_SCROLL_BAND,x
     cmp #$06
     bne RichterObjectQuicken_at0
     lda a:PlayerByte3BE1
     beq RichterObjectQuicken_at0
     lda #$04
     clc
-    adc a:OBJ_2F90,x
-    sta a:OBJ_2F90,x
+    adc a:OBJ_HURT_TIMER,x
+    sta a:OBJ_HURT_TIMER,x
     dec a
-    sta a:OBJ_2F90
+    sta a:OBJ_HURT_TIMER
     inc a:OBJ_35C0,x
     rts
 RichterObjectQuicken_at0:
@@ -149,7 +149,7 @@ RichterObjectQuicken_at0:
 ; @routine 01BD:49F RichterObjectFlash
 ; @run 6E:C49F
 ; WHAT IT DOES: While an object is charged, shows the flashing form of its frame, if it is one
-; of the four that have one, with its OBJ_2B18 for the flash.
+; of the four that have one, with its OBJ_SPRITE_ATTR for the flash.
 ; HOW: OBJ_3568 is the charge; frames $07, $0E, $15 and $1C become $8E to $91; RichterFlashFlags
 ; by OBJ_34B8 less $0E, with bit 7.
 ; WAITS: no.
@@ -183,7 +183,7 @@ RichterObjectFlash_at1:
     tay
     lda a:RichterFlashFlags,y
     ora #$80
-    sta a:OBJ_2B18,x
+    sta a:OBJ_SPRITE_ATTR,x
     rts
 
 ; @routine 01BD:4D1 RichterObjectCharge
@@ -322,7 +322,7 @@ RichterObjectAnimationWait_at0:
 ; V kept. Clobbers zTemp00-01.
 RichterObjectAnimationRunning:
     jsr RichterObjectAnimationTick
-    lda a:OBJ_2F90,x
+    lda a:OBJ_HURT_TIMER,x
     cmp #$FF
     rts
 
@@ -330,18 +330,18 @@ RichterObjectAnimationRunning:
 ; @run 6E:DA51
 ; WHAT IT DOES: Counts down an object's frame on show; at zero moves to the next step of its list.
 ; A timer of $FF means its animation has stopped.
-; HOW: OBJ_2F90 the timer, OBJ_FLAGS_2F38 the step, OBJ_FRAME the frame shown.
+; HOW: OBJ_HURT_TIMER the timer, OBJ_SCROLL_BAND the step, OBJ_FRAME the frame shown.
 ; WAITS: no.
 ; Entry: X object. Exit: as RichterAnimationTick.
 RichterObjectAnimationTick:
-    lda a:OBJ_2F90,x
+    lda a:OBJ_HURT_TIMER,x
     cmp #$FF
     bne RichterObjectAnimationTick_at0
     rts
 RichterObjectAnimationTick_at0:
-    dec a:OBJ_2F90,x
+    dec a:OBJ_HURT_TIMER,x
     bne RichterObjectSetAnimation_at0
-    inc a:OBJ_FLAGS_2F38,x
+    inc a:OBJ_SCROLL_BAND,x
     bra RichterObjectSetAnimation_at1
 
 ; @routine 01C0:263 RichterObjectSetAnimation
@@ -354,11 +354,11 @@ RichterObjectAnimationTick_at0:
 RichterObjectSetAnimation:
     sta a:OBJ_FIELDS_2EE0,x
 RichterObjectSetAnimation_at3:
-    stz a:OBJ_FLAGS_2F38,x
+    stz a:OBJ_SCROLL_BAND,x
 RichterObjectSetAnimation_at1:
     bsr RichterObjectAnimationList
     lda (zTemp00),y
-    sta a:OBJ_2F90,x
+    sta a:OBJ_HURT_TIMER,x
     cmp #$FF
     bne RichterObjectSetAnimation_at2
     rts
@@ -389,7 +389,7 @@ RichterObjectAnimationList:
     sta z:zTemp00
     lda a:RichterObjectAnimations+1,y
     sta z:zTemp01
-    lda a:OBJ_FLAGS_2F38,x
+    lda a:OBJ_SCROLL_BAND,x
     asl a
     tay
     rts
@@ -632,8 +632,8 @@ MariaObjectFacingVelocity_at0:
 ; Entry, exit: as RichterObjectMarkOn.
 MariaObjectMarkOn:
     lda #$10
-    ora a:OBJ_2B18,x
-    sta a:OBJ_2B18,x
+    ora a:OBJ_SPRITE_ATTR,x
+    sta a:OBJ_SPRITE_ATTR,x
     rts
 
 ; @routine 01E1:387 MariaObjectFromPlayer
@@ -812,7 +812,7 @@ MariaObjectNearPlayer_at1:
 ; Entry, exit: as RichterObjectAnimationRunning.
 MariaObjectAnimationRunning:
     jsr MariaObjectAnimationTick
-    lda a:OBJ_2F90,x
+    lda a:OBJ_HURT_TIMER,x
     cmp #$FF
     rts
 
@@ -824,14 +824,14 @@ MariaObjectAnimationRunning:
 ; WAITS: no.
 ; Entry, exit: as RichterObjectAnimationTick.
 MariaObjectAnimationTick:
-    lda a:OBJ_2F90,x
+    lda a:OBJ_HURT_TIMER,x
     cmp #$FF
     bne MariaObjectAnimationTick_at0
     rts
 MariaObjectAnimationTick_at0:
-    dec a:OBJ_2F90,x
+    dec a:OBJ_HURT_TIMER,x
     bne MariaObjectSetAnimation_at0
-    inc a:OBJ_FLAGS_2F38,x
+    inc a:OBJ_SCROLL_BAND,x
     bra MariaObjectSetAnimation_at1
 
 ; @routine 01E4:5A7 MariaObjectSetAnimation
@@ -844,11 +844,11 @@ MariaObjectAnimationTick_at0:
 MariaObjectSetAnimation:
     sta a:OBJ_FIELDS_2EE0,x
 MariaObjectSetAnimation_at3:
-    stz a:OBJ_FLAGS_2F38,x
+    stz a:OBJ_SCROLL_BAND,x
 MariaObjectSetAnimation_at1:
     bsr MariaObjectAnimationList
     lda (zTemp00),y
-    sta a:OBJ_2F90,x
+    sta a:OBJ_HURT_TIMER,x
     cmp #$FF
     bne MariaObjectSetAnimation_at2
     rts
@@ -878,7 +878,7 @@ MariaObjectAnimationList:
     sta z:zTemp00
     lda a:RichterObjectAnimations+$344+1,y
     sta z:zTemp01
-    lda a:OBJ_FLAGS_2F38,x
+    lda a:OBJ_SCROLL_BAND,x
     asl a
     tay
     rts

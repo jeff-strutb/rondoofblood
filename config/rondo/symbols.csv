@@ -72,7 +72,7 @@ F5,zp,BiosIrqDisable,the card's interrupt mask byte
 # card's own code says what each is.
 2214,abs,BiosScreenLo,the card's RAM: written once at start
 2215,abs,BiosScreenHi,the card's RAM: written once at start
-E05D,abs,BiosExSetvec,"ex_setvec: sets an interrupt handler: A which, X and Y its address", X and Y its address
+E05D,abs,BiosExSetvec,ex_setvec: sets an interrupt handler: A which, X and Y its address, X and Y its address
 E063,abs,BiosExJoysns,ex_joysns: reads the pads; called every frame
 E06C,abs,BiosExDotmod,ex_dotmod: sets the dot clock; called once at start
 E06F,abs,BiosExScrmod,ex_scrmod: sets the screen mode; called once at start
@@ -98,13 +98,13 @@ E0A2,abs,BiosExSatclr,ex_satclr: clears the sprite table; called once at start
 2730,abs,HitboxHi,per slot of 16: the high bytes: X high plus the sign of the X offset, ORed with Y high plus the sign of the Y offset
 2744,abs,LevelFullWalk,set during a whole-screen stream walk
 2742,abs,Field2742,a stage overlay byte (six uses in 024F:67F); no meaning found yet
-2750,abs,OBJ_KIND,"the object's kind: 0 an empty slot; it picks the object's code (RunObjects, DispatchByKind)"
-27A8,abs,OBJ_STATE,"the object's state: stepped with INC, compared, and doubled to pick its handler from a table"
-2800,abs,OBJ_SUBSTATE,"the object's step within its state: cleared when the state changes, stepped with INC, doubled to pick a handler"
-2A10,abs,OBJ_2A10,object field not yet identified
+2750,abs,OBJ_KIND,the object's kind: 0 an empty slot; it picks the object's code (RunObjects, DispatchByKind)
+27A8,abs,OBJ_STATE,the object's state: stepped with INC, compared, and doubled to pick its handler from a table
+2800,abs,OBJ_SUBSTATE,the object's step within its state: cleared when the state changes, stepped with INC, doubled to pick a handler
+2A10,abs,OBJ_SPRITE_SET,the object's sprite pattern set (3 to 7)
 2A68,abs,OBJ_FRAME,the object's animation frame
-2AC0,abs,OBJ_FACING_LEFT,"1 when the object faces left, 0 right; turned with EOR #1"
-2B18,abs,OBJ_2B18,object field not yet identified
+2AC0,abs,OBJ_FACING_LEFT,1 when the object faces left, 0 right; turned with EOR #1
+2B18,abs,OBJ_SPRITE_ATTR,the object's sprite colour and attribute byte; a damaging hit saves it in OBJ_SAVED_ATTR and sets $86 to flash
 2B70,abs,OBJ_X_HI,object X position high
 2BC8,abs,OBJ_X_LO,object X position low
 2C20,abs,OBJ_X_FRAC,object X position fraction
@@ -116,17 +116,17 @@ E0A2,abs,BiosExSatclr,ex_satclr: clears the sprite table; called once at start
 2E30,abs,OBJ_VY_HI,object Y velocity high
 2E88,abs,OBJ_VY_LO,object Y velocity low
 2EE0,abs,OBJ_FIELDS_2EE0,first of the object fields cleared together
-2F38,abs,OBJ_FLAGS_2F38,bit 7: records an event when told to
+2F38,abs,OBJ_SCROLL_BAND,bits 0 to 6 the scroll-speed band the object moves with (ScrollSpeedX and Y by it, RunObjects); bit 7 records an event when told to
 3098,abs,OBJ_EVENT_ID,event this object records
-2F90,abs,OBJ_2F90,object field not yet identified
-2FE8,abs,OBJ_SPRITE_FLIP,"the object's sprite flip bits ($80, $C0) for its attribute word"
-3040,abs,OBJ_3040,object field not yet identified
-30F0,abs,OBJ_30F0,object field not yet identified
-3148,abs,OBJ_3148,object field not yet identified
-31A0,abs,OBJ_31A0,object field not yet identified
-31F8,abs,OBJ_HIT_REACTION,"what a hit does: bits 2 to 4 the item it may drop (DropItemWhenHit), bits 5 to 7 the sound it plays (PlayHitSound)"
+2F90,abs,OBJ_HURT_TIMER,frames the object is held after a damaging hit (ObjectHit sets it from a table by the hit); RunObjects counts it down and skips the object meanwhile unless OBJ_PACE bit 2
+2FE8,abs,OBJ_SPRITE_FLIP,the object's sprite flip bits ($80, $C0) for its attribute word
+3040,abs,OBJ_START_ARG,the value the object's creator gave it when it started it: the creator's slot, a group number, a variant; what it means is the kind's
+30F0,abs,OBJ_LOOP_FLAGS,how RunObjects treats the object: bit 0 it stays put (no scroll), bit 1 it is not cleared far off screen, bit 2 it is held while outside the window
+3148,abs,OBJ_PACE,how the object runs when the player's time-slowing mode is on: bits 3 and 4 its skip pattern in mode 1, bits 5 and 6 in mode 2 (RunObjects); bit 2 it runs on while hurt
+31A0,abs,OBJ_HIT_STATUS,bit 7 the object is dead; bits 5 and 6 the player's two attack marks this frame, cleared by ObjectHit
+31F8,abs,OBJ_HIT_REACTION,what a hit does: bits 0 and 1 the flash frames left (ObjectHit), bits 2 to 4 the item it may drop (DropItemWhenHit), bits 5 to 7 the sound it plays (PlayHitSound)
 3250,abs,OBJ_3250,object field not yet identified
-32A8,abs,OBJ_32A8,object field not yet identified
+32A8,abs,OBJ_HEALTH,the object's health: damage takes from it (ObjectHit, HitDamage); negative, it has none
 3300,abs,OBJ_3300,object field not yet identified
 3358,abs,OBJ_3358,object field not yet identified
 33B0,abs,OBJ_HIT_TAKEN,the hit the object has taken this frame; 5 or more is a damaging hit
@@ -145,12 +145,12 @@ E0A2,abs,BiosExSatclr,ex_satclr: clears the sprite table; called once at start
 3828,abs,OBJ_3828,object field not yet identified
 3880,abs,OBJ_3880,object field not yet identified
 38D8,abs,OBJ_38D8,object field not yet identified
-3930,abs,OBJ_HITBOX_DX,"the hitbox's centre, X offset from the object"
+3930,abs,OBJ_HITBOX_DX,the hitbox's centre, X offset from the object
 3988,abs,OBJ_HITBOX_HALF_W,the hitbox's half width; 0 with the half height: no hitbox
-39E0,abs,OBJ_HITBOX_DY,"the hitbox's centre, Y offset from the object"
+39E0,abs,OBJ_HITBOX_DY,the hitbox's centre, Y offset from the object
 3A38,abs,OBJ_HITBOX_HALF_H,the hitbox's half height
-3A90,abs,OBJ_3A90,object field not yet identified
-3AE8,abs,OBJ_3AE8,object field not yet identified
+3A90,abs,OBJ_INVULN_TIMER,frames the object is not hit-tested after a damaging hit (ObjectHit sets it from a table by the hit)
+3AE8,abs,OBJ_SAVED_ATTR,OBJ_SPRITE_ATTR saved over a hit's flash, put back when the flash frames (OBJ_HIT_REACTION bits 0 and 1) run out
 3C00,abs,ScriptSlotKind,script slot kind by slot
 3C0C,abs,ScriptSlotScript,script slot script by slot
 3C18,abs,ScriptSlotField18,script slot field not yet identified

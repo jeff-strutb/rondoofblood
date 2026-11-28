@@ -294,7 +294,7 @@ PlaceCursorObject:
     pha
     jsr VecClearObject
     lda #$04
-    sta a:OBJ_2A10,x
+    sta a:OBJ_SPRITE_SET,x
     txa
     lsr a
     pla
@@ -563,7 +563,7 @@ SetMenuStep:
 ; Entry: X the object. Exit: A 4, X kept, N and Z from the new state, C bit 7 of the kind, Y the
 ; kind doubled. Clobbers zTemp00.
 ClearVramBlock:
-    lda a:OBJ_3040,x
+    lda a:OBJ_START_ARG,x
     asl a
     tay
     jsr VecSelectVramWriteAddress
@@ -772,7 +772,7 @@ SetGlyphVramPlace:
     lda z:zTemp00
     ora z:zTemp08
     sta z:zTemp00
-    lda a:OBJ_3040,x
+    lda a:OBJ_START_ARG,x
     asl a
     tay
     jsr VecSelectVramWriteAddress
@@ -879,7 +879,7 @@ PlaceObjectList_at0:
     lda (zTemp00),y
     sta a:OBJ_FRAME,x
     lda #$04
-    sta a:OBJ_2A10,x
+    sta a:OBJ_SPRITE_SET,x
     lda z:zTemp00
     clc
     adc #$03

@@ -305,7 +305,7 @@ ObjArm RichterFlagsAgainstFour(void)
     ObjArm r = { 0 };
 
     r.second = RD8(ZP->richter_object);
-    r.first = RD8(OBJ->flags[0]);
+    r.first = RD8(OBJ->scroll_band[0]);
     return r;
 }
 
@@ -561,7 +561,7 @@ void abi_NegateVelocityXIfFacingLeft(void)
 /*
  * @routine 01BB:1AA CountDownThenStand
  * @run 6D:B1AA
- * WHAT IT DOES: Counts the player's timer in OBJ_2F90 down; when it reaches zero he stands.
+ * WHAT IT DOES: Counts the player's timer in OBJ_HURT_TIMER down; when it reaches zero he stands.
  * HOW: DEC of the byte; zero goes on to RichterStand, any other value returns.
  * WAITS: no.
  * Entry: nothing. Exit: counting on, N and Z from the new value; at zero as RichterStand.
@@ -577,7 +577,7 @@ CountDown CountDownThenStand(void)
 {
     CountDown r = { 0, false, { FRAME_STOPPED, false, false, 0, 0 } };
 
-    r.value = DEC8(OBJ->f2f90[0]);
+    r.value = DEC8(OBJ->hurt_timer[0]);
     if (r.value == 0) {
         r.stands = true;
         r.stand = RichterStand();
@@ -934,7 +934,7 @@ void abi_MoveObjectUpBySigned(void)
  * @routine 0720:4ED LoadRecordThenFrameByKind
  * @run 6B:9CED
  * WHAT IT DOES: Loads the object's record, then gives it frame 0 or 1 of a two byte table by bit 0 of its next kind.
- * HOW: LoadObjectRecord, OBJ_3040 and 1, the table at $9CFD; falls into the RTS at $9CFC's neighbour.
+ * HOW: LoadObjectRecord, OBJ_START_ARG and 1, the table at $9CFD; falls into the RTS at $9CFC's neighbour.
  * WAITS: no.
  * Entry: X object. Exit: A the frame, N and Z from it, Y the index, C from the load of the record. X kept.
  */
@@ -949,7 +949,7 @@ ObjArm LoadRecordThenFrameByKind(uint8_t slot)
     jsr_pop();
     r.second = nz;
     r.flag = carry;
-    kind = RD8(OBJ->next_kind[slot]);
+    kind = RD8(OBJ->start_arg[slot]);
     r.y = (uint8_t)(kind & 1);
     r.third = rd8((uint16_t)(0x9CFD + r.y));
     WR8(OBJ->frame[slot], r.third);
@@ -1065,7 +1065,7 @@ void abi_ReportHitUnlessTwo(void)
 /*
  * @routine 0720:099 HitKindFromBit1
  * @run 6B:9899
- * WHAT IT DOES: Gives the hit slot's kind (OBJ_38D8) 1 or 2 by bit 1 of the object's OBJ_3148, then reports the hit.
+ * WHAT IT DOES: Gives the hit slot's kind (OBJ_38D8) 1 or 2 by bit 1 of the object's OBJ_PACE, then reports the hit.
  * HOW: AND #2, LSR, INC, one store, then ReportHitUnlessTwo.
  * WAITS: no.
  * Entry: X object, Y the slot. Exit: as ReportHitUnlessTwo.
@@ -1073,7 +1073,7 @@ void abi_ReportHitUnlessTwo(void)
 ObjArm HitKindFromBit1(uint8_t slot, uint8_t y)
 {
     ObjArm r = { 0 };
-    uint8_t flags = RD8(OBJ->f3148[slot]);
+    uint8_t flags = RD8(OBJ->pace[slot]);
     uint8_t kind = (uint8_t)(((flags & 2) >> 1) + 1);
 
     WR8(OBJ->f38d8[y], kind);
@@ -1090,7 +1090,7 @@ void abi_HitKindFromBit1(void)
 /*
  * @routine 05C0:0A5 HitKindFromBit7
  * @run 6B:98A5
- * WHAT IT DOES: Gives the hit slot's kind (OBJ_38D8) 1 or 2 by bit 7 of the object's OBJ_3148; kind 2 also sets the
+ * WHAT IT DOES: Gives the hit slot's kind (OBJ_38D8) 1 or 2 by bit 7 of the object's OBJ_PACE; kind 2 also sets the
  * slot's OBJ_3828 to 5; then reports the hit.
  * HOW: AND #$80 rotated twice, AND #1, INC, one store, CMP #2; the report as ReportHitToStage. The kind 2 arm is
  * untraced (135 of 400 cases reach it and the draft stops there), written from the disc's bytes.
@@ -1100,7 +1100,7 @@ void abi_HitKindFromBit1(void)
 ObjArm HitKindFromBit7(uint8_t slot, uint8_t y)
 {
     ObjArm r = { 0 };
-    uint8_t flags = RD8(OBJ->f3148[slot]);
+    uint8_t flags = RD8(OBJ->pace[slot]);
     uint8_t kind = (uint8_t)((((flags & 0x80) ? 1 : 0)) + 1);
 
     r.first = kind;

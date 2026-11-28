@@ -408,7 +408,7 @@ LoadRecordThenClearEnemiesAtScreen2_at3:
     lda a:OBJ_KIND,x
     cmp #$A0
     bne LoadRecordThenClearEnemiesAtScreen2_at2
-    lda a:OBJ_FLAGS_2F38,x
+    lda a:OBJ_SCROLL_BAND,x
     and #$0F
     cmp #$02
     bne LoadRecordThenClearEnemiesAtScreen2_at2

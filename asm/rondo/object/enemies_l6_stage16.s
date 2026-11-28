@@ -24,12 +24,12 @@ CountThenSpawnInState2_at0:
 
 ; @routine 16CB:1F4 StateFiveOnStatusBit7
 ; @run 70:B1F4
-; WHAT IT DOES: An object in a state under 5 whose OBJ_31A0 has bit 7 set goes to state 5, clears OBJ_SUBSTATE and OBJ_3250. (The part after the test ran in no script; it is written from the bytes.)
+; WHAT IT DOES: An object in a state under 5 whose OBJ_HIT_STATUS has bit 7 set goes to state 5, clears OBJ_SUBSTATE and OBJ_3250. (The part after the test ran in no script; it is written from the bytes.)
 ; HOW: A test, a compare, three stores.
 ; WAITS: no.
 ; Entry: X object. Exit: the test, the compare, or A 5.
 StateFiveOnStatusBit7:
-    lda a:OBJ_31A0,x
+    lda a:OBJ_HIT_STATUS,x
     and #$80
     beq StateFiveOnStatusBit7_at0
     lda a:OBJ_STATE,x
@@ -118,9 +118,9 @@ CountThenRiseWithFlash:
     dec a:OBJ_34B8,x
     bne StateMachineWithSoundAndList
     lda #$04
-    sta a:OBJ_2A10,x
+    sta a:OBJ_SPRITE_SET,x
     lda #$10
-    sta a:OBJ_2B18,x
+    sta a:OBJ_SPRITE_ATTR,x
     lda #$40
     sta a:OBJ_34B8,x
     lda #$FF
@@ -279,7 +279,7 @@ LoadThenScatterAlongList:
     bne $B74F
     jsr VecLoadObjectRecord
     lda #$10
-    sta a:OBJ_2B18,x
+    sta a:OBJ_SPRITE_ATTR,x
     jsr VecNextRandom
     and #$0F
     sec

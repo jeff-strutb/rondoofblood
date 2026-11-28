@@ -1074,7 +1074,7 @@ void abi_WaitForPressThenAnimate(void)
 /*
  * @routine 0E0B:0AB StateSevenOnStatusBit7
  * @run 70:B0AB
- * WHAT IT DOES: An object in a state under 7 whose OBJ_31A0 has bit 7 set goes to state 7 and clears OBJ_SUBSTATE. (The part after the test ran in no script; it is written from the bytes.)
+ * WHAT IT DOES: An object in a state under 7 whose OBJ_HIT_STATUS has bit 7 set goes to state 7 and clears OBJ_SUBSTATE. (The part after the test ran in no script; it is written from the bytes.)
  * HOW: A test, a compare, two stores.
  * WAITS: no.
  * Entry: X object. Exit: the test, the compare, or A 7.
@@ -1083,7 +1083,7 @@ ObjArm StateSevenOnStatusBit7(uint8_t slot)
 {
     ObjArm r = { 0 };
 
-    r.first = (uint8_t)(RD8(OBJ->status_flags[slot]) & 0x80);
+    r.first = (uint8_t)(RD8(OBJ->hit_status[slot]) & 0x80);
     r.arm = M6_S7_NONE;
     if (r.first == 0) {
         return r;

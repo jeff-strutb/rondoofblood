@@ -13,10 +13,10 @@ HitTestAllObjects:
     ldx #$57
 HitTestAllObjects_at1:
     jsr HitTestObject
-    lda a:OBJ_3A90,x
+    lda a:OBJ_INVULN_TIMER,x
     beq HitTestAllObjects_at0
     stz a:OBJ_HIT_TAKEN,x
-    dec a:OBJ_3A90,x
+    dec a:OBJ_INVULN_TIMER,x
 HitTestAllObjects_at0:
     dex
     cpx #$10
@@ -152,7 +152,7 @@ HitStoreHandler:
     lda a:OBJ_3358,x
     sta a:OBJ_HIT_TAKEN
     lda a:OBJ_3300,x
-    sta a:OBJ_32A8
+    sta a:OBJ_HEALTH
 HitStoreHandler_at0:
     rts
 
@@ -190,10 +190,10 @@ HitTestAllObjectsLong:
     ldx #$57
 HitTestAllObjectsLong_at1:
     jsr HitTestObjectLong
-    lda a:OBJ_3A90,x
+    lda a:OBJ_INVULN_TIMER,x
     beq HitTestAllObjectsLong_at0
     stz a:OBJ_HIT_TAKEN,x
-    dec a:OBJ_3A90,x
+    dec a:OBJ_INVULN_TIMER,x
 HitTestAllObjectsLong_at0:
     dex
     cpx #$10
@@ -433,7 +433,7 @@ HitStoreHandlerLong:
     lda a:OBJ_3358,x
     sta a:OBJ_HIT_TAKEN
     lda a:OBJ_3300,x
-    sta a:OBJ_32A8
+    sta a:OBJ_HEALTH
 HitStoreHandlerLong_at0:
     rts
 

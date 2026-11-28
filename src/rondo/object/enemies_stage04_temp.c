@@ -525,7 +525,7 @@ ObjArm LoadRecordFacingAndRandomFrame(uint8_t slot)
     jsr_push(0xB387);
     r.first = LoadObjectRecord(slot, &r.second, &r.flag);
     jsr_pop();
-    kind = RD8(OBJ->next_kind[slot]);
+    kind = RD8(OBJ->start_arg[slot]);
     WR8(OBJ->facing_left[slot], (uint8_t)(kind & 1));
     jsr_push(0xB392);
     r.random = NextRandom();
@@ -963,7 +963,7 @@ ObjArm BurstWhenFlaggedHit(uint8_t slot, uint8_t entry_y)
     if (state == 6) {
         return r;
     }
-    flags = RD8(OBJ->status_flags[slot]);
+    flags = RD8(OBJ->hit_status[slot]);
     r.second = (uint8_t)(flags & 0x80);
     r.arm = BF_CLEAR;
     if (r.second == 0) {
@@ -1139,7 +1139,7 @@ ObjArm ChargeWhenPlayerNear(uint8_t slot)
     jsr_push(0xB39C);
     r = StepFramesFacingPlayer(slot, 0);
     jsr_pop();
-    kind = RD8(OBJ->next_kind[slot]);
+    kind = RD8(OBJ->start_arg[slot]);
     r.first = kind;
     r.arm = CH_KIND;
     if ((kind & 0x80) != 0) {
@@ -1154,11 +1154,11 @@ ObjArm ChargeWhenPlayerNear(uint8_t slot)
     }
     WR8(OBJ->anim_step[slot], 0);
     WR8(OBJ->anim_timer[slot], 0);
-    flags = RD8(OBJ->flags[slot]);
-    WR8(OBJ->flags[slot], (uint8_t)(flags & 0x80));
+    flags = RD8(OBJ->scroll_band[slot]);
+    WR8(OBJ->scroll_band[slot], (uint8_t)(flags & 0x80));
     facing = RD8(OBJ->facing_left[slot]);
     WR8(OBJ->vx_hi[slot], rd8((uint16_t)(X_SPEEDS + facing)));
-    kind = RD8(OBJ->next_kind[slot]);
+    kind = RD8(OBJ->start_arg[slot]);
     y = (uint8_t)((kind >> 1) << 1);
     WR8(OBJ->vy_lo[slot], rd8((uint16_t)(Y_SPEEDS + y)));
     value = rd8((uint16_t)(Y_SPEEDS + 1 + y));

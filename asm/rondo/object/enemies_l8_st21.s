@@ -76,7 +76,7 @@ LoadRecordThenFollowScroll_at0:
 
 ; @routine 0F6B:100 BreakIntoPiecesAtFifthHit
 ; @run 70:B100
-; WHAT IT DOES: In state 0 loads the record. Once the object has taken 5 hits it records its event, plays sound $12, takes the kind of OBJ_3040, sets OBJ_3A90 $10, goes to state 0, drops $28 in Y, clears its frame and starts an object of type $9B in a free slot of $50 to $53, then four pieces (StartPieceWithSpeedFromTable for the numbers 0 to 3).
+; WHAT IT DOES: In state 0 loads the record. Once the object has taken 5 hits it records its event, plays sound $12, takes the kind of OBJ_START_ARG, sets OBJ_INVULN_TIMER $10, goes to state 0, drops $28 in Y, clears its frame and starts an object of type $9B in a free slot of $50 to $53, then four pieces (StartPieceWithSpeedFromTable for the numbers 0 to 3).
 ; HOW: LoadObjectRecord, RecordObjectEvent, SoundCommand, FindFreeSlotFrom50, StartObjectAtPlace, four calls.
 ; WAITS: no.
 ; Entry: X object, Y kept for the sound. Exit: as the last instruction that ran.
@@ -90,10 +90,10 @@ BreakIntoPiecesAtFifthHit:
     jsr VecRecordObjectEvent
     lda #$12
     jsr VecSoundCommand
-    lda a:OBJ_3040,x
+    lda a:OBJ_START_ARG,x
     sta a:OBJ_KIND,x
     lda #$10
-    sta a:OBJ_3A90,x
+    sta a:OBJ_INVULN_TIMER,x
     stz a:OBJ_STATE,x
     lda a:OBJ_Y_LO,x
     clc
@@ -117,7 +117,7 @@ BreakIntoPiecesAtFifthHit_at0:
 
 ; @routine 0F6B:150 StartPieceWithSpeedFromTable
 ; @run 70:B150
-; WHAT IT DOES: Starts an object of type $A4 in a free slot of $20 to $3F at the object's place, $28 lower, with OBJ_3040 the number in zTemp00 plus 3 and the speed from the table at $B18A by twice that number.
+; WHAT IT DOES: Starts an object of type $A4 in a free slot of $20 to $3F at the object's place, $28 lower, with OBJ_START_ARG the number in zTemp00 plus 3 and the speed from the table at $B18A by twice that number.
 ; HOW: FindFreeSlotFrom20, StartObjectAtPlace, table reads, stores between a PHX and a PLX.
 ; WAITS: no.
 ; Entry: X object, zTemp00 the number. Exit: as the last instruction that ran.
@@ -134,7 +134,7 @@ StartPieceWithSpeedFromTable:
     lda z:zTemp00
     clc
     adc #$03
-    sta a:OBJ_3040,y
+    sta a:OBJ_START_ARG,y
     lda z:zTemp00
     asl a
     tax
@@ -151,7 +151,7 @@ StartPieceWithSpeedFromTable:
 
 ; @routine 0F6B:19A LoadRecordFlipByPlayerThenFall
 ; @run 70:B19A
-; WHAT IT DOES: In state 0 loads the record, takes OBJ_3040 as its frame and, when the player is on the left side, faces left and negates (bytes inverted) its speed. Later it falls (ApplyGravity) and moves.
+; WHAT IT DOES: In state 0 loads the record, takes OBJ_START_ARG as its frame and, when the player is on the left side, faces left and negates (bytes inverted) its speed. Later it falls (ApplyGravity) and moves.
 ; HOW: LoadObjectRecord, SideOfPlayer, EORs, ApplyGravity, a tail jump into ApplyVelocity.
 ; WAITS: no.
 ; Entry: X object. Exit: as the last instruction that ran.
@@ -159,7 +159,7 @@ LoadRecordFlipByPlayerThenFall:
     lda a:OBJ_STATE,x
     bne LoadRecordFlipByPlayerThenFall_at0
     jsr VecLoadObjectRecord
-    lda a:OBJ_3040,x
+    lda a:OBJ_START_ARG,x
     sta a:OBJ_FRAME,x
     jsr VecSideOfPlayer
     lsr a
@@ -199,12 +199,12 @@ LoadRecordThenClearAtSubStep3_at1:
 
 ; @routine 0F6B:395 SoundWhenHurtThenFlag
 ; @run 70:B395
-; WHAT IT DOES: When bit 7 of OBJ_31A0 is clear and the object has taken 5 hits plays sound $D2 and, when OBJ_32A8 of slot $10 is below 8, sets it to 5, sets OBJ_3618 to 5 and sets bit 7 of OBJ_31A0.
+; WHAT IT DOES: When bit 7 of OBJ_HIT_STATUS is clear and the object has taken 5 hits plays sound $D2 and, when OBJ_HEALTH of slot $10 is below 8, sets it to 5, sets OBJ_3618 to 5 and sets bit 7 of OBJ_HIT_STATUS.
 ; HOW: Tests, SoundCommand, stores.
 ; WAITS: no.
 ; Entry: X object, Y kept for the sound. Exit: as the last instruction that ran. The stores past the last compare ran in no script; the draft stops there.
 SoundWhenHurtThenFlag:
-    lda a:OBJ_31A0,x
+    lda a:OBJ_HIT_STATUS,x
     and #$80
     bne SoundWhenHurtThenFlag_at0
     lda a:OBJ_HIT_TAKEN,x
@@ -219,14 +219,14 @@ SoundWhenHurtThenFlag:
     sta a:$32B8
     sta a:OBJ_3618,x
     lda #$80
-    ora a:OBJ_31A0,x
-    sta a:OBJ_31A0,x
+    ora a:OBJ_HIT_STATUS,x
+    sta a:OBJ_HIT_STATUS,x
 SoundWhenHurtThenFlag_at0:
     rts
 
 ; @routine 0F6B:3C0 SoundAndState6WhenFlagged
 ; @run 70:B3C0
-; WHAT IT DOES: Outside state 6: when bit 7 of OBJ_31A0 is set plays sound $D3, goes to state 6 and copies OBJ_3618 to OBJ_32A8; otherwise copies OBJ_32A8 to OBJ_3618.
+; WHAT IT DOES: Outside state 6: when bit 7 of OBJ_HIT_STATUS is set plays sound $D3, goes to state 6 and copies OBJ_3618 to OBJ_HEALTH; otherwise copies OBJ_HEALTH to OBJ_3618.
 ; HOW: Compares, SoundCommand, copies.
 ; WAITS: no.
 ; Entry: X object, Y kept for the sound. Exit: as the last instruction that ran. The flagged arm ran in no script; the draft stops there.
@@ -234,7 +234,7 @@ SoundAndState6WhenFlagged:
     lda a:OBJ_STATE,x
     cmp #$06
     beq SoundAndState6WhenFlagged_at0
-    lda a:OBJ_31A0,x
+    lda a:OBJ_HIT_STATUS,x
     and #$80
     beq StepPhaseThenPause
     lda #$D3
@@ -244,9 +244,9 @@ SoundAndState6WhenFlagged:
     stz a:OBJ_SUBSTATE,x
     stz a:OBJ_3250,x
     lda a:OBJ_3618,x
-    sta a:OBJ_32A8,x
+    sta a:OBJ_HEALTH,x
     rts
-    lda a:OBJ_32A8,x
+    lda a:OBJ_HEALTH,x
     sta a:OBJ_3618,x
 SoundAndState6WhenFlagged_at0:
     rts

@@ -39,7 +39,7 @@ static StageExit hit_store(uint8_t x, uint8_t y)
         a = RD8(OBJ->f3358[x]);
         WR8(OBJ->hit_taken[0], a);
         a = RD8(OBJ->f3300[x]);
-        WR8(OBJ->f32a8[0], a);
+        WR8(OBJ->health[0], a);
     }
     return hit_exit(a, 0, false, false, a, 0);
 }
@@ -428,10 +428,10 @@ static StageExit hit_test_all(uint8_t entry_x, HitboxEnd (*compute)(void), Stage
             end.v = step.v;
             end.set |= EXIT_V;
         }
-        a = RD8(OBJ->timer[x]);
+        a = RD8(OBJ->invuln_timer[x]);
         if (a != 0) {
             WR8(OBJ->hit_taken[x], 0);
-            DEC8(OBJ->timer[x]);
+            DEC8(OBJ->invuln_timer[x]);
         }
         x--;
         c = x >= FIRST_OBJECT;

@@ -37,7 +37,7 @@ uint8_t LoadObjectRecord(uint8_t object, uint8_t *exit_nz, bool *exit_c)
     byte = RD8_PTR_Y(ZP->temp10, 1);
     WR8(OBJ->f3300[object], byte);
     byte = RD8_PTR_Y(ZP->temp10, 2);
-    WR8(OBJ->f32a8[object], byte);
+    WR8(OBJ->health[object], byte);
     byte = RD8_PTR_Y(ZP->temp10, 3);
     WR8(OBJ->hitbox_on[object], (uint8_t)(byte & 0x0F));
     byte = RD8_PTR_Y(ZP->temp10, 3);
@@ -52,11 +52,11 @@ uint8_t LoadObjectRecord(uint8_t object, uint8_t *exit_nz, bool *exit_c)
     byte = RD8_PTR_Y(ZP->temp10, 7);
     WR8(OBJ->frame[object], byte);
     byte = RD8_PTR_Y(ZP->temp10, 8);
-    WR8(OBJ->f30f0[object], byte);
+    WR8(OBJ->loop_flags[object], byte);
     byte = RD8_PTR_Y(ZP->temp10, 9);
-    WR8(OBJ->f3148[object], byte);
+    WR8(OBJ->pace[object], byte);
     byte = RD8_PTR_Y(ZP->temp10, 10);
-    WR8(OBJ->status_flags[object], byte);
+    WR8(OBJ->hit_status[object], byte);
     byte = RD8_PTR_Y(ZP->temp10, 11);
     WR8(OBJ->hit_reaction[object], byte);
     WR8(OBJ->hitbox_dx[object], 0);

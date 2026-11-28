@@ -20,10 +20,10 @@ enum { OBJ_STRIDE = 0x58, OBJ_FIRST_ENEMY_SLOT = 0x10, OBJ_SLOT_END = 0x54 };
 void ClearObjectExceptPlace(uint8_t object)
 {
     uint16_t column = COL(OBJ->vx_hi);
-    uint16_t last = (uint16_t)(COL(OBJ->timer) + OBJ_STRIDE);
+    uint16_t last = (uint16_t)(COL(OBJ->invuln_timer) + OBJ_STRIDE);
 
     WR8(OBJ->facing_left[object], 0);
-    WR8(OBJ->flash_flags[object], 0);
+    WR8(OBJ->sprite_attr[object], 0);
     WR8(OBJ->substate[object], 0);
     for (; column <= last; column += OBJ_STRIDE) {
         WR8_IDX(column, object, 0);

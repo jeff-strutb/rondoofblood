@@ -801,7 +801,7 @@ void abi_ObjectFrameList(void)
  * @run 6B:89B0
  * WHAT IT DOES: An object handler: once the object has no state yet, plays the animation the
  * object's next kind names until it ends, then moves the object to its next state.
- * HOW: OBJ->state nonzero returns; ObjectFrameList with OBJ->next_kind; at its end (A 0), state +1.
+ * HOW: OBJ->state nonzero returns; ObjectFrameList with OBJ->start_arg; at its end (A 0), state +1.
  * WAITS: no.
  * Entry: X the object. Exit: as the last test left them.
  */
@@ -814,7 +814,7 @@ ObjExit PlayFrameListOnce(uint8_t object)
     if (state != 0) {
         return object_exit(state, state);
     }
-    list = RD8(OBJ->next_kind[object]);
+    list = RD8(OBJ->start_arg[object]);
     jsr_push(0x89BB);
     result = ObjectFrameList(list, object);
     jsr_pop();

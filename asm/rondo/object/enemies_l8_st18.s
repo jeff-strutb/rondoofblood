@@ -26,7 +26,7 @@ CountDownOrPickNextTimer:
 
 ; @routine 0B4C:051 StepListThenPickStateByLuck
 ; @run 70:B851
-; WHAT IT DOES: In state 0, when the frame is 4, advances OBJ_SUBSTATE; otherwise (and in later states when the animation list at $B8D2 ends) it takes frame 2, the facing of the player's side, clears the animation timer and picks the next state and OBJ_SUBSTATE from the tables at $B8A2 and $B89D by OBJ_32A8 and a random number.
+; WHAT IT DOES: In state 0, when the frame is 4, advances OBJ_SUBSTATE; otherwise (and in later states when the animation list at $B8D2 ends) it takes frame 2, the facing of the player's side, clears the animation timer and picks the next state and OBJ_SUBSTATE from the tables at $B8A2 and $B89D by OBJ_HEALTH and a random number.
 ; HOW: StepObjectFrames, SideOfPlayer, NextRandom, table reads, stores.
 ; WAITS: no.
 ; Entry: X object, Y kept unless the step sets it. Exit: as the last instruction that ran. The state 0 arm ran in no script; the draft stops there.
@@ -52,7 +52,7 @@ StepListThenPickStateByLuck_at1:
     and #$01
     sta a:OBJ_FACING_LEFT,x
     stz a:OBJ_ANIM_TIMER,x
-    lda a:OBJ_32A8,x
+    lda a:OBJ_HEALTH,x
     lsr a
     and #$F0
     sta z:zTemp00

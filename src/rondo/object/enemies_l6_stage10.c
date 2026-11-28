@@ -357,7 +357,7 @@ void abi_StepListC103ThenPickAim(void)
 /*
  * @routine 10CD:126 StepListC170ThenMoveAlongAngle
  * @run 71:C126
- * WHAT IT DOES: Steps the animation list at $C170, sets the object's speed from its angle OBJ_34B8 with the length OBJ_3510:OBJ_3568, moves it and adds $000C to the length. When the object in slot $10 is in state 6 or more, or this object's OBJ_31A0 has bit 7 set, it clears its animation step and timer and goes on to the next state (and writes 0 to the byte at $0002 plus its slot).
+ * WHAT IT DOES: Steps the animation list at $C170, sets the object's speed from its angle OBJ_34B8 with the length OBJ_3510:OBJ_3568, moves it and adds $000C to the length. When the object in slot $10 is in state 6 or more, or this object's OBJ_HIT_STATUS has bit 7 set, it clears its animation step and timer and goes on to the next state (and writes 0 to the byte at $0002 plus its slot).
  * HOW: StepObjectFrames, SetVelocityFromAngle, ApplyVelocity, a 16-bit add, stores, an INC.
  * WAITS: no.
  * Entry: X object, Y kept unless the step sets it. Exit: the last test, or the new state's N and Z.
@@ -391,7 +391,7 @@ ObjArm StepListC170ThenMoveAlongAngle(uint8_t slot, uint8_t y_entry)
     r.second = RD8(OBJ->state[0x10]);
     r.arm = L10_C17_WAIT;
     if (r.second < 6) {
-        r.third = (uint8_t)(RD8(OBJ->status_flags[slot]) & 0x80);
+        r.third = (uint8_t)(RD8(OBJ->hit_status[slot]) & 0x80);
         if (r.third == 0) {
             return r;
         }
@@ -451,7 +451,7 @@ ObjArm RiseThenPlaceAndDrop(uint8_t slot)
     if (r.first != 0xFE) {
         return r;
     }
-    WR8(OBJ->flags[slot], 0x81);
+    WR8(OBJ->scroll_band[slot], 0x81);
     wr8(0x209E, 4);
     WR8(OBJ->x_hi[slot], 0);
     WR8(OBJ->x_lo[slot], 0x70);
@@ -511,7 +511,7 @@ ObjArm RiseThenPlaceWithSound(uint8_t slot, uint8_t y_entry)
     jsr_push(0xB435);
     r.call = SoundCommand(0xE7, slot, y_entry);
     jsr_pop();
-    WR8(OBJ->flags[slot], 0x80);
+    WR8(OBJ->scroll_band[slot], 0x80);
     WR8(OBJ->frame[slot], 0x1D);
     WR8(OBJ->x_hi[slot], 0);
     WR8(OBJ->x_lo[slot], 0);
@@ -565,7 +565,7 @@ ObjArm LoadThenFallAndFlash(uint8_t slot)
         jsr_push(0xBF57);
         r.first = LoadObjectRecord(slot, &r.second, &r.flag);
         jsr_pop();
-        WR8(OBJ->flags[slot], 1);
+        WR8(OBJ->scroll_band[slot], 1);
         WR8(OBJ->frame[slot], 0x59);
         WR8(OBJ->vx_hi[slot], 0);
         WR8(OBJ->vx_lo[slot], 0xC0);
@@ -584,7 +584,7 @@ ObjArm LoadThenFallAndFlash(uint8_t slot)
     jsr_pop();
     r.third = RD8(OBJ->f3510[slot]);
     if (r.third < 0x10) {
-        WR8(OBJ->flash_flags[slot], 0x10);
+        WR8(OBJ->sprite_attr[slot], 0x10);
     }
     r.fourth = DEC8(OBJ->f3510[slot]);
     if (r.fourth == 0) {
@@ -643,7 +643,7 @@ ObjArm CountThenSoleScriptAndSound(uint8_t slot)
     jsr_push(0xB2F2);
     r.call = SoundCommand(0xE4, slot, r.sole.script);
     jsr_pop();
-    WR8(OBJ->flags[slot], 0x81);
+    WR8(OBJ->scroll_band[slot], 0x81);
     WR8(OBJ->f3510[slot], 0x60);
     wr8(0x209E, 4);
     r.third = INC8(OBJ->substate[slot]);

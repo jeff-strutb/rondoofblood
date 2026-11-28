@@ -115,7 +115,7 @@ void abi_ToggleFacing(void)
 /*
  * @routine 0F6D:3F3 LoadRecordOrBurstWhenFlagged
  * @run 71:C3F3
- * WHAT IT DOES: In state 0 loads the record. Later, when bit 7 of OBJ_31A0 is set, plays sound $16, clears slots $52 to $54 and starts objects of type $AE in $52 and $53 (the second with OBJ_3040 1) and of type $9C in $54 at its place, then clears itself.
+ * WHAT IT DOES: In state 0 loads the record. Later, when bit 7 of OBJ_HIT_STATUS is set, plays sound $16, clears slots $52 to $54 and starts objects of type $AE in $52 and $53 (the second with OBJ_START_ARG 1) and of type $9C in $54 at its place, then clears itself.
  * HOW: LoadObjectRecord, SoundCommand, ClearObjectInY and StartObjectAtPlace three times, a tail jump into ClearObject.
  * WAITS: no.
  * Entry: X object, Y kept for the sound. Exit: as the last instruction that ran (l8_burst_exit_shim). The burst ran in no script; the draft stops there.
@@ -133,7 +133,7 @@ L8BurstArm LoadRecordOrBurstWhenFlagged(uint8_t slot, uint8_t y_entry)
         r.arm = ST25_BURST_LOADED;
         return r;
     }
-    r.flags = RD8(OBJ->status_flags[slot]);
+    r.flags = RD8(OBJ->hit_status[slot]);
     if ((r.flags & 0x80) == 0) {
         r.arm = ST25_BURST_NOT_FLAGGED;
         return r;
@@ -200,7 +200,7 @@ void abi_LoadRecordOrBurstWhenFlagged(void)
 /*
  * @routine 0F6C:0D5 SpawnFlashingPieceWhenRising
  * @run 70:B8D5
- * WHAT IT DOES: A rising object (Y speed high bit clear) shows flash flags $10; every fourth frame it starts an object of type $9B in a free slot of $20 to $3F, with Y speed $0800 (moved once) and an X speed from the table at $B90D by its own OBJ_3040 (moved once) and flash flags $10.
+ * WHAT IT DOES: A rising object (Y speed high bit clear) shows flash flags $10; every fourth frame it starts an object of type $9B in a free slot of $20 to $3F, with Y speed $0800 (moved once) and an X speed from the table at $B90D by its own OBJ_START_ARG (moved once) and flash flags $10.
  * HOW: A test, TST of the wave counter, FindFreeSlotFrom20, StartObjectAtPlace, ApplyVelocityY and X with X and Y swapped.
  * WAITS: no.
  * Entry: X object. Exit: as the last instruction that ran (l8_flash_piece_exit_shim).
@@ -215,7 +215,7 @@ L8FlashPieceArm SpawnFlashingPieceWhenRising(uint8_t slot)
         r.arm = ST25_PIECE_FALLING;
         return r;
     }
-    WR8(OBJ->flash_flags[slot], 0x10);
+    WR8(OBJ->sprite_attr[slot], 0x10);
     r.wave = RD8(ZP->wave_counter);
     if ((r.wave & 0x03) != 0) {
         r.arm = ST25_PIECE_OFF_FRAME;
@@ -243,7 +243,7 @@ L8FlashPieceArm SpawnFlashingPieceWhenRising(uint8_t slot)
     r.move2 = ApplyVelocityX(r.found.slot);
     jsr_pop();
     slot = pull8();
-    WR8(OBJ->flash_flags[r.found.slot], 0x10);
+    WR8(OBJ->sprite_attr[r.found.slot], 0x10);
     r.arm = ST25_PIECE_STARTED;
     return r;
 }
@@ -307,7 +307,7 @@ void abi_CountDownThenClearOnTimer(void)
 /*
  * @routine 0F6C:3F0 FlashWhenHurtThenSound
  * @run 70:BBF0
- * WHAT IT DOES: Unless bit 7 of OBJ_31A0 is set, in the states the table at $BBB0 marks it clears its flash flags, sets them $10 when OBJ_3A90 is not 0, copies OBJ_32A8 to slot $10's, and at 5 hits plays sound $D6, doubles OBJ_3A90 twice, goes to state $0D and clears OBJ_SUBSTATE.
+ * WHAT IT DOES: Unless bit 7 of OBJ_HIT_STATUS is set, in the states the table at $BBB0 marks it clears its flash flags, sets them $10 when OBJ_INVULN_TIMER is not 0, copies OBJ_HEALTH to slot $10's, and at 5 hits plays sound $D6, doubles OBJ_INVULN_TIMER twice, goes to state $0D and clears OBJ_SUBSTATE.
  * HOW: Tests, a table read by the state, stores, SoundCommand, two ASLs in memory.
  * WAITS: no.
  * Entry: X object, Y kept for the sound. Exit: as the last instruction that ran (l8_flash_hurt_exit_shim). The arm past the table test ran in no script; the draft stops there.
@@ -317,7 +317,7 @@ L8FlashHurtArm FlashWhenHurtThenSound(uint8_t slot, uint8_t y_entry)
     L8FlashHurtArm r = { 0 };
 
     (void)y_entry;
-    r.flags = RD8(OBJ->status_flags[slot]);
+    r.flags = RD8(OBJ->hit_status[slot]);
     if ((r.flags & 0x80) != 0) {
         r.arm = ST25_HURT_FLAGGED;
         return r;
@@ -328,14 +328,14 @@ L8FlashHurtArm FlashWhenHurtThenSound(uint8_t slot, uint8_t y_entry)
         r.arm = ST25_HURT_UNMARKED;
         return r;
     }
-    WR8(OBJ->flash_flags[slot], 0);
-    r.timer = RD8(OBJ->timer[slot]);
+    WR8(OBJ->sprite_attr[slot], 0);
+    r.timer = RD8(OBJ->invuln_timer[slot]);
     if (r.timer != 0) {
-        WR8(OBJ->flash_flags[slot], 0x10);
+        WR8(OBJ->sprite_attr[slot], 0x10);
         r.flashed = true;
     }
-    r.value = RD8(OBJ->f32a8[slot]);
-    WR8(OBJ->f32a8[0x10], r.value);
+    r.value = RD8(OBJ->health[slot]);
+    WR8(OBJ->health[0x10], r.value);
     r.hits = RD8(OBJ->hit_taken[slot]);
     if (r.hits < 5) {
         r.arm = ST25_HURT_FEW_HITS;
@@ -344,8 +344,8 @@ L8FlashHurtArm FlashWhenHurtThenSound(uint8_t slot, uint8_t y_entry)
     jsr_push(0xBC1E);
     r.call = SoundCommand(0xD6, slot, r.state);
     jsr_pop();
-    ASL8(OBJ->timer[slot]);
-    r.shifted = ASL8(OBJ->timer[slot]);
+    ASL8(OBJ->invuln_timer[slot]);
+    r.shifted = ASL8(OBJ->invuln_timer[slot]);
     WR8(OBJ->state[slot], 0x0D);
     WR8(OBJ->substate[slot], 0);
     r.arm = ST25_HURT_SOUNDED;
@@ -394,7 +394,7 @@ void abi_FlashWhenHurtThenSound(void)
 /*
  * @routine 0F6C:42D EnterState0EWhenFlagged
  * @run 70:BC2D
- * WHAT IT DOES: When bit 7 of OBJ_31A0 is set and the state is not $0E, copies OBJ_32A8 to slot $10's, clears OBJ_3250, goes to state $0E and clears OBJ_SUBSTATE.
+ * WHAT IT DOES: When bit 7 of OBJ_HIT_STATUS is set and the state is not $0E, copies OBJ_HEALTH to slot $10's, clears OBJ_3250, goes to state $0E and clears OBJ_SUBSTATE.
  * HOW: Two tests, stores.
  * WAITS: no.
  * Entry: X object. Exit: as the last instruction that ran (l8_enter_0e_exit_shim). The arm past the flag test ran in no script; the draft stops there.
@@ -404,7 +404,7 @@ L8Arm EnterState0EWhenFlagged(uint8_t slot)
     uint8_t value;
     L8Arm r = { 0 };
 
-    r.first = RD8(OBJ->status_flags[slot]);
+    r.first = RD8(OBJ->hit_status[slot]);
     if ((r.first & 0x80) == 0) {
         r.arm = ST25_ENTER_UNFLAGGED;
         return r;
@@ -414,8 +414,8 @@ L8Arm EnterState0EWhenFlagged(uint8_t slot)
         r.arm = ST25_ENTER_IN_0E;
         return r;
     }
-    value = RD8(OBJ->f32a8[slot]);
-    WR8(OBJ->f32a8[0x10], value);
+    value = RD8(OBJ->health[slot]);
+    WR8(OBJ->health[0x10], value);
     WR8(OBJ->hitbox_on[slot], 0);
     WR8(OBJ->state[slot], 0x0E);
     WR8(OBJ->substate[slot], 0);
@@ -477,7 +477,7 @@ void abi_LoadRecordFrame24(void)
 /*
  * @routine 0F6C:459 StartTimerWhenSlot10Ready
  * @run 70:BC59
- * WHAT IT DOES: When the state of slot $10 is 5 or more and its OBJ_32A8 is not $5C, sets OBJ_34B8 $0A and goes to the next state.
+ * WHAT IT DOES: When the state of slot $10 is 5 or more and its OBJ_HEALTH is not $5C, sets OBJ_34B8 $0A and goes to the next state.
  * HOW: Two compares, a store, an INC.
  * WAITS: no.
  * Entry: X object. Exit: as the last instruction that ran (l8_slot10_ready_exit_shim).
@@ -491,7 +491,7 @@ L8Arm StartTimerWhenSlot10Ready(uint8_t slot)
         r.arm = ST25_READY_LOW_STATE;
         return r;
     }
-    r.second = RD8(OBJ->f32a8[0x10]);
+    r.second = RD8(OBJ->health[0x10]);
     if (r.second == 0x5C) {
         r.arm = ST25_READY_AT_5C;
         return r;
@@ -502,7 +502,7 @@ L8Arm StartTimerWhenSlot10Ready(uint8_t slot)
     return r;
 }
 
-/* What StartTimerWhenSlot10Ready leaves in A and the flags, from the arm it ended on (first slot $10's state, second its OBJ_32A8, third the new state). */
+/* What StartTimerWhenSlot10Ready leaves in A and the flags, from the arm it ended on (first slot $10's state, second its OBJ_HEALTH, third the new state). */
 static Ended l8_slot10_ready_exit_shim(L8Arm r)
 {
     Ended e = ended_compare(r.first, 5);

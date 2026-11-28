@@ -6,7 +6,7 @@
 ; Entry: X object. Exit: kind 0: as DrawTileScript's; else the compare with 0.
 StartTileScriptByKind:
     jsr VecLoadObjectRecord
-    ldy a:OBJ_3040,x
+    ldy a:OBJ_START_ARG,x
     lda a:$B15D,y
     sta a:OBJ_34B8,x
     cpy #$00
@@ -25,7 +25,7 @@ StartTileScriptByKind_at0:
 CountThenTileScript:
     dec a:OBJ_34B8,x
     bne CountThenTileScript_at0
-    lda a:OBJ_3040,x
+    lda a:OBJ_START_ARG,x
     clc
     adc #$06
     inc a
@@ -106,7 +106,7 @@ StartWhenHurt_at0:
 ; WAITS: no.
 ; Entry: X object. Exit: the last AND, compare or load.
 EnterStateSevenOnFlag:
-    lda a:OBJ_31A0,x
+    lda a:OBJ_HIT_STATUS,x
     and #$80
     beq EnterStateSevenOnFlag_at0
     lda a:OBJ_STATE,x
@@ -419,7 +419,7 @@ PickNextMoveBySide:
     jsr VecSideOfPlayer
     and #$01
     sta a:OBJ_FACING_LEFT,x
-    lda a:OBJ_32A8,x
+    lda a:OBJ_HEALTH,x
     lsr a
     and #$F0
     sta z:zTemp00
@@ -700,7 +700,7 @@ ShootEveryFourth:
     sta a:OBJ_FACING_LEFT,y
     lda a:OBJ_3778,x
     and #$07
-    sta a:OBJ_3040,y
+    sta a:OBJ_START_ARG,y
     inc a:OBJ_3778,x
 ShootEveryFourth_at0:
     rts
@@ -877,7 +877,7 @@ FollowAndFacePlayer_at0:
     lda a:$BAAF,y
     beq FollowAndFacePlayer_at1
     lda a:$2B28
-    sta a:OBJ_2B18,x
+    sta a:OBJ_SPRITE_ATTR,x
     ldy #$10
     jsr VecCopyObjectPlaceBack
     jsr VecAngleToPlayer
@@ -1079,7 +1079,7 @@ StartThrownPiece:
     sta z:zTemp00
     lda a:$BCD4,y
     sta z:zTemp01
-    ldy a:OBJ_3040,x
+    ldy a:OBJ_START_ARG,x
     lda a:$BCE3,y
     jsr VecSetVelocityFromAngle
     lda a:OBJ_FACING_LEFT,x
@@ -1325,7 +1325,7 @@ StartFromTable:
     jsr VecLoadObjectRecord
     lda #$80
     sta a:OBJ_35C0,x
-    ldy a:OBJ_3040,x
+    ldy a:OBJ_START_ARG,x
     lda a:$BEF2,y
     sec
     sbc #$A0
@@ -1341,7 +1341,7 @@ StartFromTable:
 ; WAITS: no.
 ; Entry: X object. Exit: the state's count when it goes on, else the compare.
 OrbitThenLeave:
-    lda a:OBJ_3040,x
+    lda a:OBJ_START_ARG,x
     asl a
     tay
     lda a:$BF66,y
@@ -1399,7 +1399,7 @@ ShatterOnHits:
     bne ShatterOnHits_at0
     jsr VecLoadObjectRecord
     lda #$06
-    sta a:OBJ_2A10,x
+    sta a:OBJ_SPRITE_SET,x
     lda #$01
     sta a:OBJ_FRAME,x
     lda #$04
@@ -1426,7 +1426,7 @@ ShatterOnHits_at2:
     sta a:OBJ_VY_HI,x
     stz a:OBJ_VY_LO,x
     lda #$16
-    sta a:OBJ_3A90,x
+    sta a:OBJ_INVULN_TIMER,x
     jsr VecFindFreeSlotFrom50
     bcc DoNothing
     lda #$9B
@@ -1473,7 +1473,7 @@ WatchVramForMark:
     bne WatchVramForMark_at0
     jsr VecLoadObjectRecord
     lda #$06
-    sta a:OBJ_2A10,x
+    sta a:OBJ_SPRITE_SET,x
     lda #$07
     sta a:OBJ_FRAME,x
 WatchVramForMark_at0:

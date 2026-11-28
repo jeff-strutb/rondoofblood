@@ -62,7 +62,7 @@ BreakWhenHit:
     lda a:OBJ_STATE,x
     cmp #$0B
     bcs BreakWhenHit_at0
-    lda a:OBJ_31A0,x
+    lda a:OBJ_HIT_STATUS,x
     and #$80
     beq BreakWhenHit_at0
     inx
@@ -484,24 +484,24 @@ StepAndShout_at1:
 
 ; @routine 0A9D:31E StepWithArmor
 ; @run 71:C31E
-; WHAT IT DOES: Sets bits 0 and 1 of the object's OBJ_3148 while it steps the animation list at $C347; when the list ends it clears them, resets
+; WHAT IT DOES: Sets bits 0 and 1 of the object's OBJ_PACE while it steps the animation list at $C347; when the list ends it clears them, resets
 ; the animation and enters state 5.
 ; HOW: StepObjectFrames.
 ; WAITS: no.
 ; Entry: X object, Y kept unless the step sets it. Exit: as the step; at the end A 5.
 StepWithArmor:
-    lda a:OBJ_3148,x
+    lda a:OBJ_PACE,x
     ora #$03
-    sta a:OBJ_3148,x
+    sta a:OBJ_PACE,x
     lda #$C3
     sta z:zTemp11
     lda #$47
     sta z:zTemp10
     jsr VecStepObjectFrames
     bne StepWithArmor_at0
-    lda a:OBJ_3148,x
+    lda a:OBJ_PACE,x
     and #$FC
-    sta a:OBJ_3148,x
+    sta a:OBJ_PACE,x
     stz a:OBJ_ANIM_STEP,x
     stz a:OBJ_ANIM_TIMER,x
     lda #$05
@@ -572,7 +572,7 @@ StepAndPounce_at0:
 ; Entry: X object, Y kept unless the step sets it. Exit: see the wrapper.
 FlashAndCount:
     lda #$8A
-    sta a:OBJ_2B18,x
+    sta a:OBJ_SPRITE_ATTR,x
     lda #$01
     sta z:zTemp10
     lda #$C4
@@ -643,7 +643,7 @@ FollowPartner_at0:
     lda #$12
     jsr VecSoundIfOnFirstScreen
     lda #$05
-    sta a:OBJ_3A90,x
+    sta a:OBJ_INVULN_TIMER,x
 FollowPartner_at1:
     txa
     tay
@@ -686,7 +686,7 @@ HopAndSettle:
     beq HopAndSettle_at0
     lda a:OBJ_Y_HI,x
     bne HopAndSettle_at0
-    lda a:OBJ_3040,x
+    lda a:OBJ_START_ARG,x
     asl a
     asl a
     asl a
@@ -710,7 +710,7 @@ HopAndSettle:
     stz a:OBJ_VY_HI,x
     stz a:OBJ_VY_LO,x
 HopAndSettle_at1:
-    lda a:OBJ_3040,x
+    lda a:OBJ_START_ARG,x
     asl a
     asl a
     asl a
@@ -762,12 +762,12 @@ SetHitboxByFrame_at0:
 ; Entry: X object. Exit: see the wrapper (the three picks, one after the other).
 StartKnifeThrower:
     jsr VecLoadObjectRecord
-    lda a:OBJ_3040,x
+    lda a:OBJ_START_ARG,x
     bmi StartKnifeThrower_at0
     txa
     sta a:OBJ_37D0,x
     clc
-    adc a:OBJ_3040,x
+    adc a:OBJ_START_ARG,x
     sta a:OBJ_3828,x
     txa
     tay
@@ -779,19 +779,19 @@ StartKnifeThrower_at1:
     lda #$30
     jsr VecStartObjectAtPlace
     lda z:zTemp00
-    sta a:OBJ_3040,y
+    sta a:OBJ_START_ARG,y
     txa
     sta a:OBJ_37D0,y
     lda a:OBJ_3828,x
     sta a:OBJ_3828,y
     inc z:zTemp00
     iny
-    dec a:OBJ_3040,x
+    dec a:OBJ_START_ARG,x
     bne StartKnifeThrower_at1
 StartKnifeThrower_at0:
-    lda a:OBJ_3040,x
+    lda a:OBJ_START_ARG,x
     and #$7F
-    sta a:OBJ_3040,x
+    sta a:OBJ_START_ARG,x
     and #$01
     eor #$01
     sta a:OBJ_FACING_LEFT,x

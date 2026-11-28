@@ -30,13 +30,13 @@ RichterTurnOnPad_at1:
 
 ; @routine 01BB:1AA CountDownThenStand
 ; @run 6D:B1AA
-; WHAT IT DOES: Counts the player's timer in OBJ_2F90 down; when it reaches zero he stands.
+; WHAT IT DOES: Counts the player's timer in OBJ_HURT_TIMER down; when it reaches zero he stands.
 ; HOW: DEC of the byte; zero goes on to RichterStand, any other value returns.
 ; WAITS: no.
 ; Entry: nothing. Exit: counting on, N and Z from the new value; at zero as RichterStand.
 ; Checked with --callees wrappers: RichterStand's earlier C differs from its draft in the call frames of its own calls.
 CountDownThenStand:
-    dec a:OBJ_2F90
+    dec a:OBJ_HURT_TIMER
     beq CountDownThenStand_at0
     rts
 CountDownThenStand_at0:
@@ -111,7 +111,7 @@ SetVelocityXFromTable:
 ; Entry: nothing. Exit: X zRichterObject, A the flags, N, Z, C from A less 4. Y, V kept.
 RichterFlagsAgainstFour:
     ldx z:zRichterObject
-    lda a:OBJ_FLAGS_2F38
+    lda a:OBJ_SCROLL_BAND
     cmp #$04
     rts
 
@@ -251,14 +251,14 @@ StepStageTable9C20:
 
 ; @routine 05C0:0A5 HitKindFromBit7
 ; @run 6B:98A5
-; WHAT IT DOES: Gives the hit slot's kind (OBJ_38D8) 1 or 2 by bit 7 of the object's OBJ_3148; kind 2 also sets the
+; WHAT IT DOES: Gives the hit slot's kind (OBJ_38D8) 1 or 2 by bit 7 of the object's OBJ_PACE; kind 2 also sets the
 ; slot's OBJ_3828 to 5; then reports the hit.
 ; HOW: AND #$80 rotated twice, AND #1, INC, one store, CMP #2; the report as ReportHitToStage. The kind 2 arm is
 ; untraced (135 of 400 cases reach it and the draft stops there), written from the disc's bytes.
 ; WAITS: no.
 ; Entry: X object, Y the slot. Exit: as StoreHitFromTable.
 HitKindFromBit7:
-    lda a:OBJ_3148,x
+    lda a:OBJ_PACE,x
     and #$80
     rol a
     rol a
@@ -295,12 +295,12 @@ ReportHitUnlessTwo_at0:
 
 ; @routine 0720:099 HitKindFromBit1
 ; @run 6B:9899
-; WHAT IT DOES: Gives the hit slot's kind (OBJ_38D8) 1 or 2 by bit 1 of the object's OBJ_3148, then reports the hit.
+; WHAT IT DOES: Gives the hit slot's kind (OBJ_38D8) 1 or 2 by bit 1 of the object's OBJ_PACE, then reports the hit.
 ; HOW: AND #2, LSR, INC, one store, then ReportHitUnlessTwo.
 ; WAITS: no.
 ; Entry: X object, Y the slot. Exit: as ReportHitUnlessTwo.
 HitKindFromBit1:
-    lda a:OBJ_3148,x
+    lda a:OBJ_PACE,x
     and #$02
     lsr a
     inc a
@@ -310,12 +310,12 @@ HitKindFromBit1:
 ; @routine 0720:4ED LoadRecordThenFrameByKind
 ; @run 6B:9CED
 ; WHAT IT DOES: Loads the object's record, then gives it frame 0 or 1 of a two byte table by bit 0 of its next kind.
-; HOW: LoadObjectRecord, OBJ_3040 and 1, the table at $9CFD; falls into the RTS at $9CFC's neighbour.
+; HOW: LoadObjectRecord, OBJ_START_ARG and 1, the table at $9CFD; falls into the RTS at $9CFC's neighbour.
 ; WAITS: no.
 ; Entry: X object. Exit: A the frame, N and Z from it, Y the index, C from the load of the record. X kept.
 LoadRecordThenFrameByKind:
     jsr VecLoadObjectRecord
-    lda a:OBJ_3040,x
+    lda a:OBJ_START_ARG,x
     and #$01
     tay
     lda a:$9CFD,y

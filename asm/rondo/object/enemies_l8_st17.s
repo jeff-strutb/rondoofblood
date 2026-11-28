@@ -165,7 +165,7 @@ LoadRecordThenDrawTileScript2_at0:
 
 ; @routine 0B4A:5A3 DrawTileScriptStepsThenScatter
 ; @run 70:ADA3
-; WHAT IT DOES: When the object's X high byte is not 0 draws tile script $02 plus OBJ_34B8. Otherwise, at 5 hits taken, it sets OBJ_3A90 $18, draws the next tile script, plays sound $19, scatters pieces (ScatterPiecesDownward) and advances OBJ_34B8; below 3 steps it takes OBJ_HITBOX_DY and the frame from the table at $AE02; at 3 it sets zField92 1, clears OBJ_HITBOX_DY, sets the hit box $10 by $10 and frame $17 and goes to the next state.
+; WHAT IT DOES: When the object's X high byte is not 0 draws tile script $02 plus OBJ_34B8. Otherwise, at 5 hits taken, it sets OBJ_INVULN_TIMER $18, draws the next tile script, plays sound $19, scatters pieces (ScatterPiecesDownward) and advances OBJ_34B8; below 3 steps it takes OBJ_HITBOX_DY and the frame from the table at $AE02; at 3 it sets zField92 1, clears OBJ_HITBOX_DY, sets the hit box $10 by $10 and frame $17 and goes to the next state.
 ; HOW: DrawTileScript, SoundCommand, ScatterPiecesDownward, table reads, stores.
 ; WAITS: no.
 ; Entry: X object, Y kept for the sound. Exit: as the last instruction that ran.
@@ -182,7 +182,7 @@ DrawTileScriptStepsThenScatter_at0:
     cmp #$05
     bne DrawTileScriptStepsThenScatter_at1
     lda #$18
-    sta a:OBJ_3A90,x
+    sta a:OBJ_INVULN_TIMER,x
     lda #$02
     clc
     adc a:OBJ_34B8,x

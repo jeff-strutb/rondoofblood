@@ -645,7 +645,7 @@ L8St16ScreenArm LoadRecordThenClearEnemiesAtScreen2(uint8_t slot, uint8_t y_entr
     do {
         r.kind = RD8(OBJ->kind[x]);
         if (r.kind == 0xA0) {
-            r.flags = RD8(OBJ->flags[x]);
+            r.flags = RD8(OBJ->scroll_band[x]);
             if ((r.flags & 0x0F) == 2) {
                 jsr_push(0xBCC3);
                 ClearObject(x);

@@ -30,7 +30,7 @@ LoadObjectRecord:
     sta a:OBJ_3300,x
     iny
     lda (zTemp10),y
-    sta a:OBJ_32A8,x
+    sta a:OBJ_HEALTH,x
     iny
     lda (zTemp10),y
     and #$0F
@@ -49,19 +49,19 @@ LoadObjectRecord:
     sta a:OBJ_HITBOX_HALF_H,x
     iny
     lda (zTemp10),y
-    sta a:OBJ_2A10,x
+    sta a:OBJ_SPRITE_SET,x
     iny
     lda (zTemp10),y
     sta a:OBJ_FRAME,x
     iny
     lda (zTemp10),y
-    sta a:OBJ_30F0,x
+    sta a:OBJ_LOOP_FLAGS,x
     iny
     lda (zTemp10),y
-    sta a:OBJ_3148,x
+    sta a:OBJ_PACE,x
     iny
     lda (zTemp10),y
-    sta a:OBJ_31A0,x
+    sta a:OBJ_HIT_STATUS,x
     iny
     lda (zTemp10),y
     sta a:OBJ_HIT_REACTION,x

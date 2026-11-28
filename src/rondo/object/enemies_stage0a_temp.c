@@ -104,7 +104,7 @@ ObjArm BreakWhenHit(uint8_t slot)
     if (r.first >= 0x0B) {
         return r;
     }
-    flags = RD8(OBJ->status_flags[slot]);
+    flags = RD8(OBJ->hit_status[slot]);
     r.second = (uint8_t)(flags & 0x80);
     r.arm = S0A_BW_UNFLAGGED;
     if (r.second == 0) {
@@ -396,7 +396,7 @@ void abi_TurnWhenWaitEnds(void)
 /*
  * @routine 0A9D:31E StepWithArmor
  * @run 71:C31E
- * WHAT IT DOES: Sets bits 0 and 1 of the object's OBJ_3148 while it steps the animation list at $C347; when the list ends it clears them, resets
+ * WHAT IT DOES: Sets bits 0 and 1 of the object's OBJ_PACE while it steps the animation list at $C347; when the list ends it clears them, resets
  * the animation and enters state 5.
  * HOW: StepObjectFrames.
  * WAITS: no.
@@ -407,18 +407,18 @@ ObjArm StepWithArmor(uint8_t slot, uint8_t y)
     ObjArm r = { 0 };
     uint8_t bits;
 
-    bits = RD8(OBJ->f3148[slot]);
+    bits = RD8(OBJ->pace[slot]);
     bits = (uint8_t)(bits | 0x03);
-    WR8(OBJ->f3148[slot], bits);
+    WR8(OBJ->pace[slot], bits);
     r.step = step_list(slot, 0xC347, 0xC331, &y, true);
     r.y = y;
     r.arm = S0A_AR_STEPPING;
     if (r.step != FRAME_LIST_ENDED) {
         return r;
     }
-    bits = RD8(OBJ->f3148[slot]);
+    bits = RD8(OBJ->pace[slot]);
     r.first = (uint8_t)(bits & 0xFC);
-    WR8(OBJ->f3148[slot], r.first);
+    WR8(OBJ->pace[slot], r.first);
     WR8(OBJ->anim_step[slot], 0);
     WR8(OBJ->anim_timer[slot], 0);
     WR8(OBJ->state[slot], 5);
@@ -736,7 +736,7 @@ ObjArm FlashAndCount(uint8_t slot, uint8_t y)
     ObjArm r = { 0 };
     uint8_t index;
 
-    WR8(OBJ->flash_flags[slot], 0x8A);
+    WR8(OBJ->sprite_attr[slot], 0x8A);
     r.step = step_list(slot, 0xC401, 0xC3EA, &y, false);
     r.y = y;
     r.first = DEC8(OBJ->f3778[slot]);
@@ -824,7 +824,7 @@ L7HopArm HopAndSettle(uint8_t slot, uint8_t column, bool carry_in)
     if (r.arm.second != 0) {
         return r;
     }
-    kind = RD8(OBJ->next_kind[slot]);
+    kind = RD8(OBJ->start_arg[slot]);
     lift = (uint8_t)(kind << 4);
     WR8(ZP->temp00, lift);
     low = RD8(OBJ->y_lo[slot]);
@@ -850,7 +850,7 @@ L7HopArm HopAndSettle(uint8_t slot, uint8_t column, bool carry_in)
         WR8(OBJ->vy_hi[slot], 0);
         WR8(OBJ->vy_lo[slot], 0);
     }
-    kind = RD8(OBJ->next_kind[slot]);
+    kind = RD8(OBJ->start_arg[slot]);
     lift = (uint8_t)(kind << 4);
     WR8(ZP->temp00, lift);
     low = RD8(OBJ->y_lo[slot]);
@@ -1117,11 +1117,11 @@ ObjArm StartKnifeThrower(uint8_t slot)
     jsr_push(0xCD42);
     r.first = LoadObjectRecord(slot, &r.second, &r.flag);
     jsr_pop();
-    r.third = RD8(OBJ->next_kind[slot]);
+    r.third = RD8(OBJ->start_arg[slot]);
     if ((r.third & 0x80) == 0) {
         r.other = true;
         WR8(OBJ->f37d0[slot], slot);
-        kind = RD8(OBJ->next_kind[slot]);
+        kind = RD8(OBJ->start_arg[slot]);
         r.sum = add_bytes(slot, kind, false);
         WR8(OBJ->f3828[slot], r.sum.value);
         to = (uint8_t)(slot + 1);
@@ -1135,20 +1135,20 @@ ObjArm StartKnifeThrower(uint8_t slot)
             StartObjectAtPlace(0x30, slot, to);
             jsr_pop();
             number = RD8(ZP->temp00);
-            WR8(OBJ->next_kind[to], number);
+            WR8(OBJ->start_arg[to], number);
             WR8(OBJ->f37d0[to], slot);
             shared = RD8(OBJ->f3828[slot]);
             WR8(OBJ->f3828[to], shared);
             INC8(ZP->temp00);
             to++;
-            remaining = DEC8(OBJ->next_kind[slot]);
+            remaining = DEC8(OBJ->start_arg[slot]);
         } while (remaining != 0);
         r.fourth = remaining;
         r.y = to;
     }
-    count = RD8(OBJ->next_kind[slot]);
+    count = RD8(OBJ->start_arg[slot]);
     count = (uint8_t)(count & 0x7F);
-    WR8(OBJ->next_kind[slot], count);
+    WR8(OBJ->start_arg[slot], count);
     r.fifth = (uint8_t)((count & 0x01) ^ 0x01);
     WR8(OBJ->facing_left[slot], r.fifth);
     jsr_push(0xCD8A);
@@ -1789,7 +1789,7 @@ ObjArm FollowPartner(uint8_t slot, uint8_t y)
         r.screen = SoundIfOnFirstScreen(0x12, slot, y);
         jsr_pop();
         r.screen_called = true;
-        WR8(OBJ->timer[slot], 5);
+        WR8(OBJ->invuln_timer[slot], 5);
         r.arm = S0A_FP_HIT;
     }
     before = (uint8_t)(slot - 1);

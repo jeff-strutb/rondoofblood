@@ -12,7 +12,7 @@
  * @routine 093C:068 EnterStateFourOnFlag
  * @run 70:B868
  * WHAT IT DOES: Switches an object that is not yet in state 4 into state 4, with its animation
- * list restarted, once bit 7 of OBJ_31A0 is set.
+ * list restarted, once bit 7 of OBJ_HIT_STATUS is set.
  * HOW: Reads the state and the flag once each; clears the two animation counters and stores 4.
  * WAITS: no.
  * Entry: X object. Exit: A and flags as the last compare, AND or load left them (see the
@@ -28,7 +28,7 @@ State4Result EnterStateFourOnFlag(uint8_t slot)
     if (state == 4) {
         return result;
     }
-    flags = RD8(OBJ->status_flags[slot]);
+    flags = RD8(OBJ->hit_status[slot]);
     if ((flags & 0x80) == 0) {
         result.end = STATE4_NO_FLAG;
         return result;
@@ -209,7 +209,7 @@ TimerAdvance AdvanceOnTimer(uint8_t slot)
     if (result.timer != 0) {
         return result;
     }
-    kind = RD8(OBJ->next_kind[slot]);
+    kind = RD8(OBJ->start_arg[slot]);
     result.carry = (kind & 0x40) != 0;
     offset = (uint8_t)(kind << 2);
     value = rd8((uint16_t)(0xB614 + offset));
@@ -264,10 +264,10 @@ Launch LaunchOnTimer(uint8_t slot)
     if (result.timer != 0) {
         return result;
     }
-    kind = RD8(OBJ->next_kind[slot]);
+    kind = RD8(OBJ->start_arg[slot]);
     sum = add_bytes(kind, 0x12, false);
     WR8(OBJ->frame[slot], sum.value);
-    kind = RD8(OBJ->next_kind[slot]);
+    kind = RD8(OBJ->start_arg[slot]);
     result.carry = (kind & 0x80) != 0;
     offset = (uint8_t)(kind << 1);
     value = rd8((uint16_t)(0xB59B + offset));

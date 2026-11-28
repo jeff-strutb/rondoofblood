@@ -1412,7 +1412,7 @@ typedef struct {
     AxisMove move1, move2;
 } L8FlashPieceArm;
 
-/* FlashWhenHurtThenSound: the flags, the state and its mark, the timer and whether it flashed, OBJ_32A8, the hits, the sound call and the last shift's carry. */
+/* FlashWhenHurtThenSound: the flags, the state and its mark, the timer and whether it flashed, OBJ_HEALTH, the hits, the sound call and the last shift's carry. */
 typedef struct {
     int arm;
     uint8_t flags, state, marked, timer, value, hits, shifted;

@@ -317,7 +317,7 @@ ObjArm CountThenRiseWithFlash(uint8_t slot)
         return r;
     }
     WR8(OBJ->sprite_set[slot], 4);
-    WR8(OBJ->flash_flags[slot], 0x10);
+    WR8(OBJ->sprite_attr[slot], 0x10);
     WR8(OBJ->f34b8[slot], 0x40);
     WR8(OBJ->vy_hi[slot], 0xFF);
     WR8(OBJ->vy_lo[slot], 0xC0);
@@ -504,7 +504,7 @@ ObjArm LoadThenScatterAlongList(uint8_t slot, uint8_t y_entry)
     last = LoadObjectRecord(slot, &nz, &carry);
     jsr_pop();
     (void)last;
-    WR8(OBJ->flash_flags[slot], 0x10);
+    WR8(OBJ->sprite_attr[slot], 0x10);
     jsr_push(0xB6FC);
     random = NextRandom();
     jsr_pop();
@@ -622,7 +622,7 @@ void abi_CountThenSpawnInState2(void)
 /*
  * @routine 16CB:1F4 StateFiveOnStatusBit7
  * @run 70:B1F4
- * WHAT IT DOES: An object in a state under 5 whose OBJ_31A0 has bit 7 set goes to state 5, clears OBJ_SUBSTATE and OBJ_3250. (The part after the test ran in no script; it is written from the bytes.)
+ * WHAT IT DOES: An object in a state under 5 whose OBJ_HIT_STATUS has bit 7 set goes to state 5, clears OBJ_SUBSTATE and OBJ_3250. (The part after the test ran in no script; it is written from the bytes.)
  * HOW: A test, a compare, three stores.
  * WAITS: no.
  * Entry: X object. Exit: the test, the compare, or A 5.
@@ -631,7 +631,7 @@ ObjArm StateFiveOnStatusBit7(uint8_t slot)
 {
     ObjArm r = { 0 };
 
-    r.first = (uint8_t)(RD8(OBJ->status_flags[slot]) & 0x80);
+    r.first = (uint8_t)(RD8(OBJ->hit_status[slot]) & 0x80);
     r.arm = S5_CLEAR;
     if (r.first == 0) {
         return r;

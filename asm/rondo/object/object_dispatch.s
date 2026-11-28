@@ -52,10 +52,10 @@ StepReleaseOnHit_at0:
     cmp #$05
     bcc StepReleaseOnHit_at1
     jsr VecRecordObjectEvent
-    lda a:OBJ_3040,x
+    lda a:OBJ_START_ARG,x
     sta a:OBJ_KIND,x
     lda #$10
-    sta a:OBJ_3A90,x
+    sta a:OBJ_INVULN_TIMER,x
     stz a:OBJ_STATE,x
     jsr VecFindFreeSlotFrom50
     bcc StepReleaseOnHit_at1
@@ -93,7 +93,7 @@ StepFallingItem:
     rts
 StepFallingItem_at0:
     jsr VecApplyVelocityY
-    stz a:OBJ_2B18,x
+    stz a:OBJ_SPRITE_ATTR,x
     lda a:OBJ_KIND,x
     sec
     sbc #$9B
@@ -443,7 +443,7 @@ ChangeKindFromTable_at0:
     sta a:OBJ_KIND,x
     stz a:OBJ_STATE,x
     lda #$60
-    sta a:OBJ_3A90,x
+    sta a:OBJ_INVULN_TIMER,x
     ldy #$00
     sxy
     jsr VecCopyObjectPlace
@@ -523,15 +523,15 @@ AnimateKind88_at0:
 ; WAITS: no.
 ; Entry: X object. Exit: A and flags as the last compare, AND or load left them; X and Y kept.
 SetBlinkFlash:
-    stz a:OBJ_2B18,x
-    lda a:OBJ_3A90,x
+    stz a:OBJ_SPRITE_ATTR,x
+    lda a:OBJ_INVULN_TIMER,x
     cmp #$18
     bcc SetBlinkFlash_out
     lda z:zWaveCounter
     and #$02
     bne SetBlinkFlash_out
     lda #$86
-    sta a:OBJ_2B18,x
+    sta a:OBJ_SPRITE_ATTR,x
 SetBlinkFlash_out:
     rts
 

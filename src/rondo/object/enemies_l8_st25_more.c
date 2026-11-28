@@ -330,7 +330,7 @@ L8DropPieceArm DroppingPieceStep(uint8_t slot, uint8_t y_entry)
         jsr_push(0xB82C);
         r.record = l8_record(slot);
         jsr_pop();
-        r.kind = RD8(OBJ->next_kind[slot]);
+        r.kind = RD8(OBJ->start_arg[slot]);
         a = rd8((uint16_t)(PIECE_LIFE + r.kind));
         WR8(OBJ->life_timer[slot], a);
         a = rd8((uint16_t)(PIECE_FACING + r.kind));
@@ -418,7 +418,7 @@ L8DropPieceArm DroppingPieceStep(uint8_t slot, uint8_t y_entry)
     }
     WR8(OBJ->f3510[slot], 6);
     WR8(OBJ->hitbox_on[slot], 0);
-    WR8(OBJ->flash_flags[slot], PIECE_FALL_STEP);
+    WR8(OBJ->sprite_attr[slot], PIECE_FALL_STEP);
     r.count = INC8(OBJ->state[slot]);
     r.arm = ST25M_DROP_LANDED;
     return r;

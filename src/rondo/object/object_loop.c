@@ -142,11 +142,11 @@ static Ended run_objects(uint8_t entry_x)
             dispatch = state == 0;
         }
         if (!next && !dispatch) {
-            flags = RD8(OBJ->f30f0[x]);
+            flags = RD8(OBJ->loop_flags[x]);
             flags = (uint8_t)(flags & 0x01);
             e = ended_then(e, ended_load(flags));
             if (flags == 0) {
-                y = RD8(OBJ->flags[x]);
+                y = RD8(OBJ->scroll_band[x]);
                 y = (uint8_t)(y & 0x7F);
                 e = ended_then(e, ended_with_y(ended_load(y), y));
                 scroll_axis(x, y, ScrollSpeedX, COL(OBJ->x_lo), COL(OBJ->x_hi), &e);
@@ -157,7 +157,7 @@ static Ended run_objects(uint8_t entry_x)
             dispatch = state == 0;
         }
         if (!next && !dispatch) {
-            flags = RD8(OBJ->f30f0[x]);
+            flags = RD8(OBJ->loop_flags[x]);
             flags = (uint8_t)(flags & 0x02);
             e = ended_then(e, ended_load(flags));
             if (flags == 0) {
@@ -194,7 +194,7 @@ static Ended run_objects(uint8_t entry_x)
             hit = ObjectHit(x, y);
             jsr_pop();
             object_hit_exit_shim(hit);
-            flags = RD8(OBJ->f30f0[x]);
+            flags = RD8(OBJ->loop_flags[x]);
             flags = (uint8_t)(flags & 0x04);
             e = ended_load(flags);
             if (flags != 0 && !in_hold_window(x, &e)) {
@@ -202,12 +202,12 @@ static Ended run_objects(uint8_t entry_x)
             }
         }
         if (!next && !dispatch) {
-            timer = RD8(OBJ->f2f90[x]);
+            timer = RD8(OBJ->hurt_timer[x]);
             e = ended_then(e, ended_load(timer));
             if (timer != 0) {
-                timer = DEC8(OBJ->f2f90[x]);
+                timer = DEC8(OBJ->hurt_timer[x]);
                 e = ended_then(e, ended_nz(timer));
-                flags = RD8(OBJ->f3148[x]);
+                flags = RD8(OBJ->pace[x]);
                 flags = (uint8_t)(flags & 0x04);
                 e = ended_then(e, ended_load(flags));
                 if (flags == 0) {
@@ -229,7 +229,7 @@ static Ended run_objects(uint8_t entry_x)
                 dispatch = !next;
             } else {
                 e = ended_then(e, ended_compare(mode, 2));
-                flags = RD8(OBJ->f3148[x]);
+                flags = RD8(OBJ->pace[x]);
                 flags = (uint8_t)(flags & (mode == 2 ? 0x60 : 0x18));
                 e = ended_then(e, ended_load(flags));
                 if (mode == 2) {

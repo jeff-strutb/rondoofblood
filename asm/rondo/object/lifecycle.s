@@ -18,7 +18,7 @@ ClearObjectInY:
 ClearObject:
     stz a:OBJ_KIND,x
     stz a:OBJ_STATE,x
-    stz a:OBJ_2A10,x
+    stz a:OBJ_SPRITE_SET,x
     stz a:OBJ_FRAME,x
     stz a:OBJ_X_HI,x
     stz a:OBJ_X_LO,x
@@ -36,24 +36,24 @@ ClearObject:
 ; Entry: X object. Exit: A, X, Y and flags kept.
 ClearObjectExceptPlace:
     stz a:OBJ_FACING_LEFT,x
-    stz a:OBJ_2B18,x
+    stz a:OBJ_SPRITE_ATTR,x
     stz a:OBJ_SUBSTATE,x
     stz a:OBJ_VX_HI,x
     stz a:OBJ_VX_LO,x
     stz a:OBJ_VY_HI,x
     stz a:OBJ_VY_LO,x
     stz a:OBJ_FIELDS_2EE0,x
-    stz a:OBJ_FLAGS_2F38,x
-    stz a:OBJ_2F90,x
+    stz a:OBJ_SCROLL_BAND,x
+    stz a:OBJ_HURT_TIMER,x
     stz a:OBJ_SPRITE_FLIP,x
-    stz a:OBJ_3040,x
+    stz a:OBJ_START_ARG,x
     stz a:OBJ_EVENT_ID,x
-    stz a:OBJ_30F0,x
-    stz a:OBJ_3148,x
-    stz a:OBJ_31A0,x
+    stz a:OBJ_LOOP_FLAGS,x
+    stz a:OBJ_PACE,x
+    stz a:OBJ_HIT_STATUS,x
     stz a:OBJ_HIT_REACTION,x
     stz a:OBJ_3250,x
-    stz a:OBJ_32A8,x
+    stz a:OBJ_HEALTH,x
     stz a:OBJ_3300,x
     stz a:OBJ_3358,x
     stz a:OBJ_HIT_TAKEN,x
@@ -76,8 +76,8 @@ ClearObjectExceptPlace:
     stz a:OBJ_HITBOX_HALF_W,x
     stz a:OBJ_HITBOX_DY,x
     stz a:OBJ_HITBOX_HALF_H,x
-    stz a:OBJ_3A90,x
-    stz a:OBJ_3AE8,x
+    stz a:OBJ_INVULN_TIMER,x
+    stz a:OBJ_SAVED_ATTR,x
     rts
 
 ; @routine 0046:28D ClearEnemySlots

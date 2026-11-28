@@ -182,10 +182,10 @@ EndingCommandPlaceNext:
     jsr EndingPlaceObject
     iny
     lda (zScriptPtr),y
-    sta a:OBJ_3040,x
+    sta a:OBJ_START_ARG,x
     iny
     lda (zScriptPtr),y
-    sta a:OBJ_2A10,x
+    sta a:OBJ_SPRITE_SET,x
     lda #$02
     sta a:OBJ_KIND,x
     jmp EndingScriptAdvance
@@ -205,7 +205,7 @@ EndingCommandPlaceFrame:
     sta a:OBJ_FRAME,x
     iny
     lda (zScriptPtr),y
-    sta a:OBJ_2A10,x
+    sta a:OBJ_SPRITE_SET,x
     jmp EndingScriptAdvance
 
 ; @routine 010D:10B EndingCommandPlaceTimed
@@ -223,10 +223,10 @@ EndingCommandPlaceTimed:
     sta a:OBJ_FRAME,x
     iny
     lda (zScriptPtr),y
-    sta a:OBJ_2A10,x
+    sta a:OBJ_SPRITE_SET,x
     iny
     lda (zScriptPtr),y
-    sta a:OBJ_3040,x
+    sta a:OBJ_START_ARG,x
     iny
     lda (zScriptPtr),y
     sta a:OBJ_34B8,x
@@ -400,7 +400,7 @@ EndingCreditScrollStart_at0:
 ; WHAT IT DOES: An object handler of two stages: the first takes its Y speed from a table at $82D5 by its number, shows picture kind 3
 ; and frame $72 plus its number and moves on; after that each frame it sets flash flags from a table at $82DA by bit 2 of its number
 ; plus the frame count, moves, and clears the object's Y high byte to 1 once it is negative with a non-negative Y low byte.
-; HOW: OBJ->state; OBJ->flash_flags; ApplyVelocity.
+; HOW: OBJ->state; OBJ->sprite_attr; ApplyVelocity.
 ; WAITS: no.
 ; Entry: X the object. Exit: as the last test left them.
 EndingFallingPiece:
@@ -409,7 +409,7 @@ EndingFallingPiece:
     lda a:$82D5,x
     sta a:OBJ_VY_HI,x
     lda #$03
-    sta a:OBJ_2A10,x
+    sta a:OBJ_SPRITE_SET,x
     txa
     clc
     adc #$72
@@ -425,7 +425,7 @@ EndingFallingPiece_at0:
     and #$01
     tay
     lda a:$82DA,y
-    sta a:OBJ_2B18,x
+    sta a:OBJ_SPRITE_ATTR,x
     jsr VecApplyVelocity
     lda a:OBJ_Y_HI,x
     bpl EndingFallingPiece_at1
@@ -481,7 +481,7 @@ EndingPieceSpawn_at0:
 EndingPieceSpawn_at2:
     jsr VecClearObject
     lda #$03
-    sta a:OBJ_2A10,x
+    sta a:OBJ_SPRITE_SET,x
     lda #$1A
     sta a:OBJ_KIND,x
     txa
@@ -617,7 +617,7 @@ EndingPlayList10:
     lda a:OBJ_STATE,x
     bne EndingPlayList10_at0
     lda #$03
-    sta a:OBJ_2A10,x
+    sta a:OBJ_SPRITE_SET,x
     inc a:OBJ_STATE,x
     rts
 EndingPlayList10_at0:
@@ -738,7 +738,7 @@ EndingPlayList0F:
     lda a:OBJ_STATE,x
     bne EndingPlayList0F_at0
     lda #$03
-    sta a:OBJ_2A10,x
+    sta a:OBJ_SPRITE_SET,x
     inc a:OBJ_STATE,x
     rts
 EndingPlayList0F_at0:
@@ -759,14 +759,14 @@ EndingPlayList0F_at1:
 ; @run 6B:84DE
 ; WHAT IT DOES: An object handler: shows picture kind 3, waits a frame, then shows frame $0D and moves the object up
 ; a line each frame until its Y low byte is $40, then sets flash flags $8D and moves to the next state.
-; HOW: OBJ->state, OBJ->sprite_set, OBJ->frame, OBJ->y_lo and OBJ->flash_flags.
+; HOW: OBJ->state, OBJ->sprite_set, OBJ->frame, OBJ->y_lo and OBJ->sprite_attr.
 ; WAITS: no.
 ; Entry: X the object. Exit: as the last test left them.
 EndingRiseToY40:
     lda a:OBJ_STATE,x
     bne EndingRiseToY40_at0
     lda #$03
-    sta a:OBJ_2A10,x
+    sta a:OBJ_SPRITE_SET,x
     inc a:OBJ_STATE,x
     rts
 EndingRiseToY40_at0:
@@ -784,7 +784,7 @@ EndingRiseToY40_at1:
     cmp #$40
     bne EndingRiseToY40_at3
     lda #$8D
-    sta a:OBJ_2B18,x
+    sta a:OBJ_SPRITE_ATTR,x
     inc a:OBJ_STATE,x
     rts
 EndingRiseToY40_at2:
@@ -801,7 +801,7 @@ EndingPlayList0EThenClear:
     lda a:OBJ_STATE,x
     bne EndingPlayList0EThenClear_at0
     lda #$03
-    sta a:OBJ_2A10,x
+    sta a:OBJ_SPRITE_SET,x
     inc a:OBJ_STATE,x
     rts
 EndingPlayList0EThenClear_at0:
@@ -1185,7 +1185,7 @@ EndingRiseFrame31:
     lda a:OBJ_STATE,x
     bne EndingRiseFrame31_at0
     lda #$03
-    sta a:OBJ_2A10,x
+    sta a:OBJ_SPRITE_SET,x
     lda #$31
     sta a:OBJ_FRAME,x
     dec a:OBJ_VY_HI,x
@@ -1224,7 +1224,7 @@ EndingRiseFrame32A:
     lda a:OBJ_STATE,x
     bne EndingRiseFrame32A_at0
     lda #$03
-    sta a:OBJ_2A10,x
+    sta a:OBJ_SPRITE_SET,x
     lda #$60
     sta a:OBJ_VY_LO,x
     dec a:OBJ_VY_HI,x
@@ -1268,7 +1268,7 @@ EndingRiseWithList:
     lda a:OBJ_STATE,x
     bne EndingRiseWithList_at0
     lda #$03
-    sta a:OBJ_2A10,x
+    sta a:OBJ_SPRITE_SET,x
     dec a:OBJ_VY_HI,x
     lda #$80
     sta a:OBJ_34B8,x
@@ -1304,7 +1304,7 @@ EndingRiseFrame32B:
     lda a:OBJ_STATE,x
     bne EndingRiseFrame32B_at0
     lda #$03
-    sta a:OBJ_2A10,x
+    sta a:OBJ_SPRITE_SET,x
     lda #$60
     sta a:OBJ_VY_LO,x
     dec a:OBJ_VY_HI,x
@@ -1384,7 +1384,7 @@ EndingLinkAnimationA:
     lda a:OBJ_STATE,x
     bne EndingLinkAnimationA_at0
     lda #$03
-    sta a:OBJ_2A10,x
+    sta a:OBJ_SPRITE_SET,x
     inc a:OBJ_STATE,x
 EndingLinkAnimationA_at0:
     lda #$04
@@ -1410,7 +1410,7 @@ EndingLinkAnimationB:
     lda a:OBJ_STATE,x
     bne EndingLinkAnimationB_at0
     lda #$03
-    sta a:OBJ_2A10,x
+    sta a:OBJ_SPRITE_SET,x
     inc a:OBJ_STATE,x
 EndingLinkAnimationB_at0:
     lda #$05
@@ -1514,7 +1514,7 @@ EndingDropAndBounce:
     sta a:ScrollYLo+2
     sta a:ScrollYLo+6
     lda #$03
-    sta a:OBJ_2A10,x
+    sta a:OBJ_SPRITE_SET,x
     lda #$01
     sta a:OBJ_FRAME,x
     lda #$C0
@@ -1581,16 +1581,16 @@ EndingDropAndBounce_at4:
 ; @run 6B:899C
 ; WHAT IT DOES: An object handler: in its first state plays the ending's list its next kind names, and when the list has ended
 ; and the kind is not negative moves to the next state.
-; HOW: OBJ->state and OBJ->next_kind; EndingFrameList.
+; HOW: OBJ->state and OBJ->start_arg; EndingFrameList.
 ; WAITS: no.
 ; Entry: X the object. Exit: as the last test left them.
 EndingWaitForList:
     lda a:OBJ_STATE,x
     bne EndingWaitForList_at0
-    lda a:OBJ_3040,x
+    lda a:OBJ_START_ARG,x
     jsr EndingFrameList
     bne EndingWaitForList_at0
-    lda a:OBJ_3040,x
+    lda a:OBJ_START_ARG,x
     bmi EndingWaitForList_at0
     inc a:OBJ_STATE,x
 EndingWaitForList_at0:
@@ -1600,13 +1600,13 @@ EndingWaitForList_at0:
 ; @run 6B:89B2
 ; WHAT IT DOES: An object handler of two stages: the first takes its speed from four tables at $89E2 by its next kind; the second
 ; moves the object until its hold has run out.
-; HOW: OBJ->state and OBJ->next_kind; ApplyVelocity; OBJ->life_timer.
+; HOW: OBJ->state and OBJ->start_arg; ApplyVelocity; OBJ->life_timer.
 ; WAITS: no.
 ; Entry: X the object. Exit: as the last test left them.
 EndingFlyOff:
     lda a:OBJ_STATE,x
     bne EndingFlyOff_at0
-    ldy a:OBJ_3040,x
+    ldy a:OBJ_START_ARG,x
     lda a:$89E2,y
     sta a:OBJ_VX_LO,x
     lda a:$89E7,y

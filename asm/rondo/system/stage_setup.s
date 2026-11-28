@@ -71,7 +71,7 @@ SpawnStageObject:
     lda a:StageSpawnFrame,x
     sta a:OBJ_FRAME,y
     lda a:StageSpawnKind,x
-    sta a:OBJ_2A10,y
+    sta a:OBJ_SPRITE_SET,y
     lda a:StageSpawnXLo,x
     sta a:OBJ_X_LO,y
     lda a:StageSpawnYLo,x
@@ -133,7 +133,7 @@ SpawnStageObjectLong:
     lda a:StageSpawnFrameB,x
     sta a:OBJ_FRAME,y
     lda a:StageSpawnKindB,x
-    sta a:OBJ_2A10,y
+    sta a:OBJ_SPRITE_SET,y
     lda a:StageSpawnXLoB,x
     sta a:OBJ_X_LO,y
     lda a:StageSpawnYLoB,x

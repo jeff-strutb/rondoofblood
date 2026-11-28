@@ -1,6 +1,6 @@
 ; @routine 0B4D:0A9 RecordEventWhenSlot10InState0F
 ; @run 71:C0A9
-; WHAT IT DOES: When the state of slot $10 is $0F records the object's event, takes OBJ_34B8 from the table at $C0C0 by OBJ_3040 and goes to the next state.
+; WHAT IT DOES: When the state of slot $10 is $0F records the object's event, takes OBJ_34B8 from the table at $C0C0 by OBJ_START_ARG and goes to the next state.
 ; HOW: A compare, RecordObjectEvent, a table read, a store, an INC.
 ; WAITS: no.
 ; Entry: X object. Exit: as the last instruction that ran. The arm past the compare ran in no script; the draft stops there.
@@ -9,7 +9,7 @@ RecordEventWhenSlot10InState0F:
     cmp #$0F
     bne RecordEventWhenSlot10InState0F_at0
     jsr VecRecordObjectEvent
-    ldy a:OBJ_3040,x
+    ldy a:OBJ_START_ARG,x
     lda a:$C0C0,y
     sta a:OBJ_34B8,x
     inc a:OBJ_STATE,x
@@ -75,7 +75,7 @@ MaybeDropItemByPlayerDistance:
 
 ; @routine 0EBD:2A7 SpawnerByKindAndScreen
 ; @run 71:C2A7
-; WHAT IT DOES: In state 0 loads the record. Unless frame $54's byte is 4 it waits OBJ_34B8 down; then by OBJ_3040: 0 starts an object of type $2C in a free slot (every second one from $1A) when the scroll's screen byte is 2 or 4, and waits $50 to $8F; 2 starts one of type $CB in a free slot of $30 to $3F and waits $80; otherwise, with OBJ_3568 below $80, it finds a group of four empty slots from $20 and starts four objects of type $49 there (each cleared first) numbered 3, 2, 1, 0 in OBJ_35C0 with one random number to 3 in OBJ_3670, and waits $F0.
+; WHAT IT DOES: In state 0 loads the record. Unless frame $54's byte is 4 it waits OBJ_34B8 down; then by OBJ_START_ARG: 0 starts an object of type $2C in a free slot (every second one from $1A) when the scroll's screen byte is 2 or 4, and waits $50 to $8F; 2 starts one of type $CB in a free slot of $30 to $3F and waits $80; otherwise, with OBJ_3568 below $80, it finds a group of four empty slots from $20 and starts four objects of type $49 there (each cleared first) numbered 3, 2, 1, 0 in OBJ_35C0 with one random number to 3 in OBJ_3670, and waits $F0.
 ; HOW: LoadObjectRecord, searches of the slot kinds, StartObjectAtPlace, ClearObjectInY, NextRandom, FindFreeSlotFrom30.
 ; WAITS: no.
 ; Entry: X object. Exit: as the last instruction that ran. Everything past state 0 ran in no script; the draft stops there and the arms are written from the decoded bytes.
@@ -93,7 +93,7 @@ SpawnerByKindAndScreen_at0:
 SpawnerByKindAndScreen_at1:
     rts
 SpawnerByKindAndScreen_at2:
-    lda a:OBJ_3040,x
+    lda a:OBJ_START_ARG,x
     bne SpawnerByKindAndScreen_at3
     lda a:ScrollXHiScreen
     cmp #$02

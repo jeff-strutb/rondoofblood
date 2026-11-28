@@ -178,7 +178,7 @@ void abi_StateTableHurtFlag(void)
 /*
  * @routine 0B4B:5F2 EnterState0FWhenFlagged
  * @run 70:B5F2
- * WHAT IT DOES: When bit 7 of OBJ_31A0 is set and the state is not $0F, plays sound $B7, clears the animation and the speed and goes to state $0F with OBJ_SUBSTATE 0.
+ * WHAT IT DOES: When bit 7 of OBJ_HIT_STATUS is set and the state is not $0F, plays sound $B7, clears the animation and the speed and goes to state $0F with OBJ_SUBSTATE 0.
  * HOW: Two tests, SoundCommand, stores.
  * WAITS: no.
  * Entry: X object, Y kept for the sound. Exit: as the last instruction that ran (l8_enter_state0f_exit_shim). The arm past the flag test ran in no script; the draft stops there.
@@ -187,7 +187,7 @@ L8St19EnterArm EnterState0FWhenFlagged(uint8_t slot, uint8_t y_entry)
 {
     L8St19EnterArm r = { 0 };
 
-    r.flags = RD8(OBJ->status_flags[slot]);
+    r.flags = RD8(OBJ->hit_status[slot]);
     if ((r.flags & 0x80) == 0) {
         r.arm = ST19_ENTER_NOT_FLAGGED;
         return r;

@@ -170,7 +170,7 @@ L8Arm SettleWhenLowOnFirstRow(uint8_t slot)
         return r;
     }
     r.third = INC8(OBJ->f3670[slot]);
-    WR8(OBJ->flash_flags[slot], 0);
+    WR8(OBJ->sprite_attr[slot], 0);
     r.arm = SETTLE_SETTLED;
     return r;
 }
@@ -197,10 +197,10 @@ void abi_SettleWhenLowOnFirstRow(void)
 /*
  * @routine 101F:199 LoadRecordFrameFromKind
  * @run 71:D199
- * WHAT IT DOES: In state 0 loads the record and takes OBJ_3040 as its frame.
+ * WHAT IT DOES: In state 0 loads the record and takes OBJ_START_ARG as its frame.
  * HOW: LoadObjectRecord, a copy.
  * WAITS: no.
- * Entry: X object. Exit: as the last instruction that ran (l8_frame_from_kind_exit_shim). The body returns the state step (load) and OBJ_3040 (first).
+ * Entry: X object. Exit: as the last instruction that ran (l8_frame_from_kind_exit_shim). The body returns the state step (load) and OBJ_START_ARG (first).
  */
 L8Arm LoadRecordFrameFromKind(uint8_t slot)
 {
@@ -519,9 +519,9 @@ ChaseArm ChaseWanderingPointWithSpeedRamp(uint8_t slot, uint8_t y_entry)
         jsr_push(0xB2F3);
         r.record = l8_record(slot);
         jsr_pop();
-        value = RD8(OBJ->flash_flags[slot]);
+        value = RD8(OBJ->sprite_attr[slot]);
         r.flash = (uint8_t)(value | 0x10);
-        WR8(OBJ->flash_flags[slot], r.flash);
+        WR8(OBJ->sprite_attr[slot], r.flash);
         WR8(OBJ->x_hi[slot], 0);
         WR8(OBJ->x_lo[slot], 0x20);
         WR8(OBJ->y_hi[slot], 1);
@@ -691,7 +691,7 @@ void abi_ChaseWanderingPointWithSpeedRamp(void)
 /*
  * @routine 161B:126 SpawnerWithScrollGates
  * @run 70:B126
- * WHAT IT DOES: In state 0 loads the record. State 1 starts list $8D on channel 3 when OBJ_3040 is not 0 and goes on. Later it runs CapPlayerXOnScreen1 when OBJ_3040 is 0, waits OBJ_34B8 down, then with OBJ_3040 0 and the scroll in the right window starts an object of type $2C in a free slot of $1A to $1F numbered by OBJ_3510 (which counts up) and takes a random wait of $80 to $BF; with OBJ_3040 not 0 and the scroll's Y in range clears and starts an object of type $55 in the first free slot of $11 to $1F and waits $D0.
+ * WHAT IT DOES: In state 0 loads the record. State 1 starts list $8D on channel 3 when OBJ_START_ARG is not 0 and goes on. Later it runs CapPlayerXOnScreen1 when OBJ_START_ARG is 0, waits OBJ_34B8 down, then with OBJ_START_ARG 0 and the scroll in the right window starts an object of type $2C in a free slot of $1A to $1F numbered by OBJ_3510 (which counts up) and takes a random wait of $80 to $BF; with OBJ_START_ARG not 0 and the scroll's Y in range clears and starts an object of type $55 in the first free slot of $11 to $1F and waits $D0.
  * HOW: LoadObjectRecord, StartListChannelKind2, CapPlayerXOnScreen1, searches of the slot kinds, StartObjectAtPlace, NextRandom, ClearObjectInY.
  * WAITS: no.
  * Entry: X object. Exit: as the last instruction that ran (l8_scroll_gates_exit_shim). Everything past state 0 ran in no script; the draft stops there and the arms are written from the decoded bytes.

@@ -224,7 +224,7 @@ ObjArm EnterState7OnFlagOrYSignChange(uint8_t slot)
 {
     ObjArm r = { 0 };
 
-    r.first = RD8(OBJ->status_flags[slot]);
+    r.first = RD8(OBJ->hit_status[slot]);
     r.arm = S5_E7_ENTERED;
     if ((r.first & 0x80) == 0) {
         r.second = RD8(OBJ->y_hi[slot]);
@@ -403,12 +403,12 @@ ObjArm ThrowByNextKind(uint8_t slot)
 {
     enum { SPEEDS = 0xB9A3 };
     ObjArm r = { 0 };
-    uint8_t kind = RD8(OBJ->next_kind[slot]);
+    uint8_t kind = RD8(OBJ->start_arg[slot]);
     uint8_t shifted;
 
     r.first = (uint8_t)(kind & 1);
     WR8(OBJ->vx_hi[slot], rd8((uint16_t)(SPEEDS + r.first)));
-    kind = RD8(OBJ->next_kind[slot]);
+    kind = RD8(OBJ->start_arg[slot]);
     shifted = (uint8_t)(kind << 4);
     WR8(OBJ->vy_hi[slot], (uint8_t)((uint8_t)(shifted ^ 0xFF) + 1));
     jsr_push(0xB99C);
@@ -1051,8 +1051,8 @@ ObjArm StartChargeWhenPlayerNear(uint8_t slot)
     }
     WR8(OBJ->anim_step[slot], 0);
     WR8(OBJ->anim_timer[slot], 0);
-    flags = RD8(OBJ->flags[slot]);
-    WR8(OBJ->flags[slot], (uint8_t)(flags & 0x80));
+    flags = RD8(OBJ->scroll_band[slot]);
+    WR8(OBJ->scroll_band[slot], (uint8_t)(flags & 0x80));
     WR8(OBJ->vy_hi[slot], 3);
     jsr_push(0xBED4);
     r.random = NextRandom();
@@ -2054,7 +2054,7 @@ ObjArm AnimateThenNumberGroupAndLeave(uint8_t slot)
                     WR8(ZP->temp03, y);
                 }
                 count = RD8(ZP->temp00);
-                WR8(OBJ->next_kind[y], count);
+                WR8(OBJ->start_arg[y], count);
                 held = RD8(ZP->temp03);
                 WR8(OBJ->f37d0[y], held);
                 count = RD8(ZP->temp00);
@@ -2428,10 +2428,10 @@ ObjArm StartGroupThenThrow(uint8_t slot)
     jsr_push(0xB931);
     LoadObjectRecord(slot, &nz, &carry);
     jsr_pop();
-    count = RD8(OBJ->next_kind[slot]);
+    count = RD8(OBJ->start_arg[slot]);
     if ((count & 0x80) == 0) {
         WR8(OBJ->f37d0[slot], slot);
-        count = RD8(OBJ->next_kind[slot]);
+        count = RD8(OBJ->start_arg[slot]);
         sum = add_bytes(slot, count, false);
         WR8(OBJ->f3828[slot], sum.value);
         y = (uint8_t)(slot + 1);
@@ -2444,18 +2444,18 @@ ObjArm StartGroupThenThrow(uint8_t slot)
             StartObjectAtPlace(0x26, slot, y);
             jsr_pop();
             mark = RD8(ZP->temp00);
-            WR8(OBJ->next_kind[y], mark);
+            WR8(OBJ->start_arg[y], mark);
             WR8(OBJ->f37d0[y], slot);
             value = RD8(OBJ->f3828[slot]);
             WR8(OBJ->f3828[y], value);
             INC8(ZP->temp00);
             y++;
-            left = DEC8(OBJ->next_kind[slot]);
+            left = DEC8(OBJ->start_arg[slot]);
         } while (left != 0);
     }
-    count = RD8(OBJ->next_kind[slot]);
+    count = RD8(OBJ->start_arg[slot]);
     count = (uint8_t)(count & 0x7F);
-    WR8(OBJ->next_kind[slot], count);
+    WR8(OBJ->start_arg[slot], count);
     WR8(OBJ->facing_left[slot], (uint8_t)((count & 1) ^ 1));
     jsr_push(0xB979);
     ThrowByNextKind(slot);

@@ -70,7 +70,7 @@ RichterAnimationWait_at0:
 ; kept. Clobbers zTemp00-01.
 RichterAnimationRunning:
     jsr RichterAnimationTick
-    lda a:OBJ_2F90
+    lda a:OBJ_HURT_TIMER
     cmp #$FF
     rts
 
@@ -78,19 +78,19 @@ RichterAnimationRunning:
 ; @run 6D:B669
 ; WHAT IT DOES: Counts down the frame on show; at zero moves to the next step of the list.
 ; A timer of $FF means the animation has stopped.
-; HOW: The timer in OBJ_2F90, the step in OBJ_FLAGS_2F38, the frame shown in OBJ_FRAME.
+; HOW: The timer in OBJ_HURT_TIMER, the step in OBJ_SCROLL_BAND, the frame shown in OBJ_FRAME.
 ; WAITS: no.
 ; Entry: nothing. Exit: A the frame or $FF; Y twice the step, plus one with a frame; C and N, Z
 ; from what was read. X and V kept. Clobbers zTemp00-01.
 RichterAnimationTick:
-    lda a:OBJ_2F90
+    lda a:OBJ_HURT_TIMER
     cmp #$FF
     bne RichterAnimationTick_at0
     rts
 RichterAnimationTick_at0:
-    dec a:OBJ_2F90
+    dec a:OBJ_HURT_TIMER
     bne $B693
-    inc a:OBJ_FLAGS_2F38
+    inc a:OBJ_SCROLL_BAND
     bra $B681
 
 ; @routine 01BB:67B RichterSetAnimation
@@ -101,10 +101,10 @@ RichterAnimationTick_at0:
 ; Entry: A animation. Exit: as RichterAnimationTick. Clobbers zTemp00-01.
 RichterSetAnimation:
     sta a:OBJ_FIELDS_2EE0
-    stz a:OBJ_FLAGS_2F38
+    stz a:OBJ_SCROLL_BAND
     bsr RichterAnimationPoint
     lda (zTemp00),y
-    sta a:OBJ_2F90
+    sta a:OBJ_HURT_TIMER
     cmp #$FF
     bne RichterSetAnimation_at0
     rts
@@ -122,7 +122,7 @@ RichterSetAnimation_at1:
 ; @routine 01BB:69C RichterAnimationPoint
 ; @run 6D:B69C
 ; WHAT IT DOES: Points zTemp00-01 at the list of the animation in play and gives Y twice the step in play.
-; HOW: OBJ_FIELDS_2EE0 doubled indexes AnimationLists; the step in OBJ_FLAGS_2F38 doubled.
+; HOW: OBJ_FIELDS_2EE0 doubled indexes AnimationLists; the step in OBJ_SCROLL_BAND doubled.
 ; WAITS: no.
 ; Entry: nothing. Exit: A and Y twice the step, N and Z from it, C the step's bit 7. X and V kept.
 RichterAnimationPoint:
@@ -133,7 +133,7 @@ RichterAnimationPoint:
     sta z:zTemp00
     lda a:AnimationLists+1,y
     sta z:zTemp01
-    lda a:OBJ_FLAGS_2F38
+    lda a:OBJ_SCROLL_BAND
     asl a
     tay
     rts
@@ -561,7 +561,7 @@ MariaAnimationWait_at0:
 ; Entry, exit: as RichterAnimationRunning.
 MariaAnimationRunning:
     jsr MariaAnimationTick
-    lda a:OBJ_2F90
+    lda a:OBJ_HURT_TIMER
     cmp #$FF
     rts
 
@@ -572,14 +572,14 @@ MariaAnimationRunning:
 ; WAITS: no.
 ; Entry, exit: as RichterAnimationTick.
 MariaAnimationTick:
-    lda a:OBJ_2F90
+    lda a:OBJ_HURT_TIMER
     cmp #$FF
     bne MariaAnimationTick_at0
     rts
 MariaAnimationTick_at0:
-    dec a:OBJ_2F90
+    dec a:OBJ_HURT_TIMER
     bne MariaSetAnimation_at3
-    inc a:OBJ_FLAGS_2F38
+    inc a:OBJ_SCROLL_BAND
     bra MariaSetAnimation_at2
 
 ; @routine 01E0:1A2 MariaSetAnimation
@@ -591,11 +591,11 @@ MariaAnimationTick_at0:
 MariaSetAnimation:
     sta a:OBJ_FIELDS_2EE0
 MariaSetAnimation_at4:
-    stz a:OBJ_FLAGS_2F38
+    stz a:OBJ_SCROLL_BAND
 MariaSetAnimation_at2:
     bsr MariaAnimationPoint
     lda (zTemp00),y
-    sta a:OBJ_2F90
+    sta a:OBJ_HURT_TIMER
     cmp #$FF
     bne MariaSetAnimation_at0
     rts
@@ -640,7 +640,7 @@ MariaAnimationPoint:
     sta z:zTemp00
     lda a:AnimationLists+$322+1,y
     sta z:zTemp01
-    lda a:OBJ_FLAGS_2F38
+    lda a:OBJ_SCROLL_BAND
     asl a
     tay
     rts

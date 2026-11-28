@@ -705,7 +705,7 @@ SpriteArm DrawObjectSprite(uint8_t object)
     WR8(ZP->temp0d, value);
     value = RD8(OBJ->sprite_flip[object]);
     WR8(ZP->sprite_flip_mask, value);
-    value = RD8(OBJ->flash_flags[object]);
+    value = RD8(OBJ->sprite_attr[object]);
     WR8(ZP->temp0e, value);
     WR8(ZP->temp0f, (uint8_t)(value & 0x0F));
     WR8(ZP->temp00, (uint8_t)SPRITE_SETS);

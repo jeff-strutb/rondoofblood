@@ -87,7 +87,7 @@ BitOfIndex_at0:
 ; Entry: X object. Exit: unmarked, A 0, N 0, Z 1, the rest kept; else as
 ; RecordEvent.
 RecordObjectEvent:
-    lda a:OBJ_FLAGS_2F38,x
+    lda a:OBJ_SCROLL_BAND,x
     and #$80
     beq RecordEvent_at0
     lda a:OBJ_EVENT_ID,x

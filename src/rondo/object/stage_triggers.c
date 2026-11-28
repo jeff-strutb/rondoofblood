@@ -77,7 +77,7 @@ static TriggerEnd load_trigger(uint8_t x, uint8_t number_mask, bool takes_count,
     a = RD8(OBJ->hitbox_on[x]);
     sum = add_bytes(RECORD_SLOT_FIRST, a, false);
     WR8(OBJ->hitbox_on[x], sum.value);
-    a = RD8(OBJ->next_kind[x]);
+    a = RD8(OBJ->start_arg[x]);
     y = a;
     a = (uint8_t)(a & number_mask);
     WR8(OBJ->f3510[x], a);
@@ -152,7 +152,7 @@ TriggerEnd StageTriggerObject(uint8_t x)
     if (a == 0) {
         return load_trigger(x, NIBBLE, true, FIRST_RECORD_RETURN);
     }
-    WR8(OBJ->timer[x], 0);
+    WR8(OBJ->invuln_timer[x], 0);
     y = RD8(OBJ->life_timer[x]);
     end.y = y;
     end.y_set = true;
@@ -210,8 +210,8 @@ TriggerEnd StageTriggerObjectB(uint8_t x)
     if (a == 0) {
         return load_trigger(x, FIVE_BITS, false, SECOND_RECORD_RETURN);
     }
-    WR8(OBJ->timer[x], 0);
-    a = RD8(OBJ->next_kind[x]);
+    WR8(OBJ->invuln_timer[x], 0);
+    a = RD8(OBJ->start_arg[x]);
     end.a = a;
     if ((a & 0x80) != 0) {
         /* Untraced: a negative number takes the same exit as a missing hit. */

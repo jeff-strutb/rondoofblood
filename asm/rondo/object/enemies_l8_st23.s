@@ -78,7 +78,7 @@ ThrownPieceThenScatterAndLeave_at3:
     lda #$AC
     jsr VecStartObjectAtPlace
     lda z:zTemp00
-    sta a:OBJ_3040,y
+    sta a:OBJ_START_ARG,y
     inc a
     cmp #$04
     beq JumpByStateTable09EB7D3

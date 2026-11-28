@@ -1,6 +1,6 @@
 ; @routine 0F6B:45D StepListThenStartFivePieces
 ; @run 70:B45D
-; WHAT IT DOES: Runs StepListByNumberTable; when the list ends starts objects of type $A9 in the slots $11 to $15 (each cleared first) at the object's place, numbered 0 to 4 in OBJ_3040, sets frame 2 and OBJ_3510 $C0 and goes to the next state.
+; WHAT IT DOES: Runs StepListByNumberTable; when the list ends starts objects of type $A9 in the slots $11 to $15 (each cleared first) at the object's place, numbered 0 to 4 in OBJ_START_ARG, sets frame 2 and OBJ_3510 $C0 and goes to the next state.
 ; HOW: StepListByNumberTable, a loop of ClearObjectInY and StartObjectAtPlace, a counter in zTemp00.
 ; WAITS: no.
 ; Entry: X object, Y kept unless the step sets it. Exit: as the last instruction that ran.
@@ -14,7 +14,7 @@ StepListThenStartFivePieces_at0:
     lda #$A9
     jsr VecStartObjectAtPlace
     lda z:zTemp00
-    sta a:OBJ_3040,y
+    sta a:OBJ_START_ARG,y
     inc z:zTemp00
     iny
     cpy #$16
@@ -233,7 +233,7 @@ StartPieceABInFreeSlot_at0:
 
 ; @routine 0F6B:72F LoadRecordFrameByKindThenFall
 ; @run 70:B72F
-; WHAT IT DOES: In state 0 loads the record, sets sprite set 4 and takes the frame and OBJ_3510 from tables at $B76C and $B771 by OBJ_3040. Later, while OBJ_3510 counts down, kind 4 sets bit 4 of zField8E and plays sound $FE at zero; at zero it moves in Y and falls.
+; WHAT IT DOES: In state 0 loads the record, sets sprite set 4 and takes the frame and OBJ_3510 from tables at $B76C and $B771 by OBJ_START_ARG. Later, while OBJ_3510 counts down, kind 4 sets bit 4 of zField8E and plays sound $FE at zero; at zero it moves in Y and falls.
 ; HOW: LoadObjectRecord, table reads, a memory decrement, SoundCommand, ApplyVelocityY, ApplyGravity.
 ; WAITS: no.
 ; Entry: X object, Y kept for the sound. Exit: as the last instruction that ran.
@@ -242,8 +242,8 @@ LoadRecordFrameByKindThenFall:
     bne LoadRecordFrameByKindThenFall_at0
     jsr VecLoadObjectRecord
     lda #$04
-    sta a:OBJ_2A10,x
-    ldy a:OBJ_3040,x
+    sta a:OBJ_SPRITE_SET,x
+    ldy a:OBJ_START_ARG,x
     lda a:$B76C,y
     sta a:OBJ_FRAME,x
     lda a:$B771,y
@@ -254,7 +254,7 @@ LoadRecordFrameByKindThenFall_at0:
     beq SoundCommandReturn
     dec a:OBJ_3510,x
     bne LoadRecordFrameByKindThenFall_at1
-    lda a:OBJ_3040,x
+    lda a:OBJ_START_ARG,x
     cmp #$04
     bne LoadRecordFrameByKindThenFall_at1
     smb4 z:zField8E

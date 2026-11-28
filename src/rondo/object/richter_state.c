@@ -882,7 +882,7 @@ PushHit RichterHitWhilePushed(void)
     if (!hit.spike.found)
         return hit;
     wr8(OBJ_HIT_TAKEN, HIT_KIND_SPIKE);
-    wr8(OBJ_32A8, SPIKE_HIT_TIMER);
+    wr8(OBJ_HEALTH, SPIKE_HIT_TIMER);
     wr8(OBJ_STATE, STATE_STAND);
     hit.how = PUSH_HIT_SPIKE;
     return hit;
@@ -1681,7 +1681,7 @@ StateFrame RichterStateFrame(uint8_t x, uint8_t y)
     }
     f.paid = true;
     health = rd8(zPlayerHealth);
-    damage = rd8(OBJ_32A8);
+    damage = rd8(OBJ_HEALTH);
     f.health = sub_bytes(health, damage, true);
     wr8(zPlayerHealth, f.health.value);
     if (!f.health.carry || f.health.value == 0)
@@ -1913,7 +1913,7 @@ static void attack_fall_shim(const AttackStand *st)
  * WHAT IT DOES: The standing state's attacking step: reads the ground, falls if nothing is
  * below; turns with a press while the attack is young; with the whip out and up held early,
  * crouches; otherwise waits for the animation's end, then stands.
- * HOW: OBJ_FLAGS_2F38 counts the attack's progress; object 3 is the whip; PlayerByte3BD5
+ * HOW: OBJ_SCROLL_BAND counts the attack's progress; object 3 is the whip; PlayerByte3BD5
  * set skips to the wait. RichterAnimationWait returns past this routine while it runs.
  * WAITS: no.
  * Entry: nothing. Exit: falling, as $A9DD. Crouched, A 2, N and Z clear, as the animation's
@@ -1938,7 +1938,7 @@ AttackStand RichterStandStep1(void)
     jsr_push(0xA30B);
     st.landing = RichterLandOnFloor();
     jsr_pop();
-    st.progress = rd8(OBJ_FLAGS_2F38);
+    st.progress = rd8(OBJ_SCROLL_BAND);
     if (st.progress < TURN_PROGRESS) {
         jsr_push(0xA314);
         st.turn = RichterTurnOnPress();
@@ -1948,9 +1948,9 @@ AttackStand RichterStandStep1(void)
     if (st.mark == 0) {
         st.whip = rd8((uint16_t)(OBJ_KIND + OBJECT_WHIP));
         if (st.whip == WHIP_OUT) {
-            st.late = rd8(OBJ_FLAGS_2F38);
+            st.late = rd8(OBJ_SCROLL_BAND);
             if (st.late >= CROUCH_PROGRESS) {
-                st.timer = rd8(OBJ_2F90);
+                st.timer = rd8(OBJ_HURT_TIMER);
             } else {
                 jsr_push(0xA32A);
                 st.up = RichterUpHeld();
@@ -2093,7 +2093,7 @@ static void crash_stand_replay_shim(const CrashStand *st)
  * runs reads the ground (in state 0) and falls if nothing is below, jumps on a press, or steps
  * the animation and spawns object $0C in the first free slot from 5. When the timer has run
  * out, stands, or ends the item crash outside state 0.
- * HOW: OBJ_30F0 is the timer. Ending, falling and jumping count PlayerByte3BD6 up. A jump in
+ * HOW: OBJ_LOOP_FLAGS is the timer. Ending, falling and jumping count PlayerByte3BD6 up. A jump in
  * the crash's states goes up the ledge by the first table below state 7, the second from it.
  * WAITS: no.
  * Entry: nothing. Exit: as the transition taken, after what the steps before it left. Spawned,
@@ -2110,7 +2110,7 @@ CrashStand RichterStandStep2(void)
         wr8(OBJ_FACING_LEFT, FACING_LEFT);
     else if (st.facing != FACING_RIGHT && (st.held & PAD_RIGHT))
         wr8(OBJ_FACING_LEFT, FACING_RIGHT);
-    st.timer = rd8(OBJ_30F0);
+    st.timer = rd8(OBJ_LOOP_FLAGS);
     if (st.timer == 0) {
         st.bumped = (uint8_t)(rd8(PlayerByte3BD6) + 1);
         wr8(PlayerByte3BD6, st.bumped);
@@ -2124,7 +2124,7 @@ CrashStand RichterStandStep2(void)
         }
         return st;
     }
-    wr8(OBJ_30F0, (uint8_t)(rd8(OBJ_30F0) - 1));
+    wr8(OBJ_LOOP_FLAGS, (uint8_t)(rd8(OBJ_LOOP_FLAGS) - 1));
     st.state = rd8(OBJ_STATE);
     if (st.state == STATE_STAND) {
         jsr_push(0xA383);
@@ -2873,7 +2873,7 @@ static Alu item_crash(Alu r, uint8_t id)
     r = animation(r, id);
     RichterStopMoving();
     alu_put(&r, OBJ_SUBSTATE, 5);
-    alu_put(&r, OBJ_30F0, 0x60);
+    alu_put(&r, OBJ_LOOP_FLAGS, 0x60);
     return r;
 }
 
@@ -2898,7 +2898,7 @@ LedgeHurt RichterLedgeHurtA(void)
         hurt.animation = RichterSetAnimation(ANIM_LEDGE_CRASH_A);
         RichterStopMoving();
         wr8(OBJ_SUBSTATE, LEDGE_CRASH_STEP);
-        wr8(OBJ_30F0, CRASH_FIVE_TIMER);
+        wr8(OBJ_LOOP_FLAGS, CRASH_FIVE_TIMER);
         return hurt;
     }
     jsr_push(0xA557);
@@ -2938,7 +2938,7 @@ LedgeHurt RichterLedgeHurtB(void)
         RichterStopMoving();
         jsr_pop();
         wr8(OBJ_SUBSTATE, LEDGE_CRASH_STEP);
-        wr8(OBJ_30F0, CRASH_FIVE_TIMER);
+        wr8(OBJ_LOOP_FLAGS, CRASH_FIVE_TIMER);
         return hurt;
     }
     jsr_push(0xA566);
@@ -3347,7 +3347,7 @@ CrashFive RichterItemCrashFive(uint8_t x, uint8_t y)
     crash.sound = SoundCommand(SOUND_HURT, x, crash.animation.y);
     jsr_pop();
     set_state(STATE_STAND, 2);
-    wr8(OBJ_30F0, CRASH_FIVE_TIMER);
+    wr8(OBJ_LOOP_FLAGS, CRASH_FIVE_TIMER);
     return crash;
 }
 
@@ -4071,12 +4071,12 @@ static bool check_item_use(CheckLog *log, uint16_t ret)
     return r.use.how != USE_NO_PRESS;
 }
 
-/* The attack's progress against a mark: LDA OBJ_FLAGS_2F38, CMP. */
+/* The attack's progress against a mark: LDA OBJ_SCROLL_BAND, CMP. */
 static bool check_progress_below(CheckLog *log, uint8_t mark)
 {
     CheckRecord r = { .kind = CHECK_COMPARE };
 
-    r.compare.value = rd8(OBJ_FLAGS_2F38);
+    r.compare.value = rd8(OBJ_SCROLL_BAND);
     r.compare.with = mark;
     log_add(log, r);
     return r.compare.value < mark;
@@ -4330,7 +4330,7 @@ void abi_RichterCrouchAttack(void)
  * WHAT IT DOES: Attacking from the crouch: reads the ground (nothing below goes to $A9DD); turns
  * with a press while the attack is young; with up let go before it is far along, stands; else
  * waits for the animation's end, then is down again, animation $0E, step 0.
- * HOW: OBJ_FLAGS_2F38 against 3 and 6. RichterAnimationWait returns past this routine while it
+ * HOW: OBJ_SCROLL_BAND against 3 and 6. RichterAnimationWait returns past this routine while it
  * runs.
  * WAITS: no.
  * Entry: nothing. Exit: falling, as $A9DD. Stood, as RichterAnimationTick, state 0 and
@@ -4529,7 +4529,7 @@ CrashEnd RichterEndItemCrash(void)
     end.index = (uint8_t)((uint8_t)(end.state - CRASH_FIRST_STATE) >> 1);
     wr8(OBJ_FRAME, rd8((uint16_t)(RichterCrashEndFrames + end.index)));
     wr8(OBJ_FIELDS_2EE0, rd8((uint16_t)(RichterCrashEndAnimations + end.index)));
-    wr8(OBJ_2F90, 0xFF);
+    wr8(OBJ_HURT_TIMER, 0xFF);
     wr8(OBJ_SUBSTATE, 0);
     return end;
 }
@@ -4832,7 +4832,7 @@ void abi_RichterCrashFrame(void)
  * @routine 01BA:62F RichterMoveStopped
  * @run 6D:AE2F
  * WHAT IT DOES: Moves him along X, stops his animation and sets the state's step back to 0.
- * HOW: A added to OBJ_X_LO; OBJ_2F90 $FF; OBJ_SUBSTATE 0.
+ * HOW: A added to OBJ_X_LO; OBJ_HURT_TIMER $FF; OBJ_SUBSTATE 0.
  * WAITS: no.
  * Entry: A the move. Exit: A $FF, X the facing, N and Z from it, C and V from the add. Y kept.
  */
@@ -4841,7 +4841,7 @@ Sum RichterMoveStopped(uint8_t move)
     Sum moved = add_bytes(move, rd8(OBJ_X_LO), false);
 
     wr8(OBJ_X_LO, moved.value);
-    wr8(OBJ_2F90, 0xFF);
+    wr8(OBJ_HURT_TIMER, 0xFF);
     wr8(OBJ_SUBSTATE, 0);
     return moved;
 }

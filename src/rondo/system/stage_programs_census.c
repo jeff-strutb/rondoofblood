@@ -3631,3 +3631,155 @@ void abi_TileRowD0320(void)
 {
     handler_exit_shim(TileRowD0320());
 }
+
+/*
+ * @routine 0270:11F TileStepTwice026F
+ * @run 6B:991F
+ * WHAT IT DOES: As TileStepTwice (0510:0FD), with this program's tables.
+ * HOW: TileStepTwiceAt (terrain.c), the body of 0510:0FD, with the offsets table at $998A.
+ * WAITS: no.
+ * Entry: as TileStepTwice.
+ * Nothing the game does loads this program (codemap.unloaded_programs), so nothing is known to reach it.
+ */
+HandlerExit TileStepTwice026F(void)
+{
+    return TileStepTwiceAt(0x998A);
+}
+
+void abi_TileStepTwice026F(void)
+{
+    handler_exit_shim(TileStepTwice026F());
+}
+
+/*
+ * @routine 0270:128 TileRowOffset026F
+ * @run 6B:9928
+ * WHAT IT DOES: As TileRowOffset (0510:106), with this program's tables.
+ * HOW: TileRowOffsetAt (terrain.c), the body of 0510:106, with the tables at $998A and $9952.
+ * WAITS: no.
+ * Entry: as TileRowOffset.
+ * Nothing the game does loads this program (codemap.unloaded_programs), so nothing is known to reach it.
+ */
+HandlerExit TileRowOffset026F(void)
+{
+    return TileRowOffsetAt(0x998A, 0x9952);
+}
+
+void abi_TileRowOffset026F(void)
+{
+    handler_exit_shim(TileRowOffset026F());
+}
+
+/*
+ * @routine 0270:136 TileStepOffset026F
+ * @run 6B:9936
+ * WHAT IT DOES: As TileStepOffset (0510:114), with this program's tables.
+ * HOW: TileStepOffsetAt (terrain.c), the body of 0510:114, with the offsets table at $998A.
+ * WAITS: no.
+ * Entry: as TileStepOffset.
+ * Nothing the game does loads this program (codemap.unloaded_programs), so nothing is known to reach it.
+ */
+HandlerExit TileStepOffset026F(void)
+{
+    return TileStepOffsetAt(0x998A);
+}
+
+void abi_TileStepOffset026F(void)
+{
+    handler_exit_shim(TileStepOffset026F());
+}
+
+/*
+ * @routine 0270:141 TileRowE026F
+ * @run 6B:9941
+ * WHAT IT DOES: As TileRowE (0510:11F), with this program's tables.
+ * HOW: TileRowAt (terrain.c), the body of 0510:11F, with the table at $9952.
+ * WAITS: no.
+ * Entry: as TileRowE.
+ * Nothing the game does loads this program (codemap.unloaded_programs), so nothing is known to reach it.
+ */
+HandlerExit TileRowE026F(void)
+{
+    return TileRowAt(0x9952);
+}
+
+void abi_TileRowE026F(void)
+{
+    handler_exit_shim(TileRowE026F());
+}
+
+/*
+ * @routine 0320:3A1 TileStepTwice0320
+ * @run 6B:9BA1
+ * WHAT IT DOES: As TileStepTwice (0510:0FD), with this program's tables.
+ * HOW: TileStepTwiceAt (terrain.c), the body of 0510:0FD, with the offsets table at $9C0C.
+ * WAITS: no.
+ * Entry: as TileStepTwice.
+ * Nothing the game does loads this program (codemap.unloaded_programs), so nothing is known to reach it.
+ */
+HandlerExit TileStepTwice0320(void)
+{
+    return TileStepTwiceAt(0x9C0C);
+}
+
+void abi_TileStepTwice0320(void)
+{
+    handler_exit_shim(TileStepTwice0320());
+}
+
+/*
+ * @routine 0320:3AA TileRowOffset0320
+ * @run 6B:9BAA
+ * WHAT IT DOES: As TileRowOffset (0510:106), with this program's tables.
+ * HOW: TileRowOffsetAt (terrain.c), the body of 0510:106, with the tables at $9C0C and $9BD4.
+ * WAITS: no.
+ * Entry: as TileRowOffset.
+ * Nothing the game does loads this program (codemap.unloaded_programs), so nothing is known to reach it.
+ */
+HandlerExit TileRowOffset0320(void)
+{
+    return TileRowOffsetAt(0x9C0C, 0x9BD4);
+}
+
+void abi_TileRowOffset0320(void)
+{
+    handler_exit_shim(TileRowOffset0320());
+}
+
+/*
+ * @routine 0320:3B8 TileStepOffset0320
+ * @run 6B:9BB8
+ * WHAT IT DOES: As TileStepOffset (0510:114), with this program's tables.
+ * HOW: TileStepOffsetAt (terrain.c), the body of 0510:114, with the offsets table at $9C0C.
+ * WAITS: no.
+ * Entry: as TileStepOffset.
+ * Nothing the game does loads this program (codemap.unloaded_programs), so nothing is known to reach it.
+ */
+HandlerExit TileStepOffset0320(void)
+{
+    return TileStepOffsetAt(0x9C0C);
+}
+
+void abi_TileStepOffset0320(void)
+{
+    handler_exit_shim(TileStepOffset0320());
+}
+
+/*
+ * @routine 0320:3C3 TileRowE0320
+ * @run 6B:9BC3
+ * WHAT IT DOES: As TileRowE (0510:11F), with this program's tables.
+ * HOW: TileRowAt (terrain.c), the body of 0510:11F, with the table at $9BD4.
+ * WAITS: no.
+ * Entry: as TileRowE.
+ * Nothing the game does loads this program (codemap.unloaded_programs), so nothing is known to reach it.
+ */
+HandlerExit TileRowE0320(void)
+{
+    return TileRowAt(0x9BD4);
+}
+
+void abi_TileRowE0320(void)
+{
+    handler_exit_shim(TileRowE0320());
+}

@@ -5824,3 +5824,147 @@ TileRowD0320:
     sta z:zTemp02
     lda #$81
     rts
+
+; @routine 0270:11F TileStepTwice026F
+; @run 6B:991F
+; WHAT IT DOES: As TileStepTwice (0510:0FD), with this program's tables.
+; HOW: TileStepTwice's code, entering TileStepOffset026F past its LDY.
+; WAITS: no.
+; Entry: as TileStepTwice.
+; Nothing the game does loads this program (codemap.unloaded_programs), so nothing is known to reach it.
+TileRowOffsets026F = $998A ; this program's offsets by column
+TileRowsE026F = $9952 ; this program's new rows by row and column
+TileStepTwice026F:
+    ldy z:zTemp00
+    lda a:TileRowOffsets026F,y
+    inc a
+    tay
+    bra TileStepOffset026F_at0
+
+; @routine 0270:128 TileRowOffset026F
+; @run 6B:9928
+; WHAT IT DOES: As TileRowOffset (0510:106), with this program's tables.
+; HOW: TileRowOffset's code, entering TileRowE026F at its TAY.
+; WAITS: no.
+; Entry: as TileRowOffset.
+; Nothing the game does loads this program (codemap.unloaded_programs), so nothing is known to reach it.
+TileRowOffset026F:
+    lda z:zTemp02
+    asl a
+    asl a
+    asl a
+    ldy z:zTemp00
+    clc
+    adc a:TileRowOffsets026F,y
+    inc a
+    bra TileRowE026F_at0
+
+; @routine 0270:136 TileStepOffset026F
+; @run 6B:9936
+; WHAT IT DOES: As TileStepOffset (0510:114), with this program's tables.
+; HOW: TileStepOffset's code, storing through TileRowE026F's end.
+; WAITS: no.
+; Entry: as TileStepOffset.
+; Nothing the game does loads this program (codemap.unloaded_programs), so nothing is known to reach it.
+TileStepOffset026F:
+    ldy z:zTemp00
+TileStepOffset026F_at0:
+    lda z:zTemp02
+    clc
+    adc a:TileRowOffsets026F,y
+    inc a
+    bra TileRowE026F_at1
+
+; @routine 0270:141 TileRowE026F
+; @run 6B:9941
+; WHAT IT DOES: As TileRowE (0510:11F), with this program's tables.
+; HOW: TileRowE's code with this program's table.
+; WAITS: no.
+; Entry: as TileRowE.
+; Nothing the game does loads this program (codemap.unloaded_programs), so nothing is known to reach it.
+TileRowE026F:
+    lda z:zTemp02
+    asl a
+    asl a
+    asl a
+    clc
+    adc z:zTemp00
+TileRowE026F_at0:
+    tay
+    lda a:TileRowsE026F,y
+TileRowE026F_at1:
+    sta z:zTemp02
+    lda #$81
+    rts
+
+; @routine 0320:3A1 TileStepTwice0320
+; @run 6B:9BA1
+; WHAT IT DOES: As TileStepTwice (0510:0FD), with this program's tables.
+; HOW: TileStepTwice's code, entering TileStepOffset0320 past its LDY.
+; WAITS: no.
+; Entry: as TileStepTwice.
+; Nothing the game does loads this program (codemap.unloaded_programs), so nothing is known to reach it.
+TileRowOffsets0320 = $9C0C ; this program's offsets by column
+TileRowsE0320 = $9BD4 ; this program's new rows by row and column
+TileStepTwice0320:
+    ldy z:zTemp00
+    lda a:TileRowOffsets0320,y
+    inc a
+    tay
+    bra TileStepOffset0320_at0
+
+; @routine 0320:3AA TileRowOffset0320
+; @run 6B:9BAA
+; WHAT IT DOES: As TileRowOffset (0510:106), with this program's tables.
+; HOW: TileRowOffset's code, entering TileRowE0320 at its TAY.
+; WAITS: no.
+; Entry: as TileRowOffset.
+; Nothing the game does loads this program (codemap.unloaded_programs), so nothing is known to reach it.
+TileRowOffset0320:
+    lda z:zTemp02
+    asl a
+    asl a
+    asl a
+    ldy z:zTemp00
+    clc
+    adc a:TileRowOffsets0320,y
+    inc a
+    bra TileRowE0320_at0
+
+; @routine 0320:3B8 TileStepOffset0320
+; @run 6B:9BB8
+; WHAT IT DOES: As TileStepOffset (0510:114), with this program's tables.
+; HOW: TileStepOffset's code, storing through TileRowE0320's end.
+; WAITS: no.
+; Entry: as TileStepOffset.
+; Nothing the game does loads this program (codemap.unloaded_programs), so nothing is known to reach it.
+TileStepOffset0320:
+    ldy z:zTemp00
+TileStepOffset0320_at0:
+    lda z:zTemp02
+    clc
+    adc a:TileRowOffsets0320,y
+    inc a
+    bra TileRowE0320_at1
+
+; @routine 0320:3C3 TileRowE0320
+; @run 6B:9BC3
+; WHAT IT DOES: As TileRowE (0510:11F), with this program's tables.
+; HOW: TileRowE's code with this program's table.
+; WAITS: no.
+; Entry: as TileRowE.
+; Nothing the game does loads this program (codemap.unloaded_programs), so nothing is known to reach it.
+TileRowE0320:
+    lda z:zTemp02
+    asl a
+    asl a
+    asl a
+    clc
+    adc z:zTemp00
+TileRowE0320_at0:
+    tay
+    lda a:TileRowsE0320,y
+TileRowE0320_at1:
+    sta z:zTemp02
+    lda #$81
+    rts

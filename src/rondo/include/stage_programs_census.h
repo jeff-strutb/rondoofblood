@@ -383,4 +383,28 @@ void abi_TileRowC0320(void);
 HandlerExit TileRowD0320(void);
 void abi_TileRowD0320(void);
 
+HandlerExit TileStepTwice026F(void);
+void abi_TileStepTwice026F(void);
+
+HandlerExit TileRowOffset026F(void);
+void abi_TileRowOffset026F(void);
+
+HandlerExit TileStepOffset026F(void);
+void abi_TileStepOffset026F(void);
+
+HandlerExit TileRowE026F(void);
+void abi_TileRowE026F(void);
+
+HandlerExit TileStepTwice0320(void);
+void abi_TileStepTwice0320(void);
+
+HandlerExit TileRowOffset0320(void);
+void abi_TileRowOffset0320(void);
+
+HandlerExit TileStepOffset0320(void);
+void abi_TileStepOffset0320(void);
+
+HandlerExit TileRowE0320(void);
+void abi_TileRowE0320(void);
+
 #endif

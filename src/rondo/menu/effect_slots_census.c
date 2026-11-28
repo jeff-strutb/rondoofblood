@@ -596,6 +596,52 @@ static Exit run_vce_restore(const EffectLayout *layout, uint8_t slot, uint8_t y)
 }
 
 /*
+ * The overlays that hold the dispatcher's bytes differ in their kind 2 and kind 4 handlers, at $8362 and $84FF, only
+ * in the table of lists each reads. The jump goes where the loaded overlay's handler is, so the body run here takes
+ * the table of the handler loaded there (by its tagged place), and this layout's own where none is named.
+ */
+typedef struct { uint16_t sector, table; } LoadedTable;
+
+static const LoadedTable FADE_TABLES[] = {
+    { 0x0251, 0x89E5 }, { 0x0511, 0x89DB }, { 0x0721, 0x89E7 }, { 0x07D1, 0x89E3 }, { 0x0881, 0x89E9 },
+    { 0x0931, 0x89D7 }, { 0x0B41, 0x8A01 }, { 0x0BF1, 0x89C7 }, { 0x0EB1, 0x89DF }, { 0x10C1, 0x8A25 },
+    { 0x12D1, 0x8A0B }, { 0x1611, 0x89E1 }, { 0x16C1, 0x89F3 }, { 0x1A31, 0x89D9 }, { 0x1B91, 0x89CF },
+    { 0x1CF1, 0x89D1 }, { 0x25F7, 0x9410 }, { 0x2707, 0x9414 }
+};
+static const LoadedTable COLOUR_TABLES[] = {
+    { 0x05C1, 0x89E5 }, { 0x0721, 0x89E7 }, { 0x0881, 0x89E9 }, { 0x0B41, 0x8A01 }, { 0x0EB1, 0x89DF },
+    { 0x10C1, 0x8A25 }, { 0x12D1, 0x8A0B }, { 0x1611, 0x89E1 }, { 0x16C1, 0x89F3 }, { 0x1A31, 0x89D9 },
+    { 0x1B91, 0x89CF }, { 0x1CF1, 0x89D1 }, { 0x25F7, 0x89C3 }
+};
+
+static uint16_t loaded_table(const LoadedTable *tables, unsigned count, uint16_t run, uint16_t own)
+{
+    uint32_t loaded = resident_at(run);
+
+    for (unsigned i = 0; i < count; i++) {
+        if (loaded == DISC(tables[i].sector, run & 0x7FF)) {
+            return tables[i].table;
+        }
+    }
+    return own;
+}
+
+/* The layout the dispatcher's kind 2 or 4 handler runs with: only the versions whose handlers stand at $8362 and
+ * $84FF share their bytes with overlays whose tables differ. */
+static EffectLayout loaded_layout(const EffectLayout *layout)
+{
+    EffectLayout loaded = *layout;
+
+    if (layout->handler[1] == 0x8362) {
+        loaded.fade_table = loaded_table(FADE_TABLES, sizeof FADE_TABLES / sizeof FADE_TABLES[0], 0x8362,
+                                         layout->fade_table);
+        loaded.colour_table = loaded_table(COLOUR_TABLES, sizeof COLOUR_TABLES / sizeof COLOUR_TABLES[0], 0x84FF,
+                                           layout->colour_table);
+    }
+    return loaded;
+}
+
+/*
  * The dispatcher: the type less one, doubled, indexes the word table at $82DB (kind 1 first); the word goes through
  * zTemp00 and zTemp01 and the jump is made through them, with A the word's high byte, Y the index, C bit 7 of the type
  * less one, X the slot. A type past the table's last jumps into whatever the next bytes name.
@@ -627,9 +673,19 @@ static Exit run_effect_dispatch(const EffectLayout *layout, uint8_t type, uint8_
     }
     switch (kind) {
     case 0: exit = run_effect_list(layout, slot); break;
-    case 1: exit = run_effect_fade(layout, slot); break;
+    case 1: {
+        EffectLayout loaded = loaded_layout(layout);
+
+        exit = run_effect_fade(&loaded, slot);
+        break;
+    }
     case 2: exit = run_effect_shade(slot); break;
-    case 3: exit = run_effect_colour(layout, slot); break;
+    case 3: {
+        EffectLayout loaded = loaded_layout(layout);
+
+        exit = run_effect_colour(&loaded, slot);
+        break;
+    }
     case 4: exit = run_effect_flash(layout, slot, index); break;
     case 5: exit = run_vce_save(layout, slot, index); break;
     case 6: exit = run_vce_restore(layout, slot, index); break;

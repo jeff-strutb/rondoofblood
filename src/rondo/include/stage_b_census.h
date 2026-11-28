@@ -279,4 +279,6 @@ void abi_GateOpen152D(void);
 void abi_GateWaitClear152D(void);
 void abi_GateClose152D(void);
 
+TallyWaitEnd TallyWait152DAt(StageRegs r, uint16_t wait);
+
 #endif

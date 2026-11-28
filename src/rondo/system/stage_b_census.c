@@ -5298,13 +5298,21 @@ void abi_StageSubModeTally152D(void)
  */
 TallyWaitEnd TallyWait152D(StageRegs r)
 {
+    return TallyWait152DAt(r, ADDR_OF8(OBJ->work_b[16]));
+}
+
+/* TallyWait152D's body, for the builds of it that count in another byte. */
+TallyWaitEnd TallyWait152DAt(StageRegs r, uint16_t wait)
+{
     TallyWaitEnd end;
     uint8_t byte;
 
-    r = loaded(r, RD8(OBJ->work_b[16]));
+    r = loaded(r, rd8(wait));
     end.dropped = false;
     if (r.a != 0) {
-        r.nz = DEC8(OBJ->work_b[16]);
+        byte = (uint8_t)(rd8(wait) - 1);
+        wr8(wait, byte);
+        r.nz = byte;
         byte = pull8();
         r = loaded(r, byte);
         byte = pull8();

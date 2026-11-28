@@ -372,6 +372,7 @@ static WaitRegs menu_wait_regs(const MenuRegs *r)
 #define SLOT_MARK_BY_NUMBER (SLOT_MARK - 1)
 #define ERASE_TIMER 0x7DFE                           /* frames left before a slot is erased */
 #define SLOT_BYTES 0x30
+#define SCROLL_TARGET 0x7DFB                        /* the scroll high byte a menu page moves to */
 
 /*
  * @routine 00C3:265 FileMenuReadSave
@@ -2049,6 +2050,785 @@ MenuRegs NameEntryEnd(MenuRegs r)
 void abi_NameEntryEnd(void)
 {
     MenuRegs r = NameEntryEnd(menu_regs_cpu());
+
+    menu_regs_shim(&r);
+}
+
+/*
+ * The slot's record pages. A slot's bytes: $01 to $05 flags, $1F to $21 its total score (BCD), $22 and $23 the bits of
+ * the entries cleared.
+ */
+#define RECORD_ENTRIES 14
+#define MARK_TEXTS 0xAA7B                   /* a string pointer for each value of SLOT_MARK */
+#define RECORD_SCORES 0xAD01                /* a two-byte BCD score for each entry, and one more at index 14 */
+#define ENTRY_OFFSETS 0xB90A                /* the flag byte pair of each entry, from the slot's byte $01 */
+#define ENTRY_MASKS 0xB917                  /* its bit there */
+#define CLEARED_MASKS 0xB993                /* the entry's bit in the slot's byte $22 (entries 0 to 7) or $23 */
+#define ENTRY_PLACES 0xBA2F                 /* the VRAM address of each entry's name */
+#define ENTRY_NAMES 0xBA4B                  /* a string pointer for each entry */
+#define UNKNOWN_NAME 0xBA67                 /* the string of an entry not reached */
+
+static void r_arith(MenuRegs *r, ArithExit e)           /* DrawSelectedFileDigit, DrawCursorRowDigit */
+{
+    ra(r, e.a);
+    rnz(r, e.nz);
+    rc(r, e.carry);
+    if (e.overflow_set) {
+        rv(r, e.overflow);
+    }
+}
+
+/* SetCursorValue: A and X 1, Y the table index, C. */
+static void r_cursor(MenuRegs *r, CursorTarget t)
+{
+    ra(r, 1);
+    r->x = 1;
+    r->y = t.index;
+    r->set |= REG_X | REG_Y;
+    rnz(r, 1);
+    rc(r, t.carry);
+}
+
+static void r_select_write(MenuRegs *r)                 /* SelectVramWriteAddress: A 0, flags kept */
+{
+    ra_keep(r, 0);
+}
+
+static void r_select_data(MenuRegs *r)                  /* SelectVramData: A 2, N and Z clear */
+{
+    ra(r, 2);
+}
+
+/* WriteHexByteTiles: A the low digit's tile, N and Z clear, C bit 3 of the byte. */
+static void r_hex(MenuRegs *r, uint8_t byte)
+{
+    ra(r, (uint8_t)((byte & 0x0F) | 0x10));
+    rc(r, (byte & 0x08) != 0);
+}
+
+/*
+ * @routine 00C4:0F1 DrawChosenItemDigit
+ * @run 6B:98F1
+ * WHAT IT DOES: Draws MenuChosenItem as a digit tile at the screen place $01C7.
+ * HOW: Sets the VDC's write address and runs into DrawCursorRowDigit's second ST ($98E7, the high byte $01).
+ * WAITS: no.
+ * Entry: nothing. Exit: as DrawSelectedFileDigit.
+ */
+ArithExit DrawChosenItemDigit(void)
+{
+    ArithExit exit = { 0 };
+    uint8_t value, sum;
+
+    jsr_push(0x98F4);
+    SelectVramWriteAddress();
+    jsr_pop();
+    st1(0xC7);
+    st2(0x01);
+    jsr_push(0x98EC);
+    SelectVramData();
+    jsr_pop();
+    value = rd8(MenuChosenItem);
+    sum = (uint8_t)(value + 0x10);
+    WR8(VDC->data_lo, sum);
+    st2(0x11);
+    exit.a = sum;
+    exit.nz = sum;
+    exit.carry = value >= 0xF0;
+    exit.overflow = ((value ^ sum) & (0x10 ^ sum) & 0x80) != 0;
+    exit.overflow_set = true;
+    return exit;
+}
+
+void abi_DrawChosenItemDigit(void)
+{
+    arith_exit_shim(DrawChosenItemDigit());
+}
+
+/*
+ * @routine 00DE:11D DrawSlotMark
+ * @run 6F:A91D
+ * WHAT IT DOES: Draws the selected slot's SLOT_MARK plus one as a BCD number at $02C4, and the mark's string.
+ * HOW: The mark plus one, adjusted past 9 by subtracting $FA with the carry set; WriteHexByteTiles; the string pointer
+ * from MARK_TEXTS in zTemp00 and zTemp01; DrawGlyphText.
+ * WAITS: no.
+ * Entry: nothing. Exit: as DrawGlyphText leaves them.
+ */
+MenuRegs DrawSlotMark(MenuRegs r)
+{
+    uint8_t slot, mark, number, index;
+
+    jsr_push(0xA920);
+    SelectVramWriteAddress();
+    jsr_pop();
+    r_select_write(&r);
+    st1(0xC4);
+    st2(0x02);
+    jsr_push(0xA927);
+    SelectVramData();
+    jsr_pop();
+    r_select_data(&r);
+    slot = RD8(ZP->save_slot);
+    ry(&r, slot);
+    mark = rd8((uint16_t)(SLOT_MARK + slot));
+    number = (uint8_t)(mark + 1);
+    ra(&r, number);
+    rcmp(&r, number, 0x0A);
+    if (number >= 0x0A) {
+        number = rsub(&r, number, 0xFA);
+    }
+    jsr_push(0xA935);
+    WriteHexByteTiles(number);
+    jsr_pop();
+    r_hex(&r, number);
+    slot = RD8(ZP->save_slot);
+    ry(&r, slot);
+    mark = rd8((uint16_t)(SLOT_MARK + slot));
+    index = (uint8_t)(mark << 1);
+    rc(&r, (mark & 0x80) != 0);
+    rx(&r, index);
+    WR8(ZP->temp00, rd8((uint16_t)(MARK_TEXTS + index)));
+    ra(&r, rd8((uint16_t)(MARK_TEXTS + 1 + index)));
+    WR8(ZP->temp01, r.a);
+    jsr_push(0xA949);
+    rexit(&r, DrawGlyphText());
+    jsr_pop();
+    return r;
+}
+
+void abi_DrawSlotMark(void)
+{
+    MenuRegs r = DrawSlotMark(menu_regs_cpu());
+
+    menu_regs_shim(&r);
+}
+
+/*
+ * @routine 00DE:14A DrawSlotScore
+ * @run 6F:A94A
+ * WHAT IT DOES: Draws the selected slot's total score, six digits, at $01D4.
+ * HOW: Sets the VDC's write address and runs into DrawSlotDetails at $A95C: the score's three bytes, high first,
+ * through WriteHexByteTiles, the last as a tail.
+ * WAITS: no.
+ * Entry: nothing. Exit: A the last digit tile, N and Z clear, C bit 3 of the low score byte, X the slot's offset, Y the
+ * slot.
+ */
+MenuRegs DrawSlotScore(MenuRegs r)
+{
+    uint8_t slot, offset, value;
+
+    jsr_push(0xA94D);
+    SelectVramWriteAddress();
+    jsr_pop();
+    st1(0xD4);
+    st2(0x01);
+    jsr_push(0xA95F);
+    SelectVramData();
+    jsr_pop();
+    r_select_data(&r);
+    slot = RD8(ZP->save_slot);
+    ry(&r, slot);
+    offset = rd8((uint16_t)(SLOT_OFFSETS + slot));
+    rx(&r, offset);
+    value = rd8((uint16_t)(SaveScoreTotal + 2 + offset));
+    jsr_push(0xA969);
+    WriteHexByteTiles(value);
+    jsr_pop();
+    value = rd8((uint16_t)(SaveScoreTotal + 1 + offset));
+    jsr_push(0xA96E);
+    WriteHexByteTiles(value);
+    jsr_pop();
+    value = rd8((uint16_t)(SaveScoreTotal + offset));
+    WriteHexByteTiles(value);
+    r_hex(&r, value);
+    return r;
+}
+
+void abi_DrawSlotScore(void)
+{
+    MenuRegs r = DrawSlotScore(menu_regs_cpu());
+
+    menu_regs_shim(&r);
+}
+
+/*
+ * @routine 00DE:463 SlotScoreReaches
+ * @run 6F:AC63
+ * WHAT IT DOES: Tells whether the selected slot's total score reaches the score of entry Y/2 in RECORD_SCORES.
+ * HOW: PHX, PHY, SXY (X becomes the entry's byte index); the slot's offset; the score's third byte non-zero answers
+ * yes; else the second and first bytes compared with the entry's high and low. PLY and PLX.
+ * WAITS: no.
+ * Entry: Y the entry times two. Exit: C set when reached; A the last byte read; X and Y kept, N and Z from X.
+ */
+MenuRegs SlotScoreReaches(MenuRegs r)
+{
+    uint8_t x = r.x, y = r.y, index, slot, offset, value, limit;
+    bool reached;
+
+    push8(x);
+    push8(y);
+    index = y;
+    slot = RD8(ZP->save_slot);
+    offset = rd8((uint16_t)(SLOT_OFFSETS + slot));
+    value = rd8((uint16_t)(SaveScoreTotal + 2 + offset));
+    reached = value != 0;
+    if (!reached) {
+        value = rd8((uint16_t)(SaveScoreTotal + 1 + offset));
+        limit = rd8((uint16_t)(RECORD_SCORES + 1 + index));
+        if (value == limit) {
+            value = rd8((uint16_t)(SaveScoreTotal + offset));
+            reached = value >= rd8((uint16_t)(RECORD_SCORES + index));
+        } else {
+            reached = value > limit;
+        }
+    }
+    y = pull8();
+    x = pull8();
+    ra(&r, value);
+    r.x = x;
+    r.y = y;
+    r.set |= REG_X | REG_Y;
+    rnz(&r, x);
+    rc(&r, reached);
+    return r;
+}
+
+void abi_SlotScoreReaches(void)
+{
+    MenuRegs r = SlotScoreReaches(menu_regs_cpu());
+
+    menu_regs_shim(&r);
+}
+
+/* Two digit tiles of a byte with palette 6 ($ACEF): the high one, then the low one. */
+static void record_digit(uint8_t value)
+{
+    WR8(VDC->data_lo, (uint8_t)(value | 0x10));
+    st2(0x61);
+}
+
+/*
+ * @routine 00DE:4EF WriteDimHexByte
+ * @run 6F:ACEF
+ * WHAT IT DOES: Writes a byte as two digit tiles with palette 6.
+ * HOW: PHA; the high nibble through the second half by BSR; PLA; the low nibble falls into it.
+ * WAITS: no.
+ * Entry: A the byte, the VDC's write address set. Exit: A the low digit's tile, N and Z clear, C bit 3 of the byte;
+ * X and Y kept.
+ */
+void WriteDimHexByte(uint8_t byte)
+{
+    push8(byte);
+    jsr_push(0xACF6);
+    record_digit((uint8_t)(byte >> 4));
+    jsr_pop();
+    byte = pull8();
+    record_digit((uint8_t)(byte & 0x0F));
+}
+
+void abi_WriteDimHexByte(void)
+{
+    uint8_t byte = cpu.a;
+
+    WriteDimHexByte(byte);
+    cpu.a = (uint8_t)((byte & 0x0F) | 0x10);
+    abi_nz(cpu.a);
+    abi_flag(P_C, (byte & 0x08) != 0);
+}
+
+/* The three bytes of a record line drawn by WriteHexByteTiles ($ACCA): "00" and the entry's score. */
+static MenuRegs record_line_lit(MenuRegs r)
+{
+    uint8_t value, index = r.y;
+
+    ra_keep(&r, 0);
+    jsr_push(0xACCE);
+    WriteHexByteTiles(0);
+    jsr_pop();
+    value = rd8((uint16_t)(RECORD_SCORES + 1 + index));
+    jsr_push(0xACD4);
+    WriteHexByteTiles(value);
+    jsr_pop();
+    value = rd8((uint16_t)(RECORD_SCORES + index));
+    WriteHexByteTiles(value);
+    r_hex(&r, value);
+    return r;
+}
+
+/*
+ * @routine 00DE:48D DrawSlotRecord
+ * @run 6F:AC8D
+ * WHAT IT DOES: Draws the score line at $0556 for the entry the cursor is on: the object's page (OBJ->work_h) plus 7
+ * when its line (OBJ->work_d) is not 0, or 14 for page 7. An entry the slot has cleared (its bit in bytes $22 and
+ * $23) shows "00" and the score at index 14; else the entry's score, bright when the slot's total reaches it and with
+ * palette 6 when it does not.
+ * HOW: The entry number in zTemp (bios_b low); the slot's cleared bit tested with CLEARED_MASKS; PHX, PLX around it;
+ * SlotScoreReaches; WriteHexByteTiles or WriteDimHexByte.
+ * WAITS: no.
+ * Entry: X the cursor object. Exit: A the last digit tile, N and Z clear, C bit 3 of the last byte, X kept, Y the
+ * entry's byte index, V from the page add when it was made.
+ */
+MenuRegs DrawSlotRecord(MenuRegs r)
+{
+    uint8_t object = r.x, entry, line, slot, offset, bits, index;
+
+    jsr_push(0xAC90);
+    SelectVramWriteAddress();
+    jsr_pop();
+    st1(0x56);
+    st2(0x05);
+    jsr_push(0xAC97);
+    SelectVramData();
+    jsr_pop();
+    r_select_data(&r);
+    entry = RD8(OBJ->work_h[object]);
+    ra(&r, entry);
+    rcmp(&r, entry, 0x07);
+    if (entry == 0x07) {
+        entry = 0x0E;
+        ra(&r, entry);
+    } else {
+        line = RD8(OBJ->work_d[object]);
+        ry(&r, line);
+        if (line != 0) {
+            rc(&r, false);
+            entry = radd(&r, entry, 0x07);
+        }
+    }
+    WR8(ZP->bios_b.lo, entry);
+    push8(object);
+    rx(&r, entry);
+    slot = RD8(ZP->save_slot);
+    ry(&r, slot);
+    offset = rd8((uint16_t)(SLOT_OFFSETS + slot));
+    ry(&r, offset);
+    rcmp(&r, entry, 0x08);
+    if (entry >= 0x08) {
+        offset++;
+        ry(&r, offset);
+    }
+    bits = (uint8_t)(rd8((uint16_t)(SaveBuffer + 0x22 + offset)) & rd8((uint16_t)(CLEARED_MASKS + entry)));
+    ra(&r, bits);
+    if (bits != 0) {
+        rx(&r, pull8());
+        ry(&r, 0x1C);
+        return record_line_lit(r);
+    }
+    rx(&r, pull8());
+    index = RD8(ZP->bios_b.lo);
+    rc(&r, (index & 0x80) != 0);
+    index = (uint8_t)(index << 1);
+    ra(&r, index);
+    ry(&r, index);
+    jsr_push(0xACC8);
+    r = SlotScoreReaches(r);
+    jsr_pop();
+    if (r.c) {
+        return record_line_lit(r);
+    }
+    ra_keep(&r, 0);
+    jsr_push(0xACE3);
+    WriteDimHexByte(0);
+    jsr_pop();
+    bits = rd8((uint16_t)(RECORD_SCORES + 1 + index));
+    jsr_push(0xACE9);
+    WriteDimHexByte(bits);
+    jsr_pop();
+    bits = rd8((uint16_t)(RECORD_SCORES + index));
+    WriteDimHexByte(bits);
+    r_hex(&r, bits);
+    return r;
+}
+
+void abi_DrawSlotRecord(void)
+{
+    MenuRegs r = DrawSlotRecord(menu_regs_cpu());
+
+    menu_regs_shim(&r);
+}
+
+/*
+ * @routine 00E0:0EB SlotEntryTest
+ * @run 6F:B8EB
+ * WHAT IT DOES: Tells whether the selected slot has reached entry X of the record list: entry 13 is bit 0 of the
+ * slot's first byte; the others are a bit of a pair of its flag bytes.
+ * HOW: The slot's offset; ENTRY_OFFSETS added, the byte at $01 ORed with the one at $06, ANDed with ENTRY_MASKS.
+ * WAITS: no.
+ * Entry: X the entry. Exit: A the bit or 0, N and Z from it; Y the offset used; X kept; C from the compare with 13, or
+ * C and V from the offset's add.
+ */
+MenuRegs SlotEntryTest(MenuRegs r)
+{
+    uint8_t entry = r.x, slot, offset, value;
+
+    slot = RD8(ZP->save_slot);
+    ry(&r, slot);
+    offset = rd8((uint16_t)(SLOT_OFFSETS + slot));
+    ra(&r, offset);
+    rcmp(&r, entry, 0x0D);
+    if (entry == 0x0D) {
+        ry(&r, offset);
+        value = (uint8_t)(rd8((uint16_t)(SaveBuffer + offset)) & 0x01);
+        ra(&r, value);
+        return r;
+    }
+    rc(&r, false);
+    offset = radd(&r, offset, rd8((uint16_t)(ENTRY_OFFSETS + entry)));
+    ry(&r, offset);
+    value = rd8((uint16_t)(SaveBuffer + 1 + offset));
+    value = (uint8_t)(value | rd8((uint16_t)(SaveBuffer + 6 + offset)));
+    value = (uint8_t)(value & rd8((uint16_t)(ENTRY_MASKS + entry)));
+    ra(&r, value);
+    return r;
+}
+
+void abi_SlotEntryTest(void)
+{
+    MenuRegs r = SlotEntryTest(menu_regs_cpu());
+
+    menu_regs_shim(&r);
+}
+
+/* The end DrawEntryName and DrawUnknownName share ($BA20): twelve tiles from the string at zTemp00, each with X as its
+ * high byte. */
+static MenuRegs draw_entry_tiles(MenuRegs r)
+{
+    uint8_t y, tile = 0;
+
+    for (y = 0; y != 0x0C; y++) {
+        tile = RD8_PTR_Y(ZP->temp00, y);
+        WR8(VDC->data_lo, tile);
+        WR8(VDC->data_hi, r.x);
+    }
+    ra(&r, tile);
+    r.y = y;
+    r.set |= REG_Y;
+    rcmp(&r, y, 0x0C);
+    return r;
+}
+
+/* The VDC's write address for entry index in ENTRY_PLACES; Y the index. */
+static MenuRegs select_entry_place(MenuRegs r, uint8_t index, uint16_t ret_select, uint16_t ret_data)
+{
+    ry(&r, index);
+    jsr_push(ret_select);
+    SelectVramWriteAddress();
+    jsr_pop();
+    WR8(VDC->data_lo, rd8((uint16_t)(ENTRY_PLACES + index)));
+    ra(&r, rd8((uint16_t)(ENTRY_PLACES + 1 + index)));
+    WR8(VDC->data_hi, r.a);
+    jsr_push(ret_data);
+    SelectVramData();
+    jsr_pop();
+    r_select_data(&r);
+    return r;
+}
+
+/*
+ * @routine 00E0:1E2 DrawUnknownName
+ * @run 6F:B9E2
+ * WHAT IT DOES: Draws the string for an entry not reached at entry A's place.
+ * HOW: The place from ENTRY_PLACES, the string pointer from UNKNOWN_NAME, then the twelve tiles at $BA20.
+ * WAITS: no.
+ * Entry: A the entry, X the tiles' high byte. Exit: A the last tile, Y $0C, Z and C set, N clear; X kept.
+ */
+MenuRegs DrawUnknownName(MenuRegs r)
+{
+    uint8_t entry = r.a;
+
+    rc(&r, (entry & 0x80) != 0);
+    r = select_entry_place(r, (uint8_t)(entry << 1), 0xB9E7, 0xB9F6);
+    WR8(ZP->temp00, rd8(UNKNOWN_NAME));
+    ra(&r, rd8(UNKNOWN_NAME + 1));
+    WR8(ZP->temp01, r.a);
+    return draw_entry_tiles(r);
+}
+
+void abi_DrawUnknownName(void)
+{
+    MenuRegs r = DrawUnknownName(menu_regs_cpu());
+
+    menu_regs_shim(&r);
+}
+
+/*
+ * @routine 00E0:202 DrawEntryName
+ * @run 6F:BA02
+ * WHAT IT DOES: Draws entry A's name at its place.
+ * HOW: As DrawUnknownName, the string pointer from ENTRY_NAMES by the entry.
+ * WAITS: no.
+ * Entry, exit: as DrawUnknownName.
+ */
+MenuRegs DrawEntryName(MenuRegs r)
+{
+    uint8_t entry = r.a, index;
+
+    rc(&r, (entry & 0x80) != 0);
+    index = (uint8_t)(entry << 1);
+    r = select_entry_place(r, index, 0xBA07, 0xBA16);
+    WR8(ZP->temp00, rd8((uint16_t)(ENTRY_NAMES + index)));
+    ra(&r, rd8((uint16_t)(ENTRY_NAMES + 1 + index)));
+    WR8(ZP->temp01, r.a);
+    return draw_entry_tiles(r);
+}
+
+void abi_DrawEntryName(void)
+{
+    MenuRegs r = DrawEntryName(menu_regs_cpu());
+
+    menu_regs_shim(&r);
+}
+
+/*
+ * @routine 00E0:1A1 DrawRecordList
+ * @run 6F:B9A1
+ * WHAT IT DOES: Draws the selected slot's list of 14 entries and the score line: an entry not reached shows the unknown
+ * string (attribute $41), entry 0 its name with attribute $11, a reached entry its name with $51 when the slot's
+ * cleared bit for it is set and $41 when not. Then the score line (DrawSlotRecord) with the X the last entry left.
+ * HOW: The entry counted in the card's zero page word A (bios_a low); SlotEntryTest; CLEARED_MASKS against bytes $22
+ * and $23; DrawUnknownName or DrawEntryName; a tail jump to DrawSlotRecord.
+ * WAITS: no.
+ * Entry: nothing. Exit: as DrawSlotRecord, X the attribute of entry 13.
+ */
+MenuRegs DrawRecordList(MenuRegs r)
+{
+    uint8_t entry, slot, offset, bits;
+
+    WR8(ZP->bios_a.lo, 0);
+    do {
+        entry = RD8(ZP->bios_a.lo);
+        rx(&r, entry);
+        jsr_push(0xB9A8);
+        r = SlotEntryTest(r);
+        jsr_pop();
+        if (r.nz == 0) {
+            rx(&r, 0x41);
+            entry = RD8(ZP->bios_a.lo);
+            ra(&r, entry);
+            jsr_push(0xB9D1);
+            r = DrawUnknownName(r);
+            jsr_pop();
+        } else {
+            entry = RD8(ZP->bios_a.lo);
+            ra(&r, entry);
+            if (entry == 0) {
+                rx(&r, 0x11);
+            } else {
+                slot = RD8(ZP->save_slot);
+                ry(&r, slot);
+                offset = rd8((uint16_t)(SLOT_OFFSETS + slot));
+                ry(&r, offset);
+                rcmp(&r, r.x, 0x08);
+                if (r.x >= 0x08) {
+                    offset++;
+                    ry(&r, offset);
+                }
+                bits = (uint8_t)(rd8((uint16_t)(SaveBuffer + 0x22 + offset)) & rd8((uint16_t)(CLEARED_MASKS + r.x)));
+                ra(&r, bits);
+                rx(&r, bits != 0 ? 0x51 : 0x41);
+                entry = RD8(ZP->bios_a.lo);
+                ra(&r, entry);
+            }
+            jsr_push(0xB9D7);
+            r = DrawEntryName(r);
+            jsr_pop();
+        }
+        rnz(&r, INC8(ZP->bios_a.lo));
+        entry = RD8(ZP->bios_a.lo);
+        ra(&r, entry);
+        rcmp(&r, entry, RECORD_ENTRIES);
+    } while (entry != RECORD_ENTRIES);
+    return DrawSlotRecord(r);
+}
+
+void abi_DrawRecordList(void)
+{
+    MenuRegs r = DrawRecordList(menu_regs_cpu());
+
+    menu_regs_shim(&r);
+}
+
+/*
+ * @routine 00C4:065 FileMenuListStart
+ * @run 6B:9865
+ * WHAT IT DOES: Page 9, step 0: starts the list for the chosen item (list $11 for items 4 and up, else $1A plus the
+ * page's first mark flag), keeps the scroll's high byte plus one in SCROLL_TARGET, puts the cursor on item 0 and goes
+ * on a step.
+ * HOW: StartListChannel0Kind2; SCROLL x_hi plus one; SetCursorValue; JitterCursorObjects; MenuStepAdvance.
+ * WAITS: no.
+ * Entry: from MenuStepDispatch. Exit: as MenuStepAdvance.
+ */
+MenuRegs FileMenuListStart(MenuRegs r)
+{
+    uint8_t chosen, list, scroll;
+
+    chosen = rd8(MenuChosenItem);
+    ra(&r, chosen);
+    rcmp(&r, chosen, 0x04);
+    if (chosen < 0x04) {
+        rc(&r, false);
+        list = radd(&r, 0x1A, rd8(SLOT_MARK - 1));
+    } else {
+        list = 0x11;
+        ra(&r, list);
+    }
+    jsr_push(0x9879);
+    (void)StartListChannel0Kind2(list);
+    jsr_pop();
+    ra(&r, 2);
+    rx(&r, 0);
+    rnz(&r, 2);
+    scroll = (uint8_t)(RD8(SCROLL->x_hi[0]) + 1);
+    ra(&r, scroll);
+    wr8(SCROLL_TARGET, scroll);
+    ra_keep(&r, 0);
+    jsr_push(0x9884);
+    r_cursor(&r, SetCursorValue(0));
+    jsr_pop();
+    jsr_push(0x9887);
+    r_glide(&r, JitterCursorObjects(), 1);
+    jsr_pop();
+    ra(&r, MenuStepAdvance());
+    return r;
+}
+
+void abi_FileMenuListStart(void)
+{
+    MenuRegs r = FileMenuListStart(menu_regs_cpu());
+
+    menu_regs_shim(&r);
+}
+
+/*
+ * @routine 00C4:08A FileMenuListDraw
+ * @run 6B:988A
+ * WHAT IT DOES: Page 9, step 1: draws what the chosen item shows: items 4 and up the selected slot's number (object
+ * list 4); else the slot's mark (list 6), or, with the first mark flag set, the item number, the slot's name, its
+ * score and its record list (list 7). Then the scroll's step is cleared and the step goes on.
+ * HOW: DrawSelectedFileDigit, DrawSlotMark, or DrawChosenItemDigit, DrawSlotName at the slot plus 12, DrawSlotScore,
+ * the cursor object's line and page zeroed and DrawRecordList; PlaceObjectList; two stores to the scroll step;
+ * JitterCursorObjects; MenuStepAdvance.
+ * WAITS: no.
+ * Entry: from MenuStepDispatch. Exit: as MenuStepAdvance.
+ */
+MenuRegs FileMenuListDraw(MenuRegs r)
+{
+    uint8_t value, row, list;
+
+    value = rd8(MenuChosenItem);
+    ra(&r, value);
+    rcmp(&r, value, 0x04);
+    if (value >= 0x04) {
+        jsr_push(0x9894);
+        r_arith(&r, DrawSelectedFileDigit());
+        jsr_pop();
+        list = 4;
+    } else {
+        value = rd8(SLOT_MARK - 1);
+        ra(&r, value);
+        if (value == 0) {
+            jsr_push(0x98A0);
+            r = DrawSlotMark(r);
+            jsr_pop();
+            list = 6;
+        } else {
+            jsr_push(0x98A7);
+            r_arith(&r, DrawChosenItemDigit());
+            jsr_pop();
+            value = RD8(ZP->save_slot);
+            ra(&r, value);
+            rc(&r, false);
+            row = radd(&r, value, 0x0C);
+            jsr_push(0x98AF);
+            rexit(&r, DrawSlotName(row, r.x));
+            jsr_pop();
+            jsr_push(0x98B2);
+            r = DrawSlotScore(r);
+            jsr_pop();
+            WR8(OBJ->work_d[0], 0);
+            WR8(OBJ->work_h[0], 0);
+            jsr_push(0x98BB);
+            r = DrawRecordList(r);
+            jsr_pop();
+            list = 7;
+        }
+    }
+    ra(&r, list);
+    jsr_push(0x98C0);
+    rexit(&r, PlaceObjectList(list));
+    jsr_pop();
+    WR8(SCROLLE->step_x_lo[0], 0);
+    WR8(SCROLLE->step_x_hi[0], 0);
+    jsr_push(0x98C9);
+    r_glide(&r, JitterCursorObjects(), 1);
+    jsr_pop();
+    ra(&r, MenuStepAdvance());
+    return r;
+}
+
+void abi_FileMenuListDraw(void)
+{
+    MenuRegs r = FileMenuListDraw(menu_regs_cpu());
+
+    menu_regs_shim(&r);
+}
+
+/*
+ * @routine 00C4:0F8 FileMenuListLeave
+ * @run 6B:98F8
+ * WHAT IT DOES: Page 9, step 3: where the chosen item leads: items 4 and up to page $0B (cursor on item $18, objects 0
+ * and 1 given attribute $88); else page $0E (cursor on item $1C, $7DDA cleared) or, with the first mark flag set, page
+ * $0F (cursor on item $1D).
+ * HOW: JitterCursorObjects, SetCursorValue, the stores, SetMenuPage.
+ * WAITS: no.
+ * Entry: from MenuStepDispatch. Exit: A 0, N and Z from the page, X 1, Y and C as SetCursorValue leaves them.
+ */
+MenuRegs FileMenuListLeave(MenuRegs r)
+{
+    uint8_t value, page;
+
+    jsr_push(0x98FB);
+    r_glide(&r, JitterCursorObjects(), 1);
+    jsr_pop();
+    value = rd8(MenuChosenItem);
+    ra(&r, value);
+    rcmp(&r, value, 0x04);
+    if (value >= 0x04) {
+        ra(&r, 0x18);
+        jsr_push(0x9907);
+        r_cursor(&r, SetCursorValue(0x18));
+        jsr_pop();
+        ra(&r, 0x88);
+        WR8(OBJ->sprite_attr[0], 0x88);
+        WR8(OBJ->sprite_attr[1], 0x88);
+        page = 0x0B;
+    } else {
+        value = rd8(SLOT_MARK - 1);
+        ra(&r, value);
+        if (value == 0) {
+            ra(&r, 0x1C);
+            jsr_push(0x991E);
+            r_cursor(&r, SetCursorValue(0x1C));
+            jsr_pop();
+            wr8(0x7DDA, 0);
+            page = 0x0E;
+        } else {
+            ra(&r, 0x1D);
+            jsr_push(0x992B);
+            r_cursor(&r, SetCursorValue(0x1D));
+            jsr_pop();
+            page = 0x0F;
+        }
+    }
+    ra(&r, page);
+    SetMenuPage(page);
+    ra(&r, 0);
+    rnz(&r, page);
+    return r;
+}
+
+void abi_FileMenuListLeave(void)
+{
+    MenuRegs r = FileMenuListLeave(menu_regs_cpu());
 
     menu_regs_shim(&r);
 }

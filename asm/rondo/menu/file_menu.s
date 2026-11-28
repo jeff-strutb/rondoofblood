@@ -20,6 +20,14 @@ PortraitLists = $BC90 ; the character picture's animation lists by its start arg
 PortraitFlashLists = $BC98 ; object $34's lists by the picture's character
 NameCheat = $97EF ; the name that opens everything on a new slot
 DefaultNames = $980D ; the three slots' default names, 8 bytes each
+MarkTexts = $AA7B ; a string pointer for each value of a slot's mark
+RecordScores = $AD01 ; a two-byte BCD score for each record entry, and one more
+EntryOffsets = $B90A ; each record entry's flag byte pair
+EntryMasks = $B917 ; each record entry's bit
+ClearedMasks = $B993 ; each record entry's cleared bit
+EntryPlaces = $BA2F ; the VRAM address of each entry's name
+EntryNames = $BA4B ; a string pointer for each entry's name
+UnknownName = $BA67 ; the string of an entry not reached
 FileMenuReadSave:
     jsr VecResetGameState
     jsr VecBackupRead
@@ -137,7 +145,6 @@ MenuPickSlot_at0:
 FileMenuPickEmpty:
     jsr MenuPickSlot
     bne MenuBackOnButtonII
-FileMenuPickEmpty_at0:
     lda a:OBJ_WORK_D
     sec
     sbc #$08
@@ -154,7 +161,7 @@ FileMenuPickEmpty_at0:
 FileMenuPickUsed:
     jsr MenuPickSlot
     beq MenuBackOnButtonII
-    bra FileMenuPickEmpty_at0
+    bra FileMenuPickEmpty+5
 
 ; @routine 00C3:34A FileMenuEraseStart
 ; @run 6B:934A
@@ -219,11 +226,12 @@ FileMenuEraseWait:
     sta a:MenuSlotCharacter-1,y
     ldx a:SlotOffsets-1,y
     cly
+FileMenuEraseWait_t93A0:
     stz a:SaveBuffer,x
     inx
     iny
     cpy #$30
-    bne TallyDigitCell152D
+    bne FileMenuEraseWait_t93A0
     lda a:OBJ_WORK_D
     sec
     sbc #$08
@@ -261,7 +269,6 @@ FileMenuEraseWait_at0:
 FileMenuCopyPickFrom:
     ldy #$02
     jsr CursorMoveByPad
-FileMenuCopyPickFrom_at3:
     lda a:BiosJoyTrigger
     and #$01
     bne FileMenuCopyPickFrom_at0
@@ -314,7 +321,6 @@ FileMenuCopyPickTo:
     lda a:BiosJoyTrigger
     and #$01
     beq FileMenuCopyCancel
-FileMenuCopyPickTo_at2:
     lda a:OBJ_WORK_D
     cmp #$11
     bne FileMenuCopyPickTo_at0
@@ -368,7 +374,7 @@ FileMenuCopyCancel_at0:
 ; Entry: from MenuStepDispatch. Exit, waiting: N and Z from the count; A, X, Y and C kept. Copied: as FileMenuCopyCancel.
 FileMenuCopyMake:
     dec a:OBJ_WORK_D+$26
-    bne FileMenuCopyCancel_at0
+    bne FileMenuCopyCancel+20
     ldy a:MenuCopyFrom
     ldx a:SlotOffsets-1,y
     ldy a:MenuCopyTo
@@ -583,7 +589,7 @@ NameEntryType_at4:
     pla
 NameEntryType_at3:
     asl a
-    bcc StageSpawnFrameB
+    bcc NameEntryType_t96EA
     pha
     lda a:OBJ_WORK_H,x
     cmp #$04
@@ -594,6 +600,7 @@ NameEntryType_at3:
     sta a:OBJ_WORK_D,x
 NameEntryType_at5:
     pla
+NameEntryType_t96EA:
     asl a
     bcc NameEntryType_at6
     lda a:OBJ_WORK_H,x
@@ -739,14 +746,128 @@ NameUseDefault:
     asl a
     tay
     clx
-NameUseDefault_at0:
+NameUseDefault_t9800:
     lda a:DefaultNames,y
     sta a:MenuName,x
     iny
     inx
     cpx #$08
-    bne NameUseDefault_at0
+    bne NameUseDefault_t9800
     rts
+
+; @routine 00C4:065 FileMenuListStart
+; @run 6B:9865
+; WHAT IT DOES: Page 9, step 0: starts the list for the chosen item (list $11 for items 4 and up, else $1A plus the
+; page's first mark flag), keeps the scroll's high byte plus one in SCROLL_TARGET, puts the cursor on item 0 and goes
+; on a step.
+; HOW: StartListChannel0Kind2; SCROLL x_hi plus one; SetCursorValue; JitterCursorObjects; MenuStepAdvance.
+; WAITS: no.
+; Entry: from MenuStepDispatch. Exit: as MenuStepAdvance.
+FileMenuListStart:
+    lda a:MenuChosenItem
+    cmp #$04
+    bcc FileMenuListStart_at0
+    lda #$11
+    bra FileMenuListStart_t9876
+FileMenuListStart_at0:
+    lda #$1A
+    clc
+    adc a:$7DDC
+FileMenuListStart_t9876:
+    jsr VecStartListChannel0Kind2
+    lda a:ScrollXHi
+    inc a
+    sta a:MenuPadRepeatBits+1
+    cla
+    jsr SetCursorValue
+    jsr JitterCursorObjects
+    jmp MenuStepAdvance
+
+; @routine 00C4:08A FileMenuListDraw
+; @run 6B:988A
+; WHAT IT DOES: Page 9, step 1: draws what the chosen item shows: items 4 and up the selected slot's number (object
+; list 4); else the slot's mark (list 6), or, with the first mark flag set, the item number, the slot's name, its
+; score and its record list (list 7). Then the scroll's step is cleared and the step goes on.
+; HOW: DrawSelectedFileDigit, DrawSlotMark, or DrawChosenItemDigit, DrawSlotName at the slot plus 12, DrawSlotScore,
+; the cursor object's line and page zeroed and DrawRecordList; PlaceObjectList; two stores to the scroll step;
+; JitterCursorObjects; MenuStepAdvance.
+; WAITS: no.
+; Entry: from MenuStepDispatch. Exit: as MenuStepAdvance.
+FileMenuListDraw:
+    lda a:MenuChosenItem
+    cmp #$04
+    bcc FileMenuListDraw_at0
+    jsr DrawSelectedFileDigit
+    lda #$04
+    bra FileMenuListDraw_t98BD
+FileMenuListDraw_at0:
+    lda a:$7DDC
+    bne FileMenuListDraw_at1
+    jsr DrawSlotMark
+    lda #$06
+    bra FileMenuListDraw_t98BD
+FileMenuListDraw_at1:
+    jsr DrawChosenItemDigit
+    lda z:zSaveSlot
+    clc
+    adc #$0C
+    jsr DrawSlotName
+    jsr DrawSlotScore
+    stz a:OBJ_WORK_D
+    stz a:OBJ_WORK_H
+    jsr DrawRecordList
+    lda #$07
+FileMenuListDraw_t98BD:
+    jsr PlaceObjectList
+    stz a:ScrollStepXLo
+    stz a:ScrollStepXHi
+    jsr JitterCursorObjects
+    jmp MenuStepAdvance
+
+; @routine 00C4:0F1 DrawChosenItemDigit
+; @run 6B:98F1
+; WHAT IT DOES: Draws MenuChosenItem as a digit tile at the screen place $01C7.
+; HOW: Sets the VDC's write address and runs into DrawCursorRowDigit's second ST ($98E7, the high byte $01).
+; WAITS: no.
+; Entry: nothing. Exit: as DrawSelectedFileDigit.
+DrawChosenItemDigit:
+    jsr VecSelectVramWriteAddress
+    st1 #$C7
+    bra DrawCursorRowDigit+5
+
+; @routine 00C4:0F8 FileMenuListLeave
+; @run 6B:98F8
+; WHAT IT DOES: Page 9, step 3: where the chosen item leads: items 4 and up to page $0B (cursor on item $18, objects 0
+; and 1 given attribute $88); else page $0E (cursor on item $1C, $7DDA cleared) or, with the first mark flag set, page
+; $0F (cursor on item $1D).
+; HOW: JitterCursorObjects, SetCursorValue, the stores, SetMenuPage.
+; WAITS: no.
+; Entry: from MenuStepDispatch. Exit: A 0, N and Z from the page, X 1, Y and C as SetCursorValue leaves them.
+FileMenuListLeave:
+    jsr JitterCursorObjects
+    lda a:MenuChosenItem
+    cmp #$04
+    bcc FileMenuListLeave_t9914
+    lda #$18
+    jsr SetCursorValue
+    lda #$88
+    sta a:OBJ_SPRITE_ATTR
+    sta a:OBJ_SPRITE_ATTR+1
+    lda #$0B
+    jmp SetMenuPage
+FileMenuListLeave_t9914:
+    lda a:$7DDC
+    bne FileMenuListLeave_at0
+    lda #$1C
+    jsr SetCursorValue
+    stz a:$7DDA
+    lda #$0E
+    jmp SetMenuPage
+FileMenuListLeave_at0:
+    lda #$1D
+    jsr SetCursorValue
+    lda #$0F
+    jmp SetMenuPage
 
 ; @routine 00DD:76D DrawUsedSlotRows
 ; @run 6F:A76D
@@ -827,6 +948,300 @@ DrawSlotRows_at1:
     bne DrawSlotRows_at2
     rts
 
+; @routine 00DE:11D DrawSlotMark
+; @run 6F:A91D
+; WHAT IT DOES: Draws the selected slot's SLOT_MARK plus one as a BCD number at $02C4, and the mark's string.
+; HOW: The mark plus one, adjusted past 9 by subtracting $FA with the carry set; WriteHexByteTiles; the string pointer
+; from MARK_TEXTS in zTemp00 and zTemp01; DrawGlyphText.
+; WAITS: no.
+; Entry: nothing. Exit: as DrawGlyphText leaves them.
+DrawSlotMark:
+    jsr VecSelectVramWriteAddress
+    st1 #$C4
+    st2 #$02
+    jsr VecSelectVramData
+    ldy z:zSaveSlot
+    lda a:$7DDD,y
+    inc a
+    cmp #$0A
+    bcc DrawSlotMark_at0
+    sbc #$FA
+DrawSlotMark_at0:
+    bsr WriteHexByteTiles
+    ldy z:zSaveSlot
+    lda a:$7DDD,y
+    asl a
+    tax
+    lda a:MarkTexts,x
+    sta z:zTemp00
+    lda a:MarkTexts+1,x
+    sta z:zTemp01
+    jsr DrawGlyphText
+    rts
+
+; @routine 00DE:14A DrawSlotScore
+; @run 6F:A94A
+; WHAT IT DOES: Draws the selected slot's total score, six digits, at $01D4.
+; HOW: Sets the VDC's write address and runs into DrawSlotDetails at $A95C: the score's three bytes, high first,
+; through WriteHexByteTiles, the last as a tail.
+; WAITS: no.
+; Entry: nothing. Exit: A the last digit tile, N and Z clear, C bit 3 of the low score byte, X the slot's offset, Y the
+; slot.
+DrawSlotScore:
+    jsr VecSelectVramWriteAddress
+    st1 #$D4
+    st2 #$01
+    bra DrawSlotDetails+9
+
+; @routine 00DE:463 SlotScoreReaches
+; @run 6F:AC63
+; WHAT IT DOES: Tells whether the selected slot's total score reaches the score of entry Y/2 in RECORD_SCORES.
+; HOW: PHX, PHY, SXY (X becomes the entry's byte index); the slot's offset; the score's third byte non-zero answers
+; yes; else the second and first bytes compared with the entry's high and low. PLY and PLX.
+; WAITS: no.
+; Entry: Y the entry times two. Exit: C set when reached; A the last byte read; X and Y kept, N and Z from X.
+SlotScoreReaches:
+    phx
+    phy
+    sxy
+    ldy z:zSaveSlot
+    lda a:SlotOffsets,y
+    tay
+    lda a:SaveScoreTotal+2,y
+    bne SlotScoreReaches_at0
+    lda a:SaveScoreTotal+1,y
+    cmp a:RecordScores+1,x
+    beq SlotScoreReaches_at1
+    bcs SlotScoreReaches_at0
+    bra SlotScoreReaches_at2
+SlotScoreReaches_at1:
+    lda a:SaveScoreTotal,y
+    cmp a:RecordScores,x
+    bcs SlotScoreReaches_at0
+SlotScoreReaches_at2:
+    ply
+    plx
+    clc
+    rts
+SlotScoreReaches_at0:
+    ply
+    plx
+    sec
+    rts
+
+; @routine 00DE:48D DrawSlotRecord
+; @run 6F:AC8D
+; WHAT IT DOES: Draws the score line at $0556 for the entry the cursor is on: the object's page (OBJ->work_h) plus 7
+; when its line (OBJ->work_d) is not 0, or 14 for page 7. An entry the slot has cleared (its bit in bytes $22 and
+; $23) shows "00" and the score at index 14; else the entry's score, bright when the slot's total reaches it and with
+; palette 6 when it does not.
+; HOW: The entry number in zTemp (bios_b low); the slot's cleared bit tested with CLEARED_MASKS; PHX, PLX around it;
+; SlotScoreReaches; WriteHexByteTiles or WriteDimHexByte.
+; WAITS: no.
+; Entry: X the cursor object. Exit: A the last digit tile, N and Z clear, C bit 3 of the last byte, X kept, Y the
+; entry's byte index, V from the page add when it was made.
+DrawSlotRecord:
+    jsr VecSelectVramWriteAddress
+    st1 #$56
+    st2 #$05
+    jsr VecSelectVramData
+    lda a:OBJ_WORK_H,x
+    cmp #$07
+    bne DrawSlotRecord_at0
+    lda #$0E
+    bra DrawSlotRecord_at1
+DrawSlotRecord_at0:
+    ldy a:OBJ_WORK_D,x
+    beq DrawSlotRecord_at1
+    clc
+    adc #$07
+DrawSlotRecord_at1:
+    sta z:zBiosBl
+    phx
+    tax
+    ldy z:zSaveSlot
+    lda a:SlotOffsets,y
+    tay
+    cpx #$08
+    bcc DrawSlotRecord_tACB9
+    iny
+DrawSlotRecord_tACB9:
+    lda a:SaveScoreTotal+3,y
+    and a:ClearedMasks,x
+    bne DrawSlotRecord_at2
+    plx
+    lda z:zBiosBl
+    asl a
+    tay
+    bsr SlotScoreReaches
+    bcc DrawSlotRecord_at3
+DrawSlotRecord_at4:
+    cla
+    jsr WriteHexByteTiles
+    lda a:RecordScores+1,y
+    jsr WriteHexByteTiles
+    lda a:RecordScores,y
+    jmp WriteHexByteTiles
+DrawSlotRecord_at2:
+    plx
+    ldy #$1C
+    bra DrawSlotRecord_at4
+DrawSlotRecord_at3:
+    cla
+    jsr WriteDimHexByte
+    lda a:RecordScores+1,y
+    jsr WriteDimHexByte
+    lda a:RecordScores,y
+    jmp WriteDimHexByte
+
+; @routine 00DE:4EF WriteDimHexByte
+; @run 6F:ACEF
+; WHAT IT DOES: Writes a byte as two digit tiles with palette 6.
+; HOW: PHA; the high nibble through the second half by BSR; PLA; the low nibble falls into it.
+; WAITS: no.
+; Entry: A the byte, the VDC's write address set. Exit: A the low digit's tile, N and Z clear, C bit 3 of the byte;
+; X and Y kept.
+WriteDimHexByte:
+    pha
+    lsr a
+    lsr a
+    lsr a
+    lsr a
+    bsr WriteDimHexByte_at0
+    pla
+    and #$0F
+WriteDimHexByte_at0:
+    ora #$10
+    sta a:VDC_DATA_LO
+    st2 #$61
+    rts
+
+; @routine 00E0:0EB SlotEntryTest
+; @run 6F:B8EB
+; WHAT IT DOES: Tells whether the selected slot has reached entry X of the record list: entry 13 is bit 0 of the
+; slot's first byte; the others are a bit of a pair of its flag bytes.
+; HOW: The slot's offset; ENTRY_OFFSETS added, the byte at $01 ORed with the one at $06, ANDed with ENTRY_MASKS.
+; WAITS: no.
+; Entry: X the entry. Exit: A the bit or 0, N and Z from it; Y the offset used; X kept; C from the compare with 13, or
+; C and V from the offset's add.
+SlotEntryTest:
+    ldy z:zSaveSlot
+    lda a:SlotOffsets,y
+    cpx #$0D
+    beq SlotEntryTest_tB903
+    clc
+    adc a:EntryOffsets,x
+    tay
+    lda a:SaveBuffer+1,y
+    ora a:SaveBuffer+6,y
+    and a:SoundVoicesFirst+3,x
+    rts
+SlotEntryTest_tB903:
+    tay
+    lda a:SaveBuffer,y
+    and #$01
+    rts
+
+; @routine 00E0:1A1 DrawRecordList
+; @run 6F:B9A1
+; WHAT IT DOES: Draws the selected slot's list of 14 entries and the score line: an entry not reached shows the unknown
+; string (attribute $41), entry 0 its name with attribute $11, a reached entry its name with $51 when the slot's
+; cleared bit for it is set and $41 when not. Then the score line (DrawSlotRecord) with the X the last entry left.
+; HOW: The entry counted in the card's zero page word A (bios_a low); SlotEntryTest; CLEARED_MASKS against bytes $22
+; and $23; DrawUnknownName or DrawEntryName; a tail jump to DrawSlotRecord.
+; WAITS: no.
+; Entry: nothing. Exit: as DrawSlotRecord, X the attribute of entry 13.
+DrawRecordList:
+    stz z:zBiosAl
+DrawRecordList_at5:
+    ldx z:zBiosAl
+    jsr SlotEntryTest
+    beq DrawRecordList_at0
+    lda z:zBiosAl
+    beq DrawRecordList_at1
+    ldy z:zSaveSlot
+    lda a:SlotOffsets,y
+    tay
+    cpx #$08
+    bcc DrawRecordList_tB9B9
+    iny
+DrawRecordList_tB9B9:
+    lda a:SaveScoreTotal+3,y
+    and a:ClearedMasks,x
+    beq DrawRecordList_at2
+    ldx #$51
+    bra DrawRecordList_tB9C7
+DrawRecordList_at2:
+    ldx #$41
+DrawRecordList_tB9C7:
+    lda z:zBiosAl
+    bra DrawRecordList_at3
+DrawRecordList_at0:
+    ldx #$41
+    lda z:zBiosAl
+    bsr DrawUnknownName
+    bra DrawRecordList_at4
+DrawRecordList_at1:
+    ldx #$11
+DrawRecordList_at3:
+    bsr DrawEntryName
+DrawRecordList_at4:
+    inc z:zBiosAl
+    lda z:zBiosAl
+    cmp #$0E
+    bne DrawRecordList_at5
+    jmp DrawSlotRecord
+
+; @routine 00E0:1E2 DrawUnknownName
+; @run 6F:B9E2
+; WHAT IT DOES: Draws the string for an entry not reached at entry A's place.
+; HOW: The place from ENTRY_PLACES, the string pointer from UNKNOWN_NAME, then the twelve tiles at $BA20.
+; WAITS: no.
+; Entry: A the entry, X the tiles' high byte. Exit: A the last tile, Y $0C, Z and C set, N clear; X kept.
+DrawUnknownName:
+    asl a
+    tay
+    jsr VecSelectVramWriteAddress
+    lda a:RichterItemUseScripts,y
+    sta a:VDC_DATA_LO
+    lda a:RichterItemUseScripts+1,y
+    sta a:VDC_DATA_HI
+    jsr VecSelectVramData
+    lda a:UnknownName
+    sta z:zTemp00
+    lda a:UnknownName+1
+    sta z:zTemp01
+    bra DrawEntryName+30
+
+; @routine 00E0:202 DrawEntryName
+; @run 6F:BA02
+; WHAT IT DOES: Draws entry A's name at its place.
+; HOW: As DrawUnknownName, the string pointer from ENTRY_NAMES by the entry.
+; WAITS: no.
+; Entry, exit: as DrawUnknownName.
+DrawEntryName:
+    asl a
+    tay
+    jsr VecSelectVramWriteAddress
+    lda a:RichterItemUseScripts,y
+    sta a:VDC_DATA_LO
+    lda a:RichterItemUseScripts+1,y
+    sta a:VDC_DATA_HI
+    jsr VecSelectVramData
+    lda a:EntryNames,y
+    sta z:zTemp00
+    lda a:EntryNames+1,y
+    sta z:zTemp01
+    cly
+DrawEntryName_at0:
+    lda (zTemp00),y
+    sta a:VDC_DATA_LO
+    stx a:VDC_DATA_HI
+    iny
+    cpy #$0C
+    bne DrawEntryName_at0
+    rts
+
 ; @routine 00E0:40A AnimateCharacterChoice
 ; @run 6F:BC0A
 ; WHAT IT DOES: The character page's two objects for a frame: object $33 (the character picture) is animated while it
@@ -882,13 +1297,14 @@ AnimateCharacterChoice_at0:
 AnimateCharacterPortrait:
     lda a:OBJ_START_ARG,x
     cmp a:OBJ_WORK_D,x
-    beq StartTimerWhenSlot10Ready
+    beq AnimateCharacterPortrait_tBC59
     stz a:OBJ_ANIM_TIMER,x
     stz a:OBJ_ANIM_STEP,x
     inc a
     inc a
     sta a:OBJ_WORK_D,x
     sta a:OBJ_START_ARG,x
+AnimateCharacterPortrait_tBC59:
     asl a
     tay
     lda a:PortraitLists,y

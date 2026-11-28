@@ -372,6 +372,7 @@ static WaitRegs menu_wait_regs(const MenuRegs *r)
 #define SLOT_MARK_BY_NUMBER (SLOT_MARK - 1)
 #define ERASE_TIMER 0x7DFE                           /* frames left before a slot is erased */
 #define SLOT_BYTES 0x30
+#define MENU_DISPATCH_OPERAND 0x9E00                /* the operand of MenuStepDispatch's JMP, rewritten each call */
 #define SCROLL_TARGET 0x7DFB                        /* the scroll high byte a menu page moves to */
 
 /*
@@ -3797,6 +3798,333 @@ MenuRegs FileMenuSlidePrepare(MenuRegs r)
 void abi_FileMenuSlidePrepare(void)
 {
     MenuRegs r = FileMenuSlidePrepare(menu_regs_cpu());
+
+    menu_regs_shim(&r);
+}
+
+/*
+ * @routine 00C4:5F4 MenuStepDispatch
+ * @run 6B:9DF4
+ * WHAT IT DOES: Goes to the handler the table after the caller's JSR names for step A: the file menu's pages and their steps.
+ * HOW: A doubled plus one in X; the return address pulled into the operand of its own JMP, which then reads the word at that address plus X.
+ * WAITS: no.
+ * Entry: A the step, the table's address less one on the stack. Exit: the target; A the operand's high byte, N and Z from it, X twice the step plus one, C bit 7 of the step.
+ */
+uint16_t MenuStepDispatch(uint8_t step, uint8_t *operand_high)
+{
+    uint8_t index, low, high;
+    uint16_t at;
+
+    index = (uint8_t)((uint8_t)(step << 1) + 1);
+    low = pull8();
+    wr8(MENU_DISPATCH_OPERAND, low);
+    high = pull8();
+    wr8(MENU_DISPATCH_OPERAND + 1, high);
+    *operand_high = high;
+    at = (uint16_t)((low | (high << 8)) + index);
+    low = rd8(at);
+    high = rd8((uint16_t)(at + 1));
+    return (uint16_t)(low | (high << 8));
+}
+
+void abi_MenuStepDispatch(void)
+{
+    uint8_t step = cpu.a, high;
+    uint16_t target = MenuStepDispatch(step, &high);
+
+    cpu.a = high;
+    cpu.x = (uint8_t)((uint8_t)(step << 1) + 1);
+    abi_nz(cpu.a);
+    abi_flag(P_C, (step & 0x80) != 0);
+    run_routine(target);
+}
+
+/* A page's own jump to MenuStepDispatch: the step in A, the registers its handler is entered with. */
+static uint16_t menu_page(MenuRegs *r, uint16_t table)
+{
+    uint8_t step, high;
+    uint16_t target;
+
+    step = RD8(ZP->field80);
+    ra(r, step);
+    jsr_push(table);
+    target = MenuStepDispatch(step, &high);
+    ra(r, high);
+    r->x = (uint8_t)((uint8_t)(step << 1) + 1);
+    r->set |= REG_X;
+    rc(r, (step & 0x80) != 0);
+    return target;
+}
+
+/* A word the page's table does not hold in C: to the C of whatever is at that address. */
+static MenuRegs menu_elsewhere(MenuRegs r, uint16_t target)
+{
+    menu_regs_shim(&r);
+    run_routine(target);
+    return menu_regs_cpu();
+}
+
+/*
+ * @routine 00C3:255 FileMenuReadSavePage
+ * @run 6B:9255
+ * @stop 925A
+ * WHAT IT DOES: Page 0: the save read, then the start screen.
+ * HOW: zField80 in A and a JSR to MenuStepDispatch, the table after it.
+ * WAITS: yes, in the steps that wait (the page of the save read).
+ * Entry: from the menu's page table. Exit: as the step leaves them.
+ */
+MenuRegs FileMenuReadSavePage(MenuRegs r)
+{
+    uint16_t target;
+
+    target = menu_page(&r, 0x925A);
+    switch (target) {
+    case 0x9265: return FileMenuReadSave(r);
+    case 0x92CF: return FileMenuStartScreen(r);
+    default: return menu_elsewhere(r, target);
+    }
+}
+
+void abi_FileMenuReadSavePage(void)
+{
+    MenuRegs r = FileMenuReadSavePage(menu_regs_cpu());
+
+    menu_regs_shim(&r);
+}
+
+/*
+ * @routine 00C3:341 FileMenuErasePage
+ * @run 6B:9341
+ * @stop 9346
+ * WHAT IT DOES: Page 5: erasing a slot.
+ * HOW: zField80 in A and a JSR to MenuStepDispatch, the table after it.
+ * WAITS: no.
+ * Entry: from the menu's page table. Exit: as the step leaves them.
+ */
+MenuRegs FileMenuErasePage(MenuRegs r)
+{
+    uint16_t target;
+
+    target = menu_page(&r, 0x9346);
+    switch (target) {
+    case 0x934A: return FileMenuEraseStart(r);
+    case 0x937F: return FileMenuEraseWait(r);
+    default: return menu_elsewhere(r, target);
+    }
+}
+
+void abi_FileMenuErasePage(void)
+{
+    MenuRegs r = FileMenuErasePage(menu_regs_cpu());
+
+    menu_regs_shim(&r);
+}
+
+/*
+ * @routine 00C3:58E FileMenuNamePage
+ * @run 6B:958E
+ * @stop 9593
+ * WHAT IT DOES: Page 11: the name entry.
+ * HOW: zField80 in A and a JSR to MenuStepDispatch, the table after it.
+ * WAITS: no.
+ * Entry: from the menu's page table. Exit: as the step leaves them.
+ */
+MenuRegs FileMenuNamePage(MenuRegs r)
+{
+    uint16_t target;
+
+    target = menu_page(&r, 0x9593);
+    switch (target) {
+    case 0x9599: return NameEntryStart(r);
+    case 0x96A3: return NameEntryType(r);
+    case 0x974E: return NameEntryEnd(r);
+    default: return menu_elsewhere(r, target);
+    }
+}
+
+void abi_FileMenuNamePage(void)
+{
+    MenuRegs r = FileMenuNamePage(menu_regs_cpu());
+
+    menu_regs_shim(&r);
+}
+
+/*
+ * @routine 00C4:058 FileMenuListPage
+ * @run 6B:9858
+ * @stop 985D
+ * WHAT IT DOES: Page 9: a slot's list.
+ * HOW: zField80 in A and a JSR to MenuStepDispatch, the table after it.
+ * WAITS: no.
+ * Entry: from the menu's page table. Exit: as the step leaves them.
+ */
+MenuRegs FileMenuListPage(MenuRegs r)
+{
+    uint16_t target;
+
+    target = menu_page(&r, 0x985D);
+    switch (target) {
+    case 0x9865: return FileMenuListStart(r);
+    case 0x988A: return FileMenuListDraw(r);
+    case 0x9A3A: return FileMenuSlideLeft(r);
+    case 0x98F8: return FileMenuListLeave(r);
+    default: return menu_elsewhere(r, target);
+    }
+}
+
+void abi_FileMenuListPage(void)
+{
+    MenuRegs r = FileMenuListPage(menu_regs_cpu());
+
+    menu_regs_shim(&r);
+}
+
+/*
+ * @routine 00C4:130 FileMenuSlidePage
+ * @run 6B:9930
+ * @stop 9935
+ * WHAT IT DOES: Page 2: sliding to the item chosen.
+ * HOW: zField80 in A and a JSR to MenuStepDispatch, the table after it.
+ * WAITS: no.
+ * Entry: from the menu's page table. Exit: as the step leaves them.
+ */
+MenuRegs FileMenuSlidePage(MenuRegs r)
+{
+    uint16_t target;
+
+    target = menu_page(&r, 0x9935);
+    switch (target) {
+    case 0x993D: return FileMenuSlideStart(r);
+    case 0x996C: return FileMenuSlideDraw(r);
+    case 0x9A3A: return FileMenuSlideLeft(r);
+    case 0x9A9E: return FileMenuSlideEnd(r);
+    default: return menu_elsewhere(r, target);
+    }
+}
+
+void abi_FileMenuSlidePage(void)
+{
+    MenuRegs r = FileMenuSlidePage(menu_regs_cpu());
+
+    menu_regs_shim(&r);
+}
+
+/*
+ * @routine 00C4:307 FileMenuBackPage
+ * @run 6B:9B07
+ * @stop 9B0C
+ * WHAT IT DOES: Page 10: sliding back.
+ * HOW: zField80 in A and a JSR to MenuStepDispatch, the table after it.
+ * WAITS: no.
+ * Entry: from the menu's page table. Exit: as the step leaves them.
+ */
+MenuRegs FileMenuBackPage(MenuRegs r)
+{
+    uint16_t target;
+
+    target = menu_page(&r, 0x9B0C);
+    switch (target) {
+    case 0x9B48: return FileMenuSlideBackStart(r);
+    case 0x9B67: return FileMenuSlideBack(r);
+    case 0x9B12: return FileMenuBackStart(r);
+    default: return menu_elsewhere(r, target);
+    }
+}
+
+void abi_FileMenuBackPage(void)
+{
+    MenuRegs r = FileMenuBackPage(menu_regs_cpu());
+
+    menu_regs_shim(&r);
+}
+
+/*
+ * @routine 00C4:337 FileMenuBackToStartPage
+ * @run 6B:9B37
+ * @stop 9B3C
+ * WHAT IT DOES: Page 8: sliding back to the opening page.
+ * HOW: zField80 in A and a JSR to MenuStepDispatch, the table after it.
+ * WAITS: no.
+ * Entry: from the menu's page table. Exit: as the step leaves them.
+ */
+MenuRegs FileMenuBackToStartPage(MenuRegs r)
+{
+    uint16_t target;
+
+    target = menu_page(&r, 0x9B3C);
+    switch (target) {
+    case 0x9B42: return FileMenuSlidePrepare(r);
+    case 0x9B67: return FileMenuSlideBack(r);
+    case 0x9BE3: return FileMenuBackToStart(r);
+    default: return menu_elsewhere(r, target);
+    }
+}
+
+void abi_FileMenuBackToStartPage(void)
+{
+    MenuRegs r = FileMenuBackToStartPage(menu_regs_cpu());
+
+    menu_regs_shim(&r);
+}
+
+/*
+ * @routine 00C4:424 FileMenuOpenPage
+ * @run 6B:9C24
+ * @stop 9C29
+ * WHAT IT DOES: Page 1: the opening page.
+ * HOW: zField80 in A and a JSR to MenuStepDispatch, the table after it.
+ * WAITS: no.
+ * Entry: from the menu's page table. Exit: as the step leaves them.
+ */
+MenuRegs FileMenuOpenPage(MenuRegs r)
+{
+    uint16_t target;
+
+    target = menu_page(&r, 0x9C29);
+    switch (target) {
+    case 0x9C2F: return FileMenuOpenStart(r);
+    case 0x9C40: return FileMenuOpenSlots(r);
+    case 0x9C4B: return FileMenuOpenPick(r);
+    default: return menu_elsewhere(r, target);
+    }
+}
+
+void abi_FileMenuOpenPage(void)
+{
+    MenuRegs r = FileMenuOpenPage(menu_regs_cpu());
+
+    menu_regs_shim(&r);
+}
+
+/*
+ * @routine 00C3:3D2 FileMenuCopyPage
+ * @run 6B:93D2
+ * @stop 93DA
+ * WHAT IT DOES: Page 6: copying a slot; the cursor shakes each frame.
+ * HOW: JitterCursorObjects, then zField80 in A and a JSR to MenuStepDispatch, the table after it.
+ * WAITS: no.
+ * Entry: from the menu's page table. Exit: as the step leaves them.
+ */
+MenuRegs FileMenuCopyPage(MenuRegs r)
+{
+    uint16_t target;
+
+    jsr_push(0x93D5);
+    r_glide(&r, JitterCursorObjects(), 1);
+    jsr_pop();
+    target = menu_page(&r, 0x93DA);
+    switch (target) {
+    case 0x93E2: return FileMenuCopyPickFrom(r);
+    case 0x9416: return FileMenuCopyDrawRows(r);
+    case 0x941E: return FileMenuCopyPickTo(r);
+    case 0x9469: return FileMenuCopyMake(r);
+    default: return menu_elsewhere(r, target);
+    }
+}
+
+void abi_FileMenuCopyPage(void)
+{
+    MenuRegs r = FileMenuCopyPage(menu_regs_cpu());
 
     menu_regs_shim(&r);
 }

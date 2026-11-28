@@ -1899,3 +1899,121 @@ AnimateCharacterPortrait_at1:
 AnimateCharacterPortrait_at2:
     lda #$79
     jmp VecSoundCommand
+
+; @routine 00C3:255 FileMenuReadSavePage
+; @run 6B:9255
+; @stop 925A
+; WHAT IT DOES: Page 0: the save read, then the start screen.
+; HOW: zField80 in A and a JSR to MenuStepDispatch, the table after it.
+; WAITS: yes, in the steps that wait (the page of the save read).
+; Entry: from the menu's page table. Exit: as the step leaves them.
+FileMenuReadSavePage:
+    lda z:zField80
+    jsr MenuStepDispatch
+
+; @routine 00C3:341 FileMenuErasePage
+; @run 6B:9341
+; @stop 9346
+; WHAT IT DOES: Page 5: erasing a slot.
+; HOW: zField80 in A and a JSR to MenuStepDispatch, the table after it.
+; WAITS: no.
+; Entry: from the menu's page table. Exit: as the step leaves them.
+FileMenuErasePage:
+    lda z:zField80
+    jsr MenuStepDispatch
+
+; @routine 00C3:3D2 FileMenuCopyPage
+; @run 6B:93D2
+; @stop 93DA
+; WHAT IT DOES: Page 6: copying a slot; the cursor shakes each frame.
+; HOW: JitterCursorObjects, then zField80 in A and a JSR to MenuStepDispatch, the table after it.
+; WAITS: no.
+; Entry: from the menu's page table. Exit: as the step leaves them.
+FileMenuCopyPage:
+    jsr JitterCursorObjects
+    lda z:zField80
+    jsr MenuStepDispatch
+
+; @routine 00C3:58E FileMenuNamePage
+; @run 6B:958E
+; @stop 9593
+; WHAT IT DOES: Page 11: the name entry.
+; HOW: zField80 in A and a JSR to MenuStepDispatch, the table after it.
+; WAITS: no.
+; Entry: from the menu's page table. Exit: as the step leaves them.
+FileMenuNamePage:
+    lda z:zField80
+    jsr MenuStepDispatch
+
+; @routine 00C4:058 FileMenuListPage
+; @run 6B:9858
+; @stop 985D
+; WHAT IT DOES: Page 9: a slot's list.
+; HOW: zField80 in A and a JSR to MenuStepDispatch, the table after it.
+; WAITS: no.
+; Entry: from the menu's page table. Exit: as the step leaves them.
+FileMenuListPage:
+    lda z:zField80
+    jsr MenuStepDispatch
+
+; @routine 00C4:130 FileMenuSlidePage
+; @run 6B:9930
+; @stop 9935
+; WHAT IT DOES: Page 2: sliding to the item chosen.
+; HOW: zField80 in A and a JSR to MenuStepDispatch, the table after it.
+; WAITS: no.
+; Entry: from the menu's page table. Exit: as the step leaves them.
+FileMenuSlidePage:
+    lda z:zField80
+    jsr MenuStepDispatch
+
+; @routine 00C4:307 FileMenuBackPage
+; @run 6B:9B07
+; @stop 9B0C
+; WHAT IT DOES: Page 10: sliding back.
+; HOW: zField80 in A and a JSR to MenuStepDispatch, the table after it.
+; WAITS: no.
+; Entry: from the menu's page table. Exit: as the step leaves them.
+FileMenuBackPage:
+    lda z:zField80
+    jsr MenuStepDispatch
+
+; @routine 00C4:337 FileMenuBackToStartPage
+; @run 6B:9B37
+; @stop 9B3C
+; WHAT IT DOES: Page 8: sliding back to the opening page.
+; HOW: zField80 in A and a JSR to MenuStepDispatch, the table after it.
+; WAITS: no.
+; Entry: from the menu's page table. Exit: as the step leaves them.
+FileMenuBackToStartPage:
+    lda z:zField80
+    jsr MenuStepDispatch
+
+; @routine 00C4:424 FileMenuOpenPage
+; @run 6B:9C24
+; @stop 9C29
+; WHAT IT DOES: Page 1: the opening page.
+; HOW: zField80 in A and a JSR to MenuStepDispatch, the table after it.
+; WAITS: no.
+; Entry: from the menu's page table. Exit: as the step leaves them.
+FileMenuOpenPage:
+    lda z:zField80
+    jsr MenuStepDispatch
+
+; @routine 00C4:5F4 MenuStepDispatch
+; @run 6B:9DF4
+; WHAT IT DOES: Goes to the handler the table after the caller's JSR names for step A: the file menu's pages and their steps.
+; HOW: A doubled plus one in X; the return address pulled into the operand of its own JMP, which then reads the word at that address plus X.
+; WAITS: no.
+; Entry: A the step, the table's address less one on the stack. Exit: the target; A the operand's high byte, N and Z from it, X twice the step plus one, C bit 7 of the step.
+MenuDispatchOperand = $9E00 ; the operand of the JMP below
+MenuStepDispatch:
+    asl a
+    inc a
+    tax
+    pla
+    sta a:MenuDispatchOperand
+    pla
+    sta a:MenuDispatchOperand+1
+    jmp (MenuDispatchOperand,x)
+

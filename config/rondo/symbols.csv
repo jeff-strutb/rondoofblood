@@ -1128,3 +1128,9 @@ BABB,abs,MariaInvincibleScripts,the flashing script started at each of the invin
 BAC1,abs,MariaInvincibleMarks,the invincibility timer's values that start a flashing script (MariaInvincibleTick)
 C8A2,abs,MariaObjectAccelSteps,the X speed step words her objects add by facing: $FFD0, $0030 (MariaObjectAccelerate)
 DDDD,abs,MariaObjectAnimations,the animation lists of her objects, a word each by OBJ_WORK_A (MariaObjectAnimationList)
+# Maria's objects, kinds 11, 18 and 19 (maria_objects_kind19.c).
+DA83,abs,MariaKind19States,six words by OBJ_STATE: kind 19's states (MariaKind19)
+DBB5,abs,MariaKind19TargetsX,the X low byte each kind 19 object aims at, by slot less 5 (MariaObjectAimAtPlace)
+DBBF,abs,MariaKind19TargetsY,the Y low byte each kind 19 object aims at and stops past, by slot less 5 (MariaObjectAimAtPlace, MariaKind19Aim)
+DBC9,abs,MariaKind19Animations,each kind 19 object's animation at its start, by slot less 5 (MariaKind19Start)
+DBD3,abs,MariaKind19Waits,each kind 19 object's wait once it has arrived, by slot less 5 (MariaKind19Aim)

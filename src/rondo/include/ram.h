@@ -1111,5 +1111,10 @@
 #define MariaInvincibleMarks 0xBAC1 /* the invincibility timer's values that start a flashing script (MariaInvincibleTick) */
 #define MariaObjectAccelSteps 0xC8A2 /* the X speed step words her objects add by facing: $FFD0, $0030 (MariaObjectAccelerate) */
 #define MariaObjectAnimations 0xDDDD /* the animation lists of her objects, a word each by OBJ_WORK_A (MariaObjectAnimationList) */
+#define MariaKind19States 0xDA83 /* six words by OBJ_STATE: kind 19's states (MariaKind19) */
+#define MariaKind19TargetsX 0xDBB5 /* the X low byte each kind 19 object aims at, by slot less 5 (MariaObjectAimAtPlace) */
+#define MariaKind19TargetsY 0xDBBF /* the Y low byte each kind 19 object aims at and stops past, by slot less 5 (MariaObjectAimAtPlace, MariaKind19Aim) */
+#define MariaKind19Animations 0xDBC9 /* each kind 19 object's animation at its start, by slot less 5 (MariaKind19Start) */
+#define MariaKind19Waits 0xDBD3 /* each kind 19 object's wait once it has arrived, by slot less 5 (MariaKind19Aim) */
 
 #endif

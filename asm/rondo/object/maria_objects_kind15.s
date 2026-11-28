@@ -27,7 +27,7 @@ MariaKind16Clear:
 ; Entry: zRichterObject the slot. Exit: waiting, A her frame, N, Z and C from comparing it with $51; else as the
 ; routine jumped to.
 MariaKind16Start:
-    ldx z:zClimbStepBefore
+    ldx z:zRichterObject
     lda a:OBJ_STATE
     cmp #$09
     beq MariaKind16Clear
@@ -72,7 +72,7 @@ MariaKind16Start_at0:
 ; WAITS: no.
 ; Entry: zRichterObject the slot. Exit: N and Z from the timer, or as MariaObjectNextState.
 MariaKind16Fly:
-    ldx z:zClimbStepBefore
+    ldx z:zRichterObject
     jsr MariaObjectFlyAlong
     dec a:OBJ_FLY_ANGLE,x
     dec a:OBJ_FLY_ANGLE,x
@@ -95,7 +95,7 @@ MariaKind16Fly_done:
 ; WAITS: no.
 ; Entry: zRichterObject the slot. Exit: N and Z from the timer, or as MariaObjectNextState.
 MariaKind16Wait:
-    ldx z:zClimbStepBefore
+    ldx z:zRichterObject
     dec a:OBJ_HURT_TIMER,x
     bne MariaKind16Fly_done
     lda #$0D
@@ -115,7 +115,7 @@ MariaKind16Wait:
 ; WAITS: no.
 ; Entry: zRichterObject the slot. Exit: N and Z from the timer, or as MariaObjectFlyReset.
 MariaKind16Drift:
-    ldx z:zClimbStepBefore
+    ldx z:zRichterObject
     jsr MariaObjectApplyVelocity
     dec a:OBJ_HURT_TIMER,x
     beq MariaKind16Drift_at0
@@ -168,7 +168,7 @@ MariaObjectFlyAlong:
 ; WAITS: no.
 ; Entry: zRichterObject the slot. Exit: as the last step made.
 MariaKind16Circle:
-    ldx z:zClimbStepBefore
+    ldx z:zRichterObject
     jsr MariaObjectFlyAlong
     lda a:OBJ_HURT_TIMER,x
     cmp #$30
@@ -210,10 +210,10 @@ MariaKind16Circle_at2:
 ; WAITS: no.
 ; Entry: zRichterObject the slot. Exit: as the last step made.
 MariaKind22:
-    ldx z:zClimbStepBefore
+    ldx z:zRichterObject
     lda a:OBJ_STATE,x
     bne MariaKind22_at0
-    ldx z:zClimbStepBefore
+    ldx z:zRichterObject
     lda #$60
     sta a:OBJ_HITBOX_HALF_H,x
     sta a:OBJ_HITBOX_HALF_W,x
@@ -284,7 +284,7 @@ MariaKind15Clear:
 ; Entry: zRichterObject the slot. Exit: waiting, A her frame, N, Z and C from comparing it with $51; else as the
 ; routine jumped to.
 MariaKind15Start:
-    ldx z:zClimbStepBefore
+    ldx z:zRichterObject
     lda a:OBJ_STATE
     cmp #$09
     beq MariaKind15Clear
@@ -351,7 +351,7 @@ MariaKind15Start_at2:
 ; WAITS: no.
 ; Entry: zRichterObject the slot. Exit: A $18, N and Z from it; the rest as the last call left it.
 MariaKind15Fly:
-    ldx z:zClimbStepBefore
+    ldx z:zRichterObject
     jsr MariaObjectApplyVelocity
     jsr MariaObjectMarkOn
     lda a:OBJ_HURT_TIMER,x
@@ -391,7 +391,7 @@ MariaKind15Fly_at1:
 ; WAITS: no.
 ; Entry: zRichterObject the slot. Exit: N and Z from the animation timer, or as MariaObjectNextState.
 MariaKind15Swoop:
-    ldx z:zClimbStepBefore
+    ldx z:zRichterObject
     cpx #$05
     bne MariaKind15Swoop_at0
     jsr MariaObjectMarkOff
@@ -432,7 +432,7 @@ MariaKind15Swoop_at1:
 ; WAITS: no.
 ; Entry: zRichterObject the slot. Exit: as the last step made.
 MariaKind15Ride:
-    ldx z:zClimbStepBefore
+    ldx z:zRichterObject
     cpx #$05
     bne MariaKind15Ride_at0
     ldy a:OBJ_HIT_BY_SLOT,x
@@ -509,7 +509,7 @@ MariaObjectSteerByPad_at0:
 ; WAITS: no.
 ; Entry: zRichterObject the slot. Exit: as the ride, or MariaObjectNextState.
 MariaKind15Spawn:
-    ldx z:zClimbStepBefore
+    ldx z:zRichterObject
     dec a:OBJ_ANIM_TIMER,x
     beq MariaKind15Spawn_at0
     jmp MariaKind15Ride_at1
@@ -536,7 +536,7 @@ MariaKind15Spawn_at0:
 ; WAITS: no.
 ; Entry: zRichterObject the slot. Exit: N and Z from the timer, or as ClearObject.
 MariaKind15Rain:
-    ldx z:zClimbStepBefore
+    ldx z:zRichterObject
     jsr MariaObjectMove
     lda a:OBJ_ANIM_TIMER,x
     and #$07

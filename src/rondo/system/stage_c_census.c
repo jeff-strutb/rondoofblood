@@ -6233,12 +6233,18 @@ void abi_TallyHealth3CD(void)
  */
 StageRegs TallyHearts3CD(StageRegs r)
 {
-    r = map_stage_banks_call(r, 0x9376);
-    CALL(0x9379, TallyDigits3CD(r));
+    return TallyHearts3CDAt(r, 0x9373, &tally_3cd);
+}
+
+/* TallyHearts3CD's body, for the builds of it elsewhere: where the build runs and what it uses. */
+StageRegs TallyHearts3CDAt(StageRegs r, uint16_t at, const TallyBuild *build)
+{
+    r = map_stage_banks_call(r, at + 0x3);
+    CALL(at + 0x6, TallyDigits3CDAt(r, (uint16_t)(at - 0x1FE), build));
     r.x = 0x22;
     r.nz = 0x22;
-    CALL(0x937D, TallyDigitCell3CD(r));
-    return tally_count_cells(r, RD8(ZP->field94), 0x10, 0x21, 0x55, 0x9390, &tally_3cd);
+    CALL(at + 0xA, TallyDigitCell3CDAt(r, (uint16_t)(at + 0x1D), build));
+    return tally_count_cells(r, RD8(ZP->field94), 0x10, 0x21, 0x55, (uint16_t)(at + 0x1D), build);
 }
 
 void abi_TallyHearts3CD(void)

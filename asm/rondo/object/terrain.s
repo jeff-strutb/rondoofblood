@@ -366,10 +366,11 @@ TerrainTileRead:
     rts
 TerrainTileRead_at0:
     lda #$00
+TerrainTileRead_at2:
     rts
 TerrainTileRead_at1:
     cmp #$9C
-    bcs StageSpawnYLoB
+    bcs TerrainTileRead_at2
     pha
     sbc #$7F
     asl a
@@ -379,7 +380,7 @@ TerrainTileRead_at1:
     lda a:TileHandlers+1,y
     sta z:zTemp05
     pla
-    jmp (zTemp04+$2000)
+    jmp (zTemp04+ZeroPage)
 
 ; @routine 050F:752 TileStepC
 ; @run 6B:9752

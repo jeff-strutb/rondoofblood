@@ -6156,19 +6156,20 @@ void abi_TallyEnd3CD(void)
 
 /* The last cells of a count drawn: below LIMIT the word block at $5440 or $5540 cleared (StageClearWords3CD, one row),
  * else the next cell stepped (TallyDigitCell3CD). */
-static Regs tally_count_cells(Regs r, uint8_t value, uint8_t limit, uint8_t cell, uint8_t row_hi)
+static Regs tally_count_cells(Regs r, uint8_t value, uint8_t limit, uint8_t cell, uint8_t row_hi, uint16_t digit_cell,
+                              const TallyBuild *build)
 {
     r = loaded(r, value);
     r = compared(r, limit);
     if (r.c) {
         r.x = cell;
         r.nz = cell;
-        return TallyDigitCell3CD(r);
+        return TallyDigitCell3CDAt(r, digit_cell, build);
     }
     r.x = 0x40;
     r.y = row_hi;
     r = loaded(r, 0x01);
-    return StageClearWords3CD(r);
+    return build->clear_words(r);
 }
 
 /*
@@ -6197,7 +6198,7 @@ StageRegs TallyHealth3CD(StageRegs r)
     r.x = 0x12;
     r.nz = 0x12;
     CALL(0x9360, TallyDigitCell3CD(r));
-    return tally_count_cells(r, RD8(ZP->player_health), 0x0A, 0x11, 0x54);
+    return tally_count_cells(r, RD8(ZP->player_health), 0x0A, 0x11, 0x54, 0x9390, &tally_3cd);
 }
 
 void abi_TallyHealth3CD(void)
@@ -6231,7 +6232,7 @@ StageRegs TallyHearts3CD(StageRegs r)
     r.x = 0x22;
     r.nz = 0x22;
     CALL(0x937D, TallyDigitCell3CD(r));
-    return tally_count_cells(r, RD8(ZP->field94), 0x10, 0x21, 0x55);
+    return tally_count_cells(r, RD8(ZP->field94), 0x10, 0x21, 0x55, 0x9390, &tally_3cd);
 }
 
 void abi_TallyHearts3CD(void)

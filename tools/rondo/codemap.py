@@ -1172,18 +1172,26 @@ def progress(disc, mems, maps, cps):
     """M1 and M2 by area, every copy counted once: {area: (code bytes, M1 bytes, M2 bytes)} and the order.
     Code: what the map reached, and every filed routine that is not a copy of it; a copy is done when its
     source is, and a finished routine filed on a copy counts on its source. M1: bytes in routines whose C is finished
-    (it calls no original code); M2: those whose assembly is filed too. A stretch the disc holds more than once
+    (it calls no original code); M2: those whose assembly is filed too and whose C file compiles (ccheck.py). A stretch the disc holds more than once
     counts once, in the area of its first place on the disc, done where any copy of it is done."""
     buf = disc.buf
     import asmbuild
     pieces = {p["disc"]: p["end"] for p in asmbuild.filed_pieces(buf)}
-    finished = {}
-    for path in glob.glob(os.path.join(TOP, "src", "rondo", "**", "*.c"), recursive=True):
+    import ccheck
+    import tempfile
+    from concurrent.futures import ThreadPoolExecutor
+    paths = glob.glob(os.path.join(TOP, "src", "rondo", "**", "*.c"), recursive=True)
+    with tempfile.TemporaryDirectory() as out, ThreadPoolExecutor(os.cpu_count() or 4) as pool:
+        compiles = {p: rc == 0 for p, rc, _ in pool.map(lambda p: ccheck.compile_one(p, out), paths)}
+    finished, built = {}, {}
+    for path in paths:
         t = open(path, encoding="utf-8").read()
         ms = list(TAG.finditer(t))
         for i, m in enumerate(ms):
             body = t[m.end(): ms[i + 1].start() if i + 1 < len(ms) else len(t)]
-            finished[int(m.group(1), 16) * SECTOR + int(m.group(2), 16)] = not runs_game_code(body)
+            d = int(m.group(1), 16) * SECTOR + int(m.group(2), 16)
+            finished[d] = not runs_game_code(body)
+            built[d] = compiles[path]
     code = set()
     for m in maps.values():
         for d, runs in m.kstarts.items():
@@ -1197,7 +1205,8 @@ def progress(disc, mems, maps, cps):
             if finished.get(d):
                 for x in (q,) if src is None else (src,):
                     done1.add(x)
-                    done2.add(x)                # every routine with C has its assembly filed
+                    if built.get(d):            # its assembly is filed (pieces), and its C file compiles
+                        done2.add(x)
     srt = sorted(code)
     runs, st, pr = [], srt[0], srt[0]
     for x in srt[1:]:

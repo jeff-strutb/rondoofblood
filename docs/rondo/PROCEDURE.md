@@ -159,7 +159,14 @@ M is the main checkout, W your worktree. Run from W.
        python3 syscard/tools/image.py --image "references/[BIOS] Super CD-ROM System (Japan) (En) (v3.0).pce" \
            --cc65 tools/toolchains/cc65 --out build/syscard
 
-6. **Merge.** When the routine meets the standard, commit with explicit
+6. **Compile the C:**
+
+       python3 tools/rondo/ccheck.py
+
+   Every file compiles with 0 failures. It compiles and runs nothing:
+   C that does not compile cannot do what its assembly does.
+
+7. **Merge.** When the routine meets the standard, commit with explicit
    paths and merge to main. Otherwise it waits on your branch.
 
 **Calls.** A call to another routine is a call to its typed C function

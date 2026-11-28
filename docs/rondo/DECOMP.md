@@ -59,6 +59,7 @@ responsibility, never by sector or address range.
 | `tools/rondo/codemap.py` | the static code map: what loads where, the code followed from the disc's entries, the copies; `--progress` writes the README's progress picture and its M1 and M2 by disc area; `--todo` lists every routine found, each body once, with whether it is done |
 | `tools/rondo/asmfile.py` | drafts a C file's assembly from the disc, with its header and names |
 | `tools/rondo/ramnames.py` | writes `ram.h`, `ram.inc` and the record structs from `config/rondo/symbols.csv` and `records.csv` |
+| `tools/rondo/ccheck.py` | every C file of the game and the card compiles: errors, and the warnings that mean a fault (no declaration, no return value, int and pointer mixed, a variable read unset), fail it; nothing is linked or run |
 | `tools/rondo/typedrec.py` | the records file's format and its C structs |
 | `syscard/tools/image.py` | the card's filed assembly in place against the card's image |
 

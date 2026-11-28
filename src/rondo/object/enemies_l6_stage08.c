@@ -1221,7 +1221,7 @@ ObjArm DrawStepCountThenClear(uint8_t slot)
     r.run = DrawTileScript(r.second, 0);
     jsr_pop();
     jsr_push(0xAB41);
-    found_slot = FindFreeSlotFrom30(&r.fourth, &found);
+    found_slot = FindFreeSlotFrom30(&last, &found);
     jsr_pop();
     r.third = found_slot;
     r.fourth = last;
@@ -1302,7 +1302,7 @@ ObjArm StepListIndex0AThenSpawn(uint8_t slot)
         return r;
     }
     jsr_push(0xB0BF);
-    found_slot = FindFreeSlotFrom30(&r.third, &found);
+    found_slot = FindFreeSlotFrom30(&last, &found);
     jsr_pop();
     r.second = found_slot;
     r.third = last;

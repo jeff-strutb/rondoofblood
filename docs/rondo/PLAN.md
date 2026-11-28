@@ -105,7 +105,8 @@ reassembles the same at any address).
 
 **Progress.** M1 is the share of the game's code, every copy counted once,
 in routines whose C is finished (it calls no original game code); M2 is the
-share in routines that also have their assembly filed. `codemap.py
+share in routines that also have their assembly filed and whose C file
+compiles (`ccheck.py`). `codemap.py
 --progress` measures both by disc area for the README.
 
 ## 4. What is different from the SNES decomps

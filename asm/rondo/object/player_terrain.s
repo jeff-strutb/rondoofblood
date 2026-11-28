@@ -47,8 +47,8 @@ RichterReadAbove:
     cla
     adc #$FF
     sta z:zTemp03
-    bne $B6E8
-    bra $B6E3
+    bne RichterReadBelow_at0
+    bra RichterReadBelow_at1
 
 ; @routine 01BB:6DD RichterReadBelow
 ; @run 6D:B6DD
@@ -61,8 +61,9 @@ RichterReadBelow:
     sta z:zTemp02
     bcs RichterReadBelow_at0
     stz z:zTemp03
+RichterReadBelow_at1:
     stz z:zTemp01
-    jmp AttractEntry
+    jmp StageVecTerrainTileRead
 RichterReadBelow_at0:
     cla
     rts
@@ -78,7 +79,7 @@ RichterReadOnScreen:
     cla
     adc a:OBJ_Y_HI
     sta z:zTemp03
-    bra $B6E3
+    bra RichterReadBelow_at1
 
 ; @routine 01BB:6F4 RichterReadIfOnPage
 ; @run 6D:B6F4
@@ -88,8 +89,8 @@ RichterReadOnScreen:
 ; WAITS: no.
 ; Entry: Z from that byte, zTemp00-03 the point. Exit: as the read, or A 0 with N and Z kept.
 RichterReadIfOnPage:
-    bne $B6E8
-    jmp AttractEntry
+    bne RichterReadBelow_at0
+    jmp StageVecTerrainTileRead
 
 ; @routine 01BB:6F9 RichterColumnOffset
 ; @run 6D:B6F9
@@ -114,9 +115,10 @@ RichterColumnOffset:
 ; WAITS: no.
 ; Entry: nothing. Exit: C the answer. All else kept.
 RichterUpHeld:
-    bbs6 zPadHeld,StartChainLink
+    bbs6 zPadHeld,RichterUpHeld_at0
     clc
     rts
+RichterUpHeld_at0:
     sec
     rts
 
@@ -129,10 +131,10 @@ RichterUpHeld:
 ; Entry: nothing. Exit: C the answer, with what the last step left.
 RichterJumpOrClimb:
     bsr RichterJumpPressed
-    bcc $B881
+    bcc RichterJumpPressed_at0
     stz a:PadForcedPressB
     tst #$40,z:zPadHeld
-    beq $B883
+    beq RichterJumpPressed_at1
     jmp RichterLadderCheck
 
 ; @routine 01BC:07E RichterJumpPressed
@@ -142,10 +144,11 @@ RichterJumpOrClimb:
 ; WAITS: no.
 ; Entry: nothing. Exit: C the answer. All else kept.
 RichterJumpPressed:
-    bbs0 zPadPressed,RichterJumpPressed_at0
+    bbs0 zPadPressed,RichterJumpPressed_at1
+RichterJumpPressed_at0:
     clc
     rts
-RichterJumpPressed_at0:
+RichterJumpPressed_at1:
     sec
     rts
 
@@ -193,14 +196,14 @@ RichterLadderCheck:
     stz z:zTemp11
     bsr RichterLadderPoint
     bne RichterLadderCheck_at0
-    jsr AttractEntry
+    jsr StageVecTerrainTileRead
     and #$01
     bne RichterLadderCheck_at0
     bra RichterLadderCheck_at2
 RichterLadderCheck_at4:
     bsr RichterLadderPoint
     bne RichterLadderCheck_at0
-    jsr AttractEntry
+    jsr StageVecTerrainTileRead
     and #$01
     bne RichterLadderCheck_at3
 RichterLadderCheck_at2:
@@ -219,7 +222,7 @@ RichterLadderCheck_at3:
     adc z:zTemp11
     sta z:zTemp11
     bsr RichterLadderPoint
-    jsr AttractEntry
+    jsr StageVecTerrainTileRead
     and #$05
     beq RichterLadderCheck_at1
     bra RichterLadderCheck_at0
@@ -261,9 +264,9 @@ RichterLedgeCheck:
     tst #$01,z:zPlayerPush
     bne RichterLedgeCheck_at0
     bsr RichterLedgeLow
-    bcs $BA78
+    bcs RichterLedgeHigh_at0
     bsr RichterLedgeHigh
-    bcs $BA78
+    bcs RichterLedgeHigh_at0
 RichterLedgeCheck_at0:
     clc
     rts
@@ -277,13 +280,13 @@ RichterLedgeCheck_at0:
 ; Entry: nothing. Exit: C set at a ledge, A the bit looked at, X the column; else C clear (A 0, X 2 when no column blocks).
 RichterLedgeLow:
     jsr RichterLowColumnsBlocked
-    beq $BA4E
+    beq RichterLedgeCheck_at0
     and #$20
     beq RichterLedgeLow_at0
     cpx #$02
     bne RichterLedgeLow_at1
 RichterLedgeLow_at0:
-    bbr4 zPadHeld,$BA4E
+    bbr4 zPadHeld,RichterLedgeCheck_at0
 RichterLedgeLow_at1:
     stz z:zTemp01
     sec
@@ -298,16 +301,17 @@ RichterLedgeLow_at1:
 ; Entry: nothing. Exit: C set at a ledge with A 1, X the column; else C clear (A the bit looked at, X 2 when no column blocks).
 RichterLedgeHigh:
     jsr RichterColumnsBlocked
-    beq $BA4E
+    beq RichterLedgeCheck_at0
     and #$20
-    beq RichterLedgeHigh_at0
+    beq RichterLedgeHigh_at1
     cpx #$02
-    bne RichterLedgeHigh_at1
-RichterLedgeHigh_at0:
-    bbr6 zPadHeld,$BA4E
+    bne RichterLedgeHigh_at2
 RichterLedgeHigh_at1:
+    bbr6 zPadHeld,RichterLedgeCheck_at0
+RichterLedgeHigh_at2:
     lda #$01
     sta z:zTemp01
+RichterLedgeHigh_at0:
     sec
     rts
 
@@ -384,7 +388,7 @@ RichterColumnsBlocked_at0:
 RichterFloorOddScreen:
     clx
     stz a:RichterColumnRow,x
-    bra $BAE1
+    bra RichterFloorCheck_at0
 
 ; @routine 01BC:2C2 RichterFloorCheck
 ; @run 6D:BAC2
@@ -473,7 +477,7 @@ RichterLowColumnsBlocked_at0:
 RichterReadColumnsHigh:
     lda #$0B
     sta z:zTemp10
-    bra $BB27
+    bra RichterReadColumns_at0
 
 ; @routine 01BC:323 RichterReadColumns
 ; @run 6D:BB23
@@ -487,8 +491,9 @@ RichterReadColumnsHigh:
 RichterReadColumns:
     lda #$16
     sta z:zTemp10
-    clx
 RichterReadColumns_at0:
+    clx
+RichterReadColumns_at1:
     jsr RichterColumnOffset
     clc
     adc a:OBJ_X_LO
@@ -504,7 +509,7 @@ RichterReadColumns_at0:
     sta a:RichterColumnX,x
     inx
     cpx #$05
-    bne RichterReadColumns_at0
+    bne RichterReadColumns_at1
     rts
 
 ; @routine 01BC:367 RichterWallPushed
@@ -532,7 +537,7 @@ RichterWallPushed:
 RichterWall:
     lda a:PlayerMayLeaveTop
     cmp #$01
-    beq WaitThenStepListWithSoundAndBounce
+    beq RichterWall_at0
     lda z:zPlayerPush
     and a:RichterWallPushBits,y
     bne RichterWallPushed
@@ -540,12 +545,13 @@ RichterWall:
     sta z:zTemp10
     lda a:OBJ_STATE
     cmp #$03
-    beq RichterWall_at0
-    cmp #$04
-    beq RichterWall_at0
-    cmp #$02
     beq RichterWall_at1
+    cmp #$04
+    beq RichterWall_at1
+    cmp #$02
+    beq RichterWall_at2
     clx
+RichterWall_at3:
     lda a:OBJ_X_LO
     clc
     adc z:zTemp10
@@ -560,17 +566,18 @@ RichterWall:
     sta z:zTemp03
     jsr RichterReadIfOnPage
     and #$02
-    bne WaitThenStepListWithSoundAndBounce
+    bne RichterWall_at0
     inx
     cpx #$06
-    bne LoadRecordLaunchSideways
-    rts
+    bne RichterWall_at3
 RichterWall_at0:
-    ldx #$05
-    bra LoadRecordLaunchSideways
+    rts
 RichterWall_at1:
+    ldx #$05
+    bra RichterWall_at3
+RichterWall_at2:
     ldx #$03
-    bra LoadRecordLaunchSideways
+    bra RichterWall_at3
 
 ; @routine 01BC:3C1 RichterFloor
 ; @run 6D:BBC1
@@ -582,10 +589,10 @@ RichterWall_at1:
 ; C from the lift, V as the last step left it. Clobbers zTemp00-03, zTemp10.
 RichterFloor:
     lda a:PlayerMayLeaveTop
-    bne JumpByPhaseTable025C40D
+    bne RichterFloor_at0
     jsr RichterReadColumns
     jsr RichterFloorCheck
-    bcc JumpByPhaseTable025C40D
+    bcc RichterFloor_at0
     jsr RichterColumnOffset
     clc
     adc a:OBJ_X_LO
@@ -595,15 +602,15 @@ RichterFloor:
     adc #$0E
     jsr RichterReadBelow
     and #$81
-    beq RichterFloor_at0
-    bmi RichterFloor_at0
-    bra JumpByPhaseTable025C40D
-RichterFloor_at0:
+    beq RichterFloor_at1
+    bmi RichterFloor_at1
+    bra RichterFloor_at0
+RichterFloor_at1:
     stz z:zTemp10
     lda a:RichterColumnRow,x
-    bpl RichterFloor_at1
+    bpl RichterFloor_at2
     dec z:zTemp10
-RichterFloor_at1:
+RichterFloor_at2:
     lda a:OBJ_Y_LO
     sec
     sbc a:RichterColumnRow,x
@@ -611,14 +618,15 @@ RichterFloor_at1:
     lda a:OBJ_Y_HI
     sbc z:zTemp10
     sta a:OBJ_Y_HI
-    bmi RichterFloor_at2
+    bmi RichterFloor_at3
     tst #$20,z:zPlayerPush
-    bne JumpByPhaseTable025C40D
+    bne RichterFloor_at0
     lda #$01
     rts
+RichterFloor_at0:
     lda #$00
     rts
-RichterFloor_at2:
+RichterFloor_at3:
     lda #$02
     sta a:OBJ_Y_LO
     stz a:OBJ_Y_HI

@@ -550,3 +550,4 @@ alias,ObjectTable,pad_forced,work_f,OBJ_PAD_FORCED
 alias,PlayerVars,door_ready,f3bd7,PlayerDoorReady
 alias,PlayerVars,whip_struck,f3be1,PlayerWhipStruck
 alias,PlayerVarsB,keeps_last_point,f3bf7,PlayerKeepsLastPoint
+alias,ObjectTable,animation_at,scroll_band,OBJ_ANIMATION_AT

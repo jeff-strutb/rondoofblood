@@ -15,6 +15,79 @@ typedef struct { uint8_t facing; uint8_t high; } FacingSpeed;
 typedef struct { uint8_t facing; uint8_t step; uint8_t was; } Nudge;
 typedef struct { uint8_t state; uint8_t index; } CrashEnd;
 typedef struct { Lift lift; FacingSpeed speed; uint8_t marks; } Knock;
+typedef struct {
+    Lift lift;
+    bool moving;
+    bool same_way;
+    AnimationStep animation;
+    FacingSpeed speed;
+} AirStart;
+/* An item crash's frame and the add that found its entry. */
+typedef struct { Sum entry; uint8_t frame; } CrashFrame;
+/* A hurt off a ledge: item 5's crash with its animation, or the nudge and the hurt jump. */
+typedef struct { bool crash; AnimationStep animation; Nudge nudge; HurtAir hurt; } LedgeHurt;
+/* A jump off a ledge: the nudge, and taking to the air. */
+typedef struct { Nudge nudge; AirStart air; } LedgeJump;
+typedef enum { UP_WHIP_JUMPED, UP_WHIP_NO_LADDER, UP_WHIP_LADDER } UpWhipHow;
+/* The whip's reach up a ledge: the pad, the jump off it, or the ladder and the nudge onto it. */
+typedef struct {
+    UpWhipHow how; uint8_t held; LedgeJump jump; LadderCheck ladder; Nudge nudge; AnimationStep fall;
+} UpWhip;
+/* object/player_leaves.c and object/player_terrain.c */
+typedef struct {
+    Sum row;
+    TileRead read;
+} OffsetRead;
+/* How the jump-or-climb check ended. */
+typedef struct {
+    bool pressed;
+    bool up_held;
+    uint8_t held;
+    LadderCheck ladder;
+} JumpOrClimb;
+OffsetRead RichterReadAtOffset(uint8_t offset);
+void offset_read_exit_shim(OffsetRead r);
+JumpOrClimb RichterJumpOrClimb(void);
+void jump_or_climb_exit_shim(JumpOrClimb result);
+ObjArm RichterTurnOnPad(void);
+EndedTst richter_turn_on_pad_exit_shim(ObjArm r);
+uint8_t RichterLatchButtons(void);
+CrashFrame RichterCrashFrame(void);
+void crash_frame_exit_shim(CrashFrame frame);
+FacingSpeed RichterSpeedWalk(void);
+void speed_exit_shim(FacingSpeed set);
+LedgeHurt RichterLedgeHurtA(void);
+LedgeHurt RichterLedgeHurtB(void);
+void ledge_hurt_exit_shim(LedgeHurt hurt);
+UpWhip RichterUpWhipLeft(void);
+UpWhip RichterUpWhipRight(void);
+void up_whip_exit_shim(UpWhip whip);
+AirStart RichterToAir(void);
+void air_exit_shim(AirStart air);
+bool RichterJumpPressed(void);
+typedef struct {
+    uint8_t value;
+    bool stands;
+    AnimationStep stand;
+} CountDown;
+CountDown CountDownThenStand(void);
+void count_down_stand_exit_shim(CountDown r);
+ItemCrash RichterTryItemCrash(void);
+void item_crash_exit_shim(ItemCrash crash);
+typedef enum {
+    CRASH_STAND_STOOD, CRASH_STAND_ENDED, CRASH_STAND_FELL, CRASH_STAND_JUMPED, CRASH_STAND_UP_WHIP,
+    CRASH_STAND_SPAWNED, CRASH_STAND_NO_SLOT
+} CrashStandHow;
+/* Standing through the item crash: the turn, the timer, each check, and the slot spawned. */
+typedef struct {
+    CrashStandHow how;
+    uint8_t facing; uint8_t held; uint8_t timer; uint8_t state; uint8_t bumped;
+    ColumnsEnd columns; FootingCheck footing; bool jump;
+    AnimationStep stand; CrashEnd end; AirStart air; UpWhip whip; uint8_t slot; uint8_t seen;
+    bool from_timer;    /* entered at $A371, RichterStandStep2Timer: no turn first */
+} CrashStand;
+CrashStand RichterStandStep2Timer(void);
+void crash_stand_exit_shim(CrashStand st);
 /* RichterMoveStopped: the move's add and the facing it loads into X. */
 typedef struct { Sum moved; uint8_t facing; } MovedStopped;
 MovedStopped RichterMoveStopped(uint8_t move);
@@ -47,6 +120,15 @@ void RichterStartHitScript(uint8_t script);
 void hit_script_exit_shim(uint8_t script);
 void sound_command_exit_shim(uint8_t command, CommandCall call);   /* audio/sound_calls.c */
 
+/* object/player_input.c */
+ItemUse RichterUseItemPaid(void);
+/* RichterUseItemOrUpPress: the use, whether the up press was tested and used, and zPadPressed as read. */
+typedef struct { ItemUse use; bool tested; bool paid; uint8_t pressed; } UpPressUse;
+UpPressUse RichterUseItemOrUpPress(void);
+void up_press_use_exit_shim(UpPressUse r);
+void abi_RichterUseItemPaid(void);
+void abi_RichterUseItemOrUpPress(void);
+
 /* object/richter_objects.c */
 void RichterObjectStopX(uint8_t slot);
 void RichterObjectStop(uint8_t slot);
@@ -68,6 +150,21 @@ typedef struct {
 /* RichterDebrisOnMarkedColumns: whether the burst ran, its result, the V of the Y add, his Y pulled back. */
 typedef struct { bool burst_started; ObjArm burst; bool overflow; uint8_t y_low; } DebrisColumns;
 
+/* object/player_terrain.c and object/player_input.c */
+uint8_t solid_answer(ColumnRead one);
+uint8_t column_answer(ColumnRead one);
+void read_or_nothing_exit_shim(TileRead read, bool read_made);
+ColumnRead RichterReadUnderFeet(void);
+TileRead RichterReadBelow(uint8_t row, bool carry);
+ObjArm RichterNoteItemPress(void);
+EndedTst richter_note_item_press_exit_shim(ObjArm r);
+void attack_exit_shim(AttackStart attack);
+AttackStart RichterAttackWithAnimation(uint8_t animation);
+Knock RichterKnockBack(void);
+void knock_exit_shim(Knock knock);
+FloorResult RichterFloorCheck(void);
+ColumnRead RichterSolidUnderColumn(uint8_t column);
+
 /*
  * object/richter_exits.c: what a routine's instructions and its callees left in the registers and
  * flags, in the order they ran, for its abi_ wrapper to give back. A callee's step replays that
@@ -77,7 +174,9 @@ typedef enum {
     RX_ENDED, RX_COLUMNS, RX_FLOOR, RX_LANDING, RX_ANIMATION, RX_SOUND, RX_SCRIPT, RX_LIFT, RX_NUDGE,
     RX_FALL, RX_GRAVITY, RX_CRASH_END, RX_COLUMN_READ, RX_TST, RX_SOLID, RX_HIT_EFFECTS, RX_HIT_SOUND,
     RX_SLOTS, RX_DEBRIS, RX_LOG, RX_NOTE_PRESS, RX_ITEM_USE, RX_UNDER_FEET, RX_COLUMN_LIFT, RX_MOVE_STOPPED,
-    RX_READ_BELOW, RX_ATTACK, RX_KNOCK, RX_MARKED, RX_FOOTING, RX_LEDGE, RX_HURT_LAND, RX_HURT_RESUME
+    RX_READ_BELOW, RX_ATTACK, RX_KNOCK, RX_MARKED, RX_FOOTING, RX_LEDGE, RX_HURT_LAND, RX_HURT_RESUME, RX_OFFSET_READ, RX_ITEM_CRASH,
+    RX_LEDGE_HURT, RX_UP_WHIP, RX_JUMP_CLIMB, RX_TURN_PAD, RX_CRASH_FRAME, RX_SPEED, RX_AIR, RX_CRASH_STAND,
+    RX_UP_PRESS, RX_JUMP_PRESSED, RX_COUNTDOWN
 } RegKind;
 typedef struct {
     RegKind kind;
@@ -111,6 +210,18 @@ typedef struct {
         LedgeCheck ledge;
         HurtLandSound hurt_land;
         HurtResume hurt_resume;
+        OffsetRead offset_read;
+        ItemCrash item_crash;
+        LedgeHurt ledge_hurt;
+        UpWhip up_whip;
+        JumpOrClimb jump_climb;
+        CrashFrame crash_frame;
+        FacingSpeed speed;
+        AirStart air;
+        CrashStand crash_stand;
+        UpPressUse up_press;
+        bool jump_pressed;
+        CountDown countdown;
     };
 } RegStep;
 typedef struct { uint8_t count; RegStep step[24]; } RegLog;
@@ -153,20 +264,19 @@ void rl_ledge(RegLog *log, LedgeCheck r);
 void rl_hurt_land(RegLog *log, HurtLandSound r);
 void rl_hurt_resume(RegLog *log, HurtResume r);
 void hurt_resume_exit_shim(HurtResume r);
-/* object/player_terrain.c and object/player_input.c */
-uint8_t solid_answer(ColumnRead one);
-uint8_t column_answer(ColumnRead one);
-void read_or_nothing_exit_shim(TileRead read, bool read_made);
-ColumnRead RichterReadUnderFeet(void);
-TileRead RichterReadBelow(uint8_t row, bool carry);
-ObjArm RichterNoteItemPress(void);
-EndedTst richter_note_item_press_exit_shim(ObjArm r);
-void attack_exit_shim(AttackStart attack);
-AttackStart RichterAttackWithAnimation(uint8_t animation);
-Knock RichterKnockBack(void);
-void knock_exit_shim(Knock knock);
-FloorResult RichterFloorCheck(void);
-ColumnRead RichterSolidUnderColumn(uint8_t column);
+void rl_offset_read(RegLog *log, OffsetRead r);
+void rl_item_crash(RegLog *log, ItemCrash r);
+void rl_ledge_hurt(RegLog *log, LedgeHurt r);
+void rl_up_whip(RegLog *log, UpWhip r);
+void rl_jump_climb(RegLog *log, JumpOrClimb r);
+void rl_turn_pad(RegLog *log, ObjArm r);
+void rl_crash_frame(RegLog *log, CrashFrame r);
+void rl_speed(RegLog *log, FacingSpeed r);
+void rl_air(RegLog *log, AirStart r);
+void rl_crash_stand(RegLog *log, CrashStand r);
+void rl_up_press(RegLog *log, UpPressUse r);
+void rl_jump_pressed(RegLog *log, bool r);
+void rl_countdown(RegLog *log, CountDown r);
 
 void RichterClearSlotKindFour(uint8_t slot);
 Ended RichterReplaceSlotsOneTwo(void);
@@ -288,5 +398,33 @@ void abi_RichterStateFall(void);
 void abi_RichterAirStep1(void);
 void abi_RichterAirStep0(void);
 void abi_RichterStateAir(void);
+
+/* object/richter_climb.c, states 5 to 8 */
+void RichterClimbBack(RegLog *log, uint8_t way);
+void RichterClimbOn(RegLog *log, uint8_t way);
+void RichterClimbPad(RegLog *log);
+void RichterClimbStepSpeed(RegLog *log);
+void RichterClimbAttack(RegLog *log);
+void RichterClimbLowStep0(RegLog *log);
+void RichterClimbHighStep0(RegLog *log);
+void RichterClimbStep1(RegLog *log);
+void RichterClimbReach(RegLog *log);
+void RichterClimbPullUp(RegLog *log);
+void RichterClimbStandTimer(RegLog *log);
+void RichterStateClimbLow(RegLog *log);
+void RichterStateClimbHigh(RegLog *log);
+void abi_RichterClimbBack(void);
+void abi_RichterClimbOn(void);
+void abi_RichterClimbPad(void);
+void abi_RichterClimbStepSpeed(void);
+void abi_RichterClimbAttack(void);
+void abi_RichterClimbLowStep0(void);
+void abi_RichterClimbHighStep0(void);
+void abi_RichterClimbStep1(void);
+void abi_RichterClimbReach(void);
+void abi_RichterClimbPullUp(void);
+void abi_RichterClimbStandTimer(void);
+void abi_RichterStateClimbLow(void);
+void abi_RichterStateClimbHigh(void);
 
 #endif

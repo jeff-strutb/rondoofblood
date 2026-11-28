@@ -78,7 +78,7 @@ RichterAnimationRunning:
 ; @run 6D:B669
 ; WHAT IT DOES: Counts down the frame on show; at zero moves to the next step of the list.
 ; A timer of $FF means the animation has stopped.
-; HOW: The timer in OBJ_HURT_TIMER, the step in OBJ_SCROLL_BAND, the frame shown in OBJ_FRAME.
+; HOW: The timer in OBJ_HURT_TIMER, the step in OBJ_ANIMATION_AT, the frame shown in OBJ_FRAME.
 ; WAITS: no.
 ; Entry: nothing. Exit: A the frame or $FF; Y twice the step, plus one with a frame; C and N, Z
 ; from what was read. X and V kept. Clobbers zTemp00-01.
@@ -89,31 +89,34 @@ RichterAnimationTick:
     rts
 RichterAnimationTick_at0:
     dec a:OBJ_HURT_TIMER
-    bne $B693
-    inc a:OBJ_SCROLL_BAND
-    bra $B681
+    bne RichterSetAnimation_at0
+    inc a:OBJ_ANIMATION_AT
+    bra RichterSetAnimation_at1
 
 ; @routine 01BB:67B RichterSetAnimation
 ; @run 6D:B67B
 ; WHAT IT DOES: Starts an animation from its first step.
-; HOW: The animation into OBJ_WORK_A, step zero, and its first entry read.
+; HOW: The animation into OBJ_ANIMATION, step zero, and its first entry read.
 ; WAITS: no.
 ; Entry: A animation. Exit: as RichterAnimationTick. Clobbers zTemp00-01.
 RichterSetAnimation:
-    sta a:OBJ_WORK_A
-    stz a:OBJ_SCROLL_BAND
+    sta a:OBJ_ANIMATION
+RichterSetAnimation_at3:
+    stz a:OBJ_ANIMATION_AT
+RichterSetAnimation_at1:
     bsr RichterAnimationPoint
     lda (zTemp00),y
     sta a:OBJ_HURT_TIMER
     cmp #$FF
-    bne RichterSetAnimation_at0
+    bne RichterSetAnimation_at2
     rts
-RichterSetAnimation_at0:
+RichterSetAnimation_at2:
     cmp #$FE
-    beq LoadRecordStartPieceAtPlace
-    bra RichterSetAnimation_at1
+    beq RichterSetAnimation_at3
+    bra RichterSetAnimation_at4
+RichterSetAnimation_at0:
     bsr RichterAnimationPoint
-RichterSetAnimation_at1:
+RichterSetAnimation_at4:
     iny
     lda (zTemp00),y
     sta a:OBJ_FRAME
@@ -122,18 +125,18 @@ RichterSetAnimation_at1:
 ; @routine 01BB:69C RichterAnimationPoint
 ; @run 6D:B69C
 ; WHAT IT DOES: Points zTemp00-01 at the list of the animation in play and gives Y twice the step in play.
-; HOW: OBJ_WORK_A doubled indexes AnimationLists; the step in OBJ_SCROLL_BAND doubled.
+; HOW: OBJ_ANIMATION doubled indexes AnimationLists; the step in OBJ_ANIMATION_AT doubled.
 ; WAITS: no.
 ; Entry: nothing. Exit: A and Y twice the step, N and Z from it, C the step's bit 7. X and V kept.
 RichterAnimationPoint:
-    lda a:OBJ_WORK_A
+    lda a:OBJ_ANIMATION
     asl a
     tay
     lda a:AnimationLists,y
     sta z:zTemp00
     lda a:AnimationLists+1,y
     sta z:zTemp01
-    lda a:OBJ_SCROLL_BAND
+    lda a:OBJ_ANIMATION_AT
     asl a
     tay
     rts
@@ -255,24 +258,25 @@ RichterTryItemCrash_at2:
     ldx z:zField93
     lda z:zField94
     cmp a:RichterItemCosts,x
-    bcs DroppingPieceStep
+    bcs RichterTryItemCrash_at3
 RichterTryItemCrash_at0:
     stz a:PadForcedPress
     clc
     rts
+RichterTryItemCrash_at3:
     ldx z:zField93
     lda a:RichterItemCrashLists,x
-    beq RichterTryItemCrash_at3
+    beq RichterTryItemCrash_at4
     ldx #$06
     jsr VecStartListChannelKind2
-RichterTryItemCrash_at3:
+RichterTryItemCrash_at4:
     stz a:PlayerItemFirstUse
     ldx z:zField93
     lda a:RichterItemCrashScripts,x
-    beq RichterTryItemCrash_at4
+    beq RichterTryItemCrash_at5
     ldx #$06
     jsr VecStartScriptSlotKind1
-RichterTryItemCrash_at4:
+RichterTryItemCrash_at5:
     ldx z:zField93
     lda z:zField94
     sed
@@ -307,6 +311,25 @@ RichterLatchBits:
     sta a:PadForcedPressB
     rts
 
+; @routine 01BC:11A RichterUseItemOrUpPress
+; @run 6D:B91A
+; WHAT IT DOES: The item's use as RichterUseItem makes it; or, with no new press of the use button,
+; the use button held and up newly pressed use it all the same (RichterUseItemPaid).
+; HOW: RichterUseItem; BBR of bit 1 of zPadHeld, TST of bit 4 of zPadPressed; the CLC and RTS where
+; neither is RichterUseItem's own ($B92C); a branch to RichterUseItemPaid.
+; WAITS: no.
+; Entry: nothing. Exit: used, as RichterUseItem. Neither, C clear: held, Z set, N and V bits 7 and 6
+; of zPadPressed; the rest as RichterUseItem left them.
+RichterUseItemOrUpPress:
+    bsr RichterUseItem
+    bcc RichterUseItemOrUpPress_at0
+    rts
+RichterUseItemOrUpPress_at0:
+    bbr1 zPadHeld,RichterUseItem_at0
+    tst #$10,z:zPadPressed
+    beq RichterUseItem_at0
+    bra RichterUseItemPaid
+
 ; @routine 01BC:129 RichterUseItem
 ; @run 6D:B929
 ; WHAT IT DOES: Using the item in hand: on the use press with the use direction held and the
@@ -321,21 +344,34 @@ RichterLatchBits:
 ; hearts, X the item, N and Z from comparing them; items 0 and 1, A and X twice the item, N and
 ; Z from it; as the handler otherwise.
 RichterUseItem:
-    bbs1 zPadPressed,StartGroupThenThrow
+    bbs1 zPadPressed,RichterUseItem_at1
+RichterUseItem_at0:
     clc
     rts
+RichterUseItem_at1:
     lda z:zPadHeld
     and #$10
-    beq RichterUseItem_at0
+    beq RichterUseItemPaid_at0
+
+; @routine 01BC:134 RichterUseItemPaid
+; @run 6D:B934
+; WHAT IT DOES: RichterUseItem from the hearts on: with the hearts the item costs, goes to the item's
+; own handler, which throws it or not; too few, no attack. RichterUseItem runs on into it, and
+; RichterUseItemOrUpPress goes to it for a press of up with the use button held.
+; HOW: RichterItemUseCosts by item, then the jump through RichterItemUseHandlers: items 0 and 1 attack
+; with the whip. zField93 is 0 to 8; the C takes anything past 8 as the whip.
+; WAITS: no.
+; Entry: nothing. Exit: as RichterUseItem past its presses.
+RichterUseItemPaid:
     ldx z:zField93
     lda z:zField94
     cmp a:RichterItemUseCosts,x
-    bcs RichterUseItem_at1
-RichterUseItem_at0:
+    bcs RichterUseItemPaid_at1
+RichterUseItemPaid_at0:
     stz a:PlayerAttackKind
     sec
     rts
-RichterUseItem_at1:
+RichterUseItemPaid_at1:
     lda z:zField93
     asl a
     tax
@@ -354,7 +390,7 @@ RichterUseThrownItem:
     lda a:PlayerItemFirstUse
     beq RichterUseThrownItem_at0
     jsr RichterFindItemOut
-    bne $B93D
+    bne RichterUseItemPaid_at0
     ldx z:zField93
     lda a:RichterItemUseLists,x
     ldx #$06
@@ -371,14 +407,14 @@ RichterUseThrownItem_at0:
     ldx z:zField93
     lda z:zField94
     cmp a:RichterItemSecondCosts,x
-    bcc $B93D
+    bcc RichterUseItemPaid_at0
     lda a:OBJ_KIND+8
     beq RichterUseThrownItem_at1
     lda z:zField94
     cmp a:RichterItemThirdCosts,x
-    bcc $B93D
-    lda a:$275B
-    bne $B93D
+    bcc RichterUseItemPaid_at0
+    lda a:OBJ_KIND+11
+    bne RichterUseItemPaid_at0
 RichterUseThrownItem_at1:
     ldx z:zField93
     lda a:RichterItemAttacks,x
@@ -401,7 +437,7 @@ RichterUseThrownItem_at1:
 ; Entry: X twice the item. Exit: as RichterUseItem.
 RichterUseItemSix:
     bsr RichterFindItemOut
-    bne $B93D
+    bne RichterUseItemPaid_at0
     lda a:PlayerItemFirstUse
     beq RichterUseItemSix_at0
     lda #$54
@@ -412,7 +448,7 @@ RichterUseItemSix:
     jsr VecStartScriptSlotKind1
     stz a:PlayerItemFirstUse
 RichterUseItemSix_at0:
-    bra $B99D
+    bra RichterUseThrownItem_at1
 
 ; @routine 01BC:1CD RichterUseItemSeven
 ; @run 6D:B9CD
@@ -423,12 +459,12 @@ RichterUseItemSix_at0:
 ; Entry: X twice the item. Exit: as RichterUseItem.
 RichterUseItemSeven:
     lda a:OBJ_KIND+5
-    beq $B99D
+    beq RichterUseThrownItem_at1
     lda a:OBJ_KIND+8
-    beq $B99D
-    lda a:$275B
-    beq $B99D
-    jmp $B93D
+    beq RichterUseThrownItem_at1
+    lda a:OBJ_KIND+11
+    beq RichterUseThrownItem_at1
+    jmp RichterUseItemPaid_at0
 
 ; @routine 01BC:1DF RichterFindItemOut
 ; @run 6D:B9DF
@@ -439,11 +475,12 @@ RichterUseItemSeven:
 ; if it was slot 5, else clear. None: Z and C set, N clear. X and V kept.
 RichterFindItemOut:
     ldy #$05
+RichterFindItemOut_at1:
     lda a:OBJ_KIND,y
     bne RichterFindItemOut_at0
     iny
     cpy #$10
-    bne StepListThenStartType2E
+    bne RichterFindItemOut_at1
 RichterFindItemOut_at0:
     rts
 
@@ -457,10 +494,10 @@ RichterFindItemOut_at0:
 RichterUseItemEight:
     bsr RichterFindItemOut
     beq RichterUseItemEight_at0
-    jmp $B93D
+    jmp RichterUseItemPaid_at0
 RichterUseItemEight_at0:
     lda a:PlayerItemFirstUse
-    beq $B9CB
+    beq RichterUseItemSix_at0
     lda #$53
     ldx #$06
     jsr VecStartListChannelKind2
@@ -468,7 +505,7 @@ RichterUseItemEight_at0:
     ldx #$06
     jsr VecStartScriptSlotKind1
     stz a:PlayerItemFirstUse
-    bra $B99D
+    bra RichterUseThrownItem_at1
 
 ; @routine 01E0:124 MariaReadPad
 ; @run 6D:B924

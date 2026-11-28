@@ -328,7 +328,7 @@ Quicken RichterObjectQuicken(uint8_t object)
     quicken.value = rd8((uint16_t)(OBJ_WORK_G + object));
     if (quicken.value != 0)
         return quicken;
-    quicken.value = rd8((uint16_t)(OBJ_SCROLL_BAND + object));
+    quicken.value = rd8((uint16_t)(OBJ_ANIMATION_AT + object));
     quicken.how = QUICKEN_NOT_STEP;
     if (quicken.value != OBJECT_STATE_QUICK)
         return quicken;
@@ -905,7 +905,7 @@ void abi_RichterObjectHitboxOn(void)
  * @routine 01C0:284 RichterObjectAnimationList
  * @run 6E:DA84
  * WHAT IT DOES: Points at an object's animation list and its step's entry.
- * HOW: RichterObjectAnimations by OBJ_WORK_A into zTemp00 and 01; the step doubled.
+ * HOW: RichterObjectAnimations by OBJ_ANIMATION into zTemp00 and 01; the step doubled.
  * WAITS: no.
  * Entry: X object. Exit: A and Y twice the step, N and Z from it, C the step's bit 7. X and V
  * kept.
@@ -913,12 +913,12 @@ void abi_RichterObjectHitboxOn(void)
 static ObjectListStep object_animation_list(uint8_t object, uint16_t lists)
 {
     ObjectListStep r;
-    uint8_t doubled = (uint8_t)(RD8(OBJ->work_a[object]) << 1);
+    uint8_t doubled = (uint8_t)(RD8(OBJ->animation[object]) << 1);
     uint8_t step;
 
     WR8(ZP->temp00, rd8((uint16_t)(lists + doubled)));
     WR8(ZP->temp01, rd8((uint16_t)(lists + 1 + doubled)));
-    step = RD8(OBJ->scroll_band[object]);
+    step = RD8(OBJ->animation_at[object]);
     r.y = (uint8_t)(step << 1);
     r.carry = (step & 0x80) != 0;
     return r;
@@ -1025,14 +1025,14 @@ static AnimationStep object_read_entry(const ObjectAnimationLayout *layout, uint
  * @run 6E:DA63
  * @stop DA84
  * WHAT IT DOES: Starts an object's animation from its first step.
- * HOW: The animation into OBJ_WORK_A, step zero, and its first entry read.
+ * HOW: The animation into OBJ_ANIMATION, step zero, and its first entry read.
  * WAITS: no.
  * Entry: A animation, X object. Exit: as RichterAnimationTick. Clobbers zTemp00-01.
  */
 static AnimationStep object_set_animation(const ObjectAnimationLayout *layout, uint8_t object, uint8_t animation)
 {
-    WR8(OBJ->work_a[object], animation);
-    WR8(OBJ->scroll_band[object], 0);
+    WR8(OBJ->animation[object], animation);
+    WR8(OBJ->animation_at[object], 0);
     return object_read_entry(layout, object);
 }
 
@@ -1051,7 +1051,7 @@ void abi_RichterObjectSetAnimation(void)
  * @run 6E:DA51
  * WHAT IT DOES: Counts down an object's frame on show; at zero moves to the next step of its list.
  * A timer of $FF means its animation has stopped.
- * HOW: OBJ_HURT_TIMER the timer, OBJ_SCROLL_BAND the step, OBJ_FRAME the frame shown.
+ * HOW: OBJ_HURT_TIMER the timer, OBJ_ANIMATION_AT the step, OBJ_FRAME the frame shown.
  * WAITS: no.
  * Entry: X object. Exit: as RichterAnimationTick.
  */
@@ -1067,7 +1067,7 @@ static AnimationStep object_animation_tick(const ObjectAnimationLayout *layout, 
     }
     left = DEC8(OBJ->hurt_timer[object]);
     if (left == 0) {
-        INC8(OBJ->scroll_band[object]);
+        INC8(OBJ->animation_at[object]);
         return object_read_entry(layout, object);
     }
     jsr_push(layout->tick_ret);

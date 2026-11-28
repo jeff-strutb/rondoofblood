@@ -14,8 +14,9 @@
 #include "routines.h"
 #include "enemy_objects.h"
 #include "player_objects.h"
+#include "richter.h"
 
-enum { TILE_HANDLED_A = 0x81, STAGE_TABLE_9C20 = 0x9C20, VY_TABLE = 0xBFCB, VX_TABLE = 0xBFEC, MARIA_VY_TABLE = 0xC29A,
+enum { TILE_HANDLED_A = 0x81, STAGE_TABLE_9C20 = 0x9C20, VY_TABLE = RichterObjectSpeedsY, VX_TABLE = RichterObjectSpeedsX, MARIA_VY_TABLE = 0xC29A,
        MARIA_VX_TABLE = 0xC2ED };
 
 /* Arms: one enum per routine that has more than one way out. */
@@ -305,7 +306,7 @@ ObjArm RichterFlagsAgainstFour(void)
     ObjArm r = { 0 };
 
     r.second = RD8(ZP->richter_object);
-    r.first = RD8(OBJ->scroll_band[0]);
+    r.first = RD8(OBJ->animation_at[0]);
     return r;
 }
 
@@ -567,11 +568,6 @@ void abi_NegateVelocityXIfFacingLeft(void)
  * Entry: nothing. Exit: counting on, N and Z from the new value; at zero as RichterStand.
  * Checked with --callees wrappers: RichterStand's earlier C differs from its draft in the call frames of its own calls.
  */
-typedef struct {
-    uint8_t value;
-    bool stands;
-    AnimationStep stand;
-} CountDown;
 
 CountDown CountDownThenStand(void)
 {
@@ -587,8 +583,11 @@ CountDown CountDownThenStand(void)
 
 void abi_CountDownThenStand(void)
 {
-    CountDown r = CountDownThenStand();
+    count_down_stand_exit_shim(CountDownThenStand());
+}
 
+void count_down_stand_exit_shim(CountDown r)
+{
     abi_nz(r.value);
     if (r.stands) {
         animation_exit_shim(r.stand);
@@ -722,7 +721,7 @@ ObjArm RichterTurnOnPad(void)
 }
 
 /* Without a turn, the facing's load and a TST of the pad; after one, the state's load with Y, C and V of its subtraction. */
-static EndedTst richter_turn_on_pad_exit_shim(ObjArm r)
+EndedTst richter_turn_on_pad_exit_shim(ObjArm r)
 {
     Ended e = ended_load(r.first);
 
@@ -795,10 +794,6 @@ void abi_LoadRecordThenRecordEvent(void)
  * Entry: Y the table's offset. Exit: as RichterReadOnScreen.
  * Checked with --callees wrappers; no case reaches the read's own code, so the read made by C is not reached.
  */
-typedef struct {
-    Sum row;
-    TileRead read;
-} OffsetRead;
 
 /* The registers the overlay's own code is entered with: the add's A and flags. */
 static void read_at_offset_entry_shim(Sum row)
@@ -810,12 +805,12 @@ OffsetRead RichterReadAtOffset(uint8_t offset)
 {
     OffsetRead r;
     uint8_t x_lo = RD8(OBJ->x_lo[0]);
-    Sum column = add_bytes(x_lo, rd8((uint16_t)(0xB7B1 + offset)), false);
+    Sum column = add_bytes(x_lo, rd8((uint16_t)(RichterProbeOffsets + offset)), false);
     uint8_t y_lo;
 
     WR8(ZP->temp00, column.value);
     y_lo = RD8(OBJ->y_lo[0]);
-    r.row = add_bytes(y_lo, rd8((uint16_t)(0xB7B2 + offset)), false);
+    r.row = add_bytes(y_lo, rd8((uint16_t)(RichterProbeOffsets + 1 + offset)), false);
         read_at_offset_entry_shim(r.row); /* the read may run the overlay's own code, entered with this add's A and flags */
     r.read = RichterReadOnScreen(r.row.value, r.row.carry);
     return r;
@@ -823,8 +818,11 @@ OffsetRead RichterReadAtOffset(uint8_t offset)
 
 void abi_RichterReadAtOffset(void)
 {
-    OffsetRead r = RichterReadAtOffset(cpu.y);
+    offset_read_exit_shim(RichterReadAtOffset(cpu.y));
+}
 
+void offset_read_exit_shim(OffsetRead r)
+{
     if (r.read.kind != TILE_BY_ORIGINAL) {
         abi_ended(ended_of_sum(r.row));
     }

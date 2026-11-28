@@ -127,6 +127,7 @@ E0A2,abs,BiosExSatclr,ex_satclr: clears the sprite table; called once at start
 3778,abs,OBJ_KNOCK_RIGHT,the player's use of OBJ_WORK_L: 1 when the hit throws him right, 0 left
 3880,abs,OBJ_HIT_BY_SLOT,the hit objects' use of OBJ_WORK_O: the slot of the object whose hit test found it (HitTestObject stores it; the player's hit reads it)
 2EE0,abs,OBJ_ANIMATION,Richter's and Maria's use of OBJ_WORK_A for the player and their objects: the animation (RichterSetAnimation and RichterObjectSetAnimation store it, the animation lists are read by it)
+2F38,abs,OBJ_ANIMATION_AT,Richter's and Maria's use of OBJ_SCROLL_BAND for the player and their objects: the step within OBJ_ANIMATION's list (RichterSetAnimation clears it, RichterAnimationTick counts it on)
 34B8,abs,OBJ_FALL_DRIFT_DELAY,the player's use of OBJ_WORK_D while falling: frames until the fall's small X speed is given (4 from RichterToFall; $FF none)
 3510,abs,OBJ_PAD_FORCE_FRAMES,the player's use of OBJ_WORK_E: frames left of a forced pad (RichterFrame holds the pad at OBJ_PAD_FORCED meanwhile)
 3568,abs,OBJ_PAD_FORCED,the player's use of OBJ_WORK_F: the pad RichterFrame gives while OBJ_PAD_FORCE_FRAMES runs
@@ -275,6 +276,7 @@ CD,zp,zPushXHi,push along X
 CE,zp,zPushYLo,push along Y
 CF,zp,zPushYHi,push along Y
 3BD2,abs,PlayerClimbReach,how far across he has to go to the edge of the ledge he climbs
+3BC0,abs,PlayerVarsBlock,the player's globals $3BC0 to $3BFF as a block: RichterClearWork and MariaClearWork clear it
 3BD3,abs,PlayerMayLeaveTop,not zero: the player may go above the map
 3BD4,abs,PlayerClimbLandFacing,the facing kept while a landing on a marked floor looks for the side to climb from (RichterLandOnMarked): not zero there makes it an ordinary landing
 3BF6,abs,PlayerAnchorObject,the object whose Y fraction the player takes when pushed
@@ -365,6 +367,7 @@ FF,zp,zBiosDh,BIOS argument _DH
 7241,abs,StageAdpcmSecret,ADPCM by secret stage
 70F8,abs,SceneReadDestinations,RAM addresses for a scene's reads by op
 72C8,abs,SceneCallTable,pointers for the scene overlay
+8006,abs,StageVecTerrainTileRead,the stage overlay's vector to its terrain tile read (TerrainTileRead, overlay_vectors.c): the player's terrain reads call it
 8006,abs,FrameOverlay8006,a mode overlay's entry; the scene overlay's call
 8009,abs,FrameOverlay8009,a mode overlay's entry
 E009,abs,BiosCdRead,cd_read
@@ -485,6 +488,27 @@ BA26,abs,RichterItemUseLists,the sound list each thrown item starts
 BA2F,abs,RichterItemUseScripts,the script each thrown item starts
 B5AA,abs,RichterKnockSpeedsX,X speed words by the side a hit throws him: $FF00 left for 0; $0100 right for 1
 B5D5,abs,RichterHurtResumeFrames,the hurt frame by the state he was hit in: (the state less 5) / 2
+B7B1,abs,RichterProbeOffsets,the X and Y offsets of RichterReadAtOffset's point from his own: pairs by the offset
+BFCB,abs,RichterObjectSpeedsY,Y speed words by entry for SetVelocityYFromTable
+BFEC,abs,RichterObjectSpeedsX,X speed words by entry for SetVelocityXFromTable
+AF5A,abs,RichterClimbLowSteps,the step handlers of states 5 and 6: six words by the step
+AF8F,abs,RichterClimbStepSpeeds,the climb's step by the state less 5: X high and Y high speed pairs
+B017,abs,RichterClimbPadOn,the directions held that go on along the climb, by the state less 5: both
+B01B,abs,RichterClimbPadOnAcross,the same, across alone
+B01F,abs,RichterClimbPadOnUpDown,the same, up or down alone (with PadForcedPressB clear)
+B023,abs,RichterClimbPadBack,the directions held that turn him back along the climb, by the state less 5: both
+B027,abs,RichterClimbPadBackAcross,the same, across alone
+B02B,abs,RichterClimbPadBackUpDown,the same, up or down alone (with PadForcedPressB clear)
+B02F,abs,RichterClimbBackAnimations,the animation of the way back, by the state less 5
+B033,abs,RichterClimbBackFrames,the frame of the way back
+B037,abs,RichterClimbBackFacings,the facing of the way back
+B03B,abs,RichterClimbBackStates,the state of the way back
+B03F,abs,RichterClimbAnimations,the climb's first animation of two, by the state less 5
+B09E,abs,RichterClimbLowOffsets,the RichterReadAtOffset offset of states 5 and 6's look below
+B1A0,abs,RichterClimbReachFacings,the facing a reach ends in: by the state less 5, or less 7
+B1A2,abs,RichterClimbPullSteps,the step across of the pull up, by the state less 5
+B1A4,abs,RichterClimbPullPads,the directions held that pull him up, by the state less 5
+B1BC,abs,RichterClimbHighSteps,the step handlers of states 7 and 8: six words by the step
 B22D,abs,RichterHurtSteps,the hit reaction's step handlers (state 9): twelve words by the step
 B2C1,abs,RichterHurtByState,the hit's start by the state he was hit in: thirteen words
 B37D,abs,RichterClimbStepsHurtAsStanding,1 for the steps of states 5 to 8 a hit is taken in as if standing (2 to 4)

@@ -17,7 +17,7 @@ RichterTurnOnPad_at2:
     sec
     sbc #$05
     tay
-    lda a:$B03B,y
+    lda a:RichterClimbBackStates,y
     sta a:OBJ_STATE
     rts
 RichterTurnOnPad_at0:
@@ -53,11 +53,11 @@ CountDownThenStand_at0:
 RichterReadAtOffset:
     lda a:OBJ_X_LO
     clc
-    adc a:$B7B1,y
+    adc a:RichterProbeOffsets,y
     sta z:zTemp00
     lda a:OBJ_Y_LO
     clc
-    adc a:$B7B2,y
+    adc a:RichterProbeOffsets+1,y
     jmp RichterReadOnScreen
 
 ; @routine 01BC:7B4 RichterStateDoubled
@@ -82,9 +82,9 @@ RichterStateDoubled:
 SetVelocityYFromTable:
     asl a
     tay
-    lda a:$BFCB,y
+    lda a:RichterObjectSpeedsY,y
     sta a:OBJ_VY_LO,x
-    lda a:$BFCC,y
+    lda a:RichterObjectSpeedsY+1,y
     sta a:OBJ_VY_HI,x
     rts
 
@@ -97,9 +97,9 @@ SetVelocityYFromTable:
 SetVelocityXFromTable:
     asl a
     tay
-    lda a:$BFEC,y
+    lda a:RichterObjectSpeedsX,y
     sta a:OBJ_VX_LO,x
-    lda a:$BFED,y
+    lda a:RichterObjectSpeedsX+1,y
     sta a:OBJ_VX_HI,x
     rts
 
@@ -111,7 +111,7 @@ SetVelocityXFromTable:
 ; Entry: nothing. Exit: X zRichterObject, A the flags, N, Z, C from A less 4. Y, V kept.
 RichterFlagsAgainstFour:
     ldx z:zRichterObject
-    lda a:OBJ_SCROLL_BAND
+    lda a:OBJ_ANIMATION_AT
     cmp #$04
     rts
 

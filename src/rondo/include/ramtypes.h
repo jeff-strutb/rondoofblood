@@ -344,7 +344,7 @@ typedef struct {
     uint8_t vy_hi[88]; /* OBJ_VY_HI */
     uint8_t vy_lo[88]; /* OBJ_VY_LO */
     union { uint8_t work_a[88]; uint8_t animation[88]; }; /* OBJ_WORK_A */
-    uint8_t scroll_band[88]; /* OBJ_SCROLL_BAND */
+    union { uint8_t scroll_band[88]; uint8_t animation_at[88]; }; /* OBJ_SCROLL_BAND */
     uint8_t hurt_timer[88]; /* OBJ_HURT_TIMER */
     union { uint8_t sprite_flip[88]; uint8_t f2fe8[88]; }; /* OBJ_SPRITE_FLIP */
     union { uint8_t start_arg[88]; uint8_t f3040[88]; }; /* OBJ_START_ARG */
@@ -406,6 +406,7 @@ _Static_assert(ObjectTable_BASE + offsetof(ObjectTable, vy_lo) + 0 == OBJ_VY_LO,
 _Static_assert(ObjectTable_BASE + offsetof(ObjectTable, work_a) + 0 == OBJ_WORK_A, "ObjectTable.work_a is not at OBJ_WORK_A");
 _Static_assert(ObjectTable_BASE + offsetof(ObjectTable, animation) == OBJ_ANIMATION, "ObjectTable.animation is not at OBJ_ANIMATION");
 _Static_assert(ObjectTable_BASE + offsetof(ObjectTable, scroll_band) + 0 == OBJ_SCROLL_BAND, "ObjectTable.scroll_band is not at OBJ_SCROLL_BAND");
+_Static_assert(ObjectTable_BASE + offsetof(ObjectTable, animation_at) == OBJ_ANIMATION_AT, "ObjectTable.animation_at is not at OBJ_ANIMATION_AT");
 _Static_assert(ObjectTable_BASE + offsetof(ObjectTable, hurt_timer) + 0 == OBJ_HURT_TIMER, "ObjectTable.hurt_timer is not at OBJ_HURT_TIMER");
 _Static_assert(ObjectTable_BASE + offsetof(ObjectTable, sprite_flip) + 0 == OBJ_SPRITE_FLIP, "ObjectTable.sprite_flip is not at OBJ_SPRITE_FLIP");
 _Static_assert(ObjectTable_BASE + offsetof(ObjectTable, f2fe8) + 0 == OBJ_SPRITE_FLIP, "ObjectTable.f2fe8 is not at OBJ_SPRITE_FLIP");

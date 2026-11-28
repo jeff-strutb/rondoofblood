@@ -98,6 +98,20 @@ void rl_read_below(RegLog *log, TileRead r, bool read_made)
     s->read_below.read_made = read_made;
 }
 
+void rl_offset_read(RegLog *log, OffsetRead r) { rl_next(log, RX_OFFSET_READ)->offset_read = r; }
+void rl_item_crash(RegLog *log, ItemCrash r) { rl_next(log, RX_ITEM_CRASH)->item_crash = r; }
+void rl_ledge_hurt(RegLog *log, LedgeHurt r) { rl_next(log, RX_LEDGE_HURT)->ledge_hurt = r; }
+void rl_up_whip(RegLog *log, UpWhip r) { rl_next(log, RX_UP_WHIP)->up_whip = r; }
+void rl_jump_climb(RegLog *log, JumpOrClimb r) { rl_next(log, RX_JUMP_CLIMB)->jump_climb = r; }
+void rl_turn_pad(RegLog *log, ObjArm r) { rl_next(log, RX_TURN_PAD)->arm = r; }
+void rl_crash_frame(RegLog *log, CrashFrame r) { rl_next(log, RX_CRASH_FRAME)->crash_frame = r; }
+void rl_speed(RegLog *log, FacingSpeed r) { rl_next(log, RX_SPEED)->speed = r; }
+void rl_air(RegLog *log, AirStart r) { rl_next(log, RX_AIR)->air = r; }
+void rl_crash_stand(RegLog *log, CrashStand r) { rl_next(log, RX_CRASH_STAND)->crash_stand = r; }
+void rl_up_press(RegLog *log, UpPressUse r) { rl_next(log, RX_UP_PRESS)->up_press = r; }
+void rl_jump_pressed(RegLog *log, bool r) { rl_next(log, RX_JUMP_PRESSED)->jump_pressed = r; }
+void rl_countdown(RegLog *log, CountDown r) { rl_next(log, RX_COUNTDOWN)->countdown = r; }
+
 void rl_sound(RegLog *log, uint8_t command, CommandCall r)
 {
     RegStep *s = rl_next(log, RX_SOUND);
@@ -222,6 +236,45 @@ void reg_log_replay(const RegLog *log)
             break;
         case RX_HURT_RESUME:
             hurt_resume_exit_shim(s->hurt_resume);
+            break;
+        case RX_OFFSET_READ:
+            offset_read_exit_shim(s->offset_read);
+            break;
+        case RX_ITEM_CRASH:
+            item_crash_exit_shim(s->item_crash);
+            break;
+        case RX_LEDGE_HURT:
+            ledge_hurt_exit_shim(s->ledge_hurt);
+            break;
+        case RX_UP_WHIP:
+            up_whip_exit_shim(s->up_whip);
+            break;
+        case RX_JUMP_CLIMB:
+            jump_or_climb_exit_shim(s->jump_climb);
+            break;
+        case RX_TURN_PAD:
+            abi_ended_tst(richter_turn_on_pad_exit_shim(s->arm));
+            break;
+        case RX_CRASH_FRAME:
+            crash_frame_exit_shim(s->crash_frame);
+            break;
+        case RX_SPEED:
+            speed_exit_shim(s->speed);
+            break;
+        case RX_AIR:
+            air_exit_shim(s->air);
+            break;
+        case RX_CRASH_STAND:
+            crash_stand_exit_shim(s->crash_stand);
+            break;
+        case RX_UP_PRESS:
+            up_press_use_exit_shim(s->up_press);
+            break;
+        case RX_JUMP_PRESSED:
+            abi_flag(P_C, s->jump_pressed);
+            break;
+        case RX_COUNTDOWN:
+            count_down_stand_exit_shim(s->countdown);
             break;
         }
     }

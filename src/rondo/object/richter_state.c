@@ -115,24 +115,11 @@ void abi_RichterTurnOnPress(void);
 void abi_RichterLedgeHurtA(void);
 void abi_RichterLedgeHurtB(void);
 void abi_RichterNudgeBJump(void);
-typedef struct {
-    Lift lift;
-    bool moving;
-    bool same_way;
-    AnimationStep animation;
-    FacingSpeed speed;
-} AirStart;
 
 
 
-/* An item crash's frame and the add that found its entry. */
-typedef struct { Sum entry; uint8_t frame; } CrashFrame;
 
-/* A hurt off a ledge: item 5's crash with its animation, or the nudge and the hurt jump. */
-typedef struct { bool crash; AnimationStep animation; Nudge nudge; HurtAir hurt; } LedgeHurt;
 
-/* A jump off a ledge: the nudge, and taking to the air. */
-typedef struct { Nudge nudge; AirStart air; } LedgeJump;
 
 LedgeHurt RichterLedgeHurtA(void);
 LedgeHurt RichterLedgeHurtB(void);
@@ -140,11 +127,6 @@ LedgeJump RichterNudgeBJump(void);
 void ledge_hurt_exit_shim(LedgeHurt hurt);
 void air_exit_shim(AirStart air);
 void ledge_jump_exit_shim(LedgeJump jump);
-typedef enum { UP_WHIP_JUMPED, UP_WHIP_NO_LADDER, UP_WHIP_LADDER } UpWhipHow;
-/* The whip's reach up a ledge: the pad, the jump off it, or the ladder and the nudge onto it. */
-typedef struct {
-    UpWhipHow how; uint8_t held; LedgeJump jump; LadderCheck ladder; Nudge nudge; AnimationStep fall;
-} UpWhip;
 UpWhip RichterUpWhipLeft(void);
 UpWhip RichterUpWhipRight(void);
 void up_whip_exit_shim(UpWhip whip);
@@ -203,17 +185,6 @@ typedef struct {
     uint8_t progress; TurnPress turn; uint8_t mark; uint8_t whip; uint8_t late; uint8_t timer; bool up;
     AnimationStep tick; AnimationWaitEnd wait; AnimationStep stand; RegLog fall;
 } AttackStand;
-typedef enum {
-    CRASH_STAND_STOOD, CRASH_STAND_ENDED, CRASH_STAND_FELL, CRASH_STAND_JUMPED, CRASH_STAND_UP_WHIP,
-    CRASH_STAND_SPAWNED, CRASH_STAND_NO_SLOT
-} CrashStandHow;
-/* Standing through the item crash: the turn, the timer, each check, and the slot spawned. */
-typedef struct {
-    CrashStandHow how;
-    uint8_t facing; uint8_t held; uint8_t timer; uint8_t state; uint8_t bumped;
-    ColumnsEnd columns; FootingCheck footing; bool jump;
-    AnimationStep stand; CrashEnd end; AirStart air; UpWhip whip; uint8_t slot; uint8_t seen;
-} CrashStand;
 /* The stand's step and which handler ran. */
 typedef struct {
     uint8_t step; uint16_t handler; StandStep still; AttackStand attack; CrashStand crash;
@@ -342,6 +313,7 @@ typedef struct {
     bool after_hit;
     uint8_t blinking, state, count, pressed, counted;
     uint8_t y_high_late, handler_state;
+    uint8_t pressed_late;         /* zPadPressed's directions as stored above the map */
 } StateFrame;
 Death RichterDie(uint8_t x, uint8_t y);
 Death RichterDeathSound(uint8_t x, uint8_t y);
@@ -1500,7 +1472,7 @@ static void state_handler_shim(const StateFrame *f, uint16_t handler)
     abi_nz((uint8_t)(f->y_high_late - BELOW_THE_MAP));
     abi_flag(P_C, f->y_high_late == BELOW_THE_MAP);
     if (f->y_high_late == BELOW_THE_MAP) {
-        cpu.a = (uint8_t)(rd8(zPadPressed));
+        cpu.a = f->pressed_late;
         abi_nz(cpu.a);
     }
     cpu.a = (uint8_t)(f->handler_state << 1);
@@ -1517,8 +1489,27 @@ static void state_handler_shim(const StateFrame *f, uint16_t handler)
     case 0xA85E:
         abi_RichterStateCrouch();
         break;
+    case 0xABBD:
+        abi_RichterStateAir();
+        break;
+    case 0xA963:
+        abi_RichterStateFall();
+        break;
+    case 0xAF54:
+        abi_RichterStateClimbLow();
+        break;
+    case 0xB1B6:
+        abi_RichterStateClimbHigh();
+        break;
+    case 0xB227:
+        abi_RichterStateHurt();
+        break;
+    case 0xAE5E:
+        abi_RichterStateLandCrouch();
+        break;
     default:
-        call_original(handler);
+        /* past the thirteen states: the table's next bytes, as the JMP takes them */
+        run_routine(handler);
         break;
     }
 }
@@ -1560,7 +1551,8 @@ static void after_hit(StateFrame *f)
     f->y_high_late = rd8(OBJ_Y_HI);
     if (f->y_high_late == BELOW_THE_MAP) {
         wr8(zPadHeld, (uint8_t)(rd8(zPadHeld) & PAD_DIRECTIONS));
-        wr8(zPadPressed, (uint8_t)(rd8(zPadPressed) & PAD_DIRECTIONS));
+        f->pressed_late = (uint8_t)(rd8(zPadPressed) & PAD_DIRECTIONS);
+        wr8(zPadPressed, f->pressed_late);
     }
     f->handler_state = rd8(OBJ_STATE);
     entry = (uint16_t)(PlayerStateHandlers + (uint8_t)(f->handler_state << 1));
@@ -1900,7 +1892,7 @@ static void attack_stand_replay_shim(const AttackStand *st)
  * WHAT IT DOES: The standing state's attacking step: reads the ground, falls if nothing is
  * below; turns with a press while the attack is young; with the whip out and up held early,
  * crouches; otherwise waits for the animation's end, then stands.
- * HOW: OBJ_SCROLL_BAND counts the attack's progress; object 3 is the whip; PlayerAttackKind
+ * HOW: OBJ_ANIMATION_AT counts the attack's progress; object 3 is the whip; PlayerAttackKind
  * set skips to the wait. RichterAnimationWait returns past this routine while it runs.
  * WAITS: no.
  * Entry: nothing. Exit: falling, as $A9DD. Crouched, A 2, N and Z clear, as the animation's
@@ -1925,7 +1917,7 @@ AttackStand RichterStandStep1(void)
     jsr_push(0xA30B);
     st.landing = RichterLandOnFloor();
     jsr_pop();
-    st.progress = rd8(OBJ_SCROLL_BAND);
+    st.progress = rd8(OBJ_ANIMATION_AT);
     if (st.progress < TURN_PROGRESS) {
         jsr_push(0xA314);
         st.turn = RichterTurnOnPress();
@@ -1935,7 +1927,7 @@ AttackStand RichterStandStep1(void)
     if (st.mark == 0) {
         st.whip = rd8((uint16_t)(OBJ_KIND + OBJECT_WHIP));
         if (st.whip == WHIP_OUT) {
-            st.late = rd8(OBJ_SCROLL_BAND);
+            st.late = rd8(OBJ_ANIMATION_AT);
             if (st.late >= CROUCH_PROGRESS) {
                 st.timer = rd8(OBJ_HURT_TIMER);
             } else {
@@ -1943,7 +1935,7 @@ AttackStand RichterStandStep1(void)
                 st.up = RichterUpHeld();
                 jsr_pop();
                 if (st.up) {
-                    wr8(OBJ_WORK_A, ATTACK_CROUCH_FIELD);
+                    wr8(OBJ_ANIMATION, ATTACK_CROUCH_FIELD);
                     jsr_push(0xA33D);
                     st.tick = RichterAnimationTick();
                     jsr_pop();
@@ -2041,6 +2033,8 @@ static void state_compare_shim(uint8_t state)
 
 static void crash_stand_replay_shim(const CrashStand *st)
 {
+    if (st->from_timer)
+        goto timer;
     cpu.a = st->facing;
     abi_nz(st->facing);
     abi_flag(P_N, (st->held & 0x80) != 0);
@@ -2050,6 +2044,7 @@ static void crash_stand_replay_shim(const CrashStand *st)
         cpu.a = FACING_LEFT;
         abi_nz(FACING_LEFT);
     }
+timer:
     cpu.a = st->timer;
     abi_nz(st->timer);
     if (st->timer == 0) {
@@ -2089,6 +2084,8 @@ static void crash_stand_replay_shim(const CrashStand *st)
  * A $0C, Y the slot, N clear, Z clear. No free slot, A the last slot's OBJ_KIND, Y $10, Z and
  * C set, N clear.
  */
+static CrashStand crash_timer_body(CrashStand st);
+
 CrashStand RichterStandStep2(void)
 {
     CrashStand st = { 0 };
@@ -2099,6 +2096,30 @@ CrashStand RichterStandStep2(void)
         wr8(OBJ_FACING_LEFT, FACING_LEFT);
     else if (st.facing != FACING_RIGHT && (st.held & PAD_RIGHT))
         wr8(OBJ_FACING_LEFT, FACING_RIGHT);
+    return crash_timer_body(st);
+}
+
+/*
+ * @routine 01B9:371 RichterStandStep2Timer
+ * @run 6D:A371
+ * WHAT IT DOES: RichterStandStep2 from its timer on: while it runs, reads the ground (in state 0)
+ * and falls if nothing is below, jumps on a press, or steps the animation and spawns object $0C in
+ * the first free slot from 5; when it has run out, stands, or ends the item crash outside state 0.
+ * RichterStandStep2 runs on into it; the climb's steps jump to it.
+ * HOW: As RichterStandStep2.
+ * WAITS: no.
+ * Entry: nothing. Exit: as RichterStandStep2, without its turn's tests.
+ */
+CrashStand RichterStandStep2Timer(void)
+{
+    CrashStand st = { 0 };
+
+    st.from_timer = true;
+    return crash_timer_body(st);
+}
+
+static CrashStand crash_timer_body(CrashStand st)
+{
     st.timer = rd8(OBJ_LOOP_FLAGS);
     if (st.timer == 0) {
         st.bumped = (uint8_t)(rd8(PlayerItemFirstUse) + 1);
@@ -2201,6 +2222,11 @@ void abi_RichterStandStep2(void)
     crash_stand_exit_shim(RichterStandStep2());
 }
 
+void abi_RichterStandStep2Timer(void)
+{
+    crash_stand_exit_shim(RichterStandStep2Timer());
+}
+
 /*
  * @routine 01B9:3D0 RichterStepIndex
  * @run 6D:A3D0
@@ -2252,11 +2278,11 @@ void abi_MariaStepIndex(void)
     step_index_exit_shim(MariaStepIndex());
 }
 
-/* A handler of the stand with no C, entered as the table's jump leaves the registers. */
+/* A step past the table's own: the next bytes as the JMP takes them, entered as the index leaves the registers. */
 static void stand_handler_shim(uint8_t step, uint16_t handler)
 {
     step_index_exit_shim(step);
-    call_original(handler);
+    run_routine(handler);
 }
 
 /*
@@ -2588,6 +2614,11 @@ static void abi_exit_speed(FacingSpeed set)
     cpu.y = (uint8_t)(set.facing << 1);
     abi_nz(set.high);
     abi_flag(P_C, (set.facing & 0x80) != 0);
+}
+
+void speed_exit_shim(FacingSpeed set)
+{
+    abi_exit_speed(set);
 }
 
 /*
@@ -3703,7 +3734,7 @@ static void walk_replay_shim(const WalkStep *w)
  * crouch. Otherwise the animation steps, and the pad held his way keeps him walking; held the
  * other way with button II, he steps back; else he stands.
  * HOW: RichterReadColumns and RichterFloorCheck, again after OBJ_Y_LO is stepped down; the
- * checks as in the stand's first step. OBJ_WORK_A 0 to walk, $32 to step back.
+ * checks as in the stand's first step. OBJ_ANIMATION 0 to walk, $32 to step back.
  * WAITS: no.
  * Entry: nothing. Exit: as the transition taken, with what the checks before it left.
  */
@@ -3788,7 +3819,7 @@ WalkStep RichterStateWalk(void)
     w.facing = rd8(OBJ_FACING_LEFT);
     w.held = rd8(zPadHeld);
     if (w.held & (w.facing == FACING_RIGHT ? PAD_RIGHT : PAD_LEFT)) {
-        wr8(OBJ_WORK_A, 0);
+        wr8(OBJ_ANIMATION, 0);
         w.how = WALK_ON;
         w.speed = RichterSpeedWalk();
         return w;
@@ -3801,7 +3832,7 @@ WalkStep RichterStateWalk(void)
         w.back_facing = rd8(OBJ_FACING_LEFT);
         back = rd8(zPadHeld);
         if (back & (w.back_facing == FACING_RIGHT ? PAD_LEFT : PAD_RIGHT)) {
-            wr8(OBJ_WORK_A, BACKSTEP_FIELD);
+            wr8(OBJ_ANIMATION, BACKSTEP_FIELD);
             w.how = WALK_BACKSTEP;
             w.speed = RichterSpeedBackstep();
             return w;
@@ -4083,12 +4114,12 @@ static bool check_item_use(CheckLog *log, uint16_t ret)
     return r.use.how != USE_NO_PRESS;
 }
 
-/* The attack's progress against a mark: LDA OBJ_SCROLL_BAND, CMP. */
+/* The attack's progress against a mark: LDA OBJ_ANIMATION_AT, CMP. */
 static bool check_progress_below(CheckLog *log, uint8_t mark)
 {
     CheckRecord r = { .kind = CHECK_COMPARE };
 
-    r.compare.value = rd8(OBJ_SCROLL_BAND);
+    r.compare.value = rd8(OBJ_ANIMATION_AT);
     r.compare.with = mark;
     log_add(log, r);
     return r.compare.value < mark;
@@ -4336,11 +4367,11 @@ void abi_RichterCrouchAttack(void)
  * WHAT IT DOES: Attacking from the crouch: reads the ground (nothing below goes to $A9DD); turns
  * with a press while the attack is young; with up let go before it is far along, stands; else
  * waits for the animation's end, then is down again, animation $0E, step 0.
- * HOW: OBJ_SCROLL_BAND against 3 and 6. RichterAnimationWait returns past this routine while it
+ * HOW: OBJ_ANIMATION_AT against 3 and 6. RichterAnimationWait returns past this routine while it
  * runs.
  * WAITS: no.
  * Entry: nothing. Exit: falling, as $A9DD. Stood, as RichterAnimationTick, state 0 and
- * OBJ_WORK_A 3. Waiting, as RichterAnimationRunning, A $A8 and N set. Down, A $0E, N and Z
+ * OBJ_ANIMATION 3. Waiting, as RichterAnimationRunning, A $A8 and N set. Down, A $0E, N and Z
  * clear, the rest as RichterAnimationRunning. With what the checks before left.
  */
 CrouchStep RichterCrouchStep1(void)
@@ -4358,7 +4389,7 @@ CrouchStep RichterCrouchStep1(void)
         check_turn(&c.log, 0xA8DF);
     if (check_progress_below(&c.log, CROUCH_PROGRESS) && !check_up(&c.log, 0xA8E9)) {
         wr8(OBJ_STATE, STATE_STAND);
-        wr8(OBJ_WORK_A, ATTACK_STAND_FIELD);
+        wr8(OBJ_ANIMATION, ATTACK_STAND_FIELD);
         c.how = CROUCH_STOOD_TICK;
         c.animation = RichterAnimationTick();
         return c;
@@ -4537,7 +4568,7 @@ CrashEnd RichterEndItemCrash(void)
     end.state = rd8(OBJ_STATE);
     end.index = (uint8_t)((uint8_t)(end.state - CRASH_FIRST_STATE) >> 1);
     wr8(OBJ_FRAME, rd8((uint16_t)(RichterCrashEndFrames + end.index)));
-    wr8(OBJ_WORK_A, rd8((uint16_t)(RichterCrashEndAnimations + end.index)));
+    wr8(OBJ_ANIMATION, rd8((uint16_t)(RichterCrashEndAnimations + end.index)));
     wr8(OBJ_HURT_TIMER, 0xFF);
     wr8(OBJ_SUBSTATE, 0);
     return end;
@@ -4831,8 +4862,11 @@ CrashFrame RichterCrashFrame(void)
 
 void abi_RichterCrashFrame(void)
 {
-    CrashFrame frame = RichterCrashFrame();
+    crash_frame_exit_shim(RichterCrashFrame());
+}
 
+void crash_frame_exit_shim(CrashFrame frame)
+{
     cpu.a = frame.frame;
     cpu.x = frame.entry.value;
     abi_nz(frame.frame);

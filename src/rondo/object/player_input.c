@@ -11,6 +11,7 @@
 #include "access.h"
 #include "enemy_objects.h"
 #include "player_objects.h"
+#include "richter.h"
 
 enum { PI_FP_NONE, PI_FP_RIGHT, PI_FP_LEFT };
 enum { PI_NP_NONE, PI_NP_NOTED };
@@ -129,20 +130,20 @@ static AnimationStep animation_exit(uint8_t a, uint8_t nz, bool c, bool y_set, u
  * @routine 01BB:69C RichterAnimationPoint
  * @run 6D:B69C
  * WHAT IT DOES: Points zTemp00-01 at the list of the animation in play and gives Y twice the step in play.
- * HOW: OBJ_WORK_A doubled indexes AnimationLists; the step in OBJ_SCROLL_BAND doubled.
+ * HOW: OBJ_ANIMATION doubled indexes AnimationLists; the step in OBJ_ANIMATION_AT doubled.
  * WAITS: no.
  * Entry: nothing. Exit: A and Y twice the step, N and Z from it, C the step's bit 7. X and V kept.
  */
 static ObjectListStep animation_point(uint16_t lists)
 {
     ObjectListStep r;
-    uint8_t animation = RD8(OBJ->work_a[0]);
+    uint8_t animation = RD8(OBJ->animation[0]);
     uint8_t doubled = (uint8_t)(animation << 1);
     uint8_t step;
 
     WR8(ZP->temp00, rd8((uint16_t)(lists + doubled)));
     WR8(ZP->temp01, rd8((uint16_t)(lists + 1 + doubled)));
-    step = RD8(OBJ->scroll_band[0]);
+    step = RD8(OBJ->animation_at[0]);
     r.y = (uint8_t)(step << 1);
     r.carry = (step & 0x80) != 0;
     return r;
@@ -329,7 +330,7 @@ void abi_RichterAnimationRunning(void)
  * @run 6D:B669
  * WHAT IT DOES: Counts down the frame on show; at zero moves to the next step of the list.
  * A timer of $FF means the animation has stopped.
- * HOW: The timer in OBJ_HURT_TIMER, the step in OBJ_SCROLL_BAND, the frame shown in OBJ_FRAME.
+ * HOW: The timer in OBJ_HURT_TIMER, the step in OBJ_ANIMATION_AT, the frame shown in OBJ_FRAME.
  * WAITS: no.
  * Entry: nothing. Exit: A the frame or $FF; Y twice the step, plus one with a frame; C and N, Z
  * from what was read. X and V kept. Clobbers zTemp00-01.
@@ -346,7 +347,7 @@ static AnimationStep animation_tick(const AnimationLayout *layout)
     }
     left = DEC8(OBJ->hurt_timer[0]);
     if (left == 0) {
-        INC8(OBJ->scroll_band[0]);
+        INC8(OBJ->animation_at[0]);
         return animation_read_entry(layout);
     }
     jsr_push(layout->tick_ret);
@@ -411,14 +412,14 @@ void abi_RichterAnimationTick(void)
  * @routine 01BB:67B RichterSetAnimation
  * @run 6D:B67B
  * WHAT IT DOES: Starts an animation from its first step.
- * HOW: The animation into OBJ_WORK_A, step zero, and its first entry read.
+ * HOW: The animation into OBJ_ANIMATION, step zero, and its first entry read.
  * WAITS: no.
  * Entry: A animation. Exit: as RichterAnimationTick. Clobbers zTemp00-01.
  */
 static AnimationStep set_animation(const AnimationLayout *layout, uint8_t animation)
 {
-    WR8(OBJ->work_a[0], animation);
-    WR8(OBJ->scroll_band[0], 0);
+    WR8(OBJ->animation[0], animation);
+    WR8(OBJ->animation_at[0], 0);
     return animation_read_entry(layout);
 }
 
@@ -926,12 +927,30 @@ void abi_MariaTryItemCrash(void)
 ItemUse RichterUseItem(void)
 {
     ItemUse use = { USE_NO_PRESS };
-    uint16_t entry;
 
     if (!(rd8(zPadPressed) & ITEM_USE_PRESS))
         return use;
     if (!(rd8(zPadHeld) & ITEM_USE_HELD))
         return item_not_used(use, USE_NOT_HELD);
+    return RichterUseItemPaid();
+}
+
+/*
+ * @routine 01BC:134 RichterUseItemPaid
+ * @run 6D:B934
+ * WHAT IT DOES: RichterUseItem from the hearts on: with the hearts the item costs, goes to the item's
+ * own handler, which throws it or not; too few, no attack. RichterUseItem runs on into it, and
+ * RichterUseItemOrUpPress goes to it for a press of up with the use button held.
+ * HOW: RichterItemUseCosts by item, then the jump through RichterItemUseHandlers: items 0 and 1 attack
+ * with the whip. zField93 is 0 to 8; the C takes anything past 8 as the whip.
+ * WAITS: no.
+ * Entry: nothing. Exit: as RichterUseItem past its presses.
+ */
+ItemUse RichterUseItemPaid(void)
+{
+    ItemUse use = { USE_NO_PRESS };
+    uint16_t entry;
+
     use.item = rd8(zField93);
     use.hearts = rd8(zField94);
     use.cost = rd8((uint16_t)(RichterItemUseCosts + use.item));
@@ -1003,6 +1022,64 @@ void item_use_exit_shim(ItemUse use)
         abi_nz(use.hearts);
         break;
     }
+}
+
+void abi_RichterUseItemPaid(void)
+{
+    item_use_exit_shim(RichterUseItemPaid());
+}
+
+/*
+ * @routine 01BC:11A RichterUseItemOrUpPress
+ * @run 6D:B91A
+ * WHAT IT DOES: The item's use as RichterUseItem makes it; or, with no new press of the use button,
+ * the use button held and up newly pressed use it all the same (RichterUseItemPaid).
+ * HOW: RichterUseItem; BBR of bit 1 of zPadHeld, TST of bit 4 of zPadPressed; the CLC and RTS where
+ * neither is RichterUseItem's own ($B92C); a branch to RichterUseItemPaid.
+ * WAITS: no.
+ * Entry: nothing. Exit: used, as RichterUseItem. Neither, C clear: held, Z set, N and V bits 7 and 6
+ * of zPadPressed; the rest as RichterUseItem left them.
+ */
+UpPressUse RichterUseItemOrUpPress(void)
+{
+    UpPressUse r = { { USE_NO_PRESS }, false, false, 0 };
+
+    jsr_push(0xB91C);
+    r.use = RichterUseItem();
+    jsr_pop();
+    if (r.use.how != USE_NO_PRESS) {
+        return r;
+    }
+    if (!(rd8(zPadHeld) & ITEM_USE_PRESS)) {
+        return r;
+    }
+    r.tested = true;
+    r.pressed = rd8(zPadPressed);
+    if (!(r.pressed & ITEM_USE_HELD)) {
+        return r;
+    }
+    r.paid = true;
+    r.use = RichterUseItemPaid();
+    return r;
+}
+
+void up_press_use_exit_shim(UpPressUse r)
+{
+    if (r.paid || r.use.how != USE_NO_PRESS) {
+        item_use_exit_shim(r.use);
+        return;
+    }
+    if (r.tested) {
+        abi_flag(P_Z, true);
+        abi_flag(P_N, (r.pressed & 0x80) != 0);
+        abi_flag(P_V, (r.pressed & 0x40) != 0);
+    }
+    abi_flag(P_C, false);
+}
+
+void abi_RichterUseItemOrUpPress(void)
+{
+    up_press_use_exit_shim(RichterUseItemOrUpPress());
 }
 
 void abi_RichterUseItem(void)

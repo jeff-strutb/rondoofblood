@@ -130,7 +130,7 @@ RichterObjectSlot:
 RichterObjectQuicken:
     lda a:OBJ_WORK_G,x
     bne RichterObjectQuicken_at0
-    lda a:OBJ_SCROLL_BAND,x
+    lda a:OBJ_ANIMATION_AT,x
     cmp #$06
     bne RichterObjectQuicken_at0
     lda a:PlayerWhipStruck
@@ -330,7 +330,7 @@ RichterObjectAnimationRunning:
 ; @run 6E:DA51
 ; WHAT IT DOES: Counts down an object's frame on show; at zero moves to the next step of its list.
 ; A timer of $FF means its animation has stopped.
-; HOW: OBJ_HURT_TIMER the timer, OBJ_SCROLL_BAND the step, OBJ_FRAME the frame shown.
+; HOW: OBJ_HURT_TIMER the timer, OBJ_ANIMATION_AT the step, OBJ_FRAME the frame shown.
 ; WAITS: no.
 ; Entry: X object. Exit: as RichterAnimationTick.
 RichterObjectAnimationTick:
@@ -341,20 +341,20 @@ RichterObjectAnimationTick:
 RichterObjectAnimationTick_at0:
     dec a:OBJ_HURT_TIMER,x
     bne RichterObjectSetAnimation_at0
-    inc a:OBJ_SCROLL_BAND,x
+    inc a:OBJ_ANIMATION_AT,x
     bra RichterObjectSetAnimation_at1
 
 ; @routine 01C0:263 RichterObjectSetAnimation
 ; @run 6E:DA63
 ; @stop DA84
 ; WHAT IT DOES: Starts an object's animation from its first step.
-; HOW: The animation into OBJ_WORK_A, step zero, and its first entry read.
+; HOW: The animation into OBJ_ANIMATION, step zero, and its first entry read.
 ; WAITS: no.
 ; Entry: A animation, X object. Exit: as RichterAnimationTick. Clobbers zTemp00-01.
 RichterObjectSetAnimation:
-    sta a:OBJ_WORK_A,x
+    sta a:OBJ_ANIMATION,x
 RichterObjectSetAnimation_at3:
-    stz a:OBJ_SCROLL_BAND,x
+    stz a:OBJ_ANIMATION_AT,x
 RichterObjectSetAnimation_at1:
     bsr RichterObjectAnimationList
     lda (zTemp00),y
@@ -377,19 +377,19 @@ RichterObjectSetAnimation_at0:
 ; @routine 01C0:284 RichterObjectAnimationList
 ; @run 6E:DA84
 ; WHAT IT DOES: Points at an object's animation list and its step's entry.
-; HOW: RichterObjectAnimations by OBJ_WORK_A into zTemp00 and 01; the step doubled.
+; HOW: RichterObjectAnimations by OBJ_ANIMATION into zTemp00 and 01; the step doubled.
 ; WAITS: no.
 ; Entry: X object. Exit: A and Y twice the step, N and Z from it, C the step's bit 7. X and V
 ; kept.
 RichterObjectAnimationList:
-    lda a:OBJ_WORK_A,x
+    lda a:OBJ_ANIMATION,x
     asl a
     tay
     lda a:RichterObjectAnimations,y
     sta z:zTemp00
     lda a:RichterObjectAnimations+1,y
     sta z:zTemp01
-    lda a:OBJ_SCROLL_BAND,x
+    lda a:OBJ_ANIMATION_AT,x
     asl a
     tay
     rts

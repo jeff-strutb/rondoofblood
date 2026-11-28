@@ -12,6 +12,7 @@
 #include "access.h"
 #include "enemy_objects.h"
 #include "player_objects.h"
+#include "richter.h"
 
 enum {
     WALL_ANSWER = 0x02, WALL_COLUMNS = 6, WALL_FIRST_COLUMN_STANDING = 0,
@@ -1667,13 +1668,6 @@ void abi_RichterLadderCheck(void)
     ladder_exit_shim(RichterLadderCheck());
 }
 
-/* How the jump-or-climb check ended. */
-typedef struct {
-    bool pressed;
-    bool up_held;
-    uint8_t held;
-    LadderCheck ladder;
-} JumpOrClimb;
 
 /*
  * @routine 01BC:06F RichterJumpOrClimb
@@ -1703,8 +1697,11 @@ JumpOrClimb RichterJumpOrClimb(void)
 
 void abi_RichterJumpOrClimb(void)
 {
-    JumpOrClimb result = RichterJumpOrClimb();
+    jump_or_climb_exit_shim(RichterJumpOrClimb());
+}
 
+void jump_or_climb_exit_shim(JumpOrClimb result)
+{
     if (!result.pressed) {
         abi_flag(P_C, false);
         return;

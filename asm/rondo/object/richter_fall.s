@@ -80,7 +80,7 @@ RichterFallAttacking:
     jsr RichterPadOverridesOff
     ldx a:PlayerAttackKind
     lda a:RichterAirAttackAnimations,x
-    sta a:OBJ_WORK_A
+    sta a:OBJ_ANIMATION
     jsr RichterAnimationRunning
     bne RichterFallAttacking_at0
     jmp RichterToFall
@@ -134,7 +134,7 @@ RichterDownOnFirstColumnFloor_at0:
 RichterAirStep1:
     lda z:zFieldC6
     bne RichterAirStep1_at0
-    lda a:OBJ_SCROLL_BAND
+    lda a:OBJ_ANIMATION_AT
     cmp #$03
     bcs RichterAirStep1_at0
     jsr RichterAirControl
@@ -371,7 +371,7 @@ RichterStateAir:
 ; below 2 (band 1, or the animation timer below 8), a new press of I is a knock-back (RichterKnockBack);
 ; otherwise the pad's turn if he has not turned, the landings and the debris while falling as
 ; RichterAirStep1, gravity, the animation, and the item's use (an attack in the air).
-; HOW: PlayerJumpKind; bit 0 of OBJ_VX_HI's shifts against the facing; OBJ_SCROLL_BAND; OBJ_HURT_TIMER at X;
+; HOW: PlayerJumpKind; bit 0 of OBJ_VX_HI's shifts against the facing; OBJ_ANIMATION_AT; OBJ_HURT_TIMER at X;
 ; zPadPressed; then as RichterAirStep1's checks, RichterAnimationTick, RichterNoteItemPress, RichterUseItem.
 ; WAITS: no.
 ; Entry: X the step's offset (0); X and Y for the sound driver. Exit: as the path's last routine.
@@ -386,7 +386,7 @@ RichterAirStep0:
     and #$01
     beq RichterAirStep0_at0
 RichterAirStep0_at1:
-    lda a:OBJ_SCROLL_BAND
+    lda a:OBJ_ANIMATION_AT
     cmp #$02
     bcs RichterAirStep0_at0
     dec a
@@ -522,7 +522,7 @@ RichterLandHard_at2:
     jmp RichterKnockSpeedX
 RichterLandHard_at0:
     lda #$06
-    sta a:OBJ_WORK_A
+    sta a:OBJ_ANIMATION
     jsr RichterAnimationRunning
     beq RichterLandHard_at3
     lda #$02
@@ -549,7 +549,7 @@ RichterLandAttacking:
     sta a:OBJ_STATE
     ldx a:PlayerAttackKind
     lda a:RichterLandAttackAnimations,x
-    sta a:OBJ_WORK_A
+    sta a:OBJ_ANIMATION
     jsr RichterAnimationRunning
     bne RichterLandAttacking_at0
     jmp RichterStand
@@ -639,7 +639,7 @@ RichterLandOnMarked_at9:
     lda a:RichterClimbLandStates,x
     sta a:OBJ_STATE
     lda a:RichterClimbLandAnimations,x
-    sta a:OBJ_WORK_A
+    sta a:OBJ_ANIMATION
     rts
 RichterLandOnMarked_at3:
     lda a:OBJ_X_LO
@@ -698,7 +698,7 @@ RichterLandOnMarked_at10:
     adc z:zTemp00
     tax
     lda a:RichterClimbLandAttackAnimations,x
-    sta a:OBJ_WORK_A
+    sta a:OBJ_ANIMATION
     jmp RichterAnimationTick
 RichterLandOnMarked_at8:
     ldx a:RichterColumnX

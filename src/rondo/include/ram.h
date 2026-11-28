@@ -124,6 +124,7 @@
 #define OBJ_KNOCK_RIGHT 0x3778 /* the player's use of OBJ_WORK_L: 1 when the hit throws him right, 0 left */
 #define OBJ_HIT_BY_SLOT 0x3880 /* the hit objects' use of OBJ_WORK_O: the slot of the object whose hit test found it (HitTestObject stores it; the player's hit reads it) */
 #define OBJ_ANIMATION 0x2EE0 /* Richter's and Maria's use of OBJ_WORK_A for the player and their objects: the animation (RichterSetAnimation and RichterObjectSetAnimation store it, the animation lists are read by it) */
+#define OBJ_ANIMATION_AT 0x2F38 /* Richter's and Maria's use of OBJ_SCROLL_BAND for the player and their objects: the step within OBJ_ANIMATION's list (RichterSetAnimation clears it, RichterAnimationTick counts it on) */
 #define OBJ_FALL_DRIFT_DELAY 0x34B8 /* the player's use of OBJ_WORK_D while falling: frames until the fall's small X speed is given (4 from RichterToFall; $FF none) */
 #define OBJ_PAD_FORCE_FRAMES 0x3510 /* the player's use of OBJ_WORK_E: frames left of a forced pad (RichterFrame holds the pad at OBJ_PAD_FORCED meanwhile) */
 #define OBJ_PAD_FORCED 0x3568 /* the player's use of OBJ_WORK_F: the pad RichterFrame gives while OBJ_PAD_FORCE_FRAMES runs */
@@ -269,6 +270,7 @@
 #define zPushYLo 0x20CE /* push along Y */
 #define zPushYHi 0x20CF /* push along Y */
 #define PlayerClimbReach 0x3BD2 /* how far across he has to go to the edge of the ledge he climbs */
+#define PlayerVarsBlock 0x3BC0 /* the player's globals $3BC0 to $3BFF as a block: RichterClearWork and MariaClearWork clear it */
 #define PlayerMayLeaveTop 0x3BD3 /* not zero: the player may go above the map */
 #define PlayerClimbLandFacing 0x3BD4 /* the facing kept while a landing on a marked floor looks for the side to climb from (RichterLandOnMarked): not zero there makes it an ordinary landing */
 #define PlayerAnchorObject 0x3BF6 /* the object whose Y fraction the player takes when pushed */
@@ -358,6 +360,7 @@
 #define StageAdpcmSecret 0x7241 /* ADPCM by secret stage */
 #define SceneReadDestinations 0x70F8 /* RAM addresses for a scene's reads by op */
 #define SceneCallTable 0x72C8 /* pointers for the scene overlay */
+#define StageVecTerrainTileRead 0x8006 /* the stage overlay's vector to its terrain tile read (TerrainTileRead, overlay_vectors.c): the player's terrain reads call it */
 #define FrameOverlay8006 0x8006 /* a mode overlay's entry; the scene overlay's call */
 #define FrameOverlay8009 0x8009 /* a mode overlay's entry */
 #define BiosCdRead 0xE009 /* cd_read */
@@ -476,6 +479,27 @@
 #define RichterItemUseScripts 0xBA2F /* the script each thrown item starts */
 #define RichterKnockSpeedsX 0xB5AA /* X speed words by the side a hit throws him: $FF00 left for 0; $0100 right for 1 */
 #define RichterHurtResumeFrames 0xB5D5 /* the hurt frame by the state he was hit in: (the state less 5) / 2 */
+#define RichterProbeOffsets 0xB7B1 /* the X and Y offsets of RichterReadAtOffset's point from his own: pairs by the offset */
+#define RichterObjectSpeedsY 0xBFCB /* Y speed words by entry for SetVelocityYFromTable */
+#define RichterObjectSpeedsX 0xBFEC /* X speed words by entry for SetVelocityXFromTable */
+#define RichterClimbLowSteps 0xAF5A /* the step handlers of states 5 and 6: six words by the step */
+#define RichterClimbStepSpeeds 0xAF8F /* the climb's step by the state less 5: X high and Y high speed pairs */
+#define RichterClimbPadOn 0xB017 /* the directions held that go on along the climb, by the state less 5: both */
+#define RichterClimbPadOnAcross 0xB01B /* the same, across alone */
+#define RichterClimbPadOnUpDown 0xB01F /* the same, up or down alone (with PadForcedPressB clear) */
+#define RichterClimbPadBack 0xB023 /* the directions held that turn him back along the climb, by the state less 5: both */
+#define RichterClimbPadBackAcross 0xB027 /* the same, across alone */
+#define RichterClimbPadBackUpDown 0xB02B /* the same, up or down alone (with PadForcedPressB clear) */
+#define RichterClimbBackAnimations 0xB02F /* the animation of the way back, by the state less 5 */
+#define RichterClimbBackFrames 0xB033 /* the frame of the way back */
+#define RichterClimbBackFacings 0xB037 /* the facing of the way back */
+#define RichterClimbBackStates 0xB03B /* the state of the way back */
+#define RichterClimbAnimations 0xB03F /* the climb's first animation of two, by the state less 5 */
+#define RichterClimbLowOffsets 0xB09E /* the RichterReadAtOffset offset of states 5 and 6's look below */
+#define RichterClimbReachFacings 0xB1A0 /* the facing a reach ends in: by the state less 5, or less 7 */
+#define RichterClimbPullSteps 0xB1A2 /* the step across of the pull up, by the state less 5 */
+#define RichterClimbPullPads 0xB1A4 /* the directions held that pull him up, by the state less 5 */
+#define RichterClimbHighSteps 0xB1BC /* the step handlers of states 7 and 8: six words by the step */
 #define RichterHurtSteps 0xB22D /* the hit reaction's step handlers (state 9): twelve words by the step */
 #define RichterHurtByState 0xB2C1 /* the hit's start by the state he was hit in: thirteen words */
 #define RichterClimbStepsHurtAsStanding 0xB37D /* 1 for the steps of states 5 to 8 a hit is taken in as if standing (2 to 4) */

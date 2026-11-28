@@ -1141,7 +1141,7 @@ void RichterAirStep1(RegLog *log, uint8_t x, uint8_t y)
     value = RD8(ZP->field_c6);
     rl_ended(log, ended_load(value));
     if (value == 0) {
-        value = RD8(OBJ->scroll_band[0]);
+        value = RD8(OBJ->animation_at[0]);
         rl_ended(log, ended_compare(value, BAND_AIR_CONTROL));
         if (value < BAND_AIR_CONTROL) {
             jsr_push(0xAA64);
@@ -1191,7 +1191,7 @@ void RichterAirStep1(RegLog *log, uint8_t x, uint8_t y)
  * below 2 (band 1, or the animation timer below 8), a new press of I is a knock-back (RichterKnockBack);
  * otherwise the pad's turn if he has not turned, the landings and the debris while falling as
  * RichterAirStep1, gravity, the animation, and the item's use (an attack in the air).
- * HOW: PlayerJumpKind; bit 0 of OBJ_VX_HI's shifts against the facing; OBJ_SCROLL_BAND; OBJ_HURT_TIMER at X;
+ * HOW: PlayerJumpKind; bit 0 of OBJ_VX_HI's shifts against the facing; OBJ_ANIMATION_AT; OBJ_HURT_TIMER at X;
  * zPadPressed; then as RichterAirStep1's checks, RichterAnimationTick, RichterNoteItemPress, RichterUseItem.
  * WAITS: no.
  * Entry: X the step's offset (0); X and Y for the sound driver. Exit: as the path's last routine.
@@ -1219,7 +1219,7 @@ void RichterAirStep0(RegLog *log, uint8_t x, uint8_t y)
             backward = shifted != 0;
         }
         if (backward) {
-            value = RD8(OBJ->scroll_band[0]);
+            value = RD8(OBJ->animation_at[0]);
             rl_ended(log, ended_compare(value, BAND_KNOCK_TEST));
             if (value < BAND_KNOCK_TEST) {
                 bool timer_ok = true;

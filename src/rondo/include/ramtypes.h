@@ -142,7 +142,9 @@ typedef struct {
     uint8_t player_push_depth; /* zPlayerPushDepth */
     U16LE push_x; /* zPushXLo +1 */
     U16LE push_y; /* zPushYLo +1 */
-    uint8_t _gap_00D0[3]; /* no name yet: $20D0-$20D2 */
+    uint8_t crash_kind; /* zCrashKind */
+    uint8_t crash_phase; /* zCrashPhase */
+    uint8_t fieldd2; /* zFieldD2 */
     union { uint8_t fieldd3; uint8_t field_d3; }; /* zFieldD3 */
     uint8_t _gap_00D4[5]; /* no name yet: $20D4-$20D8 */
     uint8_t richter_object; /* zRichterObject */
@@ -300,6 +302,9 @@ _Static_assert(ZeroPageRec_BASE + offsetof(ZeroPageRec, push_x) + 0 == zPushXLo,
 _Static_assert(ZeroPageRec_BASE + offsetof(ZeroPageRec, push_x) + 1 == zPushXHi, "ZeroPageRec.push_x is not at zPushXHi");
 _Static_assert(ZeroPageRec_BASE + offsetof(ZeroPageRec, push_y) + 0 == zPushYLo, "ZeroPageRec.push_y is not at zPushYLo");
 _Static_assert(ZeroPageRec_BASE + offsetof(ZeroPageRec, push_y) + 1 == zPushYHi, "ZeroPageRec.push_y is not at zPushYHi");
+_Static_assert(ZeroPageRec_BASE + offsetof(ZeroPageRec, crash_kind) + 0 == zCrashKind, "ZeroPageRec.crash_kind is not at zCrashKind");
+_Static_assert(ZeroPageRec_BASE + offsetof(ZeroPageRec, crash_phase) + 0 == zCrashPhase, "ZeroPageRec.crash_phase is not at zCrashPhase");
+_Static_assert(ZeroPageRec_BASE + offsetof(ZeroPageRec, fieldd2) + 0 == zFieldD2, "ZeroPageRec.fieldd2 is not at zFieldD2");
 _Static_assert(ZeroPageRec_BASE + offsetof(ZeroPageRec, fieldd3) + 0 == zFieldD3, "ZeroPageRec.fieldd3 is not at zFieldD3");
 _Static_assert(ZeroPageRec_BASE + offsetof(ZeroPageRec, field_d3) + 0 == zFieldD3, "ZeroPageRec.field_d3 is not at zFieldD3");
 _Static_assert(ZeroPageRec_BASE + offsetof(ZeroPageRec, richter_object) + 0 == zRichterObject, "ZeroPageRec.richter_object is not at zRichterObject");
@@ -1143,7 +1148,7 @@ typedef struct {
     uint8_t _gap_0000[1]; /* no name yet: $3BEF-$3BEF */
     union { uint8_t f3bf0; uint8_t start_pose; }; /* PlayerByte3BF0 */
     union { uint8_t f3bf1; uint8_t jump_kind; }; /* PlayerByte3BF1 */
-    uint8_t _gap_0003[2]; /* no name yet: $3BF2-$3BF3 */
+    U16LE jump_start_y; /* PlayerJumpStartYLo +1 */
     uint8_t dying; /* PlayerDying */
     uint8_t dying_timer; /* PlayerDyingTimer */
     uint8_t anchor_object; /* PlayerAnchorObject */
@@ -1156,6 +1161,8 @@ _Static_assert(PlayerVarsB_BASE + offsetof(PlayerVarsB, f3bf0) + 0 == PlayerByte
 _Static_assert(PlayerVarsB_BASE + offsetof(PlayerVarsB, start_pose) == PlayerStartPose, "PlayerVarsB.start_pose is not at PlayerStartPose");
 _Static_assert(PlayerVarsB_BASE + offsetof(PlayerVarsB, f3bf1) + 0 == PlayerByte3BF1, "PlayerVarsB.f3bf1 is not at PlayerByte3BF1");
 _Static_assert(PlayerVarsB_BASE + offsetof(PlayerVarsB, jump_kind) == PlayerJumpKind, "PlayerVarsB.jump_kind is not at PlayerJumpKind");
+_Static_assert(PlayerVarsB_BASE + offsetof(PlayerVarsB, jump_start_y) + 0 == PlayerJumpStartYLo, "PlayerVarsB.jump_start_y is not at PlayerJumpStartYLo");
+_Static_assert(PlayerVarsB_BASE + offsetof(PlayerVarsB, jump_start_y) + 1 == PlayerJumpStartYHi, "PlayerVarsB.jump_start_y is not at PlayerJumpStartYHi");
 _Static_assert(PlayerVarsB_BASE + offsetof(PlayerVarsB, dying) + 0 == PlayerDying, "PlayerVarsB.dying is not at PlayerDying");
 _Static_assert(PlayerVarsB_BASE + offsetof(PlayerVarsB, dying_timer) + 0 == PlayerDyingTimer, "PlayerVarsB.dying_timer is not at PlayerDyingTimer");
 _Static_assert(PlayerVarsB_BASE + offsetof(PlayerVarsB, anchor_object) + 0 == PlayerAnchorObject, "PlayerVarsB.anchor_object is not at PlayerAnchorObject");

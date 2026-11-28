@@ -172,12 +172,241 @@ static inline void regs_exit(Regs r)
     }
 }
 
+/*
+ * MExit: a routine's exit when it passes through calls whose exits have their own shims: the registers set before
+ * each such call, the call's exit, and the registers set after the last. The wrapper gives them in that order.
+ */
+typedef enum { MX_ANIMATION, MX_SOUND, MX_SCRIPT, MX_COLUMNS, MX_FOOTING, MX_LANDING } MxKind;
+
+typedef struct {
+    MxKind kind;
+    Regs regs;              /* set before the call (a SoundCommand's A, X and Y among them) */
+    AnimationStep animation;
+    uint8_t command;
+    CommandCall call;
+    uint8_t script;
+    union {
+        ColumnsEnd columns;
+        FootingCheck footing;
+        LandingLift landing;
+    } u;
+} MxStep;
+
+/*
+ * elsewhere: a dispatch read a word that is none of its table's own and went to the routine at it by its address;
+ * that routine's wrapper has left the processor, and nothing more is given. (The tables are the overlay's bytes from
+ * the disc; only a change to them sends a jump elsewhere, and then the exits before the jump are not given again.)
+ */
+typedef struct {
+    uint8_t n;
+    MxStep step[6];
+    Regs last;
+    bool elsewhere;
+} MExit;
+
+void hit_script_exit_shim(uint8_t script);                         /* object/richter_state.c */
+
+static inline MExit mx_none(void)
+{
+    MExit e = { 0 };
+
+    return e;
+}
+
+static inline void mx_regs(MExit *e, Regs r)
+{
+    e->last = r_then(e->last, r);
+}
+
+static inline void mx_push(MExit *e, MxStep s)
+{
+    s.regs = e->last;
+    if (e->n < 6) {
+        e->step[e->n++] = s;
+    }
+    e->last = regs_kept();
+}
+
+static inline void mx_animation(MExit *e, AnimationStep animation)
+{
+    MxStep s = { 0 };
+
+    s.kind = MX_ANIMATION;
+    s.animation = animation;
+    mx_push(e, s);
+}
+
+/* A SoundCommand: A the command (set here), X and Y as mx_regs gave them. */
+static inline void mx_sound(MExit *e, uint8_t command, CommandCall call)
+{
+    MxStep s = { 0 };
+
+    mx_regs(e, r_a_only(regs_kept(), command));
+    s.kind = MX_SOUND;
+    s.command = command;
+    s.call = call;
+    mx_push(e, s);
+}
+
+static inline void mx_columns(MExit *e, ColumnsEnd columns)
+{
+    MxStep s = { 0 };
+
+    s.kind = MX_COLUMNS;
+    s.u.columns = columns;
+    mx_push(e, s);
+}
+
+static inline void mx_footing(MExit *e, FootingCheck footing)
+{
+    MxStep s = { 0 };
+
+    s.kind = MX_FOOTING;
+    s.u.footing = footing;
+    mx_push(e, s);
+}
+
+static inline void mx_landing(MExit *e, LandingLift landing)
+{
+    MxStep s = { 0 };
+
+    s.kind = MX_LANDING;
+    s.u.landing = landing;
+    mx_push(e, s);
+}
+
+static inline void mx_script(MExit *e, uint8_t script)
+{
+    MxStep s = { 0 };
+
+    s.kind = MX_SCRIPT;
+    s.script = script;
+    mx_push(e, s);
+}
+
+/* Another routine's MExit, as it ended inside this one: its steps, then its last registers. */
+static inline void mx_then(MExit *e, MExit inner)
+{
+    if (inner.elsewhere) {
+        e->elsewhere = true;
+        return;
+    }
+    for (uint8_t i = 0; i < inner.n; i++) {
+        MxStep s = inner.step[i];
+
+        s.regs = r_then(e->last, s.regs);
+        e->last = regs_kept();
+        if (e->n < 6) {
+            e->step[e->n++] = s;
+        }
+    }
+    e->last = r_then(e->last, inner.last);
+}
+
+static inline void mx_exit(MExit e)
+{
+    if (e.elsewhere) {
+        return;
+    }
+    for (uint8_t i = 0; i < e.n; i++) {
+        regs_exit(e.step[i].regs);
+        switch (e.step[i].kind) {
+        case MX_ANIMATION:
+            animation_exit_shim(e.step[i].animation);
+            break;
+        case MX_SOUND:
+            sound_command_exit_shim(e.step[i].command, e.step[i].call);
+            break;
+        case MX_SCRIPT:
+            hit_script_exit_shim(e.step[i].script);
+            break;
+        case MX_COLUMNS:
+            columns_exit_shim(e.step[i].u.columns);
+            break;
+        case MX_FOOTING:
+            footing_exit_shim(e.step[i].u.footing);
+            break;
+        case MX_LANDING:
+            landing_exit_shim(e.step[i].u.landing);
+            break;
+        }
+    }
+    regs_exit(e.last);
+}
+
+/*
+ * The processor status an MExit leaves, for a caller that branches on it: worked out from the exit the way its
+ * wrapper gives it, over the processor as it stands. Used only where every path of the callee sets the flag read.
+ */
+static inline uint8_t mx_status(MExit e)
+{
+    Cpu saved = cpu;
+    uint8_t p;
+
+    mx_exit(e);
+    p = cpu.p;
+    cpu = saved;
+    return p;
+}
+
+/* The carry or Z one call's exit leaves, for the branch after it (every path of these callees sets the flag). */
+static inline bool mx_carry(MExit e)
+{
+    return (mx_status(e) & P_C) != 0;
+}
+
+static inline bool mx_zero(MExit e)
+{
+    return (mx_status(e) & P_Z) != 0;
+}
+
+static inline MExit mx_one_animation(AnimationStep animation)
+{
+    MExit e = mx_none();
+
+    mx_animation(&e, animation);
+    return e;
+}
+
+static inline MExit mx_one_footing(FootingCheck footing)
+{
+    MExit e = mx_none();
+
+    mx_footing(&e, footing);
+    return e;
+}
+
+/* The X or Y an MExit leaves, the same way. */
+static inline uint8_t mx_x(MExit e)
+{
+    Cpu saved = cpu;
+    uint8_t x;
+
+    mx_exit(e);
+    x = cpu.x;
+    cpu = saved;
+    return x;
+}
+
+static inline uint8_t mx_y(MExit e)
+{
+    Cpu saved = cpu;
+    uint8_t y;
+
+    mx_exit(e);
+    y = cpu.y;
+    cpu = saved;
+    return y;
+}
+
+
 /* Her disc tables, read in the bank her overlay maps them in (TBL8, access.h). */
 #define MariaAnimationSounds_TBL MariaAnimationSounds          /* $C1A8, bank $6E: the list by animation */
 #define MariaFootYByState_TBL MariaFootYByState                /* $A118, bank $6D: the feet's row by state */
 #define MariaStartHandlers_TBL MariaStartHandlers              /* $A131, bank $6D: four words by zField8A */
 #define MariaAnimationHitboxIndex_TBL MariaAnimationHitboxIndex /* $C200, bank $6E: hitbox index by animation */
 #define MariaAnimationHitbox_TBL MariaAnimationHitbox          /* $C258, bank $6E: four bytes a hitbox */
+#define MariaHitTimers_TBL MariaHitTimers                      /* $A35E, bank $6D: hit timer by kind */
 
 /* Defined elsewhere, typed, and not declared in routines.h. */
 typedef struct { uint8_t keep; CommandCall sound; } FadeStop;      /* system/game_mode.c */
@@ -187,12 +416,14 @@ void ClearObject(uint8_t object);                                  /* object/lif
 void MariaClearWork(uint8_t a, uint8_t x, uint8_t y);              /* object/richter_state.c */
 uint8_t MariaClearKeepPlace(void);                                 /* object/richter_state.c */
 void MariaStartHitScript(uint8_t script);                          /* object/richter_state.c */
-void hit_script_exit_shim(uint8_t script);                         /* object/richter_state.c */
 void MariaPadForcesOff(void);                                      /* object/richter_state.c */
 AnimationStep MariaSetAnimation(uint8_t animation);                /* object/player_input.c */
 AnimationStep MariaAnimationTick(void);                            /* object/player_input.c */
 ColumnOffset MariaColumnOffset(uint8_t column);                    /* object/player_terrain.c */
 TileRead MariaReadAbove(uint8_t row, bool on_the_map);             /* object/player_terrain.c */
+AnimationStep MariaAnimationRunning(void);                         /* object/player_input.c */
+FootingCheck MariaHasNoFooting(void);                              /* object/player_terrain.c */
+LandingLift MariaLandOnFloor(void);                                /* object/player_terrain.c */
 
 /* object/maria_frame.c */
 /* What an animation set left, then the registers set after it (its wrapper gives the animation's exit first). */
@@ -215,6 +446,36 @@ AnimThen MariaStartNew(uint8_t x, uint8_t y);
 CommandCall MariaClearSlot5AsKind9(uint8_t y);
 CommandCall MariaDeathSound(uint8_t x, uint8_t y);
 CommandCall MariaDie(uint8_t x, uint8_t y);
+/* object/maria_attack.c */
+typedef struct { MExit e; bool claimed; } MariaClaim;
+MariaClaim MariaAttackSlot(uint8_t y);
+MExit MariaStandAttack(void);
+MExit MariaSequenceMoveStart(uint8_t x, uint8_t y);
+MExit MariaThrowItem(uint8_t x, uint8_t y);
+MExit MariaAttackAndThrow(uint8_t x, uint8_t y);
+MExit MariaAttack(uint8_t x, uint8_t y);
+MExit MariaAttackFromUse(uint8_t x, uint8_t y);
+MExit MariaCrashOnGround(uint8_t x, uint8_t y);
+MExit MariaCrashInAir(uint8_t x, uint8_t y);
+Regs MariaCrashRecover(void);
+Regs MariaClimbHold(void);
+MExit MariaCrashEnd(void);
+MExit MariaCrashTurn(void);
+MExit MariaCrashWait(void);
+MExit MariaCrashSignal(void);
+MExit MariaCrashRise(void);
+MExit MariaCrashFall(void);
+MExit MariaCrashLand(void);
+MExit MariaCrashPhase(void);
+MExit MariaCrashPhaseB(void);
+MExit MariaCrashFrame(void);
+MExit MariaSetAnimationZero(void);
+Regs MariaSpeedWalk(void);
+Regs MariaLiftThree(void);
+Regs MariaJumpSpeed(void);
+MExit MariaJump(void);
+void MariaHitReact(void);
+
 void abi_MariaObjectApplyVelocity(void);                           /* object/richter_objects.c */
 void abi_MariaApplyMoveAndPush(void);                              /* object/richter_state.c */
 

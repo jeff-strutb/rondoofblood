@@ -265,6 +265,29 @@ MariaDeathSound:
     lda #$60
     jmp VecSoundCommand
 
+; @routine 01DD:334 MariaHitReact
+; @run 6D:A334
+; WHAT IT DOES: Her reaction to a hit: the pad's forced presses off, the hit timer by the hit's kind (MariaHitTimers),
+; the state and step she was in kept in OBJ_WORK_G and OBJ_WORK_H, state 9 step 0, and the hit's script 8.
+; HOW: The stores, then on into MariaStartHitScript.
+; WAITS: no.
+; Entry: nothing. Exit: as MariaStartHitScript with 8.
+MariaHitReact:
+    jsr MariaPadForcesOff
+    lda a:OBJ_HIT_TAKEN
+    and #$07
+    tax
+    lda a:MariaHitTimers,x
+    sta a:OBJ_ANIM_TIMER
+    lda a:OBJ_STATE
+    sta a:OBJ_WORK_G
+    lda a:OBJ_SUBSTATE
+    sta a:OBJ_WORK_H
+    lda #$09
+    sta a:OBJ_STATE
+    stz a:OBJ_SUBSTATE
+    lda #$08
+
 ; @routine 01DE:040 MariaStand
 ; @run 6D:A840
 ; WHAT IT DOES: Stands her: may not leave the top, state 0, step 0, animation 1, all speed gone.

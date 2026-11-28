@@ -18,13 +18,13 @@ enum {
     LIST_CHANNEL_PLAYER = 7, LIST_KIND_2 = 2, SCRIPT_SLOT_PLAYER = 7,
     START_NEW = 0xA139, START_HEALTH = 0xA13F, START_STAND = 0xA158, START_CLEAR = 0xA143,
     START_FIELD94 = 0x10, HEALTH_FULL = 0x5C, START_LIVE = 1, START_STANDING = 1,
-    STATE_STAND = 0, STATE_CROUCH = 2, STATE_FALL = 4, STATE_DYING = 9, STATE_10 = 0x10,
+    STATE_STAND = 0, STATE_CROUCH = 2, STATE_FALL = 4, STATE_DYING = 9, STATE_HIT = 9, STATE_10 = 0x10,
     STEP_CROUCH = 3, ANIMATION_STAND = 1, ANIMATION_CROUCH = 0x0E, ANIMATION_FALL = 0x0D,
     FALL_VY_HI = 2, FALL_WORK_D = 4,
     CAMERA_PUSH_IGNORED = 0x18, PUSH_ON_FLOOR = 0x01, HIT_KIND_SPIKE = 6, SPIKE_HIT_TIMER = 0x10, TILE_SPIKE = 0x02,
     SPIKE_COLUMNS = 3,
     DYING_Y_LO = 0xFF, DEATH_SUB_STEP = 5, SCRIPT_DEATH = 9, DEATH_TIMER = 0x40, DYING_HOLD = 1,
-    SOUND_DEATH = 0x60, SLOT5_KIND = 9, SOUND_SLOT5 = 0x19
+    SOUND_DEATH = 0x60, SLOT5_KIND = 9, SOUND_SLOT5 = 0x19, HIT_SCRIPT = 8
 };
 
 static AnimThen anim_then(AnimationStep animation, Regs regs)
@@ -810,4 +810,37 @@ void abi_MariaDie(void)
 
     cpu.a = SOUND_DEATH;
     sound_command_exit_shim(SOUND_DEATH, sound);
+}
+
+/*
+ * @routine 01DD:334 MariaHitReact
+ * @run 6D:A334
+ * WHAT IT DOES: Her reaction to a hit: the pad's forced presses off, the hit timer by the hit's kind (MariaHitTimers),
+ * the state and step she was in kept in OBJ_WORK_G and OBJ_WORK_H, state 9 step 0, and the hit's script 8.
+ * HOW: The stores, then on into MariaStartHitScript.
+ * WAITS: no.
+ * Entry: nothing. Exit: as MariaStartHitScript with 8.
+ */
+void MariaHitReact(void)
+{
+    uint8_t kind, value;
+
+    jsr_push(0xA337);
+    MariaPadForcesOff();
+    jsr_pop();
+    kind = (uint8_t)(RD8(OBJ->hit_taken[OBJECT_PLAYER]) & 0x07);
+    WR8(OBJ->anim_timer[OBJECT_PLAYER], TBL8(MariaHitTimers, kind));
+    value = RD8(OBJ->state[OBJECT_PLAYER]);
+    WR8(OBJ->work_g[OBJECT_PLAYER], value);
+    value = RD8(OBJ->substate[OBJECT_PLAYER]);
+    WR8(OBJ->work_h[OBJECT_PLAYER], value);
+    WR8(OBJ->state[OBJECT_PLAYER], STATE_HIT);
+    WR8(OBJ->substate[OBJECT_PLAYER], 0);
+    MariaStartHitScript(HIT_SCRIPT);
+}
+
+void abi_MariaHitReact(void)
+{
+    MariaHitReact();
+    hit_script_exit_shim(HIT_SCRIPT);
 }

@@ -804,5 +804,20 @@
 #define MariaAnimationHitbox 0xC258 /* her hitboxes, four bytes each: X and Y offsets, half width and half height (MariaFrame) */
 #define PlayerItemFirstUse 0x3BD6 /* not zero: the item in hand has not been used; its first use starts its sound list and script and clears this (set at the start and when the pause screen changes the item) */
 #define CameraScreenByte 0x3EAE /* the level map's byte for the screen layer entry 0 has reached (the camera modes write it) */
+#define MariaHitTimers 0xA35E /* her hit timer by the hit's kind (OBJ_HIT_TAKEN bits 0-2) (MariaHitReact) */
+#define MariaCrashKinds 0xA3AD /* the item crash's object kind by item (zField93) (MariaCrashStart) */
+#define MariaCrashSounds 0xA3B6 /* the sound an item crash starts with, by its kind less $0D; 0 none (MariaCrashStart) */
+#define MariaItem4ByState 0xA4B2 /* item 4's throw by state: 0 animation $26, 1 animation $27, 2 none (MariaThrowItem) */
+#define MariaCrashHandlers 0xA4F9 /* seven words by zCrashKind: the item crash's frame (MariaCrashFrame) */
+#define MariaCrashPhases 0xA553 /* three words by zCrashPhase (MariaCrashPhase) */
+#define MariaCrashPhasesB 0xA5C7 /* three words by zCrashPhase, for crash kind 0 (MariaCrashPhaseB) */
+#define MariaWalkSpeeds 0xA6C4 /* her X speed by facing, two words (MariaSpeedWalk) */
+#define MariaClimbFrames 0xAF2D /* her frame in a ledge's hold, by low or high ledge (MariaClimbHold) */
+#define MariaClimbWork 0xAF2F /* her OBJ_WORK_A in a ledge's hold, by low or high ledge (MariaClimbHold) */
+#define PlayerJumpStartYLo 0x3BF2 /* her Y on the map when the jump started (Y and ScrollYLo, ScrollYHiScreen and the carry) (MariaJumpStart) */
+#define PlayerJumpStartYHi 0x3BF3 /* the high byte of PlayerJumpStartYLo */
+#define zCrashKind 0x20D0 /* her item crash's kind less $0D: the index of its frame handlers (MariaCrashStart, MariaCrashFrame) */
+#define zCrashPhase 0x20D1 /* her item crash's phase: the index of its phase handlers (MariaCrashPhase) */
+#define zFieldD2 0x20D2 /* cleared when her item crash starts; her crash phases wait on it; the crash's objects set it */
 
 #endif

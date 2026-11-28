@@ -79,13 +79,13 @@ BlendStageScoreRows_at2:
     lda #$05
     sta a:StageBlendStep
 BlendStageScoreRows_at3:
-    lda a:OBJ_FALL_DRIFT_DELAY+86
+    lda a:OBJ_WORK_D+86
     cmp z:zScore0
     bne BlendStageScoreRows_at1
-    lda a:OBJ_PAD_FORCE_FRAMES+86
+    lda a:OBJ_WORK_E+86
     cmp z:zScore1
     bne BlendStageScoreRows_at1
-    lda a:OBJ_PAD_FORCED+86
+    lda a:OBJ_WORK_F+86
     cmp z:zScore2
     beq BlendStageScoreRows_at0
     inc a:StageBlendStep
@@ -97,17 +97,17 @@ BlendStageScoreRows_at3:
     sta a:OBJ_DISSOLVE_PHASE_L+86
 BlendStageScoreRows_at1:
     phx
-    lda a:OBJ_FALL_DRIFT_DELAY+86
+    lda a:OBJ_WORK_D+86
     sta z:zBiosAl
     lda z:zScore0
     ldx #$01
     jsr BlendStageRowChanges
-    lda a:OBJ_PAD_FORCE_FRAMES+86
+    lda a:OBJ_WORK_E+86
     sta z:zBiosAl
     lda z:zScore1
     ldx #$03
     jsr BlendStageRowChanges
-    lda a:OBJ_PAD_FORCED+86
+    lda a:OBJ_WORK_F+86
     sta z:zBiosAl
     lda z:zScore2
     ldx #$05
@@ -119,11 +119,11 @@ BlendStageScoreRows_at1:
     bne BlendStageScoreRows_at0
     stz a:StageBlendStep
     lda z:zScore0
-    sta a:OBJ_FALL_DRIFT_DELAY+86
+    sta a:OBJ_WORK_D+86
     lda z:zScore1
-    sta a:OBJ_PAD_FORCE_FRAMES+86
+    sta a:OBJ_WORK_E+86
     lda z:zScore2
-    sta a:OBJ_PAD_FORCED+86
+    sta a:OBJ_WORK_F+86
 BlendStageScoreRows_at0:
     jmp RestoreStageBanks
 

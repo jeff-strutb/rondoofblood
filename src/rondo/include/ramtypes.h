@@ -39,7 +39,7 @@ typedef struct {
     uint8_t temp11; /* zTemp11 */
     uint8_t temp12; /* zTemp12 */
     union { U24LE product; struct { uint8_t _pad_sprite_flip_mask[1]; uint8_t sprite_flip_mask; }; struct { uint8_t _pad_plane_rows_left[2]; uint8_t plane_rows_left; }; }; /* zProduct0 +2 */
-    union { U16LE multiplier; struct { uint8_t sprite_parts_left; }; struct { uint8_t _pad_sprites_left[1]; uint8_t sprites_left; }; struct { uint8_t plane_step; }; struct { uint8_t _pad_transpose_rows_left[1]; uint8_t transpose_rows_left; }; }; /* zMultiplierLo +1 */
+    union { U16LE multiplier; struct { uint8_t sprite_parts_left; }; struct { uint8_t _pad_sprites_left[1]; uint8_t sprites_left; }; struct { uint8_t plane_step; }; struct { uint8_t _pad_transpose_rows_left[1]; uint8_t transpose_rows_left; }; struct { uint8_t setup_columns_left; }; }; /* zMultiplierLo +1 */
     uint8_t cd_play_mode; /* zCdPlayMode */
     uint8_t _gap_0019[7]; /* no name yet: $2019-$201F */
     uint8_t random0; /* zRandom0 */
@@ -62,7 +62,8 @@ typedef struct {
     uint8_t display_delay; /* zDisplayDelay */
     uint8_t vdc_status; /* zVdcStatus */
     uint8_t paused; /* zPaused */
-    uint8_t _gap_003C[2]; /* no name yet: $203C-$203D */
+    uint8_t fade_active; /* zFadeActive */
+    uint8_t _gap_003D[1]; /* no name yet: $203D-$203D */
     uint8_t attract_step; /* zAttractStep */
     uint8_t _gap_003F[6]; /* no name yet: $203F-$2044 */
     uint8_t raster_effect; /* zRasterEffect */
@@ -100,7 +101,7 @@ typedef struct {
     uint8_t field85; /* zField85 */
     uint8_t field86; /* zField86 */
     uint8_t field87; /* zField87 */
-    uint8_t _gap_0088[1]; /* no name yet: $2088-$2088 */
+    uint8_t fall_step; /* zFallStep */
     uint8_t field89; /* zField89 */
     union { uint8_t field8a; uint8_t field8_a; }; /* zField8A */
     uint8_t wave_counter; /* zWaveCounter */
@@ -118,9 +119,9 @@ typedef struct {
     uint8_t player_health; /* zPlayerHealth */
     uint8_t field99; /* zField99 */
     uint8_t mode_events; /* zModeEvents */
-    uint8_t _gap_009B[1]; /* no name yet: $209B-$209B */
+    uint8_t fade_count; /* zFadeCount */
     uint8_t cd_track; /* zCdTrack */
-    uint8_t _gap_009D[1]; /* no name yet: $209D-$209D */
+    uint8_t fade_sound; /* zFadeSound */
     uint8_t raster_stage; /* zRasterStage */
     uint8_t character; /* zCharacter */
     uint8_t character_loaded; /* zCharacterLoaded */
@@ -191,6 +192,7 @@ _Static_assert(ZeroPageRec_BASE + offsetof(ZeroPageRec, sprite_parts_left) == Sp
 _Static_assert(ZeroPageRec_BASE + offsetof(ZeroPageRec, sprites_left) == SpritesLeft, "ZeroPageRec.sprites_left is not at SpritesLeft");
 _Static_assert(ZeroPageRec_BASE + offsetof(ZeroPageRec, plane_step) == zPlaneStep, "ZeroPageRec.plane_step is not at zPlaneStep");
 _Static_assert(ZeroPageRec_BASE + offsetof(ZeroPageRec, transpose_rows_left) == zTransposeRowsLeft, "ZeroPageRec.transpose_rows_left is not at zTransposeRowsLeft");
+_Static_assert(ZeroPageRec_BASE + offsetof(ZeroPageRec, setup_columns_left) == zSetUpColumnsLeft, "ZeroPageRec.setup_columns_left is not at zSetUpColumnsLeft");
 _Static_assert(ZeroPageRec_BASE + offsetof(ZeroPageRec, multiplier) + 1 == zMultiplierHi, "ZeroPageRec.multiplier is not at zMultiplierHi");
 _Static_assert(ZeroPageRec_BASE + offsetof(ZeroPageRec, cd_play_mode) + 0 == zCdPlayMode, "ZeroPageRec.cd_play_mode is not at zCdPlayMode");
 _Static_assert(ZeroPageRec_BASE + offsetof(ZeroPageRec, random0) + 0 == zRandom0, "ZeroPageRec.random0 is not at zRandom0");
@@ -213,6 +215,7 @@ _Static_assert(ZeroPageRec_BASE + offsetof(ZeroPageRec, sub_step) + 0 == zSubSte
 _Static_assert(ZeroPageRec_BASE + offsetof(ZeroPageRec, display_delay) + 0 == zDisplayDelay, "ZeroPageRec.display_delay is not at zDisplayDelay");
 _Static_assert(ZeroPageRec_BASE + offsetof(ZeroPageRec, vdc_status) + 0 == zVdcStatus, "ZeroPageRec.vdc_status is not at zVdcStatus");
 _Static_assert(ZeroPageRec_BASE + offsetof(ZeroPageRec, paused) + 0 == zPaused, "ZeroPageRec.paused is not at zPaused");
+_Static_assert(ZeroPageRec_BASE + offsetof(ZeroPageRec, fade_active) + 0 == zFadeActive, "ZeroPageRec.fade_active is not at zFadeActive");
 _Static_assert(ZeroPageRec_BASE + offsetof(ZeroPageRec, attract_step) + 0 == zAttractStep, "ZeroPageRec.attract_step is not at zAttractStep");
 _Static_assert(ZeroPageRec_BASE + offsetof(ZeroPageRec, raster_effect) + 0 == zRasterEffect, "ZeroPageRec.raster_effect is not at zRasterEffect");
 _Static_assert(ZeroPageRec_BASE + offsetof(ZeroPageRec, raster_arg) + 0 == zRasterArg, "ZeroPageRec.raster_arg is not at zRasterArg");
@@ -249,6 +252,7 @@ _Static_assert(ZeroPageRec_BASE + offsetof(ZeroPageRec, field83) + 0 == zField83
 _Static_assert(ZeroPageRec_BASE + offsetof(ZeroPageRec, field85) + 0 == zField85, "ZeroPageRec.field85 is not at zField85");
 _Static_assert(ZeroPageRec_BASE + offsetof(ZeroPageRec, field86) + 0 == zField86, "ZeroPageRec.field86 is not at zField86");
 _Static_assert(ZeroPageRec_BASE + offsetof(ZeroPageRec, field87) + 0 == zField87, "ZeroPageRec.field87 is not at zField87");
+_Static_assert(ZeroPageRec_BASE + offsetof(ZeroPageRec, fall_step) + 0 == zFallStep, "ZeroPageRec.fall_step is not at zFallStep");
 _Static_assert(ZeroPageRec_BASE + offsetof(ZeroPageRec, field89) + 0 == zField89, "ZeroPageRec.field89 is not at zField89");
 _Static_assert(ZeroPageRec_BASE + offsetof(ZeroPageRec, field8a) + 0 == zField8A, "ZeroPageRec.field8a is not at zField8A");
 _Static_assert(ZeroPageRec_BASE + offsetof(ZeroPageRec, field8_a) + 0 == zField8A, "ZeroPageRec.field8_a is not at zField8A");
@@ -271,7 +275,9 @@ _Static_assert(ZeroPageRec_BASE + offsetof(ZeroPageRec, score_add) + 1 == zScore
 _Static_assert(ZeroPageRec_BASE + offsetof(ZeroPageRec, player_health) + 0 == zPlayerHealth, "ZeroPageRec.player_health is not at zPlayerHealth");
 _Static_assert(ZeroPageRec_BASE + offsetof(ZeroPageRec, field99) + 0 == zField99, "ZeroPageRec.field99 is not at zField99");
 _Static_assert(ZeroPageRec_BASE + offsetof(ZeroPageRec, mode_events) + 0 == zModeEvents, "ZeroPageRec.mode_events is not at zModeEvents");
+_Static_assert(ZeroPageRec_BASE + offsetof(ZeroPageRec, fade_count) + 0 == zFadeCount, "ZeroPageRec.fade_count is not at zFadeCount");
 _Static_assert(ZeroPageRec_BASE + offsetof(ZeroPageRec, cd_track) + 0 == zCdTrack, "ZeroPageRec.cd_track is not at zCdTrack");
+_Static_assert(ZeroPageRec_BASE + offsetof(ZeroPageRec, fade_sound) + 0 == zFadeSound, "ZeroPageRec.fade_sound is not at zFadeSound");
 _Static_assert(ZeroPageRec_BASE + offsetof(ZeroPageRec, raster_stage) + 0 == zRasterStage, "ZeroPageRec.raster_stage is not at zRasterStage");
 _Static_assert(ZeroPageRec_BASE + offsetof(ZeroPageRec, character) + 0 == zCharacter, "ZeroPageRec.character is not at zCharacter");
 _Static_assert(ZeroPageRec_BASE + offsetof(ZeroPageRec, character_loaded) + 0 == zCharacterLoaded, "ZeroPageRec.character_loaded is not at zCharacterLoaded");
@@ -874,7 +880,7 @@ _Static_assert(ScrollMain_BASE + offsetof(ScrollMain, y_hi) + 0 == ScrollYHi, "S
 #define ScrollEntries_BASE 0x3E66
 #define ScrollEntries_COUNT 8
 typedef struct {
-    uint8_t f3e66[8]; /* Scroll3E66 */
+    union { uint8_t f3e66[8]; uint8_t column_blocks[8]; }; /* Scroll3E66 */
     uint8_t step_y_lo[8]; /* ScrollStepYLo */
     uint8_t step_y_hi[8]; /* ScrollStepYHi */
     uint8_t step_x_lo[8]; /* ScrollStepXLo */
@@ -886,6 +892,7 @@ typedef struct {
 } ScrollEntries;
 _Static_assert(sizeof(ScrollEntries) == 0x48, "ScrollEntries size");
 _Static_assert(ScrollEntries_BASE + offsetof(ScrollEntries, f3e66) + 0 == Scroll3E66, "ScrollEntries.f3e66 is not at Scroll3E66");
+_Static_assert(ScrollEntries_BASE + offsetof(ScrollEntries, column_blocks) == ScrollColumnBlocks, "ScrollEntries.column_blocks is not at ScrollColumnBlocks");
 _Static_assert(ScrollEntries_BASE + offsetof(ScrollEntries, step_y_lo) + 0 == ScrollStepYLo, "ScrollEntries.step_y_lo is not at ScrollStepYLo");
 _Static_assert(ScrollEntries_BASE + offsetof(ScrollEntries, step_y_hi) + 0 == ScrollStepYHi, "ScrollEntries.step_y_hi is not at ScrollStepYHi");
 _Static_assert(ScrollEntries_BASE + offsetof(ScrollEntries, step_x_lo) + 0 == ScrollStepXLo, "ScrollEntries.step_x_lo is not at ScrollStepXLo");

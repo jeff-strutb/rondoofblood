@@ -33,6 +33,7 @@ DA,zp,zHitSlot,the hit object's slot kept across a jump (024F:466)
 15,zp,zPlaneRowsLeft,the continue screen's count of the rows a letter plane step has left; the same byte as zProduct2
 16,zp,zPlaneStep,the continue screen's stretch step for a letter's planes; the same byte as zMultiplierLo
 17,zp,zTransposeRowsLeft,the continue screen's count of the rows a tile transpose has left; the same byte as zMultiplierHi
+16,zp,zSetUpColumnsLeft,the layer columns a stage set-up still draws (StageSetUpScroll); the same byte as zMultiplierLo
 20,zp,zRandom0,generator state low
 21,zp,zRandom1,generator state
 22,zp,zRandom2,generator state
@@ -46,6 +47,10 @@ DA,zp,zHitSlot,the hit object's slot kept across a jump (024F:466)
 33,zp,zFrameBusy,set while the frame interrupt's work is running
 34,zp,zSoundBusy,bit 7 set while the sound driver is being called
 39,zp,zDisplayDelay,frames left before the display is enabled
+3C,zp,zFadeActive,1 while the stage's fade runs (StageFadeTimer); the pause waits for it
+88,zp,zFallStep,the step of the player's fall after death (StageSubStepDeath clears it)
+9B,zp,zFadeCount,the stage's fade countdown, two a frame (StageFadeTimer)
+9D,zp,zFadeSound,the sound StageFadeTimer sends at the fade's end when zField8E's bit 3 is set
 3A,zp,zVdcStatus,VDC status as the interrupt last read it
 45,zp,zRasterEffect,raster effect requested for the next frame
 46,zp,zRasterArg,raster effect's first line
@@ -774,3 +779,11 @@ AE85,abs,PieceRecords18DA,overlay 18DA's tile piece records, 16 bytes by OBJ_304
 849B,abs,ContinueCursorRows,the cursor's Y by choice
 849E,abs,ContinueVoices,the voice a choice sounds by character
 84BE,abs,ContinueBlinkScripts,the cursor's blink scripts by step, ten
+# The stage writer's names.
+3BD8,abs,TimeSlowMode,the time-slowing mode RunObjects reads (OBJ_PACE): 0 off, 1 or 2 its pattern; the stage's sub-steps clear it and restart the fade
+35BF,abs,StageSequenceToggle,the stage's opening sequence's toggle (StepStageSequence); set, the pause holds; the same byte as StageVar35BE+1
+3617,abs,StageSequenceDelay,frames before the stage's opening sequence runs (StepStageFrame); the pause clears it; the same byte as StageVar3616+1
+3E66,abs,ScrollColumnBlocks,a layer entry's column: bits 0 to 6 the blocks a column draws, bit 7 the offset added (DrawBlockColumn); the same byte as Scroll3E66
+9B90,abs,SectionOrder,the stage's section record (zField83) by its step through the stage (zField82)
+A994,abs,EffectColumnBlocks,the second set-up's ScrollColumnBlocks of entry 0 by raster effect (StageSetUpScrollByEffect)
+88CE,abs,EffectSecondSetUp,not zero when the section's raster effect has a second set-up (InitStage), by effect

@@ -45,6 +45,10 @@ member,ZeroPageRec,game_running,u8,35,zGameRunning,
 member,ZeroPageRec,mode_done,u8,37,zModeDone,
 member,ZeroPageRec,sub_step,u8,38,zSubStep,
 member,ZeroPageRec,display_delay,u8,39,zDisplayDelay,
+member,ZeroPageRec,fade_active,u8,3C,zFadeActive,
+member,ZeroPageRec,fall_step,u8,88,zFallStep,
+member,ZeroPageRec,fade_count,u8,9B,zFadeCount,
+member,ZeroPageRec,fade_sound,u8,9D,zFadeSound,
 member,ZeroPageRec,vdc_status,u8,3A,zVdcStatus,
 member,ZeroPageRec,paused,u8,3B,zPaused,
 member,ZeroPageRec,attract_step,u8,3E,zAttractStep,
@@ -434,6 +438,7 @@ alias,ZeroPageRec,temp0_f,temp0f,
 alias,ZeroPageRec,plane_rows_left,product.hi,zPlaneRowsLeft
 alias,ZeroPageRec,plane_step,multiplier.lo,zPlaneStep
 alias,ZeroPageRec,transpose_rows_left,multiplier.hi,zTransposeRowsLeft
+alias,ZeroPageRec,setup_columns_left,multiplier.lo,zSetUpColumnsLeft
 alias,ZeroPageRec,field8_a,field8a,
 alias,ZeroPageRec,field8_c,field8c,
 alias,ZeroPageRec,field8_e,field8e,
@@ -488,3 +493,4 @@ member,SavedColours,hi,u8,0010,SavedColoursHi,
 alias,ObjectTable,life_timer,work_d,
 alias,ObjectTable,angle_hi,work_f,
 alias,ObjectTable,angle_lo,work_g,
+alias,ScrollEntries,column_blocks,f3e66,ScrollColumnBlocks

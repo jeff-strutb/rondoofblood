@@ -79,7 +79,7 @@ StageExit InitStageBody(uint8_t x, uint8_t y, const InitStageLayout *layout)
     jsr_pop();
     r = stage_regs_from_cpu_shim(r);
     stage_regs_load_shim(r);
-    call_orig(layout->first_code_return, layout->first_code);
+    call_routine(layout->first_code_return, layout->first_code);
     r = stage_regs_from_cpu_shim(r);
     r.y = RD8(ZP->raster_effect);
     a = rd8((uint16_t)(layout->effect_table + r.y));
@@ -89,7 +89,7 @@ StageExit InitStageBody(uint8_t x, uint8_t y, const InitStageLayout *layout)
         clear_scroll_shim(r);
         r = load_entry(r, layout->second_load_return);
         stage_regs_load_shim(r);
-        call_orig(layout->second_code_return, layout->second_code);
+        call_routine(layout->second_code_return, layout->second_code);
         r = stage_regs_from_cpu_shim(r);
     }
     clear_scroll_shim(r);

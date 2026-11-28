@@ -35,6 +35,7 @@
 #define zPlaneRowsLeft 0x2015 /* the continue screen's count of the rows a letter plane step has left; the same byte as zProduct2 */
 #define zPlaneStep 0x2016 /* the continue screen's stretch step for a letter's planes; the same byte as zMultiplierLo */
 #define zTransposeRowsLeft 0x2017 /* the continue screen's count of the rows a tile transpose has left; the same byte as zMultiplierHi */
+#define zSetUpColumnsLeft 0x2016 /* the layer columns a stage set-up still draws (StageSetUpScroll); the same byte as zMultiplierLo */
 #define zRandom0 0x2020 /* generator state low */
 #define zRandom1 0x2021 /* generator state */
 #define zRandom2 0x2022 /* generator state */
@@ -48,6 +49,10 @@
 #define zFrameBusy 0x2033 /* set while the frame interrupt's work is running */
 #define zSoundBusy 0x2034 /* bit 7 set while the sound driver is being called */
 #define zDisplayDelay 0x2039 /* frames left before the display is enabled */
+#define zFadeActive 0x203C /* 1 while the stage's fade runs (StageFadeTimer); the pause waits for it */
+#define zFallStep 0x2088 /* the step of the player's fall after death (StageSubStepDeath clears it) */
+#define zFadeCount 0x209B /* the stage's fade countdown, two a frame (StageFadeTimer) */
+#define zFadeSound 0x209D /* the sound StageFadeTimer sends at the fade's end when zField8E's bit 3 is set */
 #define zVdcStatus 0x203A /* VDC status as the interrupt last read it */
 #define zRasterEffect 0x2045 /* raster effect requested for the next frame */
 #define zRasterArg 0x2046 /* raster effect's first line */
@@ -765,5 +770,12 @@
 #define ContinueCursorRows 0x849B /* the cursor's Y by choice */
 #define ContinueVoices 0x849E /* the voice a choice sounds by character */
 #define ContinueBlinkScripts 0x84BE /* the cursor's blink scripts by step, ten */
+#define TimeSlowMode 0x3BD8 /* the time-slowing mode RunObjects reads (OBJ_PACE): 0 off, 1 or 2 its pattern; the stage's sub-steps clear it and restart the fade */
+#define StageSequenceToggle 0x35BF /* the stage's opening sequence's toggle (StepStageSequence); set, the pause holds; the same byte as StageVar35BE+1 */
+#define StageSequenceDelay 0x3617 /* frames before the stage's opening sequence runs (StepStageFrame); the pause clears it; the same byte as StageVar3616+1 */
+#define ScrollColumnBlocks 0x3E66 /* a layer entry's column: bits 0 to 6 the blocks a column draws, bit 7 the offset added (DrawBlockColumn); the same byte as Scroll3E66 */
+#define SectionOrder 0x9B90 /* the stage's section record (zField83) by its step through the stage (zField82) */
+#define EffectColumnBlocks 0xA994 /* the second set-up's ScrollColumnBlocks of entry 0 by raster effect (StageSetUpScrollByEffect) */
+#define EffectSecondSetUp 0x88CE /* not zero when the section's raster effect has a second set-up (InitStage), by effect */
 
 #endif

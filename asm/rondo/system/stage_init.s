@@ -22,7 +22,7 @@ InitStage:
     sta z:zBiosAh
 InitStage_at0:
     tai KernelZeros,ScrollXFrac,$0030
-    tai KernelZeros,Scroll3E66,$0088
+    tai KernelZeros,ScrollColumnBlocks,$0088
     stz a:OBJ_SPRITE_FLIP
     lda z:zField8E
     pha
@@ -30,20 +30,21 @@ InitStage_at0:
     pla
     sta z:zField8E
     jsr MapOverlayBank7
-    jsr $A94C
+    jsr StageSetUpScroll
     ldy z:zRasterEffect
-    lda a:$88CE,y
-    beq ScriptPlaceTitleObjectB
+    lda a:EffectSecondSetUp,y
+    beq InitStage_at1
     tai KernelZeros,ScrollXFrac,$0030
-    tai KernelZeros,Scroll3E66,$0088
+    tai KernelZeros,ScrollColumnBlocks,$0088
     lda z:zField8E
     pha
     bsr LoadStageEntry
     pla
     sta z:zField8E
-    jsr $A9B1
+    jsr StageSetUpScrollByEffect
+InitStage_at1:
     tai KernelZeros,ScrollXFrac,$0030
-    tai KernelZeros,Scroll3E66,$0088
+    tai KernelZeros,ScrollColumnBlocks,$0088
 
 ; @routine 10BE:0EC InitStageB
 ; @run 6B:88EC
@@ -79,7 +80,7 @@ InitStageB_at0:
     jsr MapOverlayBank7
     jsr $ACDC
     ldy z:zRasterEffect
-    lda a:$88CE,y
+    lda a:EffectSecondSetUp,y
     beq ScriptPlaceTitleObjectB
     tai KernelZeros,ScrollXFrac,$0030
     tai KernelZeros,Scroll3E66,$0088
@@ -126,7 +127,7 @@ InitStageC_at0:
     jsr MapOverlayBank7
     jsr $ACD5
     ldy z:zRasterEffect
-    lda a:$88CE,y
+    lda a:EffectSecondSetUp,y
     beq ScriptPlaceTitleObjectB
     tai KernelZeros,ScrollXFrac,$0030
     tai KernelZeros,Scroll3E66,$0088

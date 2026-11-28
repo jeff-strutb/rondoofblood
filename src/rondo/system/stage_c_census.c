@@ -5709,41 +5709,50 @@ static Regs map_stage_banks_call(Regs r, uint16_t ret)
  */
 StageRegs TallyReveal3CD(StageRegs r)
 {
+    return TallyReveal3CDAt(r, 0x919D, &tally_3cd);
+}
+
+/* TallyReveal3CD's body, for the builds of it elsewhere. */
+StageRegs TallyReveal3CDAt(StageRegs r, uint16_t at, const TallyBuild *build)
+{
+    uint16_t shift = build->reveal_pauses ? 0 : 2;
     Sum sum;
     uint8_t cell, value, old, tens;
 
-    r = map_stage_banks_call(r, 0x91A0);
+    r = map_stage_banks_call(r, at + 0x3);
     for (r.x = 0x3D; (r.x & 0x80) == 0; r.x--) {
-        r = loaded(r, rd8((uint16_t)(TALLY_CELLS + r.x)));
+        r = loaded(r, rd8((uint16_t)(build->cells + r.x)));
         if (r.a != 0) {
             break;
         }
     }
     if ((r.x & 0x80) != 0) {
         r.nz = r.x;
-        RMW8(ZP->paused, old, old | 0x02);
+        if (build->reveal_pauses) {
+            RMW8(ZP->paused, old, old | 0x02);
+        }
         r = loaded(r, 0x40);
-        WR8(OBJ->work_b[16], 0x40);
+        wr8(build->wait, 0x40);
         return TallyNext152D(r);
     }
     for (;;) {
-        r = vector_call(r, 0x91B7, abi_VecNextRandom);
+        r = vector_call(r, (uint16_t)(at + 0x1A - shift), abi_VecNextRandom);
         r = loaded(r, (uint8_t)(r.a & 0x3F));
         r = compared(r, 0x3E);
         if (r.c) {
             continue;
         }
         r.x = r.a;
-        r = loaded(r, rd8((uint16_t)(TALLY_CELLS + r.x)));
+        r = loaded(r, rd8((uint16_t)(build->cells + r.x)));
         if (r.a != 0) {
             break;
         }
     }
     WR8(ZP->temp00, r.a);
     sum = add_bytes(r.a, 0x40, r.c);
-    wr8((uint16_t)(TALLY_CELLS + r.x), sum.value);
+    wr8((uint16_t)(build->cells + r.x), sum.value);
     if (sum.carry) {
-        wr8((uint16_t)(TALLY_CELLS + r.x), 0);
+        wr8((uint16_t)(build->cells + r.x), 0);
     }
     r.c = sum.carry;
     r.v = sum.overflow;
@@ -5751,7 +5760,7 @@ StageRegs TallyReveal3CD(StageRegs r)
     r = loaded(r, cell);
     r = compared(r, 0x0A);
     if (r.c) {
-        return TallyCell3CD(r);
+        return TallyCell3CDAt(r, (uint16_t)(at + 0x8D - shift), build);
     }
     WR8(ZP->temp08, 0);
     old = RD8(ZP->temp08);
@@ -5786,7 +5795,7 @@ StageRegs TallyReveal3CD(StageRegs r)
     r.c = sum.carry;
     r.v = sum.overflow;
     WR8(ZP->temp11, sum.value);
-    CALL(0x9214, SetVramWriteAddress3CD(r));
+    CALL((uint16_t)(at + 0x77 - shift), build->write_address(r));
     r.y = 0;
     r.x = 0x10;
     do {

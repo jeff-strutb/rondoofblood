@@ -27,13 +27,13 @@ SpringAway07DB:
     sta a:OBJ_WORK_K,x
     jsr VecPlayerDistanceSum
     and #$0F
-    sta a:OBJ_RAIN_COUNT,x
+    sta a:OBJ_WORK_I,x
     jsr PickSpeedAndTurnFromTableB
     jsr VecNegateVelocityX
     jsr VecNegateVelocityY
     jsr HalveVelocity07DB
     lda #$0C
-    sta a:OBJ_PIECE_NEXT,x
+    sta a:OBJ_WORK_D,x
     stz a:OBJ_ANIM_STEP,x
     stz a:OBJ_ANIM_TIMER,x
     inc a:OBJ_SUBSTATE,x
@@ -130,7 +130,7 @@ HoverNearTop07DB:
     lda a:OBJ_Y_LO,x
     cmp #$10
     bcc HoverNearTop07DB_at0
-    lda a:OBJ_FALL_LO,x
+    lda a:OBJ_WORK_H,x
     and #$01
     bne HoverNearTop07DB_at1
     jsr HalveVelocity07DB
@@ -211,7 +211,7 @@ LandUnlessSlot54_07DB_at0:
 WalkNearOrAttack07DB:
     jsr WalkWhileFrameChanges
     lda a:OBJ_FACING_LEFT,x
-    sta a:OBJ_PIECE_PLACE,x
+    sta a:OBJ_WORK_E,x
     jsr VecDistanceXToPlayer
     cmp #$4C
     bcs WalkNearOrAttack07DB_at0
@@ -253,7 +253,7 @@ WalkFarOrRetreat07DB:
     jsr WalkWhileFrameChanges
     lda a:OBJ_FACING_LEFT,x
     eor #$01
-    sta a:OBJ_PIECE_PLACE,x
+    sta a:OBJ_WORK_E,x
     jsr VecDistanceXToPlayer
     cmp #$6C
     bcc WalkFarOrRetreat07DB_at0
@@ -290,7 +290,7 @@ StartHopAtListEnd07DB:
     ldy #$04
     jsr StepFramesFacingPlayerAlways
     bne StartHopAtListEnd07DB_at0
-    ldy a:OBJ_PIECE_PLACE,x
+    ldy a:OBJ_WORK_E,x
     lda a:StartHopAtListEnd07DASpeeds,y
     sta a:OBJ_VX_HI,x
     lda #$FD
@@ -345,7 +345,7 @@ State3AtListEnd07DB_at0:
 ; Entry: X object. Exit: as the last instruction, call or jump left them.
 ThrowFromHandAndMove07DASpeeds = $BFCC ; VX high and VY high by frame from 1
 ThrowFromHandAndMove07DB:
-    inc a:OBJ_SWOOP_SPEED_HI,x
+    inc a:OBJ_WORK_G,x
     jsr FacePlayerInSomeStates07DB
     jsr DropThrownAndRecoil07DB
     jsr SetHitBoxByFrame12_07DB
@@ -429,7 +429,7 @@ DropThrownAndRecoil07DB:
     lda #$40
     sta a:OBJ_VY_LO,x
     lda #$40
-    sta a:OBJ_PIECE_NEXT,x
+    sta a:OBJ_WORK_D,x
     lda #$05
     sta a:OBJ_STATE,x
 DropThrownAndRecoil07DB_at0:
@@ -482,7 +482,7 @@ LoadThrowerWithObject07DB:
     and #$01
     sta a:OBJ_FACING_LEFT,x
     lda #$40
-    sta a:OBJ_PIECE_NEXT,x
+    sta a:OBJ_WORK_D,x
     txa
     tay
     dey
@@ -520,7 +520,7 @@ NextStateOnLanding07DC38A_at0:
 WalkUntilNear07DB:
     jsr StepAndWalk07DB
     lda a:OBJ_FACING_LEFT,x
-    sta a:OBJ_SWOOP_SPEED_LO,x
+    sta a:OBJ_WORK_F,x
     jsr AttackWhenWaitOver07DB
     bcs WalkUntilNear07DB_at0
     jsr VecDistanceXToPlayer
@@ -545,7 +545,7 @@ StepAndWalk07DB:
     lda #$D8
     sta z:zTemp10
     jsr VecStepObjectFrames
-    lda a:OBJ_SWOOP_SPEED_LO,x
+    lda a:OBJ_WORK_F,x
     asl a
     tay
     lda a:StepAndWalk07DASpeeds+1,y
@@ -566,9 +566,9 @@ StepAndWalk07DB:
 ; Entry: X object. Exit: C whether an attack starts.
 AttackWhenWaitOver07DAWaits = $BC16 ; eight waits per number
 AttackWhenWaitOver07DB:
-    lda a:OBJ_PIECE_NEXT,x
+    lda a:OBJ_WORK_D,x
     beq AttackWhenWaitOver07DB_at0
-    dec a:OBJ_PIECE_NEXT,x
+    dec a:OBJ_WORK_D,x
     clc
     rts
 AttackWhenWaitOver07DB_at0:
@@ -577,13 +577,13 @@ AttackWhenWaitOver07DB_at0:
     asl a
     asl a
     sta z:zTemp00
-    lda a:OBJ_RAIN_COUNT,x
+    lda a:OBJ_WORK_I,x
     and #$07
     clc
     adc z:zTemp00
     tay
     lda a:AttackWhenWaitOver07DAWaits,y
-    sta a:OBJ_PIECE_NEXT,x
+    sta a:OBJ_WORK_D,x
     stz a:OBJ_ANIM_STEP,x
     stz a:OBJ_ANIM_TIMER,x
     lda #$04
@@ -602,7 +602,7 @@ WalkAwayUntilFar07DB:
     jsr StepAndWalk07DB
     lda a:OBJ_FACING_LEFT,x
     eor #$01
-    sta a:OBJ_SWOOP_SPEED_LO,x
+    sta a:OBJ_WORK_F,x
     jsr AttackWhenWaitOver07DB
     bcs WalkAwayUntilFar07DB_at0
     jsr VecDistanceXToPlayer
@@ -644,8 +644,8 @@ ChooseNextMove07DB:
     jsr VecDistanceYToPlayer
     cmp #$18
     bcc ChooseNextMove07DB_at2
-    inc a:OBJ_RAIN_COUNT,x
-    lda a:OBJ_RAIN_COUNT,x
+    inc a:OBJ_WORK_I,x
+    lda a:OBJ_WORK_I,x
     and #$03
     beq ChooseNextMove07DB_at1
 ChooseNextMove07DB_at0:
@@ -663,14 +663,14 @@ ChooseNextMove07DB_at2:
     asl a
     asl a
     sta z:zTemp00
-    lda a:OBJ_RAIN_COUNT,x
+    lda a:OBJ_WORK_I,x
     and #$0F
     clc
     adc z:zTemp00
     tay
     lda a:ChooseNextMove07DAMoves,y
     sta a:OBJ_SUBSTATE,x
-    inc a:OBJ_RAIN_COUNT,x
+    inc a:OBJ_WORK_I,x
     rts
 
 ; @routine 07DC:4D5 ThrowAlongList07DB4D5
@@ -726,7 +726,7 @@ ThrowAtFrameFive07DB:
     sta a:OBJ_FACING_LEFT,y
     lda a:OBJ_SUBSTATE,x
     dec a
-    sta a:OBJ_PIECE_PLACE,y
+    sta a:OBJ_WORK_E,y
 ThrowAtFrameFive07DB_at0:
     rts
 
@@ -816,7 +816,7 @@ BurningDebris07DB:
     lda #$03
     sta z:zTemp10
     jsr VecStepObjectFrames
-    dec a:OBJ_PIECE_NEXT,x
+    dec a:OBJ_WORK_D,x
     bne BurningDebris07DB_at0
     jmp VecClearObject
 BurningDebris07DB_at0:
@@ -827,17 +827,17 @@ BurningDebris07DB_at0:
     lda a:OBJ_FRAME,x
     cmp #$1B
     bne BurningDebris07DB_at1
-    lda a:OBJ_FALL_LO,x
+    lda a:OBJ_WORK_H,x
     asl a
     tay
     lda a:BurningDebris07DABounces+1,y
     sta a:OBJ_VY_HI,x
     lda a:BurningDebris07DABounces,y
     sta a:OBJ_VY_LO,x
-    lda a:OBJ_FALL_LO,x
+    lda a:OBJ_WORK_H,x
     cmp #$06
     beq BurningDebris07DB_at1
-    inc a:OBJ_FALL_LO,x
+    inc a:OBJ_WORK_H,x
 BurningDebris07DB_at1:
     rts
 
@@ -853,7 +853,7 @@ SparkByCount07DASpeeds = $BE4E ; VX high and VY high by row
 SparkByCount07DB:
     cly
 SparkByCount07DB_at0:
-    lda a:OBJ_PIECE_NEXT,x
+    lda a:OBJ_WORK_D,x
     cmp a:SparkByCount07DATimes,y
     beq SparkByCount07DB_at1
     iny

@@ -113,7 +113,7 @@
 #define OBJ_VX_LO 0x2DD8 /* object X velocity low */
 #define OBJ_VY_HI 0x2E30 /* object Y velocity high */
 #define OBJ_VY_LO 0x2E88 /* object Y velocity low */
-#define OBJ_FIELDS_2EE0 0x2EE0 /* first of the object fields cleared together */
+#define OBJ_WORK_A 0x2EE0 /* a work byte of the object: what it holds is its kind's (a timer, an index, a speed, a step); each area names its use */
 #define OBJ_SCROLL_BAND 0x2F38 /* bits 0 to 6 the scroll-speed band the object moves with (ScrollSpeedX and Y by it, RunObjects); bit 7 records an event when told to */
 #define OBJ_EVENT_ID 0x3098 /* event this object records */
 #define OBJ_HURT_TIMER 0x2F90 /* frames the object is held after a damaging hit (ObjectHit sets it from a table by the hit); RunObjects counts it down and skips the object meanwhile unless OBJ_PACE bit 2 */
@@ -123,26 +123,26 @@
 #define OBJ_PACE 0x3148 /* how the object runs when the player's time-slowing mode is on: bits 3 and 4 its skip pattern in mode 1, bits 5 and 6 in mode 2 (RunObjects); bit 2 it runs on while hurt */
 #define OBJ_HIT_STATUS 0x31A0 /* bit 7 the object is dead; bits 5 and 6 the player's two attack marks this frame, cleared by ObjectHit */
 #define OBJ_HIT_REACTION 0x31F8 /* what a hit does: bits 0 and 1 the flash frames left (ObjectHit), bits 2 to 4 the item it may drop (DropItemWhenHit), bits 5 to 7 the sound it plays (PlayHitSound) */
-#define OBJ_3250 0x3250 /* object field not yet identified */
+#define OBJ_HITBOX_ON 0x3250 /* whether the object is hit-tested: 0 no hitbox; bit 7 it is tested against the first hit list, else the last (HitTestObject); 2, set by some kinds as they leave, is not settled */
 #define OBJ_HEALTH 0x32A8 /* the object's health: damage takes from it (ObjectHit, HitDamage); negative, it has none */
-#define OBJ_3300 0x3300 /* object field not yet identified */
-#define OBJ_3358 0x3358 /* object field not yet identified */
+#define OBJ_WORK_B 0x3300 /* a work byte of the object: what it holds is its kind's (a timer, an index, a speed, a step); each area names its use */
+#define OBJ_WORK_C 0x3358 /* a work byte of the object: what it holds is its kind's (a timer, an index, a speed, a step); each area names its use */
 #define OBJ_HIT_TAKEN 0x33B0 /* the hit the object has taken this frame; 5 or more is a damaging hit */
 #define OBJ_ANIM_STEP 0x3408 /* the step in the object's frame list; cleared with the timer when a list starts */
 #define OBJ_ANIM_TIMER 0x3460 /* frames left on the object's current animation step */
-#define OBJ_34B8 0x34B8 /* object field not yet identified */
-#define OBJ_3510 0x3510 /* object field not yet identified */
-#define OBJ_3568 0x3568 /* object field not yet identified */
-#define OBJ_35C0 0x35C0 /* object field not yet identified */
-#define OBJ_3618 0x3618 /* object field not yet identified */
-#define OBJ_3670 0x3670 /* object field not yet identified */
-#define OBJ_36C8 0x36C8 /* object field not yet identified */
-#define OBJ_3720 0x3720 /* object field not yet identified */
-#define OBJ_3778 0x3778 /* object field not yet identified */
-#define OBJ_37D0 0x37D0 /* object field not yet identified */
-#define OBJ_3828 0x3828 /* object field not yet identified */
-#define OBJ_3880 0x3880 /* object field not yet identified */
-#define OBJ_38D8 0x38D8 /* object field not yet identified */
+#define OBJ_WORK_D 0x34B8 /* a work byte of the object: what it holds is its kind's (a timer, an index, a speed, a step); each area names its use */
+#define OBJ_WORK_E 0x3510 /* a work byte of the object: what it holds is its kind's (a timer, an index, a speed, a step); each area names its use */
+#define OBJ_WORK_F 0x3568 /* a work byte of the object: what it holds is its kind's (a timer, an index, a speed, a step); each area names its use */
+#define OBJ_WORK_G 0x35C0 /* a work byte of the object: what it holds is its kind's (a timer, an index, a speed, a step); each area names its use */
+#define OBJ_WORK_H 0x3618 /* a work byte of the object: what it holds is its kind's (a timer, an index, a speed, a step); each area names its use */
+#define OBJ_WORK_I 0x3670 /* a work byte of the object: what it holds is its kind's (a timer, an index, a speed, a step); each area names its use */
+#define OBJ_WORK_J 0x36C8 /* a work byte of the object: what it holds is its kind's (a timer, an index, a speed, a step); each area names its use */
+#define OBJ_WORK_K 0x3720 /* a work byte of the object: what it holds is its kind's (a timer, an index, a speed, a step); each area names its use */
+#define OBJ_WORK_L 0x3778 /* a work byte of the object: what it holds is its kind's (a timer, an index, a speed, a step); each area names its use */
+#define OBJ_WORK_M 0x37D0 /* a work byte of the object: what it holds is its kind's (a timer, an index, a speed, a step); each area names its use */
+#define OBJ_WORK_N 0x3828 /* a work byte of the object: what it holds is its kind's (a timer, an index, a speed, a step); each area names its use */
+#define OBJ_WORK_O 0x3880 /* a work byte of the object: what it holds is its kind's (a timer, an index, a speed, a step); each area names its use */
+#define OBJ_WORK_P 0x38D8 /* a work byte of the object: what it holds is its kind's (a timer, an index, a speed, a step); each area names its use */
 #define OBJ_HITBOX_DX 0x3930 /* the hitbox's centre, X offset from the object */
 #define OBJ_HITBOX_HALF_W 0x3988 /* the hitbox's half width; 0 with the half height: no hitbox */
 #define OBJ_HITBOX_DY 0x39E0 /* the hitbox's centre, Y offset from the object */

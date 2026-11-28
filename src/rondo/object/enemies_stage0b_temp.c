@@ -38,7 +38,7 @@ static bool animate_move_b_sum_carry_shim(ObjArm pick, bool carry_in);
  */
 ObjArm CountdownThenState4B(uint8_t slot)
 {
-    return countdown_then_state(slot, COL(OBJ->f3510), 4);
+    return countdown_then_state(slot, COL(OBJ->work_e), 4);
 }
 
 void abi_CountdownThenState4B(void)
@@ -197,7 +197,7 @@ ObjArm EnterState6WhenHitHard(uint8_t slot)
 {
     ObjArm r = { 0 };
 
-    r.first = RD8(OBJ->f3670[slot]);
+    r.first = RD8(OBJ->work_i[slot]);
     r.arm = BB_E6_NOFLAG;
     if (r.first == 0) {
         return r;
@@ -838,7 +838,7 @@ ObjArm EnterNextStateWhenHitOrPlayerNear(uint8_t slot)
         }
         r.arm = BB_EN_NEAR;
     }
-    WR8(OBJ->f3670[slot], 1);
+    WR8(OBJ->work_i[slot], 1);
     r.second = INC8(OBJ->state[slot]);
     return r;
 }
@@ -950,7 +950,7 @@ ObjArm StartFlyerAtRandom(uint8_t slot)
     jsr_push(0xBA27);
     r.random = NextRandom();
     jsr_pop();
-    WR8(OBJ->f36c8[slot], r.random.value);
+    WR8(OBJ->work_j[slot], r.random.value);
     jsr_push(0xBA2D);
     r.random2 = NextRandom();
     jsr_pop();
@@ -1006,7 +1006,7 @@ ObjArm SwoopOnCosineC(uint8_t slot)
     }
     WR8(ZP->temp00, 0xA0);
     WR8(ZP->temp01, 0);
-    angle = RD8(OBJ->f36c8[slot]);
+    angle = RD8(OBJ->work_j[slot]);
     jsr_push(0xBAD3);
     ScaleByCosine(angle);
     jsr_pop();
@@ -1017,7 +1017,7 @@ ObjArm SwoopOnCosineC(uint8_t slot)
     jsr_push(0xBAE0);
     r.move = ApplyVelocityX(slot);
     jsr_pop();
-    r.second = INC8(OBJ->f36c8[slot]);
+    r.second = INC8(OBJ->work_j[slot]);
     jsr_push(0xBAE6);
     r.move2 = ApplyVelocity(slot);
     jsr_pop();
@@ -1263,7 +1263,7 @@ ObjArm SpawnType2AThenRestartTimer(uint8_t slot)
         r.second = RD8(OBJ->y_lo[0]);
         r.arm = BB_ST_LOW;
         if (r.second < 0x70) {
-            WR8(OBJ->f3510[slot], 0xC0);
+            WR8(OBJ->work_e[slot], 0xC0);
             return r;
         }
     }
@@ -1279,7 +1279,7 @@ ObjArm SpawnType2AThenRestartTimer(uint8_t slot)
     jsr_push(0x9224);
     r.fifth = StartObjectAtPlace(0x2A, slot, found_slot);
     jsr_pop();
-    WR8(OBJ->f3510[slot], 0xC0);
+    WR8(OBJ->work_e[slot], 0xC0);
     r.arm = BB_ST_SPAWNED;
     return r;
 }
@@ -1330,7 +1330,7 @@ ObjArm StartPieceInSlotsFrom28(uint8_t slot)
     r.first = RD8(OBJ->y_lo[0]);
     r.arm = BB_P28_HIGH;
     if (r.first >= 0x70) {
-        WR8(OBJ->f3510[slot], 0xA0);
+        WR8(OBJ->work_e[slot], 0xA0);
         return r;
     }
     r.second = INC8(OBJ->f3568[slot]);
@@ -1360,7 +1360,7 @@ ObjArm StartPieceInSlotsFrom28(uint8_t slot)
     jsr_push(0x91FE);
     r.sixth = StartObjectAtPlace(r.fifth, slot, y);
     jsr_pop();
-    WR8(OBJ->f3510[slot], 0xA0);
+    WR8(OBJ->work_e[slot], 0xA0);
     r.arm = BB_P28_STARTED;
     return r;
 }
@@ -1539,7 +1539,7 @@ ObjArm AnimateMoveThenSetUpNextStepB(uint8_t slot, bool carry_in)
     sum = PlayerDistanceSum(slot, animate_move_b_sum_carry_shim(pick, carry_in));
     jsr_pop();
     r.second = (uint8_t)(sum.value & 0x3F);
-    WR8(OBJ->f36c8[slot], (uint8_t)(r.second + 0x58));
+    WR8(OBJ->work_j[slot], (uint8_t)(r.second + 0x58));
     WR8(OBJ->anim_step[slot], 0);
     WR8(OBJ->anim_timer[slot], 0);
     r.third = INC8(OBJ->substate[slot]);
@@ -1608,16 +1608,16 @@ ObjArm LoadObjectRecordFromTable(uint8_t slot)
     WR8(ZP->temp10, rd8((uint16_t)(0xAD37 + index)));
     WR8(ZP->temp11, rd8((uint16_t)(0xAD38 + index)));
     byte = RD8_PTR_Y(ZP->temp10, 0);
-    WR8(OBJ->f3358[slot], byte);
+    WR8(OBJ->work_c[slot], byte);
     byte = RD8_PTR_Y(ZP->temp10, 1);
-    WR8(OBJ->f3300[slot], byte);
+    WR8(OBJ->work_b[slot], byte);
     byte = RD8_PTR_Y(ZP->temp10, 2);
     WR8(OBJ->health[slot], byte);
     packed = RD8_PTR_Y(ZP->temp10, 3);
     WR8(OBJ->hitbox_on[slot], (uint8_t)(packed & 0x0F));
     packed = RD8_PTR_Y(ZP->temp10, 3);
     r.flag = (packed & 0x08) != 0;
-    WR8(OBJ->fields_2ee0[slot], (uint8_t)(packed >> 4));
+    WR8(OBJ->work_a[slot], (uint8_t)(packed >> 4));
     byte = RD8_PTR_Y(ZP->temp10, 4);
     WR8(OBJ->hitbox_half_w[slot], byte);
     byte = RD8_PTR_Y(ZP->temp10, 5);
@@ -1929,7 +1929,7 @@ ObjArm ChargeWhenPlayerNearB(uint8_t slot)
     sum = PlayerDistanceSum(slot, false);
     jsr_pop();
     r.third = (uint8_t)(sum.value & 0x1F);
-    WR8(OBJ->f36c8[slot], (uint8_t)(r.third + 0x48));
+    WR8(OBJ->work_j[slot], (uint8_t)(r.third + 0x48));
     WR8(OBJ->state[slot], 4);
     WR8(OBJ->substate[slot], 2);
     r.second = facing;

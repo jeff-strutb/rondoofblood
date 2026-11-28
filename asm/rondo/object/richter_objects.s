@@ -122,13 +122,13 @@ RichterObjectSlot:
 ; @run 6E:C47C
 ; WHAT IT DOES: Once, at its animation's step 6 and while PlayerByte3BE1 is set, makes an object's
 ; frame last 4 longer and Richter's one frame shorter than that.
-; HOW: OBJ_35C0 marks it done; OBJ_2F38 the step; OBJ_HURT_TIMER the frame's time.
+; HOW: OBJ_WORK_G marks it done; OBJ_2F38 the step; OBJ_HURT_TIMER the frame's time.
 ; WAITS: no.
 ; Entry: X object. Exit: X and Y kept. Stopped, A what was read last, N and Z from it, or from
 ; comparing the step with 6 and C with it. Done, A Richter's new time, N and Z from the mark, C
 ; and V from the add.
 RichterObjectQuicken:
-    lda a:OBJ_35C0,x
+    lda a:OBJ_WORK_G,x
     bne RichterObjectQuicken_at0
     lda a:OBJ_SCROLL_BAND,x
     cmp #$06
@@ -141,7 +141,7 @@ RichterObjectQuicken:
     sta a:OBJ_HURT_TIMER,x
     dec a
     sta a:OBJ_HURT_TIMER
-    inc a:OBJ_35C0,x
+    inc a:OBJ_WORK_G,x
     rts
 RichterObjectQuicken_at0:
     rts
@@ -150,15 +150,15 @@ RichterObjectQuicken_at0:
 ; @run 6E:C49F
 ; WHAT IT DOES: While an object is charged, shows the flashing form of its frame, if it is one
 ; of the four that have one, with its OBJ_SPRITE_ATTR for the flash.
-; HOW: OBJ_3568 is the charge; frames $07, $0E, $15 and $1C become $8E to $91; RichterFlashFlags
-; by OBJ_34B8 less $0E, with bit 7.
+; HOW: OBJ_WORK_F is the charge; frames $07, $0E, $15 and $1C become $8E to $91; RichterFlashFlags
+; by OBJ_WORK_D less $0E, with bit 7.
 ; WAITS: no.
 ; Entry: X object. Exit: X kept. Not charged, A 0, Z set, Y $8E. Not one of the four, A the
 ; frame, N, Z and C from comparing it with $1C, Y $91. Flashed, A the flags, N and Z from them, Y
-; OBJ_34B8 less $0E, C and V from that subtract. V kept otherwise.
+; OBJ_WORK_D less $0E, C and V from that subtract. V kept otherwise.
 RichterObjectFlash:
     ldy #$8E
-    lda a:OBJ_3568,x
+    lda a:OBJ_WORK_F,x
     beq RichterObjectFlash_at0
     lda a:OBJ_FRAME,x
     cmp #$07
@@ -177,7 +177,7 @@ RichterObjectFlash_at0:
 RichterObjectFlash_at1:
     tya
     sta a:OBJ_FRAME,x
-    lda a:OBJ_34B8,x
+    lda a:OBJ_WORK_D,x
     sec
     sbc #$0E
     tay
@@ -188,24 +188,24 @@ RichterObjectFlash_at1:
 
 ; @routine 01BD:4D1 RichterObjectCharge
 ; @run 6E:C4D1
-; WHAT IT DOES: Charges an object from OBJ_34B8 $0C on, the first time the way it faces is newly
+; WHAT IT DOES: Charges an object from OBJ_WORK_D $0C on, the first time the way it faces is newly
 ; pressed.
-; HOW: OBJ_3568 counted up; RichterChargePads by OBJ_FACING_LEFT against zPadPressed.
+; HOW: OBJ_WORK_F counted up; RichterChargePads by OBJ_FACING_LEFT against zPadPressed.
 ; WAITS: no.
-; Entry: X object. Exit: X kept. Before $0C, A OBJ_34B8, N, Z and C from comparing it with $0C.
+; Entry: X object. Exit: X kept. Before $0C, A OBJ_WORK_D, N, Z and C from comparing it with $0C.
 ; Charged already, A the charge, N and Z from it, C set. Not pressed, A 0, Z set, C set, Y the
 ; facing. Charged now, A the press, N and Z from the charge, C set, Y the facing. V kept.
 RichterObjectCharge:
-    lda a:OBJ_34B8,x
+    lda a:OBJ_WORK_D,x
     cmp #$0C
     bcc RichterObjectCharge_at0
-    lda a:OBJ_3568,x
+    lda a:OBJ_WORK_F,x
     bne RichterObjectCharge_at0
     ldy a:OBJ_FACING_LEFT,x
     lda z:zPadPressed
     and a:RichterChargePads,y
     beq RichterObjectCharge_at0
-    inc a:OBJ_3568,x
+    inc a:OBJ_WORK_F,x
 RichterObjectCharge_at0:
     rts
 
@@ -348,11 +348,11 @@ RichterObjectAnimationTick_at0:
 ; @run 6E:DA63
 ; @stop DA84
 ; WHAT IT DOES: Starts an object's animation from its first step.
-; HOW: The animation into OBJ_FIELDS_2EE0, step zero, and its first entry read.
+; HOW: The animation into OBJ_WORK_A, step zero, and its first entry read.
 ; WAITS: no.
 ; Entry: A animation, X object. Exit: as RichterAnimationTick. Clobbers zTemp00-01.
 RichterObjectSetAnimation:
-    sta a:OBJ_FIELDS_2EE0,x
+    sta a:OBJ_WORK_A,x
 RichterObjectSetAnimation_at3:
     stz a:OBJ_SCROLL_BAND,x
 RichterObjectSetAnimation_at1:
@@ -377,12 +377,12 @@ RichterObjectSetAnimation_at0:
 ; @routine 01C0:284 RichterObjectAnimationList
 ; @run 6E:DA84
 ; WHAT IT DOES: Points at an object's animation list and its step's entry.
-; HOW: RichterObjectAnimations by OBJ_FIELDS_2EE0 into zTemp00 and 01; the step doubled.
+; HOW: RichterObjectAnimations by OBJ_WORK_A into zTemp00 and 01; the step doubled.
 ; WAITS: no.
 ; Entry: X object. Exit: A and Y twice the step, N and Z from it, C the step's bit 7. X and V
 ; kept.
 RichterObjectAnimationList:
-    lda a:OBJ_FIELDS_2EE0,x
+    lda a:OBJ_WORK_A,x
     asl a
     tay
     lda a:RichterObjectAnimations,y
@@ -397,22 +397,22 @@ RichterObjectAnimationList:
 ; @routine 01C0:51B RichterObjectHitboxOff
 ; @run 6E:DD1B
 ; WHAT IT DOES: Takes an object's hitbox away.
-; HOW: OBJ_3250 cleared.
+; HOW: OBJ_HITBOX_ON cleared.
 ; WAITS: no.
 ; Entry: X object. Exit: all registers and flags kept.
 RichterObjectHitboxOff:
-    stz a:OBJ_3250,x
+    stz a:OBJ_HITBOX_ON,x
     rts
 
 ; @routine 01C0:51F RichterObjectHitboxOn
 ; @run 6E:DD1F
 ; WHAT IT DOES: Marks an object as having a hitbox and gives it its frame's.
-; HOW: OBJ_3250 1; runs on into RichterObjectHitboxByFrame.
+; HOW: OBJ_HITBOX_ON 1; runs on into RichterObjectHitboxByFrame.
 ; WAITS: no.
 ; Entry: X object. Exit: as RichterObjectHitboxByFrame.
 RichterObjectHitboxOn:
     lda #$01
-    sta a:OBJ_3250,x
+    sta a:OBJ_HITBOX_ON,x
 
 ; @routine 01C0:524 RichterObjectHitboxByFrame
 ; @run 6E:DD24
@@ -531,18 +531,18 @@ MariaObjectAddXHigh:
 
 ; @routine 01E1:2CB MariaObjectFallCapped
 ; @run 6E:C2CB
-; WHAT IT DOES: Adds an object's own pull (OBJ_3618 and OBJ_3670) to its Y speed, held at $0700.
+; WHAT IT DOES: Adds an object's own pull (OBJ_WORK_H and OBJ_WORK_I) to its Y speed, held at $0700.
 ; HOW: A word add into OBJ_VY_LO and OBJ_VY_HI; at 7 and up the speed is set to $0700.
 ; Untraced: the hold at $0700 ($C2E4); no script let one of her objects fall that fast.
 ; WAITS: no.
 ; Entry: X object. Exit: A the speed's high byte, V from its add; rising, N, Z and C from the add; falling slower
 ; than 7, N, Z and C from comparing it with 7; held, A 7, N and Z from it, C set. X and Y kept.
 MariaObjectFallCapped:
-    lda a:OBJ_3618,x
+    lda a:OBJ_WORK_H,x
     clc
     adc a:OBJ_VY_LO,x
     sta a:OBJ_VY_LO,x
-    lda a:OBJ_3670,x
+    lda a:OBJ_WORK_I,x
     adc a:OBJ_VY_HI,x
     sta a:OBJ_VY_HI,x
     bmi MariaObjectFallCapped_at0
@@ -842,7 +842,7 @@ MariaObjectAnimationTick_at0:
 ; WAITS: no.
 ; Entry, exit: as RichterObjectSetAnimation.
 MariaObjectSetAnimation:
-    sta a:OBJ_FIELDS_2EE0,x
+    sta a:OBJ_WORK_A,x
 MariaObjectSetAnimation_at3:
     stz a:OBJ_SCROLL_BAND,x
 MariaObjectSetAnimation_at1:
@@ -871,7 +871,7 @@ MariaObjectSetAnimation_at0:
 ; WAITS: no.
 ; Entry, exit: as RichterObjectAnimationList.
 MariaObjectAnimationList:
-    lda a:OBJ_FIELDS_2EE0,x
+    lda a:OBJ_WORK_A,x
     asl a
     tay
     lda a:RichterObjectAnimations+$344,y

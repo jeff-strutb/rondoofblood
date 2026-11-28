@@ -56,7 +56,7 @@ CountBothPairs:
 ; WAITS: no.
 ; Entry: X object. Exit: A the table byte, Y its index, C and V from the add.
 HitRowByKindAndHits:
-    lda a:OBJ_FIELDS_2EE0,x
+    lda a:OBJ_WORK_A,x
     asl a
     asl a
     asl a
@@ -87,7 +87,7 @@ HealAndClear:
     lda #$9F
     sta a:OBJ_KIND,x
     lda #$03
-    sta a:OBJ_34B8,x
+    sta a:OBJ_WORK_D,x
     stz a:OBJ_STATE,x
     rts
 HealAndClear_at0:
@@ -104,12 +104,12 @@ HealAndClear_at1:
 
 ; @routine 09EA:547 StepWithHitTable
 ; @run 70:AD47
-; WHAT IT DOES: One frame: OBJ_35C0 goes up, then FaceByCue, SwitchStateOnHitRow, AdvanceByHealth, SetHitboxFromFrameFive, and the code the state table at $AE42 names (JumpByStateTableF).
+; WHAT IT DOES: One frame: OBJ_WORK_G goes up, then FaceByCue, SwitchStateOnHitRow, AdvanceByHealth, SetHitboxFromFrameFive, and the code the state table at $AE42 names (JumpByStateTableF).
 ; HOW: INC and five calls.
 ; WAITS: no.
 ; Entry: X object. Exit: as the code jumped to.
 StepWithHitTable:
-    inc a:OBJ_35C0,x
+    inc a:OBJ_WORK_G,x
     jsr FaceByCue
     jsr SwitchStateOnHitRow
     jsr AdvanceByHealth
@@ -163,7 +163,7 @@ SwitchStateOnHitRow:
 
 ; @routine 09EA:5CB AdvanceByHealth
 ; @run 70:ADCB
-; WHAT IT DOES: An object with a state moves to its next phase (OBJ_3618) when its health OBJ_HEALTH falls below the limit a table at $AE09 gives for the phase (phase 2 moves on
+; WHAT IT DOES: An object with a state moves to its next phase (OBJ_WORK_H) when its health OBJ_HEALTH falls below the limit a table at $AE09 gives for the phase (phase 2 moves on
 ; when bit 7 of the health is set): its state becomes the byte a table at $AE0B gives, the phase goes up, the animation and OBJ_SUBSTATE are reset, and from phase 2 its OBJ_PACE loses
 ; bits 3 to 6.
 ; HOW: Table reads (bank 70).
@@ -173,7 +173,7 @@ SwitchStateOnHitRow:
 AdvanceByHealth:
     lda a:OBJ_STATE,x
     beq AdvanceByHealth_at0
-    ldy a:OBJ_3618,x
+    ldy a:OBJ_WORK_H,x
     cpy #$02
     bne AdvanceByHealth_at1
     lda a:OBJ_HEALTH,x
@@ -187,11 +187,11 @@ AdvanceByHealth_at1:
 AdvanceByHealth_at2:
     lda a:$AE0B,y
     sta a:OBJ_STATE,x
-    inc a:OBJ_3618,x
+    inc a:OBJ_WORK_H,x
     stz a:OBJ_ANIM_STEP,x
     stz a:OBJ_ANIM_TIMER,x
     stz a:OBJ_SUBSTATE,x
-    lda a:OBJ_3618,x
+    lda a:OBJ_WORK_H,x
     cmp #$02
     bcc AdvanceByHealth_at0
     lda a:OBJ_PACE,x
@@ -218,16 +218,16 @@ JumpByStateTableF:
 
 ; @routine 09EA:664 StartTwinSpawner
 ; @run 70:AE64
-; WHAT IT DOES: Loads the object's record, clears OBJ_3618, sets its wait to $60 and sets bit 2 of zField8E; then
+; WHAT IT DOES: Loads the object's record, clears OBJ_WORK_H, sets its wait to $60 and sets bit 2 of zField8E; then
 ; clears objects $11 and $12 and starts a kind $22 and a kind $27 at this object's place in them.
 ; HOW: LoadObjectRecord, ClearObjectInY, StartObjectAtPlace; the last is a tail jump.
 ; WAITS: no.
 ; Entry: X object. Exit: A the last byte copied, N and Z from it, Y $12, C from the record.
 StartTwinSpawner:
     jsr VecLoadObjectRecord
-    stz a:OBJ_3618,x
+    stz a:OBJ_WORK_H,x
     lda #$60
-    sta a:OBJ_3510,x
+    sta a:OBJ_WORK_E,x
     lda z:zField8E
     ora #$04
     sta z:zField8E
@@ -252,7 +252,7 @@ WalkTowardPlayer:
     jsr PickNextAction
     jsr WalkSideways
     lda a:OBJ_FACING_LEFT,x
-    sta a:OBJ_3568,x
+    sta a:OBJ_WORK_F,x
     jsr VecDistanceXToPlayer
     cmp #$40
     bcs WalkTowardPlayer_at0
@@ -264,7 +264,7 @@ WalkTowardPlayer_at0:
 ; @routine 09EA:6A2 WalkSideways
 ; @run 70:AEA2
 ; WHAT IT DOES: Steps the walk animation (list $AEC3), sets the X speed to $FFC0 (left), reverses it when the object's
-; direction byte OBJ_3568 is set, and moves with WalkAndTurnAtEdges.
+; direction byte OBJ_WORK_F is set, and moves with WalkAndTurnAtEdges.
 ; HOW: StepObjectFrames, NegateVelocityX, WalkAndTurnAtEdges.
 ; WAITS: no.
 ; Entry: X object. Exit: as WalkAndTurnAtEdges.
@@ -278,7 +278,7 @@ WalkSideways:
     sta a:OBJ_VX_HI,x
     lda #$C0
     sta a:OBJ_VX_LO,x
-    lda a:OBJ_3568,x
+    lda a:OBJ_WORK_F,x
     beq WalkSideways_at0
     jsr VecNegateVelocityX
 WalkSideways_at0:
@@ -319,7 +319,7 @@ WalkAndTurnAtEdges_at1:
 
 ; @routine 09EA:6F5 PickNextAction
 ; @run 70:AEF5
-; WHAT IT DOES: While its wait OBJ_3510 runs, counts it down. At zero it picks a random state (from the pair of bytes
+; WHAT IT DOES: While its wait OBJ_WORK_E runs, counts it down. At zero it picks a random state (from the pair of bytes
 ; at $AF28), plays the sound the pair's second byte names, resets its animation and picks a new wait from the table
 ; at $AF24 by a random 0 to 3.
 ; HOW: NextRandom twice, SoundCommand.
@@ -327,9 +327,9 @@ WalkAndTurnAtEdges_at1:
 ; Entry: X object, Y kept unless the picks set it. Exit: waiting: A the old wait, N and Z from the new; else A the
 ; new wait, Y its index, C and V from the second random.
 PickNextAction:
-    lda a:OBJ_3510,x
+    lda a:OBJ_WORK_E,x
     beq PickNextAction_at0
-    dec a:OBJ_3510,x
+    dec a:OBJ_WORK_E,x
     rts
 PickNextAction_at0:
     jsr VecNextRandom
@@ -346,11 +346,11 @@ PickNextAction_at0:
     and #$03
     tay
     lda a:$AF24,y
-    sta a:OBJ_3510,x
+    sta a:OBJ_WORK_E,x
     rts
 ; @routine 09EA:72C WalkAndPick
 ; @run 70:AF2C
-; WHAT IT DOES: WalkSideways; the walk direction OBJ_3568 becomes the facing turned round; when the player is $80 or more away along X the object enters state 1; then
+; WHAT IT DOES: WalkSideways; the walk direction OBJ_WORK_F becomes the facing turned round; when the player is $80 or more away along X the object enters state 1; then
 ; PickNextAction (a tail jump).
 ; HOW: WalkSideways, DistanceXToPlayer, PickNextAction.
 ; WAITS: no.
@@ -359,7 +359,7 @@ WalkAndPick:
     jsr WalkSideways
     lda a:OBJ_FACING_LEFT,x
     eor #$01
-    sta a:OBJ_3568,x
+    sta a:OBJ_WORK_F,x
     jsr VecDistanceXToPlayer
     cmp #$80
     bcc WalkAndPick_at0
@@ -371,7 +371,7 @@ WalkAndPick_at0:
 ; @routine 09EA:746 StepShootOnCue
 ; @run 70:AF46
 ; WHAT IT DOES: Steps the animation list at $AF89; when it ends the object enters state 2; on a new frame with animation step 3 it plays sound $26; then PlayCueOnFrame runs;
-; on frame $0A with OBJ_35C0's low three bits clear it starts a kind $24 object at its place in the first free slot from $30, facing as it does.
+; on frame $0A with OBJ_WORK_G's low three bits clear it starts a kind $24 object at its place in the first free slot from $30, facing as it does.
 ; HOW: StepObjectFrames, SoundCommand, PlayCueOnFrame, FindFreeSlotFrom30, StartObjectAtPlace.
 ; Untraced: one byte.
 ; WAITS: no.
@@ -394,7 +394,7 @@ StepShootOnCue_at1:
     lda a:OBJ_FRAME,x
     cmp #$0A
     bne StepShootOnCue_at2
-    lda a:OBJ_35C0,x
+    lda a:OBJ_WORK_G,x
     and #$07
     bne StepShootOnCue_at2
     jsr VecFindFreeSlotFrom30
@@ -490,7 +490,7 @@ StepFlyingCue_at2:
     rts
 ; @routine 09EB:03B StepThenQuarterWait
 ; @run 70:B03B
-; WHAT IT DOES: Steps the animation list at $B060; when it ends the object's wait OBJ_3510 is quartered, it enters state 2
+; WHAT IT DOES: Steps the animation list at $B060; when it ends the object's wait OBJ_WORK_E is quartered, it enters state 2
 ; and its timer is raised to at least 3.
 ; HOW: StepObjectFrames, two LSRs of memory, a compare.
 ; WAITS: no.
@@ -502,8 +502,8 @@ StepThenQuarterWait:
     sta z:zTemp10
     jsr VecStepObjectFrames
     bne StepThenQuarterWait_at0
-    lsr a:OBJ_3510,x
-    lsr a:OBJ_3510,x
+    lsr a:OBJ_WORK_E,x
+    lsr a:OBJ_WORK_E,x
     lda #$02
     sta a:OBJ_STATE,x
     lda a:OBJ_INVULN_TIMER,x
@@ -699,7 +699,7 @@ InWindowRange_at1:
 ; @routine 09EB:196 StartSplitterHigh
 ; @run 70:B196
 ; WHAT IT DOES: Starts a falling splitter at Y low $48: its X speed is picked from a table at $B1BF by two bits of the
-; player's distance sum, OBJ_3670 is cleared, OBJ_SUBSTATE moves on, and when the object is on the player's left its X speed is
+; player's distance sum, OBJ_WORK_I is cleared, OBJ_SUBSTATE moves on, and when the object is on the player's left its X speed is
 ; reversed.
 ; HOW: PlayerDistanceSum, SideOfPlayer, NegateVelocityX.
 ; Untraced: the reversal (B1BB).
@@ -716,7 +716,7 @@ StartSplitterHigh:
     sta a:OBJ_VX_LO,x
     lda #$48
     sta a:OBJ_Y_LO,x
-    stz a:OBJ_3670,x
+    stz a:OBJ_WORK_I,x
     inc a:OBJ_SUBSTATE,x
     jsr VecSideOfPlayer
     and #$01
@@ -727,7 +727,7 @@ StartSplitterHigh_at0:
 
 ; @routine 09EB:1C7 SwingAndPick
 ; @run 70:B1C7
-; WHAT IT DOES: Sets the object's Y speed to the cosine of its OBJ_3670 count (multiplier $0150), moves it, counts OBJ_3670 up and goes on as PickGroundSpeedInWindow.
+; WHAT IT DOES: Sets the object's Y speed to the cosine of its OBJ_WORK_I count (multiplier $0150), moves it, counts OBJ_WORK_I up and goes on as PickGroundSpeedInWindow.
 ; HOW: ScaleByCosine, ApplyVelocity, a tail jump into PickGroundSpeedInWindow.
 ; WAITS: no.
 ; Entry: X object. Exit: as PickGroundSpeedInWindow.
@@ -736,14 +736,14 @@ SwingAndPick:
     sta z:zTemp00
     lda #$01
     sta z:zTemp01
-    lda a:OBJ_3670,x
+    lda a:OBJ_WORK_I,x
     jsr VecScaleByCosine
     lda z:zProduct2
     sta a:OBJ_VY_HI,x
     lda z:SpriteFlipMask
     sta a:OBJ_VY_LO,x
     jsr VecApplyVelocity
-    inc a:OBJ_3670,x
+    inc a:OBJ_WORK_I,x
     jmp PickGroundSpeedInWindow
 
 ; @routine 09EB:1E8 StartSplitterLow
@@ -764,7 +764,7 @@ StartSplitterLow:
     sta a:OBJ_VX_LO,x
     lda #$58
     sta a:OBJ_Y_LO,x
-    stz a:OBJ_3670,x
+    stz a:OBJ_WORK_I,x
     inc a:OBJ_SUBSTATE,x
     jsr VecSideOfPlayer
     and #$01
@@ -786,14 +786,14 @@ ShootMoveAndPickSpeed:
 
 ; @routine 09EB:21A MaybeShootAhead
 ; @run 70:B21A
-; WHAT IT DOES: Every 32nd count of the object's OBJ_35C0, with a chance of three in four, starts a kind $2A object at its place in
+; WHAT IT DOES: Every 32nd count of the object's OBJ_WORK_G, with a chance of three in four, starts a kind $2A object at its place in
 ; the first free slot from $30 and gives it the object's facing.
 ; HOW: NextRandom, FindFreeSlotFrom30, StartObjectAtPlace.
 ; Untraced: one byte.
 ; WAITS: no.
 ; Entry: X object. Exit: the last load, AND or INC.
 MaybeShootAhead:
-    lda a:OBJ_35C0,x
+    lda a:OBJ_WORK_G,x
     and #$1F
     bne MaybeShootAhead_at0
     jsr VecNextRandom
@@ -810,7 +810,7 @@ MaybeShootAhead_at0:
 ; @routine 09EB:4FF PickWaterOnTenth
 ; @run 70:B4FF
 ; WHAT IT DOES: Runs the code the state table names (JumpByStateTableE); then, for object $10 in a state of 2 or more, picks the water level (PickWaterLevel), sets PlayerByte3BF0 to 2 and gives
-; object 0 the angle word $0003 (OBJ_3510 3, OBJ_3568 0).
+; object 0 the angle word $0003 (OBJ_WORK_E 3, OBJ_WORK_F 0).
 ; HOW: JumpByStateTableE, PickWaterLevel.
 ; WAITS: no.
 ; Entry: X object. Exit: the compare of X with $10, of the state with 2, or the last store's load.
@@ -825,8 +825,8 @@ PickWaterOnTenth:
     lda #$02
     sta a:PlayerByte3BF0
     lda #$03
-    sta a:OBJ_3510
-    stz a:OBJ_3568
+    sta a:OBJ_WORK_E
+    stz a:OBJ_WORK_F
 PickWaterOnTenth_at0:
     rts
 
@@ -876,7 +876,7 @@ WaitForPage2:
     cmp #$02
     bne WaitForPage2_at0
     lda #$40
-    sta a:OBJ_34B8,x
+    sta a:OBJ_WORK_D,x
     inc a:OBJ_STATE,x
     cpx #$10
     bne WaitForPage2_at0
@@ -920,15 +920,15 @@ WaitForSlot10State4:
     cmp #$04
     bcc WaitForSlot10State4_at0
     lda #$40
-    sta a:OBJ_34B8,x
+    sta a:OBJ_WORK_D,x
     inc a:OBJ_STATE,x
 WaitForSlot10State4_at0:
     rts
 
 ; @routine 09EB:654 FinalSpinAndEnd
 ; @run 70:B654
-; WHAT IT DOES: The last object of the stage's final scene: it is held at X $00B0, Y $0098, its speed follows its angle (OBJ_3568, with the length OBJ_3510) and it moves; the angle turns on by
-; OBJ_3618 and the length shrinks by OBJ_35C0; when the length runs out, if this is slot $10, the music plays again, script slot 3 starts, sound $A1 plays, the object becomes kind $21 in state 0,
+; WHAT IT DOES: The last object of the stage's final scene: it is held at X $00B0, Y $0098, its speed follows its angle (OBJ_WORK_F, with the length OBJ_WORK_E) and it moves; the angle turns on by
+; OBJ_WORK_H and the length shrinks by OBJ_WORK_G; when the length runs out, if this is slot $10, the music plays again, script slot 3 starts, sound $A1 plays, the object becomes kind $21 in state 0,
 ; the water line and the scroll limit are set ($0000 and $027E) and slots $11 to $1F are cleared.
 ; HOW: SetVelocityFromAngle, ApplyVelocity, 8-bit subtract, CdPlayAgain, StartSoleScriptSlot, SoundCommand, ClearObjectInY.
 ; WAITS: yes, on CdPlayAgain's drive (the stack there is the caller's return, this call's two bytes and X pushed (2) and zeros).
@@ -941,21 +941,21 @@ FinalSpinAndEnd:
     lda #$98
     sta a:OBJ_Y_LO,x
     stz z:zTemp00
-    lda a:OBJ_3510,x
+    lda a:OBJ_WORK_E,x
     sta z:zTemp01
-    lda a:OBJ_3568,x
+    lda a:OBJ_WORK_F,x
     jsr VecSetVelocityFromAngle
     jsr VecApplyVelocity
-    lda a:OBJ_3568,x
+    lda a:OBJ_WORK_F,x
     clc
-    adc a:OBJ_3618,x
-    sta a:OBJ_3568,x
-    lda a:OBJ_3510,x
+    adc a:OBJ_WORK_H,x
+    sta a:OBJ_WORK_F,x
+    lda a:OBJ_WORK_E,x
     sec
-    sbc a:OBJ_35C0,x
-    sta a:OBJ_3510,x
+    sbc a:OBJ_WORK_G,x
+    sta a:OBJ_WORK_E,x
     bcs FinalSpinAndEnd_at0
-    stz a:OBJ_3510,x
+    stz a:OBJ_WORK_E,x
     cpx #$10
     bne FinalSpinAndEnd_at0
     phx
@@ -1072,7 +1072,7 @@ StepFallingSpark_at0:
     lda a:OBJ_FRAME,x
     cmp #$10
     bcc StepFallingSpark_at1
-    stz a:OBJ_3250,x
+    stz a:OBJ_HITBOX_ON,x
 StepFallingSpark_at1:
     rts
 
@@ -1120,7 +1120,7 @@ StartNumberedPiece:
     sbc #$18
     tay
     lda a:SoundEffectTable+6,y
-    sta a:OBJ_34B8,x
+    sta a:OBJ_WORK_D,x
     tya
     clc
     adc #$12
@@ -1171,7 +1171,7 @@ RaiseStateAfterSlot10_at0:
 
 ; @routine 09EC:06D StartChainLink
 ; @run 70:B86D
-; WHAT IT DOES: Loads the object's record, sets OBJ_3510 to $41 and its timer from a table at $B888 by the slot less $12; the object in slot
+; WHAT IT DOES: Loads the object's record, sets OBJ_WORK_E to $41 and its timer from a table at $B888 by the slot less $12; the object in slot
 ; $19 also moves to its next frame.
 ; HOW: LoadObjectRecord and an INC.
 ; WAITS: no.
@@ -1179,13 +1179,13 @@ RaiseStateAfterSlot10_at0:
 StartChainLink:
     jsr VecLoadObjectRecord
     lda #$41
-    sta a:OBJ_3510,x
+    sta a:OBJ_WORK_E,x
     txa
     sec
     sbc #$12
     tay
     lda a:$B888,y
-    sta a:OBJ_34B8,x
+    sta a:OBJ_WORK_D,x
     cpx #$19
     bne TurnOnRandomBeatWalkFollowC
     inc a:OBJ_FRAME,x
@@ -1199,7 +1199,7 @@ StartChainLink:
 ; Entry: X object. Exit: as ChainFollowsPrevious, then N and Z of the count or of the new state.
 ChainCountdown:
     jsr ChainFollowsPrevious
-    dec a:OBJ_34B8,x
+    dec a:OBJ_WORK_D,x
     bne ChainCountdown_at0
     inc a:OBJ_STATE,x
 ChainCountdown_at0:
@@ -1207,8 +1207,8 @@ ChainCountdown_at0:
 
 ; @routine 09EC:09C ChainSwings
 ; @run 70:B89C
-; WHAT IT DOES: A link follows the one before it, takes slot $10's facing, and swings: the cosine of its angle OBJ_35C0 (multiplier $0200) is added to OBJ_3568 and OBJ_3510 as
-; a 16-bit pair, and a 16-bit step from a table at $B8E4 (by OBJ_3670 and 7) is added to OBJ_3618 and OBJ_35C0; a carry out of that goes up one on OBJ_3670.
+; WHAT IT DOES: A link follows the one before it, takes slot $10's facing, and swings: the cosine of its angle OBJ_WORK_G (multiplier $0200) is added to OBJ_WORK_F and OBJ_WORK_E as
+; a 16-bit pair, and a 16-bit step from a table at $B8E4 (by OBJ_WORK_I and 7) is added to OBJ_WORK_H and OBJ_WORK_G; a carry out of that goes up one on OBJ_WORK_I.
 ; HOW: ChainFollowsPrevious, ScaleByCosine, table reads (bank 70).
 ; WAITS: no.
 ; Entry: X object. Exit: the last add or INC.
@@ -1220,35 +1220,35 @@ ChainSwings:
     sta z:zTemp01
     lda #$00
     sta z:zTemp00
-    lda a:OBJ_35C0,x
+    lda a:OBJ_WORK_G,x
     jsr VecScaleByCosine
-    lda a:OBJ_3568,x
+    lda a:OBJ_WORK_F,x
     clc
     adc z:SpriteFlipMask
-    sta a:OBJ_3568,x
-    lda a:OBJ_3510,x
+    sta a:OBJ_WORK_F,x
+    lda a:OBJ_WORK_E,x
     adc z:zProduct2
-    sta a:OBJ_3510,x
-    lda a:OBJ_3670,x
+    sta a:OBJ_WORK_E,x
+    lda a:OBJ_WORK_I,x
     and #$07
     asl a
     tay
-    lda a:OBJ_3618,x
+    lda a:OBJ_WORK_H,x
     clc
     adc a:$B8E4,y
-    sta a:OBJ_3618,x
-    lda a:OBJ_35C0,x
+    sta a:OBJ_WORK_H,x
+    lda a:OBJ_WORK_G,x
     adc a:$B8E5,y
-    sta a:OBJ_35C0,x
+    sta a:OBJ_WORK_G,x
     bcc ChainSwings_at0
-    inc a:OBJ_3670,x
+    inc a:OBJ_WORK_I,x
 ChainSwings_at0:
     rts
 
 ; @routine 09EC:0F4 ChainFollowsPrevious
 ; @run 70:B8F4
 ; WHAT IT DOES: A link of a chain: object $12 takes the place of slot $10 and moves sideways by a table byte ($B923) picked by that
-; slot's facing, with Y speed 8; any other link takes the place of the link before it and takes its speed from its angle OBJ_3510 with a
+; slot's facing, with Y speed 8; any other link takes the place of the link before it and takes its speed from its angle OBJ_WORK_E with a
 ; length of $0A00; both then move.
 ; HOW: CopyObjectPlaceBack, SetVelocityFromAngle, and a tail jump into ApplyVelocity.
 ; WAITS: no.
@@ -1272,7 +1272,7 @@ ChainFollowsPrevious_at0:
     stz z:zTemp00
     lda #$0A
     sta z:zTemp01
-    lda a:OBJ_3510,x
+    lda a:OBJ_WORK_E,x
     jsr VecSetVelocityFromAngle
     jmp VecApplyVelocity
 
@@ -1318,7 +1318,7 @@ FallStepAndLeave:
     lda a:OBJ_Y_LO,x
     cmp #$C0
     bcc FallStepAndLeave_at0
-    stz a:OBJ_3250,x
+    stz a:OBJ_HITBOX_ON,x
     stz a:OBJ_ANIM_STEP,x
     stz a:OBJ_ANIM_TIMER,x
     inc a:OBJ_STATE,x
@@ -1359,7 +1359,7 @@ JumpByStateTable:
 
 ; @routine 09EC:7D8 StartTracker
 ; @run 70:BFD8
-; WHAT IT DOES: Loads the object's record, sets its sprite set to 6 and its frame to 2, and notes its Y low byte in OBJ_35C0 and its next kind in OBJ_3618.
+; WHAT IT DOES: Loads the object's record, sets its sprite set to 6 and its frame to 2, and notes its Y low byte in OBJ_WORK_G and its next kind in OBJ_WORK_H.
 ; HOW: LoadObjectRecord and four stores.
 ; WAITS: no.
 ; Entry: X object. Exit: A the next kind, N and Z from it, Y 11, C from the record.
@@ -1370,9 +1370,9 @@ StartTracker:
     lda #$02
     sta a:OBJ_FRAME,x
     lda a:OBJ_Y_LO,x
-    sta a:OBJ_35C0,x
+    sta a:OBJ_WORK_G,x
     lda a:OBJ_START_ARG,x
-    sta a:OBJ_3618,x
+    sta a:OBJ_WORK_H,x
     rts
 
 ; @routine 09EC:7F2 SwayThenReact
@@ -1394,7 +1394,7 @@ SwayThenReact:
 ; WAITS: no.
 ; Entry: X object. Exit: as EnterNextAndReset or BobAndMove.
 SwayOrAdvance:
-    dec a:OBJ_3568,x
+    dec a:OBJ_WORK_F,x
     beq EnterNextAndReset
 SwayOrAdvance_at0:
     jsr StepListByPhase
@@ -1403,36 +1403,36 @@ SwayOrAdvance_at0:
 
 ; @routine 09ED:00C SwayThenFlip
 ; @run 71:C00C
-; WHAT IT DOES: Counts the angle byte down; at zero it flips the side, goes on as EnterNextAndReset and sets OBJ_3510 to 1; otherwise it sways.
+; WHAT IT DOES: Counts the angle byte down; at zero it flips the side, goes on as EnterNextAndReset and sets OBJ_WORK_E to 1; otherwise it sways.
 ; HOW: DEC, FlipSide, EnterNextAndReset, or SwayStep.
 ; WAITS: no.
 ; Entry: X object. Exit: at zero A 1 from the load; else as BobAndMove.
 SwayThenFlip:
-    dec a:OBJ_3568,x
+    dec a:OBJ_WORK_F,x
     beq SwayThenFlip_at0
     bne SwayOrAdvance_at0
 SwayThenFlip_at0:
     jsr FlipSide
     jsr EnterNextAndReset
     lda #$01
-    sta a:OBJ_3510,x
+    sta a:OBJ_WORK_E,x
     rts
 
 ; @routine 09ED:01F SwayThenRestart
 ; @run 71:C01F
-; WHAT IT DOES: Counts the angle byte down; at zero it goes on as EnterNextAndReset, puts the object in state 1 and OBJ_3510 at 0; otherwise it sways.
+; WHAT IT DOES: Counts the angle byte down; at zero it goes on as EnterNextAndReset, puts the object in state 1 and OBJ_WORK_E at 0; otherwise it sways.
 ; HOW: DEC, EnterNextAndReset, or SwayStep.
 ; WAITS: no.
 ; Entry: X object. Exit: at zero A 1 from the load; else as BobAndMove.
 SwayThenRestart:
-    dec a:OBJ_3568,x
+    dec a:OBJ_WORK_F,x
     beq SwayThenRestart_at0
     bne SwayOrAdvance_at0
 SwayThenRestart_at0:
     jsr EnterNextAndReset
     lda #$01
     sta a:OBJ_STATE,x
-    stz a:OBJ_3510,x
+    stz a:OBJ_WORK_E,x
     rts
 
 ; @routine 09ED:032 ClearAnimation
@@ -1448,14 +1448,14 @@ ClearAnimation:
 
 ; @routine 09ED:039 StepListByPhase
 ; @run 71:C039
-; WHAT IT DOES: The object faces as its life timer says and steps the animation list that a table at $C103 names for its OBJ_3510.
+; WHAT IT DOES: The object faces as its life timer says and steps the animation list that a table at $C103 names for its OBJ_WORK_E.
 ; HOW: Reads the list's address into zTemp10-11; a tail jump into StepObjectFrames.
 ; WAITS: no.
 ; Entry: X object. Exit: as StepObjectFrames, Y kept unless the step sets it (the index otherwise).
 StepListByPhase:
-    lda a:OBJ_34B8,x
+    lda a:OBJ_WORK_D,x
     sta a:OBJ_FACING_LEFT,x
-    lda a:OBJ_3510,x
+    lda a:OBJ_WORK_E,x
     asl a
     tay
     lda a:$C103,y
@@ -1476,7 +1476,7 @@ ReactAtWindowEdge:
     lda a:OBJ_X_LO,x
     clc
     adc a:ScrollXLo
-    ldy a:OBJ_34B8,x
+    ldy a:OBJ_WORK_D,x
     beq ReactAtWindowEdge_at0
     cmp #$20
     bcc ReactAtWindowEdge_at1
@@ -1492,17 +1492,17 @@ ReactAtWindowEdge_at1:
 
 ; @routine 09ED:06E EnterNextAndReset
 ; @run 71:C06E
-; WHAT IT DOES: Moves the object on one state and its OBJ_3510 on one, restarts its animation and gives it a countdown of $20 in
+; WHAT IT DOES: Moves the object on one state and its OBJ_WORK_E on one, restarts its animation and gives it a countdown of $20 in
 ; its angle byte.
 ; HOW: Two INCs, ClearAnimation, a store.
 ; WAITS: no.
 ; Entry: X object. Exit: A $20, N and Z from it.
 EnterNextAndReset:
     inc a:OBJ_STATE,x
-    inc a:OBJ_3510,x
+    inc a:OBJ_WORK_E,x
     jsr ClearAnimation
     lda #$20
-    sta a:OBJ_3568,x
+    sta a:OBJ_WORK_F,x
 EnterNextAndReset_at0:
     rts
 
@@ -1513,14 +1513,14 @@ EnterNextAndReset_at0:
 ; WAITS: no.
 ; Entry: X object. Exit: A the new value, N and Z from it.
 FlipSide:
-    lda a:OBJ_34B8,x
+    lda a:OBJ_WORK_D,x
     eor #$01
-    sta a:OBJ_34B8,x
+    sta a:OBJ_WORK_D,x
     rts
 
 ; @routine 09ED:086 BobAndMove
 ; @run 71:C086
-; WHAT IT DOES: Makes the object bob: OBJ_3618 counts up and its sine (scaled by 3FF) added to OBJ_35C0 is its Y low byte; between
+; WHAT IT DOES: Makes the object bob: OBJ_WORK_H counts up and its sine (scaled by 3FF) added to OBJ_WORK_G is its Y low byte; between
 ; Y $B0 and the right place on screen (X from $80 to $9F once the scroll is added) a random wobble of -1 to 2 is added; then it moves.
 ; HOW: ScaleBySine, NextRandom, a tail jump into ApplyVelocity.
 ; WAITS: no.
@@ -1530,12 +1530,12 @@ BobAndMove:
     sta z:zTemp00
     lda #$03
     sta z:zTemp01
-    inc a:OBJ_3618,x
-    lda a:OBJ_3618,x
+    inc a:OBJ_WORK_H,x
+    lda a:OBJ_WORK_H,x
     jsr VecScaleBySine
     lda z:zProduct2
     clc
-    adc a:OBJ_35C0,x
+    adc a:OBJ_WORK_G,x
     sta a:OBJ_Y_LO,x
     cmp #$B0
     bcs BobAndMove_at0
@@ -1557,16 +1557,16 @@ BobAndMove_at0:
 
 ; @routine 09ED:0C3 SetSwaySpeed
 ; @run 71:C0C3
-; WHAT IT DOES: Sets the object's X speed from a word of a table at $C0DE, picked by OBJ_3510 times 4 plus life timer times 2.
+; WHAT IT DOES: Sets the object's X speed from a word of a table at $C0DE, picked by OBJ_WORK_E times 4 plus life timer times 2.
 ; HOW: Two shifts, an add with carry, two table reads (bank 71).
 ; WAITS: no.
 ; Entry: X object. Exit: A the high byte, Y the index, N and Z from A, C and V from the add.
 SetSwaySpeed:
-    lda a:OBJ_3510,x
+    lda a:OBJ_WORK_E,x
     asl a
     asl a
     sta z:zTemp10
-    lda a:OBJ_34B8,x
+    lda a:OBJ_WORK_D,x
     asl a
     adc z:zTemp10
     tay

@@ -59,7 +59,7 @@ ContinueStartRichter_at0:
     jsr VecClearObject
     txa
     asl a
-    sta a:OBJ_34B8,x
+    sta a:OBJ_WORK_D,x
     txa
     clc
     adc #$0D
@@ -75,9 +75,9 @@ ContinueStartRichter_at0:
     lda #$0D
     jsr VecStartScriptSlot0Kind1
     lda #$01
-    sta a:OBJ_3568
+    sta a:OBJ_WORK_F
     lda #$C0
-    sta a:OBJ_3510
+    sta a:OBJ_WORK_E
     inc z:zGameSubMode
     rts
 
@@ -94,7 +94,7 @@ ContinueWaitRichter:
     lda a:BiosJoyTrigger
     and #$08
     beq ContinueWaitRichter_at0
-    lda a:OBJ_34B8+7
+    lda a:OBJ_WORK_D+7
     cmp #$11
     bne ContinueWaitRichter_at0
 ContinueWaitRichter_at1:
@@ -102,9 +102,9 @@ ContinueWaitRichter_at1:
     inc z:zGameSubMode
     rts
 ContinueWaitRichter_at3:
-    dec a:OBJ_3510
+    dec a:OBJ_WORK_E
     bne RichterLetterStep_at0
-    dec a:OBJ_3568
+    dec a:OBJ_WORK_F
     bne RichterLetterStep_at0
     bra ContinueWaitRichter_at1
 ContinueWaitRichter_at0:
@@ -113,12 +113,12 @@ ContinueWaitRichter_at2:
     bsr RichterLetterStep
     dex
     bpl ContinueWaitRichter_at2
-    lda a:OBJ_34B8+7
+    lda a:OBJ_WORK_D+7
     cmp #$11
     beq ContinueWaitRichter_at3
     cmp #$10
     bne RichterLetterStep_at0
-    inc a:OBJ_34B8+7
+    inc a:OBJ_WORK_D+7
     rts
 
 ; @routine 004D:0A9 RichterLetterStep
@@ -135,7 +135,7 @@ ContinueWaitRichter_at2:
 RichterLetterStep:
     lda a:OBJ_STATE,x
     bne RichterLetterStep_at1
-    lda a:OBJ_34B8,x
+    lda a:OBJ_WORK_D,x
     bne RichterLetterStep_at2
     inc a:OBJ_STATE,x
     rts
@@ -144,11 +144,11 @@ RichterLetterStep_at2:
     clc
     adc #$08
     sta a:OBJ_X_LO,x
-    dec a:OBJ_34B8,x
+    dec a:OBJ_WORK_D,x
 RichterLetterStep_at0:
     rts
 RichterLetterStep_at1:
-    lda a:OBJ_34B8,x
+    lda a:OBJ_WORK_D,x
     cmp #$10
     bcs RichterLetterStep_at0
     jsr LetterPlace
@@ -168,7 +168,7 @@ RichterLetterStep_at1:
     lda #$3F
     bsr WriteLetterColumn
     inc a:OBJ_Y_LO,x
-    inc a:OBJ_34B8,x
+    inc a:OBJ_WORK_D,x
     rts
 
 ; @routine 004D:0F2 WriteLetterColumn
@@ -187,14 +187,14 @@ WriteLetterColumn:
     clc
     adc z:zTemp10
     sec
-    sbc a:OBJ_34B8,x
+    sbc a:OBJ_WORK_D,x
     sta a:VDC_DATA_LO
     lda z:zTemp01
     sta a:VDC_DATA_HI
     jsr VecSelectVramData
     lda z:zTemp10
     sec
-    sbc a:OBJ_34B8,x
+    sbc a:OBJ_WORK_D,x
     asl a
     tay
     lda (zTemp08),y
@@ -274,9 +274,9 @@ ContinueStartMaria_at0:
     lda #$0D
     jsr VecStartScriptSlot0Kind1
     lda #$01
-    sta a:OBJ_3568
+    sta a:OBJ_WORK_F
     lda #$10
-    sta a:OBJ_3510
+    sta a:OBJ_WORK_E
     inc a:OBJ_STATE
     inc z:zGameSubMode
     rts
@@ -370,7 +370,7 @@ MariaLetterStep:
     adc z:zTemp09
     sta z:zTemp09
     bsr MariaLetterReveal
-    lda a:OBJ_34B8,x
+    lda a:OBJ_WORK_D,x
     cmp #$20
     bne ContinueWaitMaria_at6
     inc a:OBJ_STATE,x
@@ -412,8 +412,8 @@ MariaLetterReveal_at0:
     bne MariaLetterReveal_at1
     plx
     phx
-    inc a:OBJ_34B8,x
-    lda a:OBJ_34B8,x
+    inc a:OBJ_WORK_D,x
+    lda a:OBJ_WORK_D,x
     asl a
     asl a
     asl a
@@ -680,14 +680,14 @@ ContinueFade:
     clx
     jsr StartScriptSlotKind6
     lda #$09
-    sta a:OBJ_34B8
+    sta a:OBJ_WORK_D
     lda #$01
-    sta a:OBJ_3510
+    sta a:OBJ_WORK_E
     inc z:zField80
 ContinueFade_at1:
     rts
 ContinueFade_at0:
-    dec a:OBJ_3510
+    dec a:OBJ_WORK_E
     bne ContinueFade_at1
     lda #$12
     bbr0 zIdleFlag,ContinueFade_at2
@@ -762,8 +762,8 @@ ContinueFade_at8:
     clx
     jsr StartScriptSlotKind7
     lda #$04
-    sta a:OBJ_3510
-    dec a:OBJ_34B8
+    sta a:OBJ_WORK_E
+    dec a:OBJ_WORK_D
     bne ContinueFade_at11
     inc z:zGameSubMode
 ContinueFade_at11:
@@ -911,15 +911,15 @@ ContinueCursorBlink:
     lda z:zFrameTick
     and #$03
     bne ContinueCursorBlink_at0
-    ldy a:OBJ_34B8+8
+    ldy a:OBJ_WORK_D+8
     lda a:ContinueBlinkScripts,y
     clx
     jsr VecStartScriptSlotKind4
-    inc a:OBJ_34B8+8
-    lda a:OBJ_34B8+8
+    inc a:OBJ_WORK_D+8
+    lda a:OBJ_WORK_D+8
     cmp #$0A
     bcc ContinueCursorBlink_at0
-    stz a:OBJ_34B8+8
+    stz a:OBJ_WORK_D+8
 ContinueCursorBlink_at0:
     rts
 

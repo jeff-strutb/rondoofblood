@@ -103,7 +103,7 @@ void abi_ClearHitsTaken(void)
 /*
  * @routine 12DF:038 RandomTimerC0
  * @run 71:D038
- * WHAT IT DOES: Sets the object's timer OBJ_34B8 to a random number with bits 6 and 7 set.
+ * WHAT IT DOES: Sets the object's timer OBJ_WORK_D to a random number with bits 6 and 7 set.
  * HOW: NextRandom.
  * WAITS: no.
  * Entry: X object. Exit: A the timer, N set, Z clear; C and V from the random number.
@@ -170,7 +170,7 @@ void abi_NextPhaseUnlessKind25(void)
 /*
  * @routine 0E0B:099 HalveDirectionWhenHurt
  * @run 70:B099
- * WHAT IT DOES: Unless the object is in state 6, halves its OBJ_3618 once its hits taken reach 5.
+ * WHAT IT DOES: Unless the object is in state 6, halves its OBJ_WORK_H once its hits taken reach 5.
  * HOW: Two compares and a memory shift right.
  * WAITS: no.
  * Entry: X object. Exit: the last compare, or the shift's N, Z and C.
@@ -190,7 +190,7 @@ ObjArm HalveDirectionWhenHurt(uint8_t slot)
     if (r.second < 5) {
         return r;
     }
-    r.third = LSR8_VALUE(OBJ->f3618[slot], carry);
+    r.third = LSR8_VALUE(OBJ->work_h[slot], carry);
     r.flag = carry;
     r.arm = M6_HD_HALVED;
     return r;
@@ -219,7 +219,7 @@ void abi_HalveDirectionWhenHurt(void)
 /*
  * @routine 0E0B:10B LoadThenSpawn24
  * @run 70:B10B
- * WHAT IT DOES: Loads the object's record, sets OBJ_3618 to $80, clears the object in slot $11 and starts a kind $24 object there at this object's place.
+ * WHAT IT DOES: Loads the object's record, sets OBJ_WORK_H to $80, clears the object in slot $11 and starts a kind $24 object there at this object's place.
  * HOW: LoadObjectRecord, ClearObjectInY, a tail jump into StartObjectAtPlace.
  * WAITS: no.
  * Entry: X object. Exit: A the last byte copied, Y $11.
@@ -231,7 +231,7 @@ ObjArm LoadThenSpawn24(uint8_t slot)
     jsr_push(0xB10E);
     r.first = LoadObjectRecord(slot, &r.second, &r.flag);
     jsr_pop();
-    WR8(OBJ->f3618[slot], 0x80);
+    WR8(OBJ->work_h[slot], 0x80);
     jsr_push(0xB118);
     ClearObjectInY(0x11);
     jsr_pop();
@@ -296,7 +296,7 @@ void abi_StepListB5FEToState4(void)
 /*
  * @routine 0E0B:184 FallThenStopForRaster
  * @run 70:B184
- * WHAT IT DOES: Moves the object along Y by its speed and counts OBJ_34B8 down; at zero it clears the raster effect and its argument, clears the object's Y speed and goes
+ * WHAT IT DOES: Moves the object along Y by its speed and counts OBJ_WORK_D down; at zero it clears the raster effect and its argument, clears the object's Y speed and goes
  * on to the next OBJ_SUBSTATE.
  * HOW: ApplyVelocityY, DEC, stores, INC.
  * WAITS: no.
@@ -341,7 +341,7 @@ void abi_FallThenStopForRaster(void)
 /*
  * @routine 0E0C:128 LoadThenRiseFast
  * @run 70:B928
- * WHAT IT DOES: Loads the object's record, moves it up once by a Y speed high of $D8, then sets OBJ_3510 to $30 and the Y speed to $FA00.
+ * WHAT IT DOES: Loads the object's record, moves it up once by a Y speed high of $D8, then sets OBJ_WORK_E to $30 and the Y speed to $FA00.
  * HOW: LoadObjectRecord, ApplyVelocityY, stores.
  * WAITS: no.
  * Entry: X object. Exit: A 0, Z set.
@@ -357,7 +357,7 @@ ObjArm LoadThenRiseFast(uint8_t slot)
     jsr_push(0xB933);
     r.move = ApplyVelocityY(slot);
     jsr_pop();
-    WR8(OBJ->f3510[slot], 0x30);
+    WR8(OBJ->work_e[slot], 0x30);
     WR8(OBJ->vy_hi[slot], 0xFA);
     WR8(OBJ->vy_lo[slot], 0);
     return r;
@@ -378,7 +378,7 @@ void abi_LoadThenRiseFast(void)
 /*
  * @routine 0E0B:34D CountDownThenState6
  * @run 70:B34D
- * WHAT IT DOES: Counts OBJ_3618 down; at zero the object goes to state 6, clears OBJ_SUBSTATE and takes a new OBJ_3618 from a table at $B36B by the low two bits of OBJ_35C0.
+ * WHAT IT DOES: Counts OBJ_WORK_H down; at zero the object goes to state 6, clears OBJ_SUBSTATE and takes a new OBJ_WORK_H from a table at $B36B by the low two bits of OBJ_WORK_G.
  * HOW: DEC, stores, a table read (bank 70).
  * WAITS: no.
  * Entry: X object. Exit: the count; at zero, the table byte as loaded (Y its index).
@@ -387,17 +387,17 @@ ObjArm CountDownThenState6(uint8_t slot)
 {
     ObjArm r = { 0 };
 
-    r.first = RD8(OBJ->f3618[slot]);
+    r.first = RD8(OBJ->work_h[slot]);
     r.arm = M6_CD_COUNTING;
     if (r.first != 0) {
-        r.second = DEC8(OBJ->f3618[slot]);
+        r.second = DEC8(OBJ->work_h[slot]);
         return r;
     }
     WR8(OBJ->state[slot], 6);
     WR8(OBJ->substate[slot], 0);
     r.third = (uint8_t)(RD8(OBJ->angle_lo[slot]) & 0x03);
     r.fourth = rd8((uint16_t)(0xB36B + r.third));
-    WR8(OBJ->f3618[slot], r.fourth);
+    WR8(OBJ->work_h[slot], r.fourth);
     r.arm = M6_CD_STATE6;
     return r;
 }
@@ -420,7 +420,7 @@ void abi_CountDownThenState6(void)
 /*
  * @routine 0E0C:187 StepListB9B7ThenAimAtPlayer
  * @run 70:B987
- * WHAT IT DOES: Steps the animation list at $B9B7; when it ends the object takes the angle to the player as OBJ_34B8, sets its speed along it with length $0180, clears its animation step and timer, sets OBJ_3510 to $C0 and goes on to the next state.
+ * WHAT IT DOES: Steps the animation list at $B9B7; when it ends the object takes the angle to the player as OBJ_WORK_D, sets its speed along it with length $0180, clears its animation step and timer, sets OBJ_WORK_E to $C0 and goes on to the next state.
  * HOW: StepObjectFrames, AngleToPlayer, SetVelocityFromAngle, stores, an INC.
  * WAITS: no.
  * Entry: X object, Y kept unless the step sets it. Exit: the step, or the new state's N and Z (A $C0) when the list ended.
@@ -452,7 +452,7 @@ ObjArm StepListB9B7ThenAimAtPlayer(uint8_t slot, uint8_t y_entry)
     jsr_pop();
     WR8(OBJ->anim_step[slot], 0);
     WR8(OBJ->anim_timer[slot], 0);
-    WR8(OBJ->f3510[slot], 0xC0);
+    WR8(OBJ->work_e[slot], 0xC0);
     r.second = INC8(OBJ->state[slot]);
     r.arm = M6_B9_AIMED;
     return r;
@@ -479,7 +479,7 @@ void abi_StepListB9B7ThenAimAtPlayer(void)
 /*
  * @routine 0E0B:237 StepListB25CThenStartList
  * @run 70:B237
- * WHAT IT DOES: Steps the animation list at $B25C; when it ends it starts the script list $82 on channel 5, sets bit 2 of zField8E, sets OBJ_3250 to 2 and goes on to the next state.
+ * WHAT IT DOES: Steps the animation list at $B25C; when it ends it starts the script list $82 on channel 5, sets bit 2 of zField8E, sets OBJ_HITBOX_ON to 2 and goes on to the next state.
  * HOW: StepObjectFrames, StartListChannelKind2, stores, an INC.
  * WAITS: no.
  * Entry: X object, Y kept unless the step sets it. Exit: the step, or the new state's N and Z when the list ended.
@@ -532,7 +532,7 @@ void abi_StepListB25CThenStartList(void)
 /*
  * @routine 0E0C:201 TurnTowardPlayerOrStepList
  * @run 70:BA01
- * WHAT IT DOES: While OBJ_3568 counts down the object waits, turning round when it reaches zero. At zero it compares its facing with the player's side: when they differ it sets OBJ_3568 to 5 and frame $2C, otherwise it steps the animation list at $B9FA.
+ * WHAT IT DOES: While OBJ_WORK_F counts down the object waits, turning round when it reaches zero. At zero it compares its facing with the player's side: when they differ it sets OBJ_WORK_F to 5 and frame $2C, otherwise it steps the animation list at $B9FA.
  * HOW: DEC, EOR, SideOfPlayer, StepObjectFrames.
  * WAITS: no.
  * Entry: X object, Y kept unless the step sets it. Exit: the last instruction's registers.
@@ -602,10 +602,10 @@ void abi_TurnTowardPlayerOrStepList(void)
 /*
  * @routine 0E0B:0C2 SetHitBoxFromTable
  * @run 70:B0C2
- * WHAT IT DOES: When OBJ_3250 is not zero, takes the object's hit box (four bytes: OBJ_HITBOX_DX, OBJ_HITBOX_DY, OBJ_HITBOX_HALF_W, OBJ_HITBOX_HALF_H) from the table at $BEEC, four bytes a row, the row being the frame less one.
+ * WHAT IT DOES: When OBJ_HITBOX_ON is not zero, takes the object's hit box (four bytes: OBJ_HITBOX_DX, OBJ_HITBOX_DY, OBJ_HITBOX_HALF_W, OBJ_HITBOX_HALF_H) from the table at $BEEC, four bytes a row, the row being the frame less one.
  * HOW: A pointer built in zTemp00-01 by two adds of twice the row, four reads through it.
  * WAITS: no.
- * Entry: X object. Exit: A the last byte read, Y 3; or the test of OBJ_3250.
+ * Entry: X object. Exit: A the last byte read, Y 3; or the test of OBJ_HITBOX_ON.
  */
 ObjArm SetHitBoxFromTable(uint8_t slot)
 {
@@ -660,7 +660,7 @@ void abi_SetHitBoxFromTable(void)
 /*
  * @routine 0E0C:412 CopyPlaceAndHitBoxOfSlot10
  * @run 70:BC12
- * WHAT IT DOES: In state 0 loads the object's record. Later it takes the place of the object in slot $10 and its facing; if that object's OBJ_3250 is not zero it takes the hit box (four bytes a row from the table at $C024, the row being that object's frame less one; the half width plus 8), else it clears its half width and half height.
+ * WHAT IT DOES: In state 0 loads the object's record. Later it takes the place of the object in slot $10 and its facing; if that object's OBJ_HITBOX_ON is not zero it takes the hit box (four bytes a row from the table at $C024, the row being that object's frame less one; the half width plus 8), else it clears its half width and half height.
  * HOW: LoadObjectRecord, CopyObjectPlaceBack, a pointer built in zTemp00-01, four reads through it.
  * WAITS: no.
  * Entry: X object. Exit: see the code: the last read or the clears.
@@ -853,7 +853,7 @@ static Ended ended_of_turn(TurnAngleResult r)
 /*
  * @routine 0E0C:1C2 TurnTowardPlayerAndMove
  * @run 70:B9C2
- * WHAT IT DOES: Runs TurnTowardPlayerOrStepList, sets the object's speed from its angle OBJ_34B8 with length $01C0 and moves it, then turns the angle toward the angle to the player (step 2) with the low bit cleared; counts OBJ_3510 down and at zero sets it to $F0 and goes on to the next state.
+ * WHAT IT DOES: Runs TurnTowardPlayerOrStepList, sets the object's speed from its angle OBJ_WORK_D with length $01C0 and moves it, then turns the angle toward the angle to the player (step 2) with the low bit cleared; counts OBJ_WORK_E down and at zero sets it to $F0 and goes on to the next state.
  * HOW: TurnTowardPlayerOrStepList, SetVelocityFromAngle, ApplyVelocity, AngleToPlayer, TurnAngleToward, DEC, an INC.
  * WAITS: no.
  * Entry: X object, Y kept unless a callee sets it. Exit: the count, or the new state's N and Z (A $F0).
@@ -895,12 +895,12 @@ ObjArm TurnTowardPlayerAndMove(uint8_t slot, uint8_t y_entry)
     }
     r.fourth = angle_byte;
     WR8(OBJ->f34b8[slot], angle_byte);
-    r.fifth = DEC8(OBJ->f3510[slot]);
+    r.fifth = DEC8(OBJ->work_e[slot]);
     r.arm = M6_TM_COUNTING;
     if (r.fifth != 0) {
         return r;
     }
-    WR8(OBJ->f3510[slot], 0xF0);
+    WR8(OBJ->work_e[slot], 0xF0);
     r.sixth = INC8(OBJ->state[slot]);
     r.arm = M6_TM_NEXT;
     return r;
@@ -936,7 +936,7 @@ void abi_TurnTowardPlayerAndMove(void)
 /*
  * @routine 051F:454 WaitForPressThenAnimate
  * @run 71:D454
- * WHAT IT DOES: In state 0 loads the object's record and sets sprite set 6. Later, with OBJ_SUBSTATE 0, it waits until the first object is at Y low $AA and X low $CC to $D3 and the pad's new presses have bit 4; then it moves to the next OBJ_SUBSTATE, clears its animation step and timer and takes the first object's X low and Y low plus $D8 as its place. With OBJ_SUBSTATE not 0 it sets the first object's OBJ_3510 to $C0 and OBJ_3568 to $10 and steps the animation list at $D443; sound $3B when a frame changes; when the list ends it clears OBJ_SUBSTATE, its frame and the first object's OBJ_3510.
+ * WHAT IT DOES: In state 0 loads the object's record and sets sprite set 6. Later, with OBJ_SUBSTATE 0, it waits until the first object is at Y low $AA and X low $CC to $D3 and the pad's new presses have bit 4; then it moves to the next OBJ_SUBSTATE, clears its animation step and timer and takes the first object's X low and Y low plus $D8 as its place. With OBJ_SUBSTATE not 0 it sets the first object's OBJ_WORK_E to $C0 and OBJ_WORK_F to $10 and steps the animation list at $D443; sound $3B when a frame changes; when the list ends it clears OBJ_SUBSTATE, its frame and the first object's OBJ_WORK_E.
  * HOW: LoadObjectRecord, StepObjectFrames, SoundCommand, stores.
  * WAITS: no.
  * Entry: X object, Y kept unless the step sets it. Exit: see the wrapper.
@@ -987,7 +987,7 @@ ObjArm WaitForPressThenAnimate(uint8_t slot, uint8_t y_entry)
         r.arm = M6_WP_START;
         return r;
     }
-    WR8(OBJ->f3510[0], 0xC0);
+    WR8(OBJ->work_e[0], 0xC0);
     WR8(OBJ->f3568[0], 0x10);
     WR8(ZP->temp10, 0x43);
     WR8(ZP->temp11, 0xD4);
@@ -999,7 +999,7 @@ ObjArm WaitForPressThenAnimate(uint8_t slot, uint8_t y_entry)
     if (r.step == FRAME_LIST_ENDED) {
         WR8(OBJ->substate[slot], 0);
         WR8(OBJ->frame[slot], 0);
-        WR8(OBJ->f3510[0], 0);
+        WR8(OBJ->work_e[0], 0);
         r.arm = M6_WP_ENDED;
         return r;
     }
@@ -1319,7 +1319,7 @@ void abi_LandThenNextState(void)
  * @routine 0E0C:045 LoadThenSwingAndDrop
  * @run 70:B845
  * @stop B8C0
- * WHAT IT DOES: In state 0 loads the object's record, puts it at Y low $F0, gives it the X speed high the table at $B86D names by its facing, moves it along X, takes the other X speed high from the table at $B86F and sets OBJ_34B8 to $80. Later it sets its Y speed from the cosine of OBJ_34B8 with length $0C00, moves along Y, adds 8 to OBJ_34B8 and, when that carries, restarts it at $80, puts the object at Y low $F0, moves along X, counts OBJ_3510 up and clears the object at 5 or sets its Y position from the table at $B8C0.
+ * WHAT IT DOES: In state 0 loads the object's record, puts it at Y low $F0, gives it the X speed high the table at $B86D names by its facing, moves it along X, takes the other X speed high from the table at $B86F and sets OBJ_WORK_D to $80. Later it sets its Y speed from the cosine of OBJ_WORK_D with length $0C00, moves along Y, adds 8 to OBJ_WORK_D and, when that carries, restarts it at $80, puts the object at Y low $F0, moves along X, counts OBJ_WORK_E up and clears the object at 5 or sets its Y position from the table at $B8C0.
  * HOW: LoadObjectRecord, ApplyVelocityX, ScaleByCosine, ApplyVelocityY, table reads (bank 70), ClearObject.
  * WAITS: no.
  * Entry: X object. Exit: the last instruction's registers.
@@ -1372,8 +1372,8 @@ ObjArm LoadThenSwingAndDrop(uint8_t slot)
     jsr_push(0xB8A4);
     r.move2 = ApplyVelocityX(slot);
     jsr_pop();
-    INC8(OBJ->f3510[slot]);
-    r.fifth = RD8(OBJ->f3510[slot]);
+    INC8(OBJ->work_e[slot]);
+    r.fifth = RD8(OBJ->work_e[slot]);
     r.arm = M6_SD_CLEARED;
     if (r.fifth >= 5) {
         ClearObject(slot);

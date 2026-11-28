@@ -24,7 +24,7 @@ static ObjArm hit_damage_at(uint8_t slot, uint16_t table)
     ObjArm r = { 0 };
     uint8_t row, hit;
 
-    row = RD8(OBJ->fields_2ee0[slot]);
+    row = RD8(OBJ->work_a[slot]);
     r.first = (uint8_t)(row << 4);
     WR8(ZP->temp00, r.first);
     hit = RD8(OBJ->hit_taken[slot]);

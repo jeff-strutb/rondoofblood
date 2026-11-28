@@ -39,7 +39,7 @@ enum { ST23_THROWN_LOADED, ST23_THROWN_FALLING, ST23_THROWN_LANDED, ST23_THROWN_
 /*
  * @routine 0F6B:488 CountDownThenRestartMusicAndScript
  * @run 70:B488
- * WHAT IT DOES: Counts OBJ_3510 down; at zero clears OBJ_34B8, sets OBJ_38D8 1, OBJ_35C0 and OBJ_3568 $E0 and OBJ_3510 $40, goes to the next state, clears bits 3 and 4 of zField8E, plays the track again (CdPlayAgain), sets bit 2 of zField8E and bit 1 of OBJ_3250, plays sound $D1 and starts script 1 in the only free script slot 3.
+ * WHAT IT DOES: Counts OBJ_WORK_E down; at zero clears OBJ_WORK_D, sets OBJ_WORK_P 1, OBJ_WORK_G and OBJ_WORK_F $E0 and OBJ_WORK_E $40, goes to the next state, clears bits 3 and 4 of zField8E, plays the track again (CdPlayAgain), sets bit 2 of zField8E and bit 1 of OBJ_HITBOX_ON, plays sound $D1 and starts script 1 in the only free script slot 3.
  * HOW: A memory decrement, stores, RMWs of zField8E, CdPlayAgain, SoundCommand, StartSoleScriptSlot between a PHX and a PLX.
  * WAITS: no. (CdPlayAgain starts a disc command; it does not wait.)
  * Entry: X object, Y kept for the track and the sound. Exit: as the last instruction that ran (l8_restart_music_exit_shim).
@@ -48,16 +48,16 @@ static L8RestartArm count_down_then_restart_music(uint8_t slot, uint8_t y_entry)
 {
     L8RestartArm r = { 0 };
 
-    r.timer = DEC8(OBJ->f3510[slot]);
+    r.timer = DEC8(OBJ->work_e[slot]);
     if (r.timer != 0) {
         r.restarted = false;
         return r;
     }
     WR8(OBJ->f34b8[slot], 0);
-    WR8(OBJ->f38d8[slot], 1);
+    WR8(OBJ->work_p[slot], 1);
     WR8(OBJ->f35c0[slot], 0xE0);
     WR8(OBJ->f3568[slot], 0xE0);
-    WR8(OBJ->f3510[slot], 0x40);
+    WR8(OBJ->work_e[slot], 0x40);
     r.count = INC8(OBJ->state[slot]);
     RMW8(ZP->field8e, old, old & 0xF7);
     RMW8(ZP->field8e, old, old & 0xEF);
@@ -123,7 +123,7 @@ void abi_CountDownThenRestartMusicAndScript(void)
 /*
  * @routine 0F6B:776 ThrownPieceThenScatterAndLeave
  * @run 70:B776
- * WHAT IT DOES: In state 0 loads the record, sets the speed X $0800 and Y -$0800 (moved once each) and OBJ_34B8 3. In state 1 it falls (ApplyVelocityY, ApplyGravity) and steps the list by OBJ_34B8 until it reaches Y $D0; there it stops, shrinks its hit box to 8 by 8, starts four objects of type $AC numbered 0 to 3 in free slots of $30 to $3F, plays sound $26, goes to the next state and restarts the animation. In later states, every fourth frame, it starts an object of type $9B in the first empty slot of $50 to $54 with a random speed, steps the list and clears itself when the list ends.
+ * WHAT IT DOES: In state 0 loads the record, sets the speed X $0800 and Y -$0800 (moved once each) and OBJ_WORK_D 3. In state 1 it falls (ApplyVelocityY, ApplyGravity) and steps the list by OBJ_WORK_D until it reaches Y $D0; there it stops, shrinks its hit box to 8 by 8, starts four objects of type $AC numbered 0 to 3 in free slots of $30 to $3F, plays sound $26, goes to the next state and restarts the animation. In later states, every fourth frame, it starts an object of type $9B in the first empty slot of $50 to $54 with a random speed, steps the list and clears itself when the list ends.
  * HOW: LoadObjectRecord, ApplyVelocityX and Y, ApplyGravity, FindFreeSlotFrom30, StartObjectAtPlace, SoundCommand, NextRandom, StepListByNumberTable, ClearObject.
  * WAITS: no.
  * Entry: X object, Y kept for the sound. Exit: as the last instruction that ran (l8_thrown_piece_exit_shim).

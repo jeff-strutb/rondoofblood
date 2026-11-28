@@ -6,7 +6,7 @@
  *
  * Fields named by their address, and tables read by their address, are placeholders until the
  * names for them land (front_end.h lists them): the cursor value of object 0 and 1 is OBJ->f34b8,
- * the target place of an object is OBJ->f3568 (X) and OBJ->f35c0 (Y), and OBJ->f3510 says it is
+ * the target place of an object is OBJ->f3568 (X) and OBJ->f35c0 (Y), and OBJ->work_e says it is
  * on its way.
  */
 #include "machine.h"
@@ -180,7 +180,7 @@ void abi_HalveObjectVelocity(void)
  * read from a table of places, one pair for each value and each of the two cursors.
  * HOW: The object's cursor value (OBJ->f34b8) doubled with the object's low bit under it, doubled
  * again, is the table index; the pair at that index goes to the object's target (X and Y) and
- * the object is marked as on its way (OBJ->f3510 is 1).
+ * the object is marked as on its way (OBJ->work_e is 1).
  * WAITS: no.
  * Entry: X the cursor object (0 or 1). Exit: A 1, N and Z clear, C bit 6 of the cursor value, Y
  * the table index. X kept.
@@ -198,7 +198,7 @@ CursorTarget SetCursorTarget(uint8_t object)
     WR8(OBJ->f3568[object], target);
     target = rd8((uint16_t)(CURSOR_PLACES + 1 + result.index));
     WR8(OBJ->f35c0[object], target);
-    WR8(OBJ->f3510[object], 1);
+    WR8(OBJ->work_e[object], 1);
     return result;
 }
 
@@ -2222,7 +2222,7 @@ void abi_DrawSlotDetails(void)
  * WHAT IT DOES: Moves a cursor object a quarter of the way to its target each frame, and
  * stops it there; shows its picture frame while it is moving, or the frame that turns with the
  * tick once it has arrived.
- * HOW: If OBJ->f3510 says it is moving, the speed on each axis is set to half the distance to the
+ * HOW: If OBJ->work_e says it is moving, the speed on each axis is set to half the distance to the
  * target (a 9-bit difference rotated down, its sign flipped), halved again by
  * HalveObjectVelocity, and ApplyVelocity moves it. The picture frame comes from a table by
  * whether it is below $B0 and whether the object is 3 or 4; when both places match the target
@@ -2239,7 +2239,7 @@ GlideExit GlideCursorObject(uint8_t object)
     bool diff_carry;
     bool carry;
 
-    flag = RD8(OBJ->f3510[object]);
+    flag = RD8(OBJ->work_e[object]);
     if (flag != 0) {
         target = RD8(OBJ->f3568[object]);
         place = RD8(OBJ->x_lo[object]);
@@ -2277,7 +2277,7 @@ GlideExit GlideCursorObject(uint8_t object)
             place = RD8(OBJ->y_lo[object]);
             target = RD8(OBJ->f35c0[object]);
             if (place == target) {
-                WR8(OBJ->f3510[object], 0);
+                WR8(OBJ->work_e[object], 0);
             }
         }
     }
@@ -2370,7 +2370,7 @@ GlideExit JitterCursorObject(uint8_t object)
     bool diff_carry;
     bool carry;
 
-    flag = RD8(OBJ->f3510[object]);
+    flag = RD8(OBJ->work_e[object]);
     if (flag != 0) {
         jsr_push(0x9D65);
         random = NextRandom().value;
@@ -2413,7 +2413,7 @@ GlideExit JitterCursorObject(uint8_t object)
             place = RD8(OBJ->y_lo[object]);
             target = RD8(OBJ->f35c0[object]);
             if (place == target) {
-                WR8(OBJ->f3510[object], 0);
+                WR8(OBJ->work_e[object], 0);
             }
         }
     }

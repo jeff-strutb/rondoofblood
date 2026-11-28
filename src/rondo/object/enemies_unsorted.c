@@ -135,7 +135,7 @@ void abi_SetHitboxFromFrame(void)
 /*
  * @routine 0CAB:3B9 TurnAngleBack
  * @run 70:B3B9
- * WHAT IT DOES: Turns an object's 16-bit angle (OBJ_3568 high, OBJ_35C0 low) back by $0080;
+ * WHAT IT DOES: Turns an object's 16-bit angle (OBJ_WORK_F high, OBJ_WORK_G low) back by $0080;
  * once it passes below zero, sets bit 2 of the stage flag byte zField8E, shows frame 1,
  * switches the hitbox on (2) and moves the object to its next state.
  * HOW: A two-byte subtract, low byte first; the borrow decides.
@@ -190,8 +190,8 @@ void abi_TurnAngleBack(void)
 /*
  * @routine 09EB:5ED AdvanceOnTimer
  * @run 70:B5ED
- * WHAT IT DOES: Counts an object's life timer down; when it reaches zero, loads OBJ_3510, the
- * angle pair and OBJ_3618 from a four-byte row of a table picked by its next kind, and moves it
+ * WHAT IT DOES: Counts an object's life timer down; when it reaches zero, loads OBJ_WORK_E, the
+ * angle pair and OBJ_WORK_H from a four-byte row of a table picked by its next kind, and moves it
  * to its next state.
  * HOW: DEC of the timer in memory; on zero, the row at $B614 + 4 * next kind. Table read at a
  * bare address until the typed data layer lands.
@@ -213,13 +213,13 @@ TimerAdvance AdvanceOnTimer(uint8_t slot)
     result.carry = (kind & 0x40) != 0;
     offset = (uint8_t)(kind << 2);
     value = rd8((uint16_t)(0xB614 + offset));
-    WR8(OBJ->f3510[slot], value);
+    WR8(OBJ->work_e[slot], value);
     value = rd8((uint16_t)(0xB615 + offset));
     WR8(OBJ->angle_hi[slot], value);
     value = rd8((uint16_t)(0xB616 + offset));
     WR8(OBJ->angle_lo[slot], value);
     value = rd8((uint16_t)(0xB617 + offset));
-    WR8(OBJ->f3618[slot], value);
+    WR8(OBJ->work_h[slot], value);
     result.new_state = INC8(OBJ->state[slot]);
     result.waiting = false;
     result.loaded = value;
@@ -404,8 +404,8 @@ void abi_EnterStateFiveOnPlayerState9(void)
 /*
  * @routine 072C:02C StopAndPickPhase
  * @run 70:B82C
- * WHAT IT DOES: Stops an object (clears OBJ_3670 and its four speed bytes), then sets OBJ_SUBSTATE
- * from a table of eight bytes at $B84B picked by the low three bits of a counter, OBJ_3720,
+ * WHAT IT DOES: Stops an object (clears OBJ_WORK_I and its four speed bytes), then sets OBJ_SUBSTATE
+ * from a table of eight bytes at $B84B picked by the low three bits of a counter, OBJ_WORK_K,
  * which it then advances.
  * HOW: Five clears, a table read, an INC in memory. Table read at a bare address until the typed
  * data layer lands.
@@ -418,16 +418,16 @@ PhasePick StopAndPickPhase(uint8_t slot)
     PhasePick result;
     uint8_t counter, value;
 
-    WR8(OBJ->f3670[slot], 0);
+    WR8(OBJ->work_i[slot], 0);
     WR8(OBJ->vx_hi[slot], 0);
     WR8(OBJ->vx_lo[slot], 0);
     WR8(OBJ->vy_hi[slot], 0);
     WR8(OBJ->vy_lo[slot], 0);
-    counter = RD8(OBJ->f3720[slot]);
+    counter = RD8(OBJ->work_k[slot]);
     result.index = (uint8_t)(counter & 0x07);
     value = rd8((uint16_t)(0xB84B + result.index));
     WR8(OBJ->substate[slot], value);
-    result.new_phase = INC8(OBJ->f3720[slot]);
+    result.new_phase = INC8(OBJ->work_k[slot]);
     result.loaded = value;
     return result;
 }

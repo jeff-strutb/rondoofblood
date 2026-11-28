@@ -208,7 +208,7 @@ bool InitObjectFromRecord(uint8_t slot)
     WR8(OBJ->f2fe8[slot], shared);
     WR8(OBJ->hitbox_half_w[slot], 4);
     WR8(OBJ->hitbox_half_h[slot], 4);
-    WR8(OBJ->f3510[slot], 4);
+    WR8(OBJ->work_e[slot], 4);
     WR8(OBJ->life_timer[slot], 0x60);
     return carry;
 }
@@ -270,8 +270,8 @@ Sum BounceFromAngle(uint8_t slot)
  * from its angle (the full cosine) and its Y speed to $80, and its angle is turned on by
  * $0280.
  * HOW: Calls ApplyVelocity and ProbeTerrain (floor, height 0, with the carry ApplyVelocity
- * left), then ScaleByCosine with a multiplier of 256; the angle is the two bytes OBJ_35C0 (low)
- * and OBJ_3568 (high).
+ * left), then ScaleByCosine with a multiplier of 256; the angle is the two bytes OBJ_WORK_G (low)
+ * and OBJ_WORK_F (high).
  * WAITS: no.
  * Entry: X object, Y the probe's column. Exit: A and flags from the last AND or add (see the
  * wrapper); X kept; Y as ScaleByCosine left it. D clear.
@@ -616,7 +616,7 @@ void abi_ChangeKindFromTable(void)
  * @routine 0519:72C AnimateKind88
  * @run 70:A72C
  * WHAT IT DOES: For an object of kind $88 only: steps its animation list (at $A745) and keeps the
- * frame it shows in OBJ_3510. Any other kind is left alone.
+ * frame it shows in OBJ_WORK_E. Any other kind is left alone.
  * HOW: Compares the kind with $88; then StepObjectFrames with the list's pointer in zTemp10-11 and a
  * copy of the frame byte.
  * WAITS: no.
@@ -639,7 +639,7 @@ Kind88Step AnimateKind88(uint8_t slot, uint8_t y)
     result.step = StepObjectFrames(slot, &result.y);
     jsr_pop();
     frame = RD8(OBJ->frame[slot]);
-    WR8(OBJ->f3510[slot], frame);
+    WR8(OBJ->work_e[slot], frame);
     result.value = frame;
     result.stepped = true;
     return result;
@@ -669,7 +669,7 @@ void abi_AnimateKind88(void)
  * @run 70:A764
  * WHAT IT DOES: Starts an object whose kind is a pair: a kind $93 with zField90 set becomes kind $84,
  * and an object whose kind is already the one the table at $A668 gives for zField93 becomes $84; then
- * the record is loaded, slot 0's byte of the OBJ_SPRITE_FLIP column is copied into the object's, and OBJ_3510
+ * the record is loaded, slot 0's byte of the OBJ_SPRITE_FLIP column is copied into the object's, and OBJ_WORK_E
  * is set from the table at $A79E, row of two bytes by the kind less $84, the second by which character
  * plays.
  * HOW: Compares and, on equality, stores kind $84; LoadObjectRecord; the row by an add with the
@@ -710,7 +710,7 @@ KindStart StartKindFromCharacter(uint8_t slot)
     character = RD8(ZP->character);
     sum = add_bytes(index, character, false);
     byte = rd8((uint16_t)(0xA79E + sum.value));
-    WR8(OBJ->f3510[slot], byte);
+    WR8(OBJ->work_e[slot], byte);
     result.last = byte;
     result.index = sum.value;
     result.sum = sum;
@@ -733,7 +733,7 @@ void abi_StartKindFromCharacter(void)
  * @run 70:A49E
  * WHAT IT DOES: One frame of an object that falls away: while it is not rising (its Y speed's top bit
  * clear) it asks the floor with a probe height of 2 and, if the probe says floor, the object is cleared.
- * Otherwise it takes its frame from OBJ_3510 and moves on one state.
+ * Otherwise it takes its frame from OBJ_WORK_E and moves on one state.
  * HOW: ProbeTerrain with the carry and column the caller left; the clear is a tail jump into
  * ClearObject.
  * Untraced: the arm that clears (the jump at A4B0) ran in no script.
@@ -760,7 +760,7 @@ LandClear ClearOnLanding(uint8_t slot, uint8_t column, bool carry_in)
             return result;
         }
     }
-    frame = RD8(OBJ->f3510[slot]);
+    frame = RD8(OBJ->work_e[slot]);
     WR8(OBJ->frame[slot], frame);
     result.frame = frame;
     result.state = INC8(OBJ->state[slot]);
@@ -890,7 +890,7 @@ void abi_FallThenWait(void)
  * @run 70:A53A
  * WHAT IT DOES: A falling object that goes away: it falls as FallUntilFloor does and counts its life
  * timer down; at zero the object is cleared. Until then its frame is 0, and it shows the frame in
- * OBJ_3510 on the beats where bit 1 of the timer is set (a flicker).
+ * OBJ_WORK_E on the beats where bit 1 of the timer is set (a flicker).
  * HOW: FallUntilFloor, DEC of the timer; the clear is a tail jump into ClearObject.
  * WAITS: no.
  * Entry: X object, Y the probe's column, C passed on. Exit: see the wrapper.
@@ -916,7 +916,7 @@ FloorFall FallThenClear(uint8_t slot, uint8_t column, bool carry_in)
     if (bit == 0) {
         return fall;
     }
-    frame = RD8(OBJ->f3510[slot]);
+    frame = RD8(OBJ->work_e[slot]);
     WR8(OBJ->frame[slot], frame);
     fall.end = ended_then(fall.end, ended_load(frame));
     return fall;
@@ -1073,12 +1073,12 @@ void abi_DropOffScreen(void)
  * @run 70:A92E
  * @stop A95E
  * WHAT IT DOES: A thrown item: from state 0 it loads its record, takes its frame from a table by its
- * life timer and its speeds from a four-byte row of the table at $A95E picked by OBJ_3510; in any other
+ * life timer and its speeds from a four-byte row of the table at $A95E picked by OBJ_WORK_E; in any other
  * state it goes on as DropOffScreen.
  * HOW: Tables read from the disc (bank 70) by address; the other states are a tail branch into
  * DropOffScreen.
  * WAITS: no.
- * Entry: X object. Exit: started: A the last speed byte, Y the row's start, C bit 6 of OBJ_3510, N and
+ * Entry: X object. Exit: started: A the last speed byte, Y the row's start, C bit 6 of OBJ_WORK_E, N and
  * Z from A; else as DropOffScreen.
  */
 ThrowStep StartThrownItem(uint8_t slot)
@@ -1097,7 +1097,7 @@ ThrowStep StartThrownItem(uint8_t slot)
     timer = RD8(OBJ->life_timer[slot]);
     frame = rd8((uint16_t)(0xA97E + timer));
     WR8(OBJ->frame[slot], frame);
-    row = RD8(OBJ->f3510[slot]);
+    row = RD8(OBJ->work_e[slot]);
     index = (uint8_t)(row << 2);
     byte = rd8((uint16_t)(0xA95F + index));
     WR8(OBJ->vx_hi[slot], byte);
@@ -1119,9 +1119,9 @@ void abi_StartThrownItem(void)
 /*
  * @routine 051A:1EB FallThenState
  * @run 70:A9EB
- * WHAT IT DOES: Moves an object down by its Y speed; OBJ_3510 counts down and at zero becomes $10
+ * WHAT IT DOES: Moves an object down by its Y speed; OBJ_WORK_E counts down and at zero becomes $10
  * while the object moves on one state.
- * HOW: ApplyVelocityY, then DEC of OBJ_3510.
+ * HOW: ApplyVelocityY, then DEC of OBJ_WORK_E.
  * WAITS: no.
  * Entry: X object. Exit: the move's registers, then N and Z of the count; at zero A $10 and N, Z of
  * the new state.
@@ -1136,12 +1136,12 @@ ThrowStep FallThenState(uint8_t slot)
     move = ApplyVelocityY(slot);
     jsr_pop();
     step.end = ended_of_axis_move(move);
-    left = DEC8(OBJ->f3510[slot]);
+    left = DEC8(OBJ->work_e[slot]);
     if (left != 0) {
         step.end = ended_then(step.end, ended_nz(left));
         return step;
     }
-    WR8(OBJ->f3510[slot], 0x10);
+    WR8(OBJ->work_e[slot], 0x10);
     state = INC8(OBJ->state[slot]);
     step.end = ended_then(step.end, ended_with_a(ended_nz(state), 0x10));
     return step;
@@ -1155,7 +1155,7 @@ void abi_FallThenState(void)
 /*
  * @routine 051A:1FC ClearWhenCountEnds
  * @run 70:A9FC
- * WHAT IT DOES: OBJ_3510 counts down; at zero the object is cleared.
+ * WHAT IT DOES: OBJ_WORK_E counts down; at zero the object is cleared.
  * HOW: DEC; the clear is a tail jump into ClearObject.
  * WAITS: no.
  * Entry: X object. Exit: N and Z of the count; A, Y and the rest kept.
@@ -1164,7 +1164,7 @@ uint8_t ClearWhenCountEnds(uint8_t slot)
 {
     uint8_t left;
 
-    left = DEC8(OBJ->f3510[slot]);
+    left = DEC8(OBJ->work_e[slot]);
     if (left == 0) {
         ClearObject(slot);
     }
@@ -1518,7 +1518,7 @@ void abi_LandThenWait(void)
 /*
  * @routine 0519:7E6 LandThenClear
  * @run 70:A7E6
- * WHAT IT DOES: As LandThenWait, but at zero the object is cleared; until then its frame is 0, and it shows OBJ_3510 on the beats where bit 1
+ * WHAT IT DOES: As LandThenWait, but at zero the object is cleared; until then its frame is 0, and it shows OBJ_WORK_E on the beats where bit 1
  * of the timer is set.
  * HOW: StopOnLanding, DEC; the clear is a tail jump into ClearObject.
  * WAITS: no.
@@ -1543,7 +1543,7 @@ LandWait LandThenClear(uint8_t slot, uint8_t column, bool carry_in)
     if (bit == 0) {
         return wait;
     }
-    frame = RD8(OBJ->f3510[slot]);
+    frame = RD8(OBJ->work_e[slot]);
     WR8(OBJ->frame[slot], frame);
     wait.end = ended_then(wait.end, ended_load(frame));
     return wait;
@@ -1723,7 +1723,7 @@ void abi_CollectScoreItem(void)
  * @routine 051A:1A8 StartScorePickup
  * @run 70:A9A8
  * WHAT IT DOES: Loads the object's record, clears its facing and adds the score a table at $A9E1 gives for its timer (two bytes of BCD); when that carries over
- * the mark the score tests for it the player gets an extra life (GiveExtraLife). The frame comes from a table at $A9DC by the timer, the angle OBJ_3510 is $18 and the Y speed $FE00.
+ * the mark the score tests for it the player gets an extra life (GiveExtraLife). The frame comes from a table at $A9DC by the timer, the angle OBJ_WORK_E is $18 and the Y speed $FE00.
  * HOW: LoadObjectRecord, AddScoreWord, GiveExtraLife, table reads (bank 70).
  * Untraced: the extra life (A9C2).
  * WAITS: no.
@@ -1752,7 +1752,7 @@ ObjArm StartScorePickup(uint8_t slot, uint8_t y_entry)
     r.fifth = RD8(OBJ->life_timer[slot]);
     r.sixth = rd8((uint16_t)(0xA9DC + r.fifth));
     WR8(OBJ->frame[slot], r.sixth);
-    WR8(OBJ->f3510[slot], 0x18);
+    WR8(OBJ->work_e[slot], 0x18);
     WR8(OBJ->vy_hi[slot], 0xFE);
     WR8(OBJ->vy_lo[slot], 0);
     return r;

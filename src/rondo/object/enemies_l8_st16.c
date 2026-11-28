@@ -157,7 +157,7 @@ void abi_StepListBounceOffFloorAtRandom(void)
 /*
  * @routine 05CC:1B9 StepListFallThenLandOrClear
  * @run 70:B9B9
- * WHAT IT DOES: Steps the animation list at $B9F9 and moves; once the X high byte is not 0 the object is cleared. Otherwise the Y speed gains $0012 a frame, and at Y low $C4 it stops there, clears OBJ_3250 and the animation and goes to the next state.
+ * WHAT IT DOES: Steps the animation list at $B9F9 and moves; once the X high byte is not 0 the object is cleared. Otherwise the Y speed gains $0012 a frame, and at Y low $C4 it stops there, clears OBJ_HITBOX_ON and the animation and goes to the next state.
  * HOW: StepObjectFrames, ApplyVelocity, a 16-bit add in memory, a compare, a tail jump into ClearObject.
  * WAITS: no.
  * Entry: X object, Y kept unless the step sets it. Exit: as the last instruction that ran (l8_land_or_clear_exit_shim).
@@ -257,7 +257,7 @@ void abi_StepListThenClearWhenEnded(void)
 /*
  * @routine 05CC:376 CountFramesThenRunByState
  * @run 70:BB76
- * WHAT IT DOES: Counts OBJ_34B8 up and runs the code a table at $BB8B names for the object's state (391, 3BA or 3FA).
+ * WHAT IT DOES: Counts OBJ_WORK_D up and runs the code a table at $BB8B names for the object's state (391, 3BA or 3FA).
  * HOW: An INC, a table of two bytes to zTemp00-01, a jump through them.
  * WAITS: no.
  * Entry: X object. Exit: as the code jumped to; A the high byte, Y the doubled state (l8_run_by_state_exit_shim).
@@ -411,7 +411,7 @@ void abi_StepListFallThenTurnToPlayer(void)
 /*
  * @routine 05CC:419 SoundAndSpawnEveryFourthFrame
  * @run 70:BC19
- * WHAT IT DOES: When the low two bits of OBJ_34B8 are 0 plays sound $19 and starts an object of type $29 in a free slot of $30 to $3F at the object's place.
+ * WHAT IT DOES: When the low two bits of OBJ_WORK_D are 0 plays sound $19 and starts an object of type $29 in a free slot of $30 to $3F at the object's place.
  * HOW: An AND, SoundCommand, FindFreeSlotFrom30, StartObjectAtPlace.
  * WAITS: no.
  * Entry: X object, Y kept for the sound. Exit: as the last instruction that ran (l8_spawn_fourth_exit_shim).
@@ -741,7 +741,7 @@ static Ended l8_band_exit_shim(L8St16Band r)
 /*
  * @routine 05CC:282 LoadRecordThenFollowOrHomeIn
  * @run 70:BA82
- * WHAT IT DOES: In state 0 loads the record and sets the Y speed $1A. Later (unless the game's sub-mode is 4) it takes the place of slot $10 and moves by an X speed from the table at $BA90 by its number and slot $10's facing. While OBJ_34B8 is 0 and slot $10 is in state 4 with OBJ_SUBSTATE of 2 or 3 it waits for a hit of 1 to 4, then takes the distance to the player as its aim (OBJ_3510, OBJ_3568) and sets OBJ_34B8 1. While OBJ_34B8 is not 0 it homes in: it puts slot 0 at its place and moves it by the aim (turned on a step by the sign of each part), restores the speed of slot $10 and ends.
+ * WHAT IT DOES: In state 0 loads the record and sets the Y speed $1A. Later (unless the game's sub-mode is 4) it takes the place of slot $10 and moves by an X speed from the table at $BA90 by its number and slot $10's facing. While OBJ_WORK_D is 0 and slot $10 is in state 4 with OBJ_SUBSTATE of 2 or 3 it waits for a hit of 1 to 4, then takes the distance to the player as its aim (OBJ_WORK_E, OBJ_WORK_F) and sets OBJ_WORK_D 1. While OBJ_WORK_D is not 0 it homes in: it puts slot 0 at its place and moves it by the aim (turned on a step by the sign of each part), restores the speed of slot $10 and ends.
  * HOW: LoadObjectRecord, CopyObjectPlaceBack, ApplyVelocity, CopyObjectPlace, ApplyVelocity with X and Y swapped, compares, table reads, stores.
  * WAITS: no.
  * Entry: X object. Exit: as the last instruction that ran (l8_follow_or_home_exit_shim). The arm that takes the aim and the whole of the homing arm ran in no script (the draft stops there); the code at $BB62 that the homing arm calls has no row and is written here as inside_edge_band.
@@ -805,7 +805,7 @@ L8St16HomeArm LoadRecordThenFollowOrHomeIn(uint8_t slot, L8Layout lay)
         }
         aim = RD8(OBJ->x_lo[0]);
         diff = sub_bytes(aim, RD8(OBJ->x_lo[slot]), true);
-        WR8(OBJ->f3510[slot], diff.value);
+        WR8(OBJ->work_e[slot], diff.value);
         aim = RD8(OBJ->y_lo[0]);
         r.aim = sub_bytes(aim, RD8(OBJ->y_lo[slot]), true);
         WR8(OBJ->f3568[slot], r.aim.value);
@@ -828,19 +828,19 @@ L8St16HomeArm LoadRecordThenFollowOrHomeIn(uint8_t slot, L8Layout lay)
     jsr_push(l8_at(lay, 0xBB03));
     r.placed2 = CopyObjectPlace(slot, 0);
     jsr_pop();
-    value = RD8(OBJ->f3510[slot]);
+    value = RD8(OBJ->work_e[slot]);
     WR8(OBJ->vx_hi[0], value);
     r.vy = RD8(OBJ->f3568[slot]);
     WR8(OBJ->vy_hi[0], r.vy);
     jsr_push(l8_at(lay, 0xBB13));
     r.move2 = ApplyVelocity(0);
     jsr_pop();
-    r.aim_x = RD8(OBJ->f3510[slot]);
+    r.aim_x = RD8(OBJ->work_e[slot]);
     if (r.aim_x != 0) {
         index = (uint8_t)((r.aim_x >> 7) & 0x01);
-        value = RD8(OBJ->f3510[slot]);
+        value = RD8(OBJ->work_e[slot]);
         r.sum_x = add_bytes(value, rd8((uint16_t)(l8_at(lay, 0xBB60) + index)), false);
-        WR8(OBJ->f3510[slot], r.sum_x.value);
+        WR8(OBJ->work_e[slot], r.sum_x.value);
     }
     r.aim_y = RD8(OBJ->f3568[slot]);
     if (r.aim_y != 0) {
@@ -855,7 +855,7 @@ L8St16HomeArm LoadRecordThenFollowOrHomeIn(uint8_t slot, L8Layout lay)
     WR8(OBJ->vx_lo[0], flags);
     WR8(OBJ->vy_hi[0], 0xFF);
     WR8(OBJ->vy_lo[0], 0);
-    WR8(OBJ->f3510[0], 2);
+    WR8(OBJ->work_e[0], 2);
     WR8(OBJ->f3568[0], 0);
     r.arm = HOME_MOVED;
     return r;

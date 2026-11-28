@@ -15,39 +15,39 @@ StageTriggerObject:
     jsr VecLoadObjectRecord
     lda #$80
     clc
-    adc a:OBJ_3250,x
-    sta a:OBJ_3250,x
+    adc a:OBJ_HITBOX_ON,x
+    sta a:OBJ_HITBOX_ON,x
     lda a:OBJ_START_ARG,x
     tay
     and #$0F
-    sta a:OBJ_3510,x
+    sta a:OBJ_WORK_E,x
     tya
     rol a
     rol a
     rol a
     tay
     and #$03
-    sta a:OBJ_3568,x
+    sta a:OBJ_WORK_F,x
     tya
     rol a
     rol a
     and #$03
-    sta a:OBJ_34B8,x
+    sta a:OBJ_WORK_D,x
     rts
     stz a:OBJ_HIT_TAKEN,x
     rts
 StageTriggerObject_at0:
     stz a:OBJ_INVULN_TIMER,x
-    ldy a:OBJ_34B8,x
+    ldy a:OBJ_WORK_D,x
     lda a:PadOverrides,y
     beq ClearHitsTaken
     lda a:OBJ_HIT_TAKEN,x
     beq ClearHitsTaken
     cmp #$05
     bcs ClearHitsTaken
-    lda a:OBJ_3510,x
+    lda a:OBJ_WORK_E,x
     sta z:zField83
-    lda a:OBJ_3568,x
+    lda a:OBJ_WORK_F,x
     sta z:zField87
     lda #$01
     sta z:zField8C
@@ -83,18 +83,18 @@ StageTriggerObjectB:
     jsr VecLoadObjectRecord
     lda #$80
     clc
-    adc a:OBJ_3250,x
-    sta a:OBJ_3250,x
+    adc a:OBJ_HITBOX_ON,x
+    sta a:OBJ_HITBOX_ON,x
     lda a:OBJ_START_ARG,x
     tay
     and #$1F
-    sta a:OBJ_3510,x
+    sta a:OBJ_WORK_E,x
     tya
     rol a
     rol a
     rol a
     and #$03
-    sta a:OBJ_3568,x
+    sta a:OBJ_WORK_F,x
 StageTriggerObjectB_at2:
     rts
 StageTriggerObjectB_at0:
@@ -111,9 +111,9 @@ StageTriggerObjectB_at1:
     beq ClearHitsTaken
     cmp #$05
     bcs ClearHitsTaken
-    lda a:OBJ_3510,x
+    lda a:OBJ_WORK_E,x
     sta z:zField83
-    lda a:OBJ_3568,x
+    lda a:OBJ_WORK_F,x
     sta z:zField87
     stz z:zField8C
     lda #$02

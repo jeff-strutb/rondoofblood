@@ -129,14 +129,14 @@ static AnimationStep animation_exit(uint8_t a, uint8_t nz, bool c, bool y_set, u
  * @routine 01BB:69C RichterAnimationPoint
  * @run 6D:B69C
  * WHAT IT DOES: Points zTemp00-01 at the list of the animation in play and gives Y twice the step in play.
- * HOW: OBJ_FIELDS_2EE0 doubled indexes AnimationLists; the step in OBJ_SCROLL_BAND doubled.
+ * HOW: OBJ_WORK_A doubled indexes AnimationLists; the step in OBJ_SCROLL_BAND doubled.
  * WAITS: no.
  * Entry: nothing. Exit: A and Y twice the step, N and Z from it, C the step's bit 7. X and V kept.
  */
 static ObjectListStep animation_point(uint16_t lists)
 {
     ObjectListStep r;
-    uint8_t animation = RD8(OBJ->fields_2ee0[0]);
+    uint8_t animation = RD8(OBJ->work_a[0]);
     uint8_t doubled = (uint8_t)(animation << 1);
     uint8_t step;
 
@@ -411,13 +411,13 @@ void abi_RichterAnimationTick(void)
  * @routine 01BB:67B RichterSetAnimation
  * @run 6D:B67B
  * WHAT IT DOES: Starts an animation from its first step.
- * HOW: The animation into OBJ_FIELDS_2EE0, step zero, and its first entry read.
+ * HOW: The animation into OBJ_WORK_A, step zero, and its first entry read.
  * WAITS: no.
  * Entry: A animation. Exit: as RichterAnimationTick. Clobbers zTemp00-01.
  */
 static AnimationStep set_animation(const AnimationLayout *layout, uint8_t animation)
 {
-    WR8(OBJ->fields_2ee0[0], animation);
+    WR8(OBJ->work_a[0], animation);
     WR8(OBJ->scroll_band[0], 0);
     return animation_read_entry(layout);
 }

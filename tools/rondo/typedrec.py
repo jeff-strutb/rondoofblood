@@ -254,7 +254,7 @@ def generate(path, symbols, taken_names, guard, include, origin):
                 decl = f"int8_t {m['name']}"
             else:
                 decl = f"uint8_t {m['name']}"
-            subs = []
+            subs, whole, base = [], [], decl
             for al in [x for x in member_aliases if x["rec"] == rname and re.split(r"[.+]", x["member"])[0] == m["name"]]:
                 if not IDENT.match(al["alias"]) or al["alias"] in names or al["alias"] == m["name"]:
                     raise SpecError(f"{al['where']}: alias {al['alias']} is not a free name")
@@ -289,9 +289,11 @@ def generate(path, symbols, taken_names, guard, include, origin):
                     subs.append("struct { %s%s; }" % (("uint8_t _pad_%s[%d]; " % (al["alias"], idx)) if idx else "", sub_decl))
                     m.setdefault("aliassyms", []).append((al["alias"], al["symbol"]))
                 else:
-                    decl = "union { %s; %s; }" % (decl, decl.replace(m["name"], al["alias"], 1))
+                    whole.append(base.replace(m["name"], al["alias"], 1))   # every whole-member alias in one union
                     if al["symbol"]:
                         m.setdefault("aliassyms", []).append((al["alias"], al["symbol"]))
+            if whole:
+                decl = "union { %s; }" % "; ".join([base] + whole)
             if subs:
                 decl = "union { %s; %s; }" % (decl, "; ".join(subs))
             note = m["note"].strip()

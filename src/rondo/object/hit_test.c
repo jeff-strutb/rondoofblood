@@ -31,14 +31,14 @@ static StageExit hit_exit(uint8_t a, uint8_t y, bool c, bool v, uint8_t nz, uint
  */
 static StageExit hit_store(uint8_t x, uint8_t y)
 {
-    uint8_t a = RD8(OBJ->f3828[y]);
+    uint8_t a = RD8(OBJ->work_n[y]);
 
     WR8(OBJ->hit_taken[x], a);
     a = RD8(OBJ->hit_taken[0]);
     if (a == 0) {
-        a = RD8(OBJ->f3358[x]);
+        a = RD8(OBJ->work_c[x]);
         WR8(OBJ->hit_taken[0], a);
-        a = RD8(OBJ->f3300[x]);
+        a = RD8(OBJ->work_b[x]);
         WR8(OBJ->health[0], a);
     }
     return hit_exit(a, 0, false, false, a, 0);
@@ -77,7 +77,7 @@ static StageExit hit_report(uint8_t x, uint8_t y)
     WR8(STAGEHIT->bytes[2], a);
     a = RD8(HITBOX->y_lo[3]);
     WR8(STAGEHIT->bytes[3], a);
-    a = RD8(OBJ->f3828[y]);
+    a = RD8(OBJ->work_n[y]);
     WR8(OBJ->hit_taken[x], a);
     return hit_exit(a, 0, false, false, a, 0);
 }
@@ -291,9 +291,9 @@ static StageExit hit_test(uint8_t x, uint16_t table, const HitHandlers *handlers
         }
     }
     a = x;
-    WR8(OBJ->f3880[y], a);
+    WR8(OBJ->work_o[y], a);
     WR8(ZP->hit_slot, y);
-    a = RD8(OBJ->f3828[y]);
+    a = RD8(OBJ->work_n[y]);
     if (a == 0) {
         return hit_exit(0, y, c, v, 0, EXIT_Y | EXIT_C | EXIT_V);
     }

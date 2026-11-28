@@ -463,9 +463,9 @@ PickTimersAtRandomB:
     asl a
     tay
     lda a:$CDCA,y
-    sta a:OBJ_3510,x
+    sta a:OBJ_WORK_E,x
     lda a:$CDCB,y
-    sta a:OBJ_34B8,x
+    sta a:OBJ_WORK_D,x
     rts
 
 ; @routine 0A9E:5D2 PickAngleAtRandomB
@@ -480,9 +480,9 @@ PickAngleAtRandomB:
     asl a
     tay
     lda a:$CDE6,y
-    sta a:OBJ_35C0,x
+    sta a:OBJ_WORK_G,x
     lda a:$CDE7,y
-    sta a:OBJ_3568,x
+    sta a:OBJ_WORK_F,x
     rts
 
 ; @routine 117C:73A WalkWhileFrameChangesD
@@ -499,7 +499,7 @@ WalkWhileFrameChangesD:
     sta z:zTemp11
     jsr VecStepObjectFrames
     bcc WalkWhileFrameChangesD_at0
-    ldy a:OBJ_3510,x
+    ldy a:OBJ_WORK_E,x
     lda a:$BF5A,y
     sta a:OBJ_VX_HI,x
     jsr VecApplyVelocityX

@@ -89,7 +89,7 @@ static FrameStep step_list(uint8_t slot, uint16_t list, uint16_t ret, uint8_t *y
  * @routine 0A9D:01F BreakWhenHit
  * @run 71:C01F
  * WHAT IT DOES: An object in a state below $0B whose status bit 7 is set clears the object after it, stops its hitbox and animation,
- * sets OBJ_3778 to $40 and enters state $0B.
+ * sets OBJ_WORK_L to $40 and enters state $0B.
  * HOW: Reads the state and the status flags; ClearObject on slot plus one.
  * WAITS: no.
  * Entry: X object. Exit: A $0B, N and Z from it, C 0.
@@ -117,7 +117,7 @@ ObjArm BreakWhenHit(uint8_t slot)
     WR8(OBJ->hitbox_on[slot], 0);
     WR8(OBJ->anim_step[slot], 0);
     WR8(OBJ->anim_timer[slot], 0);
-    WR8(OBJ->f3778[slot], 0x40);
+    WR8(OBJ->work_l[slot], 0x40);
     WR8(OBJ->state[slot], 0x0B);
     r.arm = S0A_BW_BROKEN;
     return r;
@@ -147,7 +147,7 @@ void abi_BreakWhenHit(void)
 /*
  * @routine 0A9D:070 StartWithPartner
  * @run 71:C070
- * WHAT IT DOES: Loads the object's record, sets OBJ_3510 to $B0 and its angle byte to $40, and starts a kind $25 object at its place in the slot
+ * WHAT IT DOES: Loads the object's record, sets OBJ_WORK_E to $B0 and its angle byte to $40, and starts a kind $25 object at its place in the slot
  * after it.
  * HOW: LoadObjectRecord, ClearObjectInY, a tail jump into StartObjectAtPlace.
  * WAITS: no.
@@ -160,7 +160,7 @@ ObjArm StartWithPartner(uint8_t slot)
     jsr_push(0xC073);
     r.first = LoadObjectRecord(slot, &r.second, &r.flag);
     jsr_pop();
-    WR8(OBJ->f3510[slot], 0xB0);
+    WR8(OBJ->work_e[slot], 0xB0);
     WR8(OBJ->angle_hi[slot], 0x40);
     r.y = (uint8_t)(slot + 1);
     jsr_push(0xC083);
@@ -238,7 +238,7 @@ void abi_StopWhenLanded(void)
 /*
  * @routine 0A9D:113 SlowToPlayer
  * @run 71:C113
- * WHAT IT DOES: When the player is within 5 along X, the object's X speed becomes that distance and its direction byte OBJ_3618 the
+ * WHAT IT DOES: When the player is within 5 along X, the object's X speed becomes that distance and its direction byte OBJ_WORK_H the
  * side the player is on (inverted).
  * HOW: DistanceXToPlayer, SideOfPlayer.
  * WAITS: no.
@@ -262,7 +262,7 @@ ObjArm SlowToPlayer(uint8_t slot)
     jsr_pop();
     r.first = (uint8_t)(r.side.sides & 0x01);
     r.second = (uint8_t)(r.first ^ 0x01);
-    WR8(OBJ->f3618[slot], r.second);
+    WR8(OBJ->work_h[slot], r.second);
     r.arm = S0A_SP_SLOWED;
     return r;
 }
@@ -288,8 +288,8 @@ void abi_SlowToPlayer(void)
 /*
  * @routine 0A9D:133 ChooseAttackByDistance
  * @run 71:C133
- * WHAT IT DOES: When the player is within $20 vertically the object resets its animation, sets OBJ_3720 1 and enters state 4; else when within
- * $18 along X it resets, sets OBJ_3720 2 and enters state 7.
+ * WHAT IT DOES: When the player is within $20 vertically the object resets its animation, sets OBJ_WORK_K 1 and enters state 4; else when within
+ * $18 along X it resets, sets OBJ_WORK_K 2 and enters state 7.
  * HOW: DistanceYToPlayer, DistanceXToPlayer.
  * WAITS: no.
  * Entry: X object. Exit: the last compare or load.
@@ -304,7 +304,7 @@ ObjArm ChooseAttackByDistance(uint8_t slot)
     if (r.distance.distance < 0x20) {
         WR8(OBJ->anim_step[slot], 0);
         WR8(OBJ->anim_timer[slot], 0);
-        WR8(OBJ->f3720[slot], 1);
+        WR8(OBJ->work_k[slot], 1);
         WR8(OBJ->state[slot], 4);
         r.arm = S0A_CA_NEAR_Y;
         return r;
@@ -318,7 +318,7 @@ ObjArm ChooseAttackByDistance(uint8_t slot)
     }
     WR8(OBJ->anim_step[slot], 0);
     WR8(OBJ->anim_timer[slot], 0);
-    WR8(OBJ->f3720[slot], 2);
+    WR8(OBJ->work_k[slot], 2);
     WR8(OBJ->state[slot], 7);
     r.arm = S0A_CA_NEAR_X;
     return r;
@@ -348,7 +348,7 @@ void abi_ChooseAttackByDistance(void)
 /*
  * @routine 0A9D:28A TurnWhenWaitEnds
  * @run 71:C28A
- * WHAT IT DOES: Counts the angle byte down; at zero resets the animation, takes OBJ_3670 from the player's side (bit 1, vertical) and enters state 8.
+ * WHAT IT DOES: Counts the angle byte down; at zero resets the animation, takes OBJ_WORK_I from the player's side (bit 1, vertical) and enters state 8.
  * HOW: DEC, SideOfPlayer and a shift.
  * WAITS: no.
  * Entry: X object. Exit: wait running: N and Z from the count; at zero A $08, C bit 0 of the sides.
@@ -369,7 +369,7 @@ ObjArm TurnWhenWaitEnds(uint8_t slot)
     jsr_pop();
     r.second = (uint8_t)(r.side.sides >> 1);
     r.flag = (r.side.sides & 0x01) != 0;
-    WR8(OBJ->f3670[slot], r.second);
+    WR8(OBJ->work_i[slot], r.second);
     WR8(OBJ->state[slot], 8);
     r.arm = S0A_TW_TURNED;
     return r;
@@ -447,8 +447,8 @@ void abi_StepWithArmor(void)
  * @routine 0A9D:1CF ChooseNextMove
  * @run 71:C1CF
  * WHAT IT DOES: While the object in slot 0 is in OBJ_SUBSTATE state 1 and the player is $50 or more away along X and the distance sum is even, the
- * object resets its animation and enters state 9; otherwise its wait OBJ_3568 counts down and at zero it resets, picks a new wait from the table
- * at $C226 by the distance sum and its next state from the table at $C223 by a counter OBJ_37D0, which goes up one.
+ * object resets its animation and enters state 9; otherwise its wait OBJ_WORK_F counts down and at zero it resets, picks a new wait from the table
+ * at $C226 by the distance sum and its next state from the table at $C223 by a counter OBJ_WORK_M, which goes up one.
  * HOW: DistanceXToPlayer, PlayerDistanceSum (twice, with the carry the compares left), table reads (bank 71).
  * WAITS: no.
  * Entry: X object, C entry (it reaches PlayerDistanceSum when a compare did not set it). Exit: the last compare, AND, DEC or INC.
@@ -496,12 +496,12 @@ ObjArm ChooseNextMove(uint8_t slot, bool carry_in)
     r.fourth = (uint8_t)(r.sum2.value & 0x03);
     r.fifth = rd8((uint16_t)(0xC226 + r.fourth));
     WR8(OBJ->angle_hi[slot], r.fifth);
-    r.sixth = RD8(OBJ->f37d0[slot]);
+    r.sixth = RD8(OBJ->work_m[slot]);
     r.sixth = (uint8_t)(r.sixth & 0x07);
     r.seventh = rd8((uint16_t)(0xC21B + r.sixth));
     r.eighth = rd8((uint16_t)(0xC223 + r.seventh));
     WR8(OBJ->state[slot], r.eighth);
-    r.ninth = INC8(OBJ->f37d0[slot]);
+    r.ninth = INC8(OBJ->work_m[slot]);
     r.arm = S0A_CN_PICKED;
     return r;
 }
@@ -544,7 +544,7 @@ void abi_ChooseNextMove(void)
 /*
  * @routine 0A9D:2A2 StepAndShout
  * @run 71:C2A2
- * WHAT IT DOES: Steps the animation list a table at $C2E4 names for OBJ_3670; when the list ends it resets, enters state 7 and picks a wait
+ * WHAT IT DOES: Steps the animation list a table at $C2E4 names for OBJ_WORK_I; when the list ends it resets, enters state 7 and picks a wait
  * from the table at $C2E0 by the distance sum; on a new frame $26 or $2D it plays sound $1F if the object is on the first screen.
  * HOW: StepObjectFrames, PlayerDistanceSum, a tail jump into SoundIfOnFirstScreen.
  * WAITS: no.
@@ -556,7 +556,7 @@ ObjArm StepAndShout(uint8_t slot)
     uint8_t phase, y, picked, wait;
     Sum sum;
 
-    phase = RD8(OBJ->f3670[slot]);
+    phase = RD8(OBJ->work_i[slot]);
     r.second = (uint8_t)(phase << 1);
     y = r.second;
     WR8(ZP->temp10, rd8((uint16_t)(0xC2E4 + r.second)));
@@ -725,7 +725,7 @@ void abi_ShootArrow(void)
  * @routine 0A9D:3DA FlashAndCount
  * @run 71:C3DA
  * @stop C401
- * WHAT IT DOES: Flashes the object ($8A), steps the animation list at $C401, counts OBJ_3778 down and clears the object at zero; while it runs, when
+ * WHAT IT DOES: Flashes the object ($8A), steps the animation list at $C401, counts OBJ_WORK_L down and clears the object at zero; while it runs, when
  * the count equals one of eight cue values (table at $C43B) it shoots an arrow with that cue's index.
  * HOW: StepObjectFrames, DEC, a scan of the table, ShootArrow (reached by a branch).
  * WAITS: no.
@@ -739,7 +739,7 @@ ObjArm FlashAndCount(uint8_t slot, uint8_t y)
     WR8(OBJ->sprite_attr[slot], 0x8A);
     r.step = step_list(slot, 0xC401, 0xC3EA, &y, false);
     r.y = y;
-    r.first = DEC8(OBJ->f3778[slot]);
+    r.first = DEC8(OBJ->work_l[slot]);
     if (r.first == 0) {
         ClearObject(slot);
         r.arm = S0A_FC_CLEARED;
@@ -747,7 +747,7 @@ ObjArm FlashAndCount(uint8_t slot, uint8_t y)
     }
     index = 0;
     do {
-        r.second = RD8(OBJ->f3778[slot]);
+        r.second = RD8(OBJ->work_l[slot]);
         r.third = rd8((uint16_t)(0xC43B + index));
         if (r.second == r.third) {
             r.fourth = index;
@@ -941,7 +941,7 @@ void abi_SetHitboxByFrame(void)
 /*
  * @routine 0A9E:5F5 CountDownThenAdvance
  * @run 71:CDF5
- * WHAT IT DOES: A 16-bit wait (OBJ_3510 low, the life timer high): while it is not zero it counts down; at zero it picks new timers (PickTimersAtRandomB),
+ * WHAT IT DOES: A 16-bit wait (OBJ_WORK_E low, the life timer high): while it is not zero it counts down; at zero it picks new timers (PickTimersAtRandomB),
  * stops the animation and enters state 2.
  * HOW: An ORA of the two bytes, a 16-bit subtract.
  * Untraced: the arm at zero (CDFD to CE0B).
@@ -955,7 +955,7 @@ ObjArm CountDownThenAdvance(uint8_t slot)
     Sum sum;
 
     high = RD8(OBJ->life_timer[slot]);
-    low = RD8(OBJ->f3510[slot]);
+    low = RD8(OBJ->work_e[slot]);
     r.first = (uint8_t)(high | low);
     if (r.first == 0) {
         jsr_push(0xCE00);
@@ -967,9 +967,9 @@ ObjArm CountDownThenAdvance(uint8_t slot)
         r.arm = S0A_CD_PICKED;
         return r;
     }
-    low = RD8(OBJ->f3510[slot]);
+    low = RD8(OBJ->work_e[slot]);
     sum = sub_bytes(low, 1, true);
-    WR8(OBJ->f3510[slot], sum.value);
+    WR8(OBJ->work_e[slot], sum.value);
     high = RD8(OBJ->life_timer[slot]);
     r.sum = sub_bytes(high, 0, sum.carry);
     WR8(OBJ->life_timer[slot], r.sum.value);
@@ -1001,7 +1001,7 @@ void abi_CountDownThenAdvance(void)
 /*
  * @routine 0A9E:61E CountDownAngleThenAdvance
  * @run 71:CE1E
- * WHAT IT DOES: With the object's X high byte 0, a 16-bit wait (OBJ_3568 high, OBJ_35C0 low) counts down; at zero it picks a new angle
+ * WHAT IT DOES: With the object's X high byte 0, a 16-bit wait (OBJ_WORK_F high, OBJ_WORK_G low) counts down; at zero it picks a new angle
  * (PickAngleAtRandomB), stops the animation, clears OBJ_SUBSTATE and enters state 3.
  * HOW: An ORA of the two bytes, a 16-bit subtract.
  * Untraced: everything past the X high byte test.
@@ -1120,10 +1120,10 @@ ObjArm StartKnifeThrower(uint8_t slot)
     r.third = RD8(OBJ->start_arg[slot]);
     if ((r.third & 0x80) == 0) {
         r.other = true;
-        WR8(OBJ->f37d0[slot], slot);
+        WR8(OBJ->work_m[slot], slot);
         kind = RD8(OBJ->start_arg[slot]);
         r.sum = add_bytes(slot, kind, false);
-        WR8(OBJ->f3828[slot], r.sum.value);
+        WR8(OBJ->work_n[slot], r.sum.value);
         to = (uint8_t)(slot + 1);
         number = 0x81;
         WR8(ZP->temp00, number);
@@ -1136,9 +1136,9 @@ ObjArm StartKnifeThrower(uint8_t slot)
             jsr_pop();
             number = RD8(ZP->temp00);
             WR8(OBJ->start_arg[to], number);
-            WR8(OBJ->f37d0[to], slot);
-            shared = RD8(OBJ->f3828[slot]);
-            WR8(OBJ->f3828[to], shared);
+            WR8(OBJ->work_m[to], slot);
+            shared = RD8(OBJ->work_n[slot]);
+            WR8(OBJ->work_n[to], shared);
             INC8(ZP->temp00);
             to++;
             remaining = DEC8(OBJ->start_arg[slot]);
@@ -1295,7 +1295,7 @@ void abi_BounceWithHeight4(void)
  * @routine 0A9D:0C0 WalkByPhase
  * @run 71:C0C0
  * WHAT IT DOES: A walking step for the phase in A (0 to 3): the phase times four picks an animation list pointer and a speed word from the table at $C0ED;
- * the list is stepped; when a new frame comes the object slows toward the player (SlowToPlayer), turns its speed round when its direction byte OBJ_3618 says,
+ * the list is stepped; when a new frame comes the object slows toward the player (SlowToPlayer), turns its speed round when its direction byte OBJ_WORK_H says,
  * and moves with BounceWithHeight4.
  * HOW: StepObjectFrames, SlowToPlayer, NegateVelocityX, BounceWithHeight4.
  * WAITS: no.
@@ -1327,7 +1327,7 @@ WalkArm WalkByPhase(uint8_t slot, uint8_t phase, uint8_t column)
     jsr_push(0xC0E1);
     r.arm.sub = obj_sub(SlowToPlayer(slot));
     jsr_pop();
-    r.arm.first = RD8(OBJ->f3618[slot]);
+    r.arm.first = RD8(OBJ->work_h[slot]);
     r.arm.arm = S0A_WP_STRAIGHT;
     if (r.arm.first != 0) {
         jsr_push(0xC0E9);
@@ -1377,15 +1377,15 @@ static AttackArm attack_walk(uint8_t slot, uint8_t phase, uint8_t column, uint16
     jsr_push(ret_choose);
     r.rest.sub = obj_sub(ChooseAttackByDistance(slot));
     jsr_pop();
-    r.rest.first = RD8(OBJ->f3618[slot]);
+    r.rest.first = RD8(OBJ->work_h[slot]);
     WR8(OBJ->facing_left[slot], r.rest.first);
-    r.rest.second = DEC8(OBJ->f3510[slot]);
+    r.rest.second = DEC8(OBJ->work_e[slot]);
     r.rest.arm = S0A_AW_COUNTING;
     if (r.rest.second == 0) {
-        WR8(OBJ->f3510[slot], 0xB0);
-        r.rest.third = RD8(OBJ->f3618[slot]);
+        WR8(OBJ->work_e[slot], 0xB0);
+        r.rest.third = RD8(OBJ->work_h[slot]);
         r.rest.third = (uint8_t)(r.rest.third ^ 0x01);
-        WR8(OBJ->f3618[slot], r.rest.third);
+        WR8(OBJ->work_h[slot], r.rest.third);
         r.rest.arm = S0A_AW_FLIPPED;
     }
     return r;
@@ -1409,7 +1409,7 @@ static void attack_walk_exit_shim(AttackArm r)
 /*
  * @routine 0A9D:0A0 WalkAndAttackA
  * @run 71:C0A0
- * WHAT IT DOES: WalkByPhase 0 and ChooseAttackByDistance; the object faces its walking direction, counts OBJ_3510 down and at zero resets it to $B0
+ * WHAT IT DOES: WalkByPhase 0 and ChooseAttackByDistance; the object faces its walking direction, counts OBJ_WORK_E down and at zero resets it to $B0
  * and turns the direction round.
  * HOW: attack_walk with phase 0.
  * WAITS: no.
@@ -1506,7 +1506,7 @@ static L7ChaseArm chase(uint8_t slot, uint8_t column, bool carry_in, bool far_wh
     if (invert) {
         facing = (uint8_t)(facing ^ 0x01);
     }
-    WR8(OBJ->f3618[slot], facing);
+    WR8(OBJ->work_h[slot], facing);
     r.mid.first = facing;
     jsr_push(ret_move);
     r.mid.sub = obj_sub(ChooseNextMove(slot, carry_in));
@@ -1636,11 +1636,11 @@ StepBounceArm StepAndPounce(uint8_t slot, uint8_t y)
     uint8_t index, facing, byte;
     Sum diff;
 
-    WR8_IDX((uint16_t)(COL(OBJ->f3358) + 1), slot, 3);
+    WR8_IDX((uint16_t)(COL(OBJ->work_c) + 1), slot, 3);
     r.arm.step = step_list(slot, 0xC3C5, 0xC376, &y, true);
     r.arm.y = y;
     if (r.arm.step == FRAME_LIST_ENDED) {
-        WR8_IDX((uint16_t)(COL(OBJ->f3358) + 1), slot, 2);
+        WR8_IDX((uint16_t)(COL(OBJ->work_c) + 1), slot, 2);
         WR8(OBJ->anim_step[slot], 0);
         WR8(OBJ->anim_timer[slot], 0);
         WR8(OBJ->state[slot], 4);
@@ -1724,7 +1724,7 @@ AttackArm WalkThenTurn(uint8_t slot, uint8_t column)
     r.walk = WalkByPhase(slot, 2, column);
     jsr_pop();
     r.rest.first = RD8(OBJ->facing_left[slot]);
-    WR8(OBJ->f3618[slot], r.rest.first);
+    WR8(OBJ->work_h[slot], r.rest.first);
     jsr_push(0xC277);
     r.rest.sub = obj_sub(TurnWhenWaitEnds(slot));
     jsr_pop();

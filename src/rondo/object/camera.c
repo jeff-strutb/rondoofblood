@@ -147,7 +147,7 @@ Sum PlayerDistanceSum(uint8_t object, bool carry_in)
     sum = add_bytes(sum.value, RD8(OBJ->kind[0x31]), sum.carry);
     sum = add_bytes(sum.value, (uint8_t)~RD8(OBJ->x_lo[0x32]), sum.carry);
     sum = add_bytes(sum.value, (uint8_t)~RD8(OBJ->y_lo[0x33]), sum.carry);
-    sum = add_bytes(sum.value, RD8(OBJ->fields_2ee0[0]), sum.carry);
+    sum = add_bytes(sum.value, RD8(OBJ->work_a[0]), sum.carry);
     return add_bytes(sum.value, (uint8_t)~RD8(OBJ->hurt_timer[0]), true);
 }
 
@@ -983,8 +983,8 @@ LevelEnd CheckPlayerAtLevelEnd(void)
     end.c = x >= LEVEL_END_TO_X;
     if (x >= LEVEL_END_TO_X)
         return end;
-    wr8(OBJ_3510, 0xFF);
-    wr8(OBJ_3568, LEVEL_END_TIMER);
+    wr8(OBJ_WORK_E, 0xFF);
+    wr8(OBJ_WORK_F, LEVEL_END_TIMER);
     end.a = LEVEL_END_TIMER;
     end.flags_from = LEVEL_END_TIMER;
     return end;

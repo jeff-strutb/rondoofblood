@@ -199,7 +199,7 @@ ObjArm EnterState3WithTallHitbox(uint8_t slot)
 {
     ObjArm r = { 0 };
 
-    WR8(OBJ->f3358[slot], 2);
+    WR8(OBJ->work_c[slot], 2);
     WR8(OBJ->hitbox_half_w[slot], 6);
     WR8(OBJ->hitbox_half_h[slot], 0x18);
     WR8(OBJ->hitbox_dx[slot], 0);
@@ -294,7 +294,7 @@ ObjArm StartFacingPlayerThenCheck(uint8_t slot)
     jsr_pop();
     r.third = (uint8_t)(r.side.sides & 1);
     WR8(OBJ->facing_left[slot], r.third);
-    WR8(OBJ->f3510[slot], 0x18);
+    WR8(OBJ->work_e[slot], 0x18);
     r.fourth = RD8(OBJ->start_arg[slot]);
     r.arm = S8B_SF_OTHER;
     if (r.fourth != 1) {
@@ -372,9 +372,9 @@ ObjArm AnimateThenCountToState3(uint8_t slot)
     if (r.third != 0) {
         return r;
     }
-    r.fourth = RD8(OBJ->f3510[slot]);
+    r.fourth = RD8(OBJ->work_e[slot]);
     r.fourth = (uint8_t)(r.fourth - 1);
-    WR8(OBJ->f3510[slot], r.fourth);
+    WR8(OBJ->work_e[slot], r.fourth);
     r.arm = S8B_AC_COUNTING;
     if (r.fourth != 0) {
         return r;
@@ -568,7 +568,7 @@ ObjArm StartWithTimerByNextKind(uint8_t slot)
     r.third = RD8(OBJ->start_arg[slot]);
     r.fourth = rd8((uint16_t)(TABLE + r.third));
     WR8(OBJ->life_timer[slot], r.fourth);
-    WR8(OBJ->f3510[slot], 0);
+    WR8(OBJ->work_e[slot], 0);
     WR8(OBJ->f3568[slot], 0);
     return r;
 }
@@ -723,7 +723,7 @@ ObjArm WalkWhileFrameChangesC(uint8_t slot)
     if (r.step != FRAME_CHANGED) {
         return r;
     }
-    phase = RD8(OBJ->f3510[slot]);
+    phase = RD8(OBJ->work_e[slot]);
     WR8(OBJ->vx_hi[slot], rd8((uint16_t)(SPEEDS + phase)));
     jsr_push(0xC9A1);
     r.move = ApplyVelocityX(slot);

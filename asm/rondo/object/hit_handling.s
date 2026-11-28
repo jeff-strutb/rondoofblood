@@ -120,7 +120,7 @@ ObjectHit_at7:
 ; WAITS: no.
 ; Entry: X object. Exit: A the damage, Y the table index, N and Z from A, C and V from the add.
 HitDamage:
-    lda a:OBJ_FIELDS_2EE0,x
+    lda a:OBJ_WORK_A,x
     asl a
     asl a
     asl a

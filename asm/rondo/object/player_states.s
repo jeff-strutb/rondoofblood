@@ -36,7 +36,7 @@ ObjectTouchesPlayerBox_at0:
 
 ; @routine 01BE:4E6 NudgeAngleByVelocityAndScroll
 ; @run 6E:CCE6
-; WHAT IT DOES: Moves the object's angle pair OBJ_3568 and OBJ_35C0 (and the counter OBJ_3618): by two tables when it
+; WHAT IT DOES: Moves the object's angle pair OBJ_WORK_F and OBJ_WORK_G (and the counter OBJ_WORK_H): by two tables when it
 ; moves sideways (by its X speed's sign), then by the scroll speed ScrollSpeedX negated, the table at $CE79 by its sign.
 ; HOW: Chains of 8-bit adds with the carry carried from one to the next.
 ; WAITS: no.
@@ -53,14 +53,14 @@ NudgeAngleByVelocityAndScroll:
     tay
     lda a:$CD2D,y
     clc
-    adc a:OBJ_3618,x
-    sta a:OBJ_3618,x
+    adc a:OBJ_WORK_H,x
+    sta a:OBJ_WORK_H,x
     lda a:$CD2F,y
-    adc a:OBJ_3568,x
-    sta a:OBJ_3568,x
+    adc a:OBJ_WORK_F,x
+    sta a:OBJ_WORK_F,x
     lda a:$CD2F,y
-    adc a:OBJ_35C0,x
-    sta a:OBJ_35C0,x
+    adc a:OBJ_WORK_G,x
+    sta a:OBJ_WORK_G,x
 NudgeAngleByVelocityAndScroll_at0:
     cly
     lda a:ScrollSpeedX
@@ -70,11 +70,11 @@ NudgeAngleByVelocityAndScroll_at0:
     iny
 NudgeAngleByVelocityAndScroll_at1:
     clc
-    adc a:OBJ_3568,x
-    sta a:OBJ_3568,x
+    adc a:OBJ_WORK_F,x
+    sta a:OBJ_WORK_F,x
     lda a:$CE79,y
-    adc a:OBJ_35C0,x
-    sta a:OBJ_35C0,x
+    adc a:OBJ_WORK_G,x
+    sta a:OBJ_WORK_G,x
     rts
 
 ; @routine 0720:567 WaitForField85Two
@@ -94,16 +94,16 @@ WaitForField85Two:
 ; @run 6B:9D71
 ; WHAT IT DOES: Counts the flash's frame timer down; at zero steps its list counter, and at four steps ends the flash
 ; (next state, bit 7 of zField8C, sound $71); before that it starts the next list.
-; HOW: DEC of the timer, INC of OBJ_3510 read again for the CMP, flash_restart.
+; HOW: DEC of the timer, INC of OBJ_WORK_E read again for the CMP, flash_restart.
 ; WAITS: no.
 ; Entry: X object, Y kept. Exit: timer running: N and Z from it. Else as the flash's restart (A 2, N and Z the object's
 ; slot, C and V from the second add) or the sound. The end of the flash (four steps) is untraced (4 of 400 cases reach it
 ; and the draft stops there): written from the disc's bytes.
 StepFlashTimer:
-    dec a:OBJ_34B8,x
+    dec a:OBJ_WORK_D,x
     bne StepFlashTimer_at0
-    inc a:OBJ_3510,x
-    lda a:OBJ_3510,x
+    inc a:OBJ_WORK_E,x
+    lda a:OBJ_WORK_E,x
     cmp #$04
     bne StepFlashTimer_at1
     inc a:OBJ_STATE,x
@@ -114,13 +114,13 @@ StepFlashTimer:
     jmp VecSoundCommand
 StepFlashTimer_at1:
     lda #$04
-    sta a:OBJ_34B8,x
+    sta a:OBJ_WORK_D,x
     lda a:OBJ_START_ARG,x
     and #$01
     tay
     lda a:$9CFD,y
     clc
-    adc a:OBJ_3510,x
+    adc a:OBJ_WORK_E,x
     sta a:OBJ_FRAME,x
     clc
     adc a:$9CFF,y
@@ -145,7 +145,7 @@ NextStateByKindBits:
     bmi NextStateByKindBits_at0
     inc a:OBJ_STATE,x
     lda #$04
-    sta a:OBJ_34B8,x
+    sta a:OBJ_WORK_D,x
     lda a:OBJ_START_ARG,x
     and #$0F
     cmp #$02
@@ -167,26 +167,26 @@ NextStateByKindBits_at0:
 ; @run 6B:9DD6
 ; WHAT IT DOES: The flash's other step: counts its frame timer down; at zero counts the list counter down; below zero
 ; the flash ends (next state, sound $71), else the next list starts.
-; HOW: DEC of the timer, DEC of OBJ_3510, flash_restart.
+; HOW: DEC of the timer, DEC of OBJ_WORK_E, flash_restart.
 ; WAITS: no.
 ; Entry: X object, Y kept. Exit: as StepFlashTimer.
 StepFlashTimerDown:
-    dec a:OBJ_34B8,x
+    dec a:OBJ_WORK_D,x
     bne StepFlashTimerDown_at0
-    dec a:OBJ_3510,x
+    dec a:OBJ_WORK_E,x
     bpl StepFlashTimerDown_at1
     inc a:OBJ_STATE,x
     lda #$71
     jmp VecSoundCommand
 StepFlashTimerDown_at1:
     lda #$04
-    sta a:OBJ_34B8,x
+    sta a:OBJ_WORK_D,x
     lda a:OBJ_START_ARG,x
     and #$01
     tay
     lda a:$9CFD,y
     clc
-    adc a:OBJ_3510,x
+    adc a:OBJ_WORK_E,x
     sta a:OBJ_FRAME,x
     clc
     adc a:$9CFF,y

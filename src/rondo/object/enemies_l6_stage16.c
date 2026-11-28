@@ -19,7 +19,7 @@ enum { S5_CLEAR, S5_ABOVE, S5_SET };
 /*
  * @routine 16CB:3EE StepListB404ThenTimer
  * @run 70:B3EE
- * WHAT IT DOES: Steps the animation list at $B404; when it ends, OBJ_34B8 becomes $48 and the object goes to the next OBJ_SUBSTATE.
+ * WHAT IT DOES: Steps the animation list at $B404; when it ends, OBJ_WORK_D becomes $48 and the object goes to the next OBJ_SUBSTATE.
  * HOW: StepObjectFrames, a store, an INC.
  * WAITS: no.
  * Entry: X object, Y kept unless the step sets it. Exit: the step, or the new OBJ_SUBSTATE's N and Z (A $48) when the list ended.
@@ -51,7 +51,7 @@ void abi_StepListB404ThenTimer(void)
 /*
  * @routine 16CB:20E LoadThenStartRise
  * @run 70:B20E
- * WHAT IT DOES: Loads the object's record, sets its flip byte (OBJ_SPRITE_FLIP) to $80, its Y speed to $FE80 and OBJ_3720 to $E0.
+ * WHAT IT DOES: Loads the object's record, sets its flip byte (OBJ_SPRITE_FLIP) to $80, its Y speed to $FE80 and OBJ_WORK_K to $E0.
  * HOW: LoadObjectRecord, stores.
  * WAITS: no.
  * Entry: X object. Exit: A $E0, N set, Z clear; C and Y from the record.
@@ -68,7 +68,7 @@ ObjArm LoadThenStartRise(uint8_t slot)
     WR8(OBJ->sprite_flip[slot], 0x80);
     WR8(OBJ->vy_hi[slot], 0xFE);
     WR8(OBJ->vy_lo[slot], 0x80);
-    WR8(OBJ->f3720[slot], 0xE0);
+    WR8(OBJ->work_k[slot], 0xE0);
     return r;
 }
 
@@ -80,7 +80,7 @@ void abi_LoadThenStartRise(void)
 /*
  * @routine 16CB:24C ClearSlotsWhenScrollZero
  * @run 70:B24C
- * WHAT IT DOES: When the level's X position high byte and the scroll X low are both zero, clears the objects in slots $11 to $4E, sets OBJ_34B8 to $60 and goes on to the next OBJ_SUBSTATE.
+ * WHAT IT DOES: When the level's X position high byte and the scroll X low are both zero, clears the objects in slots $11 to $4E, sets OBJ_WORK_D to $60 and goes on to the next OBJ_SUBSTATE.
  * HOW: Two reads, a loop of ClearObjectInY, a store, an INC.
  * WAITS: no.
  * Entry: X object. Exit: the OR, or the new OBJ_SUBSTATE's N and Z.
@@ -126,7 +126,7 @@ void abi_ClearSlotsWhenScrollZero(void)
 /*
  * @routine 16CB:2F6 StepListB36AThenCount
  * @run 70:B2F6
- * WHAT IT DOES: Steps the animation list at $B36A and moves the object along Y; counts OBJ_34B8 down and at zero clears OBJ_SPRITE_FLIP, sets OBJ_3510 to $40 and goes on to the next OBJ_SUBSTATE.
+ * WHAT IT DOES: Steps the animation list at $B36A and moves the object along Y; counts OBJ_WORK_D down and at zero clears OBJ_SPRITE_FLIP, sets OBJ_WORK_E to $40 and goes on to the next OBJ_SUBSTATE.
  * HOW: StepObjectFrames, ApplyVelocityY, DEC, stores, INC.
  * WAITS: no.
  * Entry: X object, Y kept unless the step sets it. Exit: the count, or the new OBJ_SUBSTATE's N and Z (A $40).
@@ -150,7 +150,7 @@ ObjArm StepListB36AThenCount(uint8_t slot, uint8_t y_entry)
         return r;
     }
     WR8(OBJ->sprite_flip[slot], 0);
-    WR8(OBJ->f3510[slot], 0x40);
+    WR8(OBJ->work_e[slot], 0x40);
     r.first = INC8(OBJ->substate[slot]);
     return r;
 }
@@ -171,7 +171,7 @@ void abi_StepListB36AThenCount(void)
 /*
  * @routine 16CB:54F StartKindFromTableAtSlot16
  * @run 70:B54F
- * WHAT IT DOES: Takes a kind from the table at $B56B by OBJ_3618, clears the object in slot $16, starts an object of that kind there at this object's place, counts OBJ_3618 up, sets OBJ_34B8 to $40 and goes on to the next OBJ_SUBSTATE.
+ * WHAT IT DOES: Takes a kind from the table at $B56B by OBJ_WORK_H, clears the object in slot $16, starts an object of that kind there at this object's place, counts OBJ_WORK_H up, sets OBJ_WORK_D to $40 and goes on to the next OBJ_SUBSTATE.
  * HOW: A table read (bank 70), ClearObjectInY, StartObjectAtPlace, two INCs.
  * WAITS: no.
  * Entry: X object. Exit: A $40, Y $16, N and Z from the new OBJ_SUBSTATE.
@@ -181,7 +181,7 @@ ObjArm StartKindFromTableAtSlot16(uint8_t slot)
     ObjArm r = { 0 };
     uint8_t index, kind;
 
-    index = RD8(OBJ->f3618[slot]);
+    index = RD8(OBJ->work_h[slot]);
     kind = rd8((uint16_t)(0xB56B + index));
     push8(kind);
     jsr_push(0xB55B);
@@ -191,7 +191,7 @@ ObjArm StartKindFromTableAtSlot16(uint8_t slot)
     jsr_push(0xB55F);
     StartObjectAtPlace(kind, slot, 0x16);
     jsr_pop();
-    INC8(OBJ->f3618[slot]);
+    INC8(OBJ->work_h[slot]);
     WR8(OBJ->f34b8[slot], 0x40);
     r.first = INC8(OBJ->substate[slot]);
     return r;
@@ -211,7 +211,7 @@ void abi_StartKindFromTableAtSlot16(void)
 /*
  * @routine 16CB:3C8 CountThenJumpRight
  * @run 70:B3C8
- * WHAT IT DOES: Sets the object's frame to 1 and counts OBJ_34B8 down; at zero it gives the object an X speed high of $12 and a Y speed high of $E0, moves it once, clears its animation step and timer, sets frame 3 and goes on to the next OBJ_SUBSTATE.
+ * WHAT IT DOES: Sets the object's frame to 1 and counts OBJ_WORK_D down; at zero it gives the object an X speed high of $12 and a Y speed high of $E0, moves it once, clears its animation step and timer, sets frame 3 and goes on to the next OBJ_SUBSTATE.
  * HOW: DEC, stores, ApplyVelocity, INC.
  * WAITS: no.
  * Entry: X object. Exit: the count, or the new OBJ_SUBSTATE's N and Z (A 3).
@@ -257,7 +257,7 @@ void abi_CountThenJumpRight(void)
 /*
  * @routine 16CB:27E StepListB2A7ThenPlace
  * @run 70:B27E
- * WHAT IT DOES: Steps the animation list at $B2A7; while it runs the object moves along Y; when it ends the object is put at X $007C, Y $0026 relative to its screen, gets frame 0, OBJ_34B8 $30 and goes to the next OBJ_SUBSTATE.
+ * WHAT IT DOES: Steps the animation list at $B2A7; while it runs the object moves along Y; when it ends the object is put at X $007C, Y $0026 relative to its screen, gets frame 0, OBJ_WORK_D $30 and goes to the next OBJ_SUBSTATE.
  * HOW: StepObjectFrames, a tail jump into ApplyVelocityY, stores, an INC.
  * WAITS: no.
  * Entry: X object, Y kept unless the step sets it. Exit: as ApplyVelocityY, or the new OBJ_SUBSTATE's N and Z (A $30).
@@ -303,7 +303,7 @@ void abi_StepListB2A7ThenPlace(void)
 /*
  * @routine 16CB:2D4 CountThenRiseWithFlash
  * @run 70:B2D4
- * WHAT IT DOES: Counts OBJ_34B8 down; at zero it sets sprite set 4, flash flags $10, OBJ_34B8 $40 and a Y speed of $FFC0 and goes on to the next OBJ_SUBSTATE.
+ * WHAT IT DOES: Counts OBJ_WORK_D down; at zero it sets sprite set 4, flash flags $10, OBJ_WORK_D $40 and a Y speed of $FFC0 and goes on to the next OBJ_SUBSTATE.
  * HOW: DEC, stores, an INC.
  * WAITS: no.
  * Entry: X object. Exit: the count, or the new OBJ_SUBSTATE's N and Z (A $C0).
@@ -339,7 +339,7 @@ void abi_CountThenRiseWithFlash(void)
 /*
  * @routine 16CB:782 LoadThenPlaceAtLeft
  * @run 70:B782
- * WHAT IT DOES: Loads the object's record, sets the raster effect to $0B with argument $BF, puts the object at X $0010, Y $00F6 and sets OBJ_34B8 to $40.
+ * WHAT IT DOES: Loads the object's record, sets the raster effect to $0B with argument $BF, puts the object at X $0010, Y $00F6 and sets OBJ_WORK_D to $40.
  * HOW: LoadObjectRecord, stores.
  * WAITS: no.
  * Entry: X object. Exit: A $40.
@@ -371,7 +371,7 @@ void abi_LoadThenPlaceAtLeft(void)
 /*
  * @routine 16CB:5A8 JumpAwayThenLand
  * @run 70:B5A8
- * WHAT IT DOES: OBJ_SUBSTATE 0: clears OBJ_3250, faces the player's side (bit 0 of SideOfPlayer), takes its X speed from the table at $B619 by that side and gets a Y speed of $FC00. Later it moves, adds $0020 to its Y speed, and once it falls (Y speed high not negative) to a Y low of $94 or more it stops at $94, sets OBJ_3250 to 2, turns round, flips bit 1 of OBJ_3618, halves OBJ_3720 twice and goes to state 2 with OBJ_SUBSTATE 0.
+ * WHAT IT DOES: OBJ_SUBSTATE 0: clears OBJ_HITBOX_ON, faces the player's side (bit 0 of SideOfPlayer), takes its X speed from the table at $B619 by that side and gets a Y speed of $FC00. Later it moves, adds $0020 to its Y speed, and once it falls (Y speed high not negative) to a Y low of $94 or more it stops at $94, sets OBJ_HITBOX_ON to 2, turns round, flips bit 1 of OBJ_WORK_H, halves OBJ_WORK_K twice and goes to state 2 with OBJ_SUBSTATE 0.
  * HOW: SideOfPlayer, table reads (bank 70), ApplyVelocity, a 16-bit add, stores.
  * WAITS: no.
  * Entry: X object. Exit: the last test or store.
@@ -424,10 +424,10 @@ ObjArm JumpAwayThenLand(uint8_t slot)
     WR8(OBJ->hitbox_on[slot], 2);
     value = (uint8_t)(RD8(OBJ->facing_left[slot]) ^ 0x01);
     WR8(OBJ->facing_left[slot], value);
-    r.seventh = (uint8_t)(RD8(OBJ->f3618[slot]) ^ 0x02);
-    WR8(OBJ->f3618[slot], r.seventh);
-    value = LSR8_VALUE(OBJ->f3720[slot], carry);
-    value = LSR8_VALUE(OBJ->f3720[slot], carry);
+    r.seventh = (uint8_t)(RD8(OBJ->work_h[slot]) ^ 0x02);
+    WR8(OBJ->work_h[slot], r.seventh);
+    value = LSR8_VALUE(OBJ->work_k[slot], carry);
+    value = LSR8_VALUE(OBJ->work_k[slot], carry);
     r.eighth = value;
     r.flag = carry;
     WR8(OBJ->state[slot], 2);
@@ -559,7 +559,7 @@ void abi_LoadThenScatterAlongList(void)
 /*
  * @routine 16CB:175 CountThenSpawnInState2
  * @run 70:B175
- * WHAT IT DOES: In state 2 counts OBJ_3880 down; at zero it sets it to $22 and starts a kind $28 object in a free slot from $30 at this object's place.
+ * WHAT IT DOES: In state 2 counts OBJ_WORK_O down; at zero it sets it to $22 and starts a kind $28 object in a free slot from $30 at this object's place.
  * HOW: DEC, FindFreeSlotFrom30, StartObjectAtPlace.
  * WAITS: no.
  * Entry: X object. Exit: the last compare, the count, or the start's registers.
@@ -575,13 +575,13 @@ ObjArm CountThenSpawnInState2(uint8_t slot)
     if (r.first != 2) {
         return r;
     }
-    r.second = RD8(OBJ->f3880[slot]);
+    r.second = RD8(OBJ->work_o[slot]);
     if (r.second != 0) {
-        r.third = DEC8(OBJ->f3880[slot]);
+        r.third = DEC8(OBJ->work_o[slot]);
         r.arm = CS_COUNTING;
         return r;
     }
-    WR8(OBJ->f3880[slot], 0x22);
+    WR8(OBJ->work_o[slot], 0x22);
     jsr_push(0xB18D);
     found_slot = FindFreeSlotFrom30(&last, &found);
     jsr_pop();
@@ -622,7 +622,7 @@ void abi_CountThenSpawnInState2(void)
 /*
  * @routine 16CB:1F4 StateFiveOnStatusBit7
  * @run 70:B1F4
- * WHAT IT DOES: An object in a state under 5 whose OBJ_HIT_STATUS has bit 7 set goes to state 5, clears OBJ_SUBSTATE and OBJ_3250. (The part after the test ran in no script; it is written from the bytes.)
+ * WHAT IT DOES: An object in a state under 5 whose OBJ_HIT_STATUS has bit 7 set goes to state 5, clears OBJ_SUBSTATE and OBJ_HITBOX_ON. (The part after the test ran in no script; it is written from the bytes.)
  * HOW: A test, a compare, three stores.
  * WAITS: no.
  * Entry: X object. Exit: the test, the compare, or A 5.

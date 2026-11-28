@@ -30,7 +30,7 @@ enum { ST25_LEAP_NO_AIM, ST25_LEAP_FEW_HITS, ST25_LEAP_SET, ST25_LEAP_REVERSED }
 /*
  * @routine 0F6D:365 StepListByNumberTableC585
  * @run 71:C365
- * WHAT IT DOES: Steps the animation list that the table at $C585 names for OBJ_34B8.
+ * WHAT IT DOES: Steps the animation list that the table at $C585 names for OBJ_WORK_D.
  * HOW: A table read of two bytes into zTemp10-11, a tail jump into StepObjectFrames.
  * WAITS: no.
  * Entry: X object, Y kept unless the step sets it. Exit: the step (l8_number_step_c585_exit_shim).
@@ -278,14 +278,14 @@ void abi_SpawnFlashingPieceWhenRising(void)
 /*
  * @routine 0F6C:111 CountDownThenClearOnTimer
  * @run 70:B911
- * WHAT IT DOES: Counts OBJ_3510 down; at zero clears the object.
+ * WHAT IT DOES: Counts OBJ_WORK_E down; at zero clears the object.
  * HOW: A memory decrement and a tail jump into ClearObject.
  * WAITS: no.
  * Entry: X object. Exit: the decrement's N and Z (l8_clear_on_timer_exit_shim).
  */
 uint8_t CountDownThenClearOnTimer(uint8_t slot)
 {
-    uint8_t timer = DEC8(OBJ->f3510[slot]);
+    uint8_t timer = DEC8(OBJ->work_e[slot]);
 
     if (timer == 0) {
         ClearObject(slot);
@@ -394,7 +394,7 @@ void abi_FlashWhenHurtThenSound(void)
 /*
  * @routine 0F6C:42D EnterState0EWhenFlagged
  * @run 70:BC2D
- * WHAT IT DOES: When bit 7 of OBJ_HIT_STATUS is set and the state is not $0E, copies OBJ_HEALTH to slot $10's, clears OBJ_3250, goes to state $0E and clears OBJ_SUBSTATE.
+ * WHAT IT DOES: When bit 7 of OBJ_HIT_STATUS is set and the state is not $0E, copies OBJ_HEALTH to slot $10's, clears OBJ_HITBOX_ON, goes to state $0E and clears OBJ_SUBSTATE.
  * HOW: Two tests, stores.
  * WAITS: no.
  * Entry: X object. Exit: as the last instruction that ran (l8_enter_0e_exit_shim). The arm past the flag test ran in no script; the draft stops there.
@@ -446,7 +446,7 @@ void abi_EnterState0EWhenFlagged(void)
 /*
  * @routine 0F6C:44D LoadRecordFrame24
  * @run 70:BC4D
- * WHAT IT DOES: Loads the object's record, sets its frame $24 and clears OBJ_3250.
+ * WHAT IT DOES: Loads the object's record, sets its frame $24 and clears OBJ_HITBOX_ON.
  * HOW: LoadObjectRecord and two stores.
  * WAITS: no.
  * Entry: X object. Exit: A $24, Y 11, C from the record (l8_frame24_exit_shim).
@@ -477,7 +477,7 @@ void abi_LoadRecordFrame24(void)
 /*
  * @routine 0F6C:459 StartTimerWhenSlot10Ready
  * @run 70:BC59
- * WHAT IT DOES: When the state of slot $10 is 5 or more and its OBJ_HEALTH is not $5C, sets OBJ_34B8 $0A and goes to the next state.
+ * WHAT IT DOES: When the state of slot $10 is 5 or more and its OBJ_HEALTH is not $5C, sets OBJ_WORK_D $0A and goes to the next state.
  * HOW: Two compares, a store, an INC.
  * WAITS: no.
  * Entry: X object. Exit: as the last instruction that ran (l8_slot10_ready_exit_shim).
@@ -526,7 +526,7 @@ void abi_StartTimerWhenSlot10Ready(void)
 /*
  * @routine 0F6C:580 HurtOnceThenAnswerYes
  * @run 70:BD80
- * WHAT IT DOES: Says yes (C 1) when the object has taken exactly 1 hit, the player's Y low byte is not $9A and slot 0's state is below $10: it then clears its hits and OBJ_3250, sets slot 0's OBJ_3510 $40 and OBJ_3568 $10, OBJ_34B8 $0B, restarts its animation (ClearAnimationThenStepListC585), goes to state 8. Otherwise says no (C 0).
+ * WHAT IT DOES: Says yes (C 1) when the object has taken exactly 1 hit, the player's Y low byte is not $9A and slot 0's state is below $10: it then clears its hits and OBJ_HITBOX_ON, sets slot 0's OBJ_WORK_E $40 and OBJ_WORK_F $10, OBJ_WORK_D $0B, restarts its animation (ClearAnimationThenStepListC585), goes to state 8. Otherwise says no (C 0).
  * HOW: Compares, stores, a call.
  * WAITS: no.
  * Entry: X object, Y kept for the call. Exit: C 1 yes, 0 no (l8_hurt_once_exit_shim). The yes arm ran in no script; the draft stops there.
@@ -552,7 +552,7 @@ L8HurtOnceArm HurtOnceThenAnswerYes(uint8_t slot, uint8_t y_entry)
     }
     WR8(OBJ->hit_taken[slot], 0);
     WR8(OBJ->hitbox_on[slot], 0);
-    WR8(OBJ->f3510[0], 0x40);
+    WR8(OBJ->work_e[0], 0x40);
     WR8(OBJ->f3568[0], 0x10);
     WR8(OBJ->f34b8[slot], 0x0B);
     jsr_push(0xBDAD);
@@ -592,7 +592,7 @@ void abi_HurtOnceThenAnswerYes(void)
 /*
  * @routine 0F6C:470 StepListThenStartPieceAndWalk
  * @run 70:BC70
- * WHAT IT DOES: Runs StepListByNumberTableC585; when the list ends clears slot $51 and starts an object of type $AD there at the object's place, sets OBJ_3250 2, state 3 and OBJ_34B8 0, restarts the animation, sets the X speed -$00A0 and, facing left, reverses it.
+ * WHAT IT DOES: Runs StepListByNumberTableC585; when the list ends clears slot $51 and starts an object of type $AD there at the object's place, sets OBJ_HITBOX_ON 2, state 3 and OBJ_WORK_D 0, restarts the animation, sets the X speed -$00A0 and, facing left, reverses it.
  * HOW: Two calls, ClearObjectInY, StartObjectAtPlace, stores, a tail jump into NegateVelocityX.
  * WAITS: no.
  * Entry: X object, Y kept unless the step sets it. Exit: as the last instruction that ran (l8_piece_walk_exit_shim). Reversing the speed ran in no script; the draft stops there.
@@ -658,7 +658,7 @@ void abi_StepListThenStartPieceAndWalk(void)
 /*
  * @routine 0F6C:6F7 StartLeapWhenHurtAnswerYes
  * @run 70:BEF7
- * WHAT IT DOES: Says no (C 0) when OBJ_35C0 is 0 or the object has taken fewer than 5 hits. Otherwise clears slot $11, starts an object of type $B0 there at its place, gives it the Y speed -$0800 (moved once), clears its hits and OBJ_3250, sets OBJ_34B8 $0E, restarts the animation, sets the speed X $0140 and Y -$0380 (reversing X when facing left), goes to state 9 and says yes (C 1).
+ * WHAT IT DOES: Says no (C 0) when OBJ_WORK_G is 0 or the object has taken fewer than 5 hits. Otherwise clears slot $11, starts an object of type $B0 there at its place, gives it the Y speed -$0800 (moved once), clears its hits and OBJ_HITBOX_ON, sets OBJ_WORK_D $0E, restarts the animation, sets the speed X $0140 and Y -$0380 (reversing X when facing left), goes to state 9 and says yes (C 1).
  * HOW: Tests, ClearObjectInY, StartObjectAtPlace, ApplyVelocityY, ClearAnimationThenStepListC585, NegateVelocityX.
  * WAITS: no.
  * Entry: X object, Y kept unless the step sets it. Exit: C 1 yes, 0 no (l8_leap_yes_exit_shim). The yes arm ran in no script; the draft stops there.
@@ -743,7 +743,7 @@ void abi_StartLeapWhenHurtAnswerYes(void)
 /*
  * @routine 0EBE:768 StepListByPhaseThenLand
  * @run 71:CF68
- * WHAT IT DOES: Steps the animation list that the table at $CFA7 names for OBJ_3568 and asks StopOnLanding with a probe height of 8; while it falls the Y speed loses $0014 a frame; on landing it clears the animation, sets frame $45 and OBJ_3510 8 and goes to the next OBJ_SUBSTATE.
+ * WHAT IT DOES: Steps the animation list that the table at $CFA7 names for OBJ_WORK_F and asks StopOnLanding with a probe height of 8; while it falls the Y speed loses $0014 a frame; on landing it clears the animation, sets frame $45 and OBJ_WORK_E 8 and goes to the next OBJ_SUBSTATE.
  * HOW: StepObjectFrames, StopOnLanding, a 16-bit subtract in memory, stores, an INC.
  * WAITS: no.
  * Entry: X object, Y the probe's column unless the step sets it, C passed on (StepObjectFrames sets it: C 1 when the frame changed). Exit: the mover's registers, then the landing's or the subtract's (l8_phase_land_exit_shim).
@@ -780,7 +780,7 @@ L8PhaseLandArm StepListByPhaseThenLand(uint8_t slot, uint8_t y_entry, bool carry
     WR8(OBJ->anim_step[slot], 0);
     WR8(OBJ->anim_timer[slot], 0);
     WR8(OBJ->frame[slot], 0x45);
-    WR8(OBJ->f3510[slot], 8);
+    WR8(OBJ->work_e[slot], 8);
     r.count = INC8(OBJ->substate[slot]);
     r.landed = true;
     return r;

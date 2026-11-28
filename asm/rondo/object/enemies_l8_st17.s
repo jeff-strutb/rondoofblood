@@ -1,6 +1,6 @@
 ; @routine 0B4A:39F StartRingOfPieces
 ; @run 70:AB9F
-; WHAT IT DOES: For the numbers 0 to $17 starts an object of type $28 in a free slot of $20 to $3F at the object's place and gives it the seven bytes of the eight byte row of the table at $ABE8: OBJ_34B8, X speed high, Y speed high, OBJ_3568, OBJ_35C0, OBJ_3618 and OBJ_3670; it stops when no slot is free.
+; WHAT IT DOES: For the numbers 0 to $17 starts an object of type $28 in a free slot of $20 to $3F at the object's place and gives it the seven bytes of the eight byte row of the table at $ABE8: OBJ_WORK_D, X speed high, Y speed high, OBJ_WORK_F, OBJ_WORK_G, OBJ_WORK_H and OBJ_WORK_I; it stops when no slot is free.
 ; HOW: A loop of FindFreeSlotFrom20, StartObjectAtPlace, a table read by the number times 8, stores. zD9 and zDA keep their address form until they have names.
 ; WAITS: no.
 ; Entry: X object. Exit: as the last instruction that ran.
@@ -19,19 +19,19 @@ StartRingOfPieces_at1:
     asl a
     tax
     lda a:$ABE8,x
-    sta a:OBJ_34B8,y
+    sta a:OBJ_WORK_D,y
     lda a:$ABE9,x
     sta a:OBJ_VX_HI,y
     lda a:$ABEA,x
     sta a:OBJ_VY_HI,y
     lda a:$ABEB,x
-    sta a:OBJ_3568,y
+    sta a:OBJ_WORK_F,y
     lda a:$ABEC,x
-    sta a:OBJ_35C0,y
+    sta a:OBJ_WORK_G,y
     lda a:$ABED,x
-    sta a:OBJ_3618,y
+    sta a:OBJ_WORK_H,y
     lda a:$ABEE,x
-    sta a:OBJ_3670,y
+    sta a:OBJ_WORK_I,y
     ldx z:zRichterObject
     ldy z:zHitSlot
     iny
@@ -42,7 +42,7 @@ StartRingOfPieces_at0:
 
 ; @routine 0B4A:4A8 LoadRecordFlingThenFall
 ; @run 70:ACA8
-; WHAT IT DOES: In state 0 loads the record, moves the object once and takes its speed from OBJ_3568, OBJ_35C0, OBJ_3618 and OBJ_3670, and its frame from OBJ_34B8 plus $12. Later it falls (ApplyGravityUnlimited) and moves.
+; WHAT IT DOES: In state 0 loads the record, moves the object once and takes its speed from OBJ_WORK_F, OBJ_WORK_G, OBJ_WORK_H and OBJ_WORK_I, and its frame from OBJ_WORK_D plus $12. Later it falls (ApplyGravityUnlimited) and moves.
 ; HOW: LoadObjectRecord, ApplyVelocity, four copies, an add, ApplyGravityUnlimited, a tail jump into ApplyVelocity.
 ; WAITS: no.
 ; Entry: X object. Exit: as the last instruction that ran.
@@ -51,15 +51,15 @@ LoadRecordFlingThenFall:
     bne LoadRecordFlingThenFall_at0
     jsr VecLoadObjectRecord
     jsr VecApplyVelocity
-    lda a:OBJ_3568,x
+    lda a:OBJ_WORK_F,x
     sta a:OBJ_VX_HI,x
-    lda a:OBJ_35C0,x
+    lda a:OBJ_WORK_G,x
     sta a:OBJ_VX_LO,x
-    lda a:OBJ_3618,x
+    lda a:OBJ_WORK_H,x
     sta a:OBJ_VY_HI,x
-    lda a:OBJ_3670,x
+    lda a:OBJ_WORK_I,x
     sta a:OBJ_VY_LO,x
-    lda a:OBJ_34B8,x
+    lda a:OBJ_WORK_D,x
     clc
     adc #$12
     sta a:OBJ_FRAME,x
@@ -102,7 +102,7 @@ SoundBAAtScreen2_at0:
 
 ; @routine 0B4A:517 PulseWaterLevelAndScatter
 ; @run 70:AD17
-; WHAT IT DOES: Sets slot 0's OBJ_3510 3, OBJ_3568 0 and the byte at $3BF0 to 2; hands OBJ_3510 of this object to MaybeSound19AndSpawnPiece and counts it down. When it goes below 0 it sets it $10, plays sound $19, moves in Y and advances OBJ_34B8; at 4 it draws tile script 1, clears the water level, records the object's event and clears itself. Otherwise the water level takes a pair of bytes from the table at $AD6B by the wave counter.
+; WHAT IT DOES: Sets slot 0's OBJ_WORK_E 3, OBJ_WORK_F 0 and the byte at $3BF0 to 2; hands OBJ_WORK_E of this object to MaybeSound19AndSpawnPiece and counts it down. When it goes below 0 it sets it $10, plays sound $19, moves in Y and advances OBJ_WORK_D; at 4 it draws tile script 1, clears the water level, records the object's event and clears itself. Otherwise the water level takes a pair of bytes from the table at $AD6B by the wave counter.
 ; HOW: MaybeSound19AndSpawnPiece, SoundCommand, ApplyVelocityY, DrawTileScript, RecordObjectEvent, ClearObject.
 ; WAITS: no.
 ; Entry: X object, Y kept for the sounds. Exit: as the last instruction that ran. The byte at $3BF0 keeps its address form until it has a name.
@@ -110,19 +110,19 @@ PulseWaterLevelAndScatter:
     lda #$02
     sta a:PlayerByte3BF0
     lda #$03
-    sta a:OBJ_3510
-    stz a:OBJ_3568
-    lda a:OBJ_3510,x
+    sta a:OBJ_WORK_E
+    stz a:OBJ_WORK_F
+    lda a:OBJ_WORK_E,x
     jsr MaybeSound19AndSpawnPiece
-    dec a:OBJ_3510,x
+    dec a:OBJ_WORK_E,x
     bpl PulseWaterLevelAndScatter_at0
     lda #$10
-    sta a:OBJ_3510,x
+    sta a:OBJ_WORK_E,x
     lda #$19
     jsr VecSoundCommand
     jsr VecApplyVelocityY
-    inc a:OBJ_34B8,x
-    lda a:OBJ_34B8,x
+    inc a:OBJ_WORK_D,x
+    lda a:OBJ_WORK_D,x
     cmp #$04
     bcc PulseWaterLevelAndScatter_at0
     lda #$01
@@ -165,7 +165,7 @@ LoadRecordThenDrawTileScript2_at0:
 
 ; @routine 0B4A:5A3 DrawTileScriptStepsThenScatter
 ; @run 70:ADA3
-; WHAT IT DOES: When the object's X high byte is not 0 draws tile script $02 plus OBJ_34B8. Otherwise, at 5 hits taken, it sets OBJ_INVULN_TIMER $18, draws the next tile script, plays sound $19, scatters pieces (ScatterPiecesDownward) and advances OBJ_34B8; below 3 steps it takes OBJ_HITBOX_DY and the frame from the table at $AE02; at 3 it sets zField92 1, clears OBJ_HITBOX_DY, sets the hit box $10 by $10 and frame $17 and goes to the next state.
+; WHAT IT DOES: When the object's X high byte is not 0 draws tile script $02 plus OBJ_WORK_D. Otherwise, at 5 hits taken, it sets OBJ_INVULN_TIMER $18, draws the next tile script, plays sound $19, scatters pieces (ScatterPiecesDownward) and advances OBJ_WORK_D; below 3 steps it takes OBJ_HITBOX_DY and the frame from the table at $AE02; at 3 it sets zField92 1, clears OBJ_HITBOX_DY, sets the hit box $10 by $10 and frame $17 and goes to the next state.
 ; HOW: DrawTileScript, SoundCommand, ScatterPiecesDownward, table reads, stores.
 ; WAITS: no.
 ; Entry: X object, Y kept for the sound. Exit: as the last instruction that ran.
@@ -174,7 +174,7 @@ DrawTileScriptStepsThenScatter:
     beq DrawTileScriptStepsThenScatter_at0
     lda #$02
     clc
-    adc a:OBJ_34B8,x
+    adc a:OBJ_WORK_D,x
     cly
     jmp VecDrawTileScript
 DrawTileScriptStepsThenScatter_at0:
@@ -185,15 +185,15 @@ DrawTileScriptStepsThenScatter_at0:
     sta a:OBJ_INVULN_TIMER,x
     lda #$02
     clc
-    adc a:OBJ_34B8,x
+    adc a:OBJ_WORK_D,x
     inc a
     cly
     jsr VecDrawTileScript
     lda #$19
     jsr VecSoundCommand
     jsr ScatterPiecesDownward
-    inc a:OBJ_34B8,x
-    lda a:OBJ_34B8,x
+    inc a:OBJ_WORK_D,x
+    lda a:OBJ_WORK_D,x
     cmp #$03
     bcs DrawTileScriptStepsThenScatter_at2
     asl a
@@ -218,7 +218,7 @@ DrawTileScriptStepsThenScatter_at2:
 
 ; @routine 0B4A:608 ScatterPiecesDownward
 ; @run 70:AE08
-; WHAT IT DOES: Moves the object down by its hit offset OBJ_HITBOX_DY, starts up to 8 objects of type $9A in free slots of $30 to $3F at its place, each with an X speed from the table at $AE4E by the parity of the count, moved once, OBJ_34B8 1 and OBJ_3510 the count less 1, then moves the object back.
+; WHAT IT DOES: Moves the object down by its hit offset OBJ_HITBOX_DY, starts up to 8 objects of type $9A in free slots of $30 to $3F at its place, each with an X speed from the table at $AE4E by the parity of the count, moved once, OBJ_WORK_D 1 and OBJ_WORK_E the count less 1, then moves the object back.
 ; HOW: An add and a subtract of OBJ_HITBOX_DY on OBJ_Y_LO, a loop of FindFreeSlotFrom30, StartObjectAtPlace and ApplyVelocityX with X and Y swapped, a counter in zTemp00. zD9 keeps its address form until it has a name.
 ; WAITS: no.
 ; Entry: X object. Exit: as the last instruction that ran.
@@ -245,10 +245,10 @@ ScatterPiecesDownward_at1:
     sxy
     ldx z:zRichterObject
     lda #$01
-    sta a:OBJ_34B8,y
+    sta a:OBJ_WORK_D,y
     lda z:zTemp00
     dec a
-    sta a:OBJ_3510,y
+    sta a:OBJ_WORK_E,y
     dec z:zTemp00
     bne ScatterPiecesDownward_at1
 ScatterPiecesDownward_at0:
@@ -260,7 +260,7 @@ ScatterPiecesDownward_at0:
 
 ; @routine 0B4A:650 ClearWhenHurtThenWait
 ; @run 70:AE50
-; WHAT IT DOES: When the object has taken 1 to 4 hits: if the player's health zPlayerHealth is $5C plays sound $0B, becomes kind $9F with OBJ_34B8 3 and state 0; otherwise sets the health $5C and clears itself.
+; WHAT IT DOES: When the object has taken 1 to 4 hits: if the player's health zPlayerHealth is $5C plays sound $0B, becomes kind $9F with OBJ_WORK_D 3 and state 0; otherwise sets the health $5C and clears itself.
 ; HOW: Two compares, a compare of the health, SoundCommand, stores, a tail jump into ClearObject.
 ; WAITS: no.
 ; Entry: X object, Y kept for the sound. Exit: as the last instruction that ran. The arm for health $5C ran in no script; the draft stops there.
@@ -277,7 +277,7 @@ ClearWhenHurtThenWait:
     lda #$9F
     sta a:OBJ_KIND,x
     lda #$03
-    sta a:OBJ_34B8,x
+    sta a:OBJ_WORK_D,x
     stz a:OBJ_STATE,x
 ClearWhenHurtThenWait_at0:
     rts
@@ -288,7 +288,7 @@ ClearWhenHurtThenWait_at1:
 
 ; @routine 0B4A:6B6 BossPhasesHurtFallAndTileWrites
 ; @run 70:AEB6
-; WHAT IT DOES: A boss in phases. State 0 loads the record. State 1: at 1 to 4 hits records the event and goes to state 2; at 5 hits, with the player on the right, takes the X speed 4, OBJ_34B8 $10, records the event, counts OBJ_3568 up and goes to state 5. State 2 steps the list at $AF8A and, when it ends, goes to state 3 with OBJ_34B8 $10 and starts list 0 on channel 5. State 3 waits OBJ_34B8 down, then state 4 with OBJ_34B8 $40 and frame $0F. State 4 counts down, drops one row every eighth frame and writes four tile pairs; at the end it clears the object. States 5 on fall: the X speed loses $0034 a frame until OBJ_34B8 runs out, then state 2.
+; WHAT IT DOES: A boss in phases. State 0 loads the record. State 1: at 1 to 4 hits records the event and goes to state 2; at 5 hits, with the player on the right, takes the X speed 4, OBJ_WORK_D $10, records the event, counts OBJ_WORK_F up and goes to state 5. State 2 steps the list at $AF8A and, when it ends, goes to state 3 with OBJ_WORK_D $10 and starts list 0 on channel 5. State 3 waits OBJ_WORK_D down, then state 4 with OBJ_WORK_D $40 and frame $0F. State 4 counts down, drops one row every eighth frame and writes four tile pairs; at the end it clears the object. States 5 on fall: the X speed loses $0034 a frame until OBJ_WORK_D runs out, then state 2.
 ; HOW: LoadObjectRecord, RecordObjectEvent, SideOfPlayer, StepObjectFrames, StartListChannelKind3, VDC writes, ApplyVelocity, ClearObject.
 ; WAITS: no.
 ; Entry: X object, Y kept unless the step sets it. Exit: as the last instruction that ran. Everything past state 0 ran in no script; the draft stops there and the arms are written from the decoded bytes.
@@ -314,9 +314,9 @@ BossPhasesHurtFallAndTileWrites_at3:
     lda #$04
     sta a:OBJ_VX_HI,x
     lda #$10
-    sta a:OBJ_34B8,x
+    sta a:OBJ_WORK_D,x
     jsr VecRecordObjectEvent
-    inc a:OBJ_3568,x
+    inc a:OBJ_WORK_F,x
     lda #$05
     sta a:OBJ_STATE,x
     rts
@@ -331,7 +331,7 @@ BossPhasesHurtFallAndTileWrites_at1:
     bne BossPhasesHurtFallAndTileWrites_at2
     inc a:OBJ_STATE,x
     lda #$10
-    sta a:OBJ_34B8,x
+    sta a:OBJ_WORK_D,x
     phx
     cla
     ldx #$05
@@ -342,45 +342,45 @@ BossPhasesHurtFallAndTileWrites_at2:
 BossPhasesHurtFallAndTileWrites_at5:
     dec a
     bne SetFrameThenCountToNext
-    dec a:OBJ_34B8,x
+    dec a:OBJ_WORK_D,x
     bne BossPhasesHurtFallAndTileWrites_at2
     inc a:OBJ_STATE,x
     lda #$40
-    sta a:OBJ_34B8,x
+    sta a:OBJ_WORK_D,x
     lda #$0F
     sta a:OBJ_FRAME,x
     rts
     dec a
     bne BossPhasesHurtFallAndTileWrites_at6
-    dec a:OBJ_34B8,x
+    dec a:OBJ_WORK_D,x
     beq BossPhasesHurtFallAndTileWrites_at7
-    lda a:OBJ_34B8,x
+    lda a:OBJ_WORK_D,x
     and #$07
     bne BossPhasesHurtFallAndTileWrites_at2
     inc a:OBJ_Y_LO,x
-    lda a:OBJ_34B8,x
+    lda a:OBJ_WORK_D,x
     lsr a
     lsr a
     lsr a
     clc
     adc #$C8
-    sta a:OBJ_3510,x
+    sta a:OBJ_WORK_E,x
     bsr BossPhasesHurtFallAndTileWrites_at8
     bsr BossPhasesHurtFallAndTileWrites_at8
     bsr BossPhasesHurtFallAndTileWrites_at8
     bra BossPhasesHurtFallAndTileWrites_at8
 BossPhasesHurtFallAndTileWrites_at7:
-    lda a:OBJ_3568,x
+    lda a:OBJ_WORK_F,x
     beq BossPhasesHurtFallAndTileWrites_at9
 BossPhasesHurtFallAndTileWrites_at9:
     jmp VecClearObject
 BossPhasesHurtFallAndTileWrites_at8:
     jsr VecSelectVramWriteAddress
-    lda a:OBJ_3510,x
+    lda a:OBJ_WORK_E,x
     sta a:VDC_DATA_LO
     clc
     adc #$10
-    sta a:OBJ_3510,x
+    sta a:OBJ_WORK_E,x
     st2 #$0F
     jsr VecSelectVramData
     st1 #$00
@@ -395,7 +395,7 @@ BossPhasesHurtFallAndTileWrites_at6:
     lda a:OBJ_VX_HI,x
     sbc #$00
     sta a:OBJ_VX_HI,x
-    dec a:OBJ_34B8,x
+    dec a:OBJ_WORK_D,x
     bne BossPhasesHurtFallAndTileWrites_at2
     lda #$02
     sta a:OBJ_STATE,x

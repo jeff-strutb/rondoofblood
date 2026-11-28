@@ -29,7 +29,7 @@ static uint8_t countdown_then_advance(uint8_t slot, uint16_t timer, uint16_t adv
 /*
  * @routine 051B:526 CountdownNextStepA
  * @run 70:B526
- * WHAT IT DOES: Waits out the object's timer (OBJ_34B8) and then moves it on: once the timer has
+ * WHAT IT DOES: Waits out the object's timer (OBJ_WORK_D) and then moves it on: once the timer has
  * run down, the object's step byte (OBJ_SUBSTATE) goes up by one.
  * HOW: Counts the timer down; if it is not zero it stops, otherwise it adds one to OBJ_SUBSTATE.
  * WAITS: no.
@@ -48,7 +48,7 @@ void abi_CountdownNextStepA(void)
 /*
  * @routine 05CB:209 CountdownNextStateA
  * @run 70:B209
- * WHAT IT DOES: Waits out the object's timer (OBJ_3510) and then moves it on: once the timer has
+ * WHAT IT DOES: Waits out the object's timer (OBJ_WORK_E) and then moves it on: once the timer has
  * run down, the object's state byte (the index into its handler table) goes up by one.
  * HOW: Counts the timer down; if it is not zero it stops, otherwise it adds one to OBJ_STATE.
  * WAITS: no.
@@ -56,7 +56,7 @@ void abi_CountdownNextStepA(void)
  */
 uint8_t CountdownNextStateA(uint8_t slot)
 {
-    return countdown_then_advance(slot, COL(OBJ->f3510), COL(OBJ->f27a8));
+    return countdown_then_advance(slot, COL(OBJ->work_e), COL(OBJ->f27a8));
 }
 
 void abi_CountdownNextStateA(void)
@@ -67,7 +67,7 @@ void abi_CountdownNextStateA(void)
 /*
  * @routine 07DB:732 CountdownNextStateB
  * @run 70:B732
- * WHAT IT DOES: Waits out the object's timer (OBJ_34B8) and then moves it on: once the timer has
+ * WHAT IT DOES: Waits out the object's timer (OBJ_WORK_D) and then moves it on: once the timer has
  * run down, the object's state byte (the index into its handler table) goes up by one.
  * HOW: Counts the timer down; if it is not zero it stops, otherwise it adds one to OBJ_STATE.
  * WAITS: no.
@@ -86,7 +86,7 @@ void abi_CountdownNextStateB(void)
 /*
  * @routine 093D:45E CountdownNextStepB
  * @run 71:C45E
- * WHAT IT DOES: Waits out the object's timer (OBJ_35C0) and then moves it on: once the timer has
+ * WHAT IT DOES: Waits out the object's timer (OBJ_WORK_G) and then moves it on: once the timer has
  * run down, the object's step byte (OBJ_SUBSTATE) goes up by one.
  * HOW: Counts the timer down; if it is not zero it stops, otherwise it adds one to OBJ_SUBSTATE.
  * WAITS: no.
@@ -105,7 +105,7 @@ void abi_CountdownNextStepB(void)
 /*
  * @routine 09EC:011 CountdownNextStateC
  * @run 70:B811
- * WHAT IT DOES: Waits out the object's timer (OBJ_34B8) and then moves it on: once the timer has
+ * WHAT IT DOES: Waits out the object's timer (OBJ_WORK_D) and then moves it on: once the timer has
  * run down, the object's state byte (the index into its handler table) goes up by one.
  * HOW: Counts the timer down; if it is not zero it stops, otherwise it adds one to OBJ_STATE.
  * WAITS: no.
@@ -124,7 +124,7 @@ void abi_CountdownNextStateC(void)
 /*
  * @routine 0CAC:6FA CountdownNextStateD
  * @run 70:BEFA
- * WHAT IT DOES: Waits out the object's timer (OBJ_35C0) and then moves it on: once the timer has
+ * WHAT IT DOES: Waits out the object's timer (OBJ_WORK_G) and then moves it on: once the timer has
  * run down, the object's state byte (the index into its handler table) goes up by one.
  * HOW: Counts the timer down; if it is not zero it stops, otherwise it adds one to OBJ_STATE.
  * WAITS: no.
@@ -143,7 +143,7 @@ void abi_CountdownNextStateD(void)
 /*
  * @routine 117C:101 CountdownNextStateE
  * @run 70:B901
- * WHAT IT DOES: Waits out the object's timer (OBJ_34B8) and then moves it on: once the timer has
+ * WHAT IT DOES: Waits out the object's timer (OBJ_WORK_D) and then moves it on: once the timer has
  * run down, the object's state byte (the index into its handler table) goes up by one.
  * HOW: Counts the timer down; if it is not zero it stops, otherwise it adds one to OBJ_STATE.
  * WAITS: no.
@@ -162,7 +162,7 @@ void abi_CountdownNextStateE(void)
 /*
  * @routine 117D:020 CountdownNextStepC
  * @run 71:C020
- * WHAT IT DOES: Waits out the object's timer (OBJ_35C0) and then moves it on: once the timer has
+ * WHAT IT DOES: Waits out the object's timer (OBJ_WORK_G) and then moves it on: once the timer has
  * run down, the object's step byte (OBJ_SUBSTATE) goes up by one.
  * HOW: Counts the timer down; if it is not zero it stops, otherwise it adds one to OBJ_SUBSTATE.
  * WAITS: no.

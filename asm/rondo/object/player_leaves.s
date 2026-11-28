@@ -251,8 +251,8 @@ StepStageTable9C20:
 
 ; @routine 05C0:0A5 HitKindFromBit7
 ; @run 6B:98A5
-; WHAT IT DOES: Gives the hit slot's kind (OBJ_38D8) 1 or 2 by bit 7 of the object's OBJ_PACE; kind 2 also sets the
-; slot's OBJ_3828 to 5; then reports the hit.
+; WHAT IT DOES: Gives the hit slot's kind (OBJ_WORK_P) 1 or 2 by bit 7 of the object's OBJ_PACE; kind 2 also sets the
+; slot's OBJ_WORK_N to 5; then reports the hit.
 ; HOW: AND #$80 rotated twice, AND #1, INC, one store, CMP #2; the report as ReportHitToStage. The kind 2 arm is
 ; untraced (135 of 400 cases reach it and the draft stops there), written from the disc's bytes.
 ; WAITS: no.
@@ -264,16 +264,16 @@ HitKindFromBit7:
     rol a
     and #$01
     inc a
-    sta a:OBJ_38D8,y
+    sta a:OBJ_WORK_P,y
     cmp #$02
     bne ReportHitToStage
     lda #$05
-    sta a:OBJ_3828,y
+    sta a:OBJ_WORK_N,y
     bra ReportHitToStage
 
 ; @routine 0720:076 ReportHitUnlessTwo
 ; @run 6B:9876
-; WHAT IT DOES: Reports the hit to the stage unless the kind just stored in OBJ_38D8 is 2.
+; WHAT IT DOES: Reports the hit to the stage unless the kind just stored in OBJ_WORK_P is 2.
 ; HOW: CMP #2 on A; equal returns, otherwise goes on to ReportHitToStage.
 ; WAITS: no.
 ; Entry: A the kind, X object, Y the slot. Exit: equal: A and N, Z, C from the compare; otherwise as StoreHitFromTable.
@@ -288,14 +288,14 @@ ReportHitUnlessTwo:
     sta a:StageHitReport+2
     lda a:HitboxYLo+3
     sta a:StageHitReport+3
-    lda a:OBJ_3828,y
+    lda a:OBJ_WORK_N,y
     sta a:OBJ_HIT_TAKEN,x
 ReportHitUnlessTwo_at0:
     rts
 
 ; @routine 0720:099 HitKindFromBit1
 ; @run 6B:9899
-; WHAT IT DOES: Gives the hit slot's kind (OBJ_38D8) 1 or 2 by bit 1 of the object's OBJ_PACE, then reports the hit.
+; WHAT IT DOES: Gives the hit slot's kind (OBJ_WORK_P) 1 or 2 by bit 1 of the object's OBJ_PACE, then reports the hit.
 ; HOW: AND #2, LSR, INC, one store, then ReportHitUnlessTwo.
 ; WAITS: no.
 ; Entry: X object, Y the slot. Exit: as ReportHitUnlessTwo.
@@ -304,7 +304,7 @@ HitKindFromBit1:
     and #$02
     lsr a
     inc a
-    sta a:OBJ_38D8,y
+    sta a:OBJ_WORK_P,y
     bra ReportHitUnlessTwo
 
 ; @routine 0720:4ED LoadRecordThenFrameByKind
@@ -359,12 +359,12 @@ ReportHitToStage:
 
 ; @routine 0E00:092 StoreHitFromTable
 ; @run 6B:9892
-; WHAT IT DOES: Gives the object's hit timer OBJ_HIT_TAKEN the byte of OBJ_3828 at the slot in Y.
+; WHAT IT DOES: Gives the object's hit timer OBJ_HIT_TAKEN the byte of OBJ_WORK_N at the slot in Y.
 ; HOW: One read, one write.
 ; WAITS: no.
 ; Entry: X object, Y the slot. Exit: A the byte, N and Z from it.
 StoreHitFromTable:
-    lda a:OBJ_3828,y
+    lda a:OBJ_WORK_N,y
     sta a:OBJ_HIT_TAKEN,x
     rts
 

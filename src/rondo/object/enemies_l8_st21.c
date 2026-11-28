@@ -93,7 +93,7 @@ void abi_LoadRecordSplitIntoFourAndClear(void)
 /*
  * @routine 0F6B:0BF LoadRecordThenFollowScroll
  * @run 70:B0BF
- * WHAT IT DOES: In state 0 loads the record and keeps the object's X in OBJ_34B8 and OBJ_3510. Later it sets its screen X to that spot less the scroll plus a quarter of the scroll (the scroll's pair of bytes shifted right 3 times), so it moves slowly against the scroll.
+ * WHAT IT DOES: In state 0 loads the record and keeps the object's X in OBJ_WORK_D and OBJ_WORK_E. Later it sets its screen X to that spot less the scroll plus a quarter of the scroll (the scroll's pair of bytes shifted right 3 times), so it moves slowly against the scroll.
  * HOW: LoadObjectRecord, two shifts through carry, two 16-bit adds and a 16-bit subtract in memory.
  * WAITS: no.
  * Entry: X object. Exit: as the last instruction that ran (l8_follow_scroll_exit_shim).
@@ -113,7 +113,7 @@ FollowArm LoadRecordThenFollowScroll(uint8_t slot)
         value = RD8(OBJ->x_lo[slot]);
         WR8(OBJ->f34b8[slot], value);
         r.value = RD8(OBJ->x_hi[slot]);
-        WR8(OBJ->f3510[slot], r.value);
+        WR8(OBJ->work_e[slot], r.value);
         r.arm = FS_START;
         return r;
     }
@@ -125,7 +125,7 @@ FollowArm LoadRecordThenFollowScroll(uint8_t slot)
     base_lo = RD8(OBJ->f34b8[slot]);
     sum = add_bytes(low, base_lo, false);
     WR8(OBJ->x_lo[slot], sum.value);
-    base_hi = RD8(OBJ->f3510[slot]);
+    base_hi = RD8(OBJ->work_e[slot]);
     sum = add_bytes(0, base_hi, sum.carry);
     WR8(OBJ->x_hi[slot], sum.value);
     value = RD8(OBJ->x_lo[slot]);
@@ -327,7 +327,7 @@ void abi_LoadRecordThenClearAtSubStep3(void)
 /*
  * @routine 0F6B:395 SoundWhenHurtThenFlag
  * @run 70:B395
- * WHAT IT DOES: When bit 7 of OBJ_HIT_STATUS is clear and the object has taken 5 hits plays sound $D2 and, when OBJ_HEALTH of slot $10 is below 8, sets it to 5, sets OBJ_3618 to 5 and sets bit 7 of OBJ_HIT_STATUS.
+ * WHAT IT DOES: When bit 7 of OBJ_HIT_STATUS is clear and the object has taken 5 hits plays sound $D2 and, when OBJ_HEALTH of slot $10 is below 8, sets it to 5, sets OBJ_WORK_H to 5 and sets bit 7 of OBJ_HIT_STATUS.
  * HOW: Tests, SoundCommand, stores.
  * WAITS: no.
  * Entry: X object, Y kept for the sound. Exit: as the last instruction that ran (l8_hurt_then_flag_exit_shim). The stores past the last compare ran in no script; the draft stops there.
@@ -357,7 +357,7 @@ HurtSoundArm SoundWhenHurtThenFlag(uint8_t slot, uint8_t y_entry)
         return r;
     }
     WR8(OBJ->health[0x10], 5);
-    WR8(OBJ->f3618[slot], 5);
+    WR8(OBJ->work_h[slot], 5);
     value = RD8(OBJ->hit_status[slot]);
     r.value = (uint8_t)(0x80 | value);
     WR8(OBJ->hit_status[slot], r.value);
@@ -395,7 +395,7 @@ void abi_SoundWhenHurtThenFlag(void)
 /*
  * @routine 0F6B:3C0 SoundAndState6WhenFlagged
  * @run 70:B3C0
- * WHAT IT DOES: Outside state 6: when bit 7 of OBJ_HIT_STATUS is set plays sound $D3, goes to state 6 and copies OBJ_3618 to OBJ_HEALTH; otherwise copies OBJ_HEALTH to OBJ_3618.
+ * WHAT IT DOES: Outside state 6: when bit 7 of OBJ_HIT_STATUS is set plays sound $D3, goes to state 6 and copies OBJ_WORK_H to OBJ_HEALTH; otherwise copies OBJ_HEALTH to OBJ_WORK_H.
  * HOW: Compares, SoundCommand, copies.
  * WAITS: no.
  * Entry: X object, Y kept for the sound. Exit: as the last instruction that ran (l8_state6_when_flagged_exit_shim). The flagged arm ran in no script; the draft stops there.
@@ -414,7 +414,7 @@ HurtSoundArm SoundAndState6WhenFlagged(uint8_t slot, uint8_t y_entry)
     r.second = (uint8_t)(flags & 0x80);
     if (r.second == 0) {
         r.value = RD8(OBJ->health[slot]);
-        WR8(OBJ->f3618[slot], r.value);
+        WR8(OBJ->work_h[slot], r.value);
         r.arm = S6_NOT_FLAGGED;
         return r;
     }
@@ -424,7 +424,7 @@ HurtSoundArm SoundAndState6WhenFlagged(uint8_t slot, uint8_t y_entry)
     WR8(OBJ->state[slot], 6);
     WR8(OBJ->substate[slot], 0);
     WR8(OBJ->hitbox_on[slot], 0);
-    r.value = RD8(OBJ->f3618[slot]);
+    r.value = RD8(OBJ->work_h[slot]);
     WR8(OBJ->health[slot], r.value);
     r.arm = S6_FLAGGED;
     return r;
@@ -548,7 +548,7 @@ void abi_ClearFourAtScreen2(void)
 /*
  * @routine 0F6B:44A MoveUpUntilY40
  * @run 70:B44A
- * WHAT IT DOES: Moves the object along Y; once its Y low byte is below $40 sets OBJ_34B8 2 and goes to the next state.
+ * WHAT IT DOES: Moves the object along Y; once its Y low byte is below $40 sets OBJ_WORK_D 2 and goes to the next state.
  * HOW: ApplyVelocityY, a compare, a store, an INC.
  * WAITS: no.
  * Entry: X object. Exit: as the last instruction that ran (l8_move_up_exit_shim). The body returns the move, the Y low byte (first) and the new state (second).
@@ -590,7 +590,7 @@ void abi_MoveUpUntilY40(void)
 /*
  * @routine 0F6B:50B CountDownThenCopyPhase
  * @run 70:B50B
- * WHAT IT DOES: Counts OBJ_3510 down; when it is 0 (or reaches 0) sets OBJ_SUBSTATE from OBJ_38D8.
+ * WHAT IT DOES: Counts OBJ_WORK_E down; when it is 0 (or reaches 0) sets OBJ_SUBSTATE from OBJ_WORK_P.
  * HOW: A test, a memory decrement, a copy.
  * WAITS: no.
  * Entry: X object. Exit: as the last instruction that ran (l8_copy_phase_exit_shim). The body returns the count read (first), the count after the decrement (second) and the byte copied (third).
@@ -599,15 +599,15 @@ L8Arm CountDownThenCopyPhase(uint8_t slot)
 {
     L8Arm r = { 0 };
 
-    r.first = RD8(OBJ->f3510[slot]);
+    r.first = RD8(OBJ->work_e[slot]);
     if (r.first != 0) {
-        r.second = DEC8(OBJ->f3510[slot]);
+        r.second = DEC8(OBJ->work_e[slot]);
         if (r.second != 0) {
             r.arm = CC_COUNTING;
             return r;
         }
     }
-    r.third = RD8(OBJ->f38d8[slot]);
+    r.third = RD8(OBJ->work_p[slot]);
     WR8(OBJ->substate[slot], r.third);
     r.arm = CC_COPIED;
     return r;
@@ -634,15 +634,15 @@ void abi_CountDownThenCopyPhase(void)
 /*
  * @routine 0F6B:51C ResetPieceAndAdvance
  * @run 70:B51C
- * WHAT IT DOES: Clears OBJ_3778, sets OBJ_37D0 $80 and OBJ_35C0 $E0 and goes to the next OBJ_SUBSTATE.
+ * WHAT IT DOES: Clears OBJ_WORK_L, sets OBJ_WORK_M $80 and OBJ_WORK_G $E0 and goes to the next OBJ_SUBSTATE.
  * HOW: Stores and an INC.
  * WAITS: no.
  * Entry: X object. Exit: A $E0, N and Z from the new OBJ_SUBSTATE (l8_reset_piece_exit_shim; the body returns it).
  */
 uint8_t ResetPieceAndAdvance(uint8_t slot)
 {
-    WR8(OBJ->f3778[slot], 0);
-    WR8(OBJ->f37d0[slot], 0x80);
+    WR8(OBJ->work_l[slot], 0);
+    WR8(OBJ->work_m[slot], 0x80);
     WR8(OBJ->f35c0[slot], 0xE0);
     return INC8(OBJ->substate[slot]);
 }

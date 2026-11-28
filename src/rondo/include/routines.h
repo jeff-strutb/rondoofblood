@@ -551,7 +551,7 @@ typedef struct { QuickenHow how; uint8_t value; uint8_t mark; Sum sum; } Quicken
 
 typedef enum { FLASH_NOT_CHARGED, FLASH_OTHER_FRAME, FLASH_SHOWN } FlashHow;
 
-/* A flash: what happened, the frame or flags its exit shows, the frame code, and OBJ_34B8. */
+/* A flash: what happened, the frame or flags its exit shows, the frame code, and OBJ_WORK_D. */
 typedef struct { FlashHow how; uint8_t value; uint8_t code; uint8_t base; } Flash;
 
 typedef enum { CHARGE_TOO_SOON, CHARGE_ALREADY, CHARGE_NOT_PRESSED, CHARGE_NOW } ChargeHow;

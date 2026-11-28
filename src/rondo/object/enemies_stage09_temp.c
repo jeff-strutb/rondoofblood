@@ -236,7 +236,7 @@ void abi_WalkAndTurnAtEdges(void)
  * @routine 09EA:6A2 WalkSideways
  * @run 70:AEA2
  * WHAT IT DOES: Steps the walk animation (list $AEC3), sets the X speed to $FFC0 (left), reverses it when the object's
- * direction byte OBJ_3568 is set, and moves with WalkAndTurnAtEdges.
+ * direction byte OBJ_WORK_F is set, and moves with WalkAndTurnAtEdges.
  * HOW: StepObjectFrames, NegateVelocityX, WalkAndTurnAtEdges.
  * WAITS: no.
  * Entry: X object. Exit: as WalkAndTurnAtEdges.
@@ -283,7 +283,7 @@ void abi_WalkSideways(void)
 /*
  * @routine 09EA:6F5 PickNextAction
  * @run 70:AEF5
- * WHAT IT DOES: While its wait OBJ_3510 runs, counts it down. At zero it picks a random state (from the pair of bytes
+ * WHAT IT DOES: While its wait OBJ_WORK_E runs, counts it down. At zero it picks a random state (from the pair of bytes
  * at $AF28), plays the sound the pair's second byte names, resets its animation and picks a new wait from the table
  * at $AF24 by a random 0 to 3.
  * HOW: NextRandom twice, SoundCommand.
@@ -297,10 +297,10 @@ ObjArm PickNextAction(uint8_t slot)
     RandomResult random;
     uint8_t picked, index, byte;
 
-    r.first = RD8(OBJ->f3510[slot]);
+    r.first = RD8(OBJ->work_e[slot]);
     r.arm = PN_WAITING;
     if (r.first != 0) {
-        r.second = DEC8(OBJ->f3510[slot]);
+        r.second = DEC8(OBJ->work_e[slot]);
         return r;
     }
     jsr_push(0xAF01);
@@ -321,7 +321,7 @@ ObjArm PickNextAction(uint8_t slot)
     jsr_pop();
     r.y = (uint8_t)(r.random.value & 0x03);
     r.third = rd8((uint16_t)(0xAF24 + r.y));
-    WR8(OBJ->f3510[slot], r.third);
+    WR8(OBJ->work_e[slot], r.third);
     r.arm = PN_PICKED;
     return r;
 }
@@ -584,7 +584,7 @@ void abi_StepFlyingCue(void)
 /*
  * @routine 09EA:664 StartTwinSpawner
  * @run 70:AE64
- * WHAT IT DOES: Loads the object's record, clears OBJ_3618, sets its wait to $60 and sets bit 2 of zField8E; then
+ * WHAT IT DOES: Loads the object's record, clears OBJ_WORK_H, sets its wait to $60 and sets bit 2 of zField8E; then
  * clears objects $11 and $12 and starts a kind $22 and a kind $27 at this object's place in them.
  * HOW: LoadObjectRecord, ClearObjectInY, StartObjectAtPlace; the last is a tail jump.
  * WAITS: no.
@@ -600,8 +600,8 @@ ObjArm StartTwinSpawner(uint8_t slot)
     last = LoadObjectRecord(slot, &nz, &carry);
     jsr_pop();
     r.flag = carry;
-    WR8(OBJ->f3618[slot], 0);
-    WR8(OBJ->f3510[slot], 0x60);
+    WR8(OBJ->work_h[slot], 0);
+    WR8(OBJ->work_e[slot], 0x60);
     flags = RD8(ZP->field8_e);
     flags = (uint8_t)(flags | 0x04);
     WR8(ZP->field8_e, flags);
@@ -631,7 +631,7 @@ void abi_StartTwinSpawner(void)
 /*
  * @routine 09EB:03B StepThenQuarterWait
  * @run 70:B03B
- * WHAT IT DOES: Steps the animation list at $B060; when it ends the object's wait OBJ_3510 is quartered, it enters state 2
+ * WHAT IT DOES: Steps the animation list at $B060; when it ends the object's wait OBJ_WORK_E is quartered, it enters state 2
  * and its timer is raised to at least 3.
  * HOW: StepObjectFrames, two LSRs of memory, a compare.
  * WAITS: no.
@@ -648,8 +648,8 @@ ObjArm StepThenQuarterWait(uint8_t slot)
     if (r.step != FRAME_LIST_ENDED) {
         return r;
     }
-    r.first = LSR8_VALUE(OBJ->f3510[slot], r.flag);
-    r.second = LSR8_VALUE(OBJ->f3510[slot], r.other);
+    r.first = LSR8_VALUE(OBJ->work_e[slot], r.flag);
+    r.second = LSR8_VALUE(OBJ->work_e[slot], r.other);
     WR8(OBJ->state[slot], 2);
     r.third = RD8(OBJ->invuln_timer[slot]);
     r.arm = QW_TIMER_OK;
@@ -952,7 +952,7 @@ static ObjArm splitter_start(uint8_t slot, uint8_t carry_in, uint8_t y_low, uint
     WR8(OBJ->vx_lo[slot], byte);
     WR8(OBJ->y_lo[slot], y_low);
     r.second = y_low;
-    WR8(OBJ->f3670[slot], 0);
+    WR8(OBJ->work_i[slot], 0);
     r.third = INC8(OBJ->substate[slot]);
     jsr_push(ret_side);
     r.side = SideOfPlayer(slot);
@@ -987,7 +987,7 @@ static Ended splitter_start_exit_shim(ObjArm r)
  * @routine 09EB:196 StartSplitterHigh
  * @run 70:B196
  * WHAT IT DOES: Starts a falling splitter at Y low $48: its X speed is picked from a table at $B1BF by two bits of the
- * player's distance sum, OBJ_3670 is cleared, OBJ_SUBSTATE moves on, and when the object is on the player's left its X speed is
+ * player's distance sum, OBJ_WORK_I is cleared, OBJ_SUBSTATE moves on, and when the object is on the player's left its X speed is
  * reversed.
  * HOW: PlayerDistanceSum, SideOfPlayer, NegateVelocityX.
  * Untraced: the reversal (B1BB).
@@ -1026,7 +1026,7 @@ void abi_StartSplitterLow(void)
 /*
  * @routine 09EB:21A MaybeShootAhead
  * @run 70:B21A
- * WHAT IT DOES: Every 32nd count of the object's OBJ_35C0, with a chance of three in four, starts a kind $2A object at its place in
+ * WHAT IT DOES: Every 32nd count of the object's OBJ_WORK_G, with a chance of three in four, starts a kind $2A object at its place in
  * the first free slot from $30 and gives it the object's facing.
  * HOW: NextRandom, FindFreeSlotFrom30, StartObjectAtPlace.
  * Untraced: one byte.
@@ -1489,7 +1489,7 @@ void abi_RaiseStateAfterSlot10(void)
 /*
  * @routine 09EC:06D StartChainLink
  * @run 70:B86D
- * WHAT IT DOES: Loads the object's record, sets OBJ_3510 to $41 and its timer from a table at $B888 by the slot less $12; the object in slot
+ * WHAT IT DOES: Loads the object's record, sets OBJ_WORK_E to $41 and its timer from a table at $B888 by the slot less $12; the object in slot
  * $19 also moves to its next frame.
  * HOW: LoadObjectRecord and an INC.
  * WAITS: no.
@@ -1504,7 +1504,7 @@ ObjArm StartChainLink(uint8_t slot)
     jsr_push(0xB870);
     LoadObjectRecord(slot, &nz, &carry);
     jsr_pop();
-    WR8(OBJ->f3510[slot], 0x41);
+    WR8(OBJ->work_e[slot], 0x41);
     r.sum = sub_bytes(slot, 0x12, true);
     r.first = rd8((uint16_t)(0xB888 + r.sum.value));
     WR8(OBJ->life_timer[slot], r.first);
@@ -1539,7 +1539,7 @@ void abi_StartChainLink(void)
  * @routine 09EC:0F4 ChainFollowsPrevious
  * @run 70:B8F4
  * WHAT IT DOES: A link of a chain: object $12 takes the place of slot $10 and moves sideways by a table byte ($B923) picked by that
- * slot's facing, with Y speed 8; any other link takes the place of the link before it and takes its speed from its angle OBJ_3510 with a
+ * slot's facing, with Y speed 8; any other link takes the place of the link before it and takes its speed from its angle OBJ_WORK_E with a
  * length of $0A00; both then move.
  * HOW: CopyObjectPlaceBack, SetVelocityFromAngle, and a tail jump into ApplyVelocity.
  * WAITS: no.
@@ -1569,7 +1569,7 @@ ObjArm ChainFollowsPrevious(uint8_t slot)
     jsr_pop();
     WR8(ZP->temp00, 0);
     WR8(ZP->temp01, 0x0A);
-    angle = RD8(OBJ->f3510[slot]);
+    angle = RD8(OBJ->work_e[slot]);
     jsr_push(0xB920);
     SetVelocityFromAngle(angle, slot);
     jsr_pop();
@@ -1674,7 +1674,7 @@ void abi_ClearAnimation(void)
 /*
  * @routine 09ED:06E EnterNextAndReset
  * @run 71:C06E
- * WHAT IT DOES: Moves the object on one state and its OBJ_3510 on one, restarts its animation and gives it a countdown of $20 in
+ * WHAT IT DOES: Moves the object on one state and its OBJ_WORK_E on one, restarts its animation and gives it a countdown of $20 in
  * its angle byte.
  * HOW: Two INCs, ClearAnimation, a store.
  * WAITS: no.
@@ -1685,7 +1685,7 @@ ObjArm EnterNextAndReset(uint8_t slot)
     ObjArm r = { 0 };
 
     INC8(OBJ->state[slot]);
-    INC8(OBJ->f3510[slot]);
+    INC8(OBJ->work_e[slot]);
     jsr_push(0xC077);
     ClearAnimation(slot);
     jsr_pop();
@@ -1736,7 +1736,7 @@ void abi_FlipSide(void)
 /*
  * @routine 09ED:039 StepListByPhase
  * @run 71:C039
- * WHAT IT DOES: The object faces as its life timer says and steps the animation list that a table at $C103 names for its OBJ_3510.
+ * WHAT IT DOES: The object faces as its life timer says and steps the animation list that a table at $C103 names for its OBJ_WORK_E.
  * HOW: Reads the list's address into zTemp10-11; a tail jump into StepObjectFrames.
  * WAITS: no.
  * Entry: X object. Exit: as StepObjectFrames, Y kept unless the step sets it (the index otherwise).
@@ -1748,7 +1748,7 @@ ObjArm StepListByPhase(uint8_t slot)
 
     facing = RD8(OBJ->life_timer[slot]);
     WR8(OBJ->facing_left[slot], facing);
-    phase = RD8(OBJ->f3510[slot]);
+    phase = RD8(OBJ->work_e[slot]);
     index = (uint8_t)(phase << 1);
     y = index;
     WR8(ZP->temp10, rd8((uint16_t)(0xC103 + index)));
@@ -1772,7 +1772,7 @@ void abi_StepListByPhase(void)
 /*
  * @routine 09ED:0C3 SetSwaySpeed
  * @run 71:C0C3
- * WHAT IT DOES: Sets the object's X speed from a word of a table at $C0DE, picked by OBJ_3510 times 4 plus life timer times 2.
+ * WHAT IT DOES: Sets the object's X speed from a word of a table at $C0DE, picked by OBJ_WORK_E times 4 plus life timer times 2.
  * HOW: Two shifts, an add with carry, two table reads (bank 71).
  * WAITS: no.
  * Entry: X object. Exit: A the high byte, Y the index, N and Z from A, C and V from the add.
@@ -1783,7 +1783,7 @@ ObjArm SetSwaySpeed(uint8_t slot)
     uint8_t phase, side, byte, mix;
     bool carry;
 
-    phase = RD8(OBJ->f3510[slot]);
+    phase = RD8(OBJ->work_e[slot]);
     mix = (uint8_t)(phase << 2);
     WR8(ZP->temp10, mix);
     side = RD8(OBJ->life_timer[slot]);
@@ -1810,7 +1810,7 @@ void abi_SetSwaySpeed(void)
 /*
  * @routine 09ED:086 BobAndMove
  * @run 71:C086
- * WHAT IT DOES: Makes the object bob: OBJ_3618 counts up and its sine (scaled by 3FF) added to OBJ_35C0 is its Y low byte; between
+ * WHAT IT DOES: Makes the object bob: OBJ_WORK_H counts up and its sine (scaled by 3FF) added to OBJ_WORK_G is its Y low byte; between
  * Y $B0 and the right place on screen (X from $80 to $9F once the scroll is added) a random wobble of -1 to 2 is added; then it moves.
  * HOW: ScaleBySine, NextRandom, a tail jump into ApplyVelocity.
  * WAITS: no.
@@ -1825,8 +1825,8 @@ ObjArm BobAndMove(uint8_t slot)
 
     WR8(ZP->temp00, 0xFF);
     WR8(ZP->temp01, 3);
-    INC8(OBJ->f3618[slot]);
-    phase = RD8(OBJ->f3618[slot]);
+    INC8(OBJ->work_h[slot]);
+    phase = RD8(OBJ->work_h[slot]);
     jsr_push(0xC097);
     ScaleBySine(phase);
     jsr_pop();
@@ -2024,7 +2024,7 @@ void abi_SwayThenReact(void)
 /*
  * @routine 09ED:00C SwayThenFlip
  * @run 71:C00C
- * WHAT IT DOES: Counts the angle byte down; at zero it flips the side, goes on as EnterNextAndReset and sets OBJ_3510 to 1; otherwise it sways.
+ * WHAT IT DOES: Counts the angle byte down; at zero it flips the side, goes on as EnterNextAndReset and sets OBJ_WORK_E to 1; otherwise it sways.
  * HOW: DEC, FlipSide, EnterNextAndReset, or SwayStep.
  * WAITS: no.
  * Entry: X object. Exit: at zero A 1 from the load; else as BobAndMove.
@@ -2046,7 +2046,7 @@ ObjArm SwayThenFlip(uint8_t slot)
     jsr_push(0xC019);
     r.sub2 = obj_sub(EnterNextAndReset(slot));
     jsr_pop();
-    WR8(OBJ->f3510[slot], 1);
+    WR8(OBJ->work_e[slot], 1);
     return r;
 }
 
@@ -2070,7 +2070,7 @@ void abi_SwayThenFlip(void)
 /*
  * @routine 09ED:01F SwayThenRestart
  * @run 71:C01F
- * WHAT IT DOES: Counts the angle byte down; at zero it goes on as EnterNextAndReset, puts the object in state 1 and OBJ_3510 at 0; otherwise it sways.
+ * WHAT IT DOES: Counts the angle byte down; at zero it goes on as EnterNextAndReset, puts the object in state 1 and OBJ_WORK_E at 0; otherwise it sways.
  * HOW: DEC, EnterNextAndReset, or SwayStep.
  * WAITS: no.
  * Entry: X object. Exit: at zero A 1 from the load; else as BobAndMove.
@@ -2090,7 +2090,7 @@ ObjArm SwayThenRestart(uint8_t slot)
     r.sub = obj_sub(EnterNextAndReset(slot));
     jsr_pop();
     WR8(OBJ->state[slot], 1);
-    WR8(OBJ->f3510[slot], 0);
+    WR8(OBJ->work_e[slot], 0);
     return r;
 }
 
@@ -2192,8 +2192,8 @@ void abi_ChainCountdown(void)
 /*
  * @routine 09EC:09C ChainSwings
  * @run 70:B89C
- * WHAT IT DOES: A link follows the one before it, takes slot $10's facing, and swings: the cosine of its angle OBJ_35C0 (multiplier $0200) is added to OBJ_3568 and OBJ_3510 as
- * a 16-bit pair, and a 16-bit step from a table at $B8E4 (by OBJ_3670 and 7) is added to OBJ_3618 and OBJ_35C0; a carry out of that goes up one on OBJ_3670.
+ * WHAT IT DOES: A link follows the one before it, takes slot $10's facing, and swings: the cosine of its angle OBJ_WORK_G (multiplier $0200) is added to OBJ_WORK_F and OBJ_WORK_E as
+ * a 16-bit pair, and a 16-bit step from a table at $B8E4 (by OBJ_WORK_I and 7) is added to OBJ_WORK_H and OBJ_WORK_G; a carry out of that goes up one on OBJ_WORK_I.
  * HOW: ChainFollowsPrevious, ScaleByCosine, table reads (bank 70).
  * WAITS: no.
  * Entry: X object. Exit: the last add or INC.
@@ -2218,15 +2218,15 @@ ObjArm ChainSwings(uint8_t slot)
     low = RD8(OBJ->angle_hi[slot]);
     sum = add_bytes(low, RD8(ZP->product.mid), false);
     WR8(OBJ->angle_hi[slot], sum.value);
-    high = RD8(OBJ->f3510[slot]);
+    high = RD8(OBJ->work_e[slot]);
     r.sum = add_bytes(high, RD8(ZP->product.hi), sum.carry);
-    WR8(OBJ->f3510[slot], r.sum.value);
-    phase = RD8(OBJ->f3670[slot]);
+    WR8(OBJ->work_e[slot], r.sum.value);
+    phase = RD8(OBJ->work_i[slot]);
     phase = (uint8_t)(phase & 0x07);
     r.first = (uint8_t)(phase << 1);
-    step = RD8(OBJ->f3618[slot]);
+    step = RD8(OBJ->work_h[slot]);
     r.sum2 = add_bytes(step, rd8((uint16_t)(0xB8E4 + r.first)), false);
-    WR8(OBJ->f3618[slot], r.sum2.value);
+    WR8(OBJ->work_h[slot], r.sum2.value);
     low = RD8(OBJ->angle_lo[slot]);
     r.sum3 = add_bytes(low, rd8((uint16_t)(0xB8E5 + r.first)), r.sum2.carry);
     WR8(OBJ->angle_lo[slot], r.sum3.value);
@@ -2234,7 +2234,7 @@ ObjArm ChainSwings(uint8_t slot)
     if (!r.sum3.carry) {
         return r;
     }
-    r.second = INC8(OBJ->f3670[slot]);
+    r.second = INC8(OBJ->work_i[slot]);
     r.arm = CS_NEXT;
     return r;
 }
@@ -2261,7 +2261,7 @@ void abi_ChainSwings(void)
 /*
  * @routine 09EA:72C WalkAndPick
  * @run 70:AF2C
- * WHAT IT DOES: WalkSideways; the walk direction OBJ_3568 becomes the facing turned round; when the player is $80 or more away along X the object enters state 1; then
+ * WHAT IT DOES: WalkSideways; the walk direction OBJ_WORK_F becomes the facing turned round; when the player is $80 or more away along X the object enters state 1; then
  * PickNextAction (a tail jump).
  * HOW: WalkSideways, DistanceXToPlayer, PickNextAction.
  * WAITS: no.
@@ -2312,7 +2312,7 @@ void abi_WalkAndPick(void)
  * @routine 09EA:746 StepShootOnCue
  * @run 70:AF46
  * WHAT IT DOES: Steps the animation list at $AF89; when it ends the object enters state 2; on a new frame with animation step 3 it plays sound $26; then PlayCueOnFrame runs;
- * on frame $0A with OBJ_35C0's low three bits clear it starts a kind $24 object at its place in the first free slot from $30, facing as it does.
+ * on frame $0A with OBJ_WORK_G's low three bits clear it starts a kind $24 object at its place in the first free slot from $30, facing as it does.
  * HOW: StepObjectFrames, SoundCommand, PlayCueOnFrame, FindFreeSlotFrom30, StartObjectAtPlace.
  * Untraced: one byte.
  * WAITS: no.
@@ -2422,7 +2422,7 @@ void abi_StepShootOnCue(void)
 /*
  * @routine 09EA:5CB AdvanceByHealth
  * @run 70:ADCB
- * WHAT IT DOES: An object with a state moves to its next phase (OBJ_3618) when its health OBJ_HEALTH falls below the limit a table at $AE09 gives for the phase (phase 2 moves on
+ * WHAT IT DOES: An object with a state moves to its next phase (OBJ_WORK_H) when its health OBJ_HEALTH falls below the limit a table at $AE09 gives for the phase (phase 2 moves on
  * when bit 7 of the health is set): its state becomes the byte a table at $AE0B gives, the phase goes up, the animation and OBJ_SUBSTATE are reset, and from phase 2 its OBJ_PACE loses
  * bits 3 to 6.
  * HOW: Table reads (bank 70).
@@ -2440,7 +2440,7 @@ ObjArm AdvanceByHealth(uint8_t slot)
     if (r.first == 0) {
         return r;
     }
-    r.second = RD8(OBJ->f3618[slot]);
+    r.second = RD8(OBJ->work_h[slot]);
     r.arm = AH_BLOCKED;
     if (r.second == 2) {
         health = RD8(OBJ->health[slot]);
@@ -2457,11 +2457,11 @@ ObjArm AdvanceByHealth(uint8_t slot)
     }
     r.fifth = rd8((uint16_t)(0xAE0B + r.second));
     WR8(OBJ->state[slot], r.fifth);
-    INC8(OBJ->f3618[slot]);
+    INC8(OBJ->work_h[slot]);
     WR8(OBJ->anim_step[slot], 0);
     WR8(OBJ->anim_timer[slot], 0);
     WR8(OBJ->substate[slot], 0);
-    r.sixth = RD8(OBJ->f3618[slot]);
+    r.sixth = RD8(OBJ->work_h[slot]);
     r.arm = AH_ADVANCED;
     if (r.sixth < 2) {
         return r;
@@ -2583,7 +2583,7 @@ void abi_MoveThenPick(void)
 /*
  * @routine 09EB:1C7 SwingAndPick
  * @run 70:B1C7
- * WHAT IT DOES: Sets the object's Y speed to the cosine of its OBJ_3670 count (multiplier $0150), moves it, counts OBJ_3670 up and goes on as PickGroundSpeedInWindow.
+ * WHAT IT DOES: Sets the object's Y speed to the cosine of its OBJ_WORK_I count (multiplier $0150), moves it, counts OBJ_WORK_I up and goes on as PickGroundSpeedInWindow.
  * HOW: ScaleByCosine, ApplyVelocity, a tail jump into PickGroundSpeedInWindow.
  * WAITS: no.
  * Entry: X object. Exit: as PickGroundSpeedInWindow.
@@ -2595,7 +2595,7 @@ ObjArm SwingAndPick(uint8_t slot)
 
     WR8(ZP->temp00, 0x50);
     WR8(ZP->temp01, 1);
-    angle = RD8(OBJ->f3670[slot]);
+    angle = RD8(OBJ->work_i[slot]);
     jsr_push(0xB1D5);
     ScaleByCosine(angle);
     jsr_pop();
@@ -2606,7 +2606,7 @@ ObjArm SwingAndPick(uint8_t slot)
     jsr_push(0xB1E2);
     ApplyVelocity(slot);
     jsr_pop();
-    INC8(OBJ->f3670[slot]);
+    INC8(OBJ->work_i[slot]);
     r.sub = obj_sub(PickGroundSpeedInWindow(slot));
     return r;
 }
@@ -2919,7 +2919,7 @@ void abi_StartOnPlayerAnimation(void)
 /*
  * @routine 09EC:7D8 StartTracker
  * @run 70:BFD8
- * WHAT IT DOES: Loads the object's record, sets its sprite set to 6 and its frame to 2, and notes its Y low byte in OBJ_35C0 and its next kind in OBJ_3618.
+ * WHAT IT DOES: Loads the object's record, sets its sprite set to 6 and its frame to 2, and notes its Y low byte in OBJ_WORK_G and its next kind in OBJ_WORK_H.
  * HOW: LoadObjectRecord and four stores.
  * WAITS: no.
  * Entry: X object. Exit: A the next kind, N and Z from it, Y 11, C from the record.
@@ -2937,7 +2937,7 @@ ObjArm StartTracker(uint8_t slot)
     low = RD8(OBJ->y_lo[slot]);
     WR8(OBJ->angle_lo[slot], low);
     r.third = RD8(OBJ->start_arg[slot]);
-    WR8(OBJ->f3618[slot], r.third);
+    WR8(OBJ->work_h[slot], r.third);
     return r;
 }
 
@@ -3036,8 +3036,8 @@ static void final_spin_and_end_exit_shim(ObjArm r)
 /*
  * @routine 09EB:654 FinalSpinAndEnd
  * @run 70:B654
- * WHAT IT DOES: The last object of the stage's final scene: it is held at X $00B0, Y $0098, its speed follows its angle (OBJ_3568, with the length OBJ_3510) and it moves; the angle turns on by
- * OBJ_3618 and the length shrinks by OBJ_35C0; when the length runs out, if this is slot $10, the music plays again, script slot 3 starts, sound $A1 plays, the object becomes kind $21 in state 0,
+ * WHAT IT DOES: The last object of the stage's final scene: it is held at X $00B0, Y $0098, its speed follows its angle (OBJ_WORK_F, with the length OBJ_WORK_E) and it moves; the angle turns on by
+ * OBJ_WORK_H and the length shrinks by OBJ_WORK_G; when the length runs out, if this is slot $10, the music plays again, script slot 3 starts, sound $A1 plays, the object becomes kind $21 in state 0,
  * the water line and the scroll limit are set ($0000 and $027E) and slots $11 to $1F are cleared.
  * HOW: SetVelocityFromAngle, ApplyVelocity, 8-bit subtract, CdPlayAgain, StartSoleScriptSlot, SoundCommand, ClearObjectInY.
  * WAITS: yes, on CdPlayAgain's drive (the stack there is the caller's return, this call's two bytes and X pushed (2) and zeros).
@@ -3056,7 +3056,7 @@ ObjArm FinalSpinAndEnd(uint8_t slot)
     WR8(OBJ->y_hi[slot], 0);
     WR8(OBJ->y_lo[slot], 0x98);
     WR8(ZP->temp00, 0);
-    length = RD8(OBJ->f3510[slot]);
+    length = RD8(OBJ->work_e[slot]);
     WR8(ZP->temp01, length);
     angle = RD8(OBJ->angle_hi[slot]);
     jsr_push(0xB671);
@@ -3066,18 +3066,18 @@ ObjArm FinalSpinAndEnd(uint8_t slot)
     r.move = ApplyVelocity(slot);
     jsr_pop();
     angle = RD8(OBJ->angle_hi[slot]);
-    add = RD8(OBJ->f3618[slot]);
+    add = RD8(OBJ->work_h[slot]);
     r.sum = add_bytes(angle, add, false);
     WR8(OBJ->angle_hi[slot], r.sum.value);
-    length = RD8(OBJ->f3510[slot]);
+    length = RD8(OBJ->work_e[slot]);
     sub = RD8(OBJ->angle_lo[slot]);
     r.sum2 = sub_bytes(length, sub, true);
-    WR8(OBJ->f3510[slot], r.sum2.value);
+    WR8(OBJ->work_e[slot], r.sum2.value);
     r.arm = FS_SPINNING;
     if (r.sum2.carry) {
         return r;
     }
-    WR8(OBJ->f3510[slot], 0);
+    WR8(OBJ->work_e[slot], 0);
     r.third = slot;
     r.arm = FS_OTHER_SLOT;
     if (slot != 0x10) {
@@ -3352,7 +3352,7 @@ ObjArm HitRowByKindAndHits(uint8_t slot)
     ObjArm r = { 0 };
     uint8_t group;
 
-    group = RD8(OBJ->fields_2ee0[slot]);
+    group = RD8(OBJ->work_a[slot]);
     r.first = (uint8_t)(group << 4);
     r.flag = (group & 0x10) != 0;
     WR8(ZP->temp00, r.first);
@@ -3440,7 +3440,7 @@ void abi_StepFacingAndJump(void)
  * @routine 09EB:4FF PickWaterOnTenth
  * @run 70:B4FF
  * WHAT IT DOES: Runs the code the state table names (JumpByStateTableE); then, for object $10 in a state of 2 or more, picks the water level (PickWaterLevel), sets PlayerByte3BF0 to 2 and gives
- * object 0 the angle word $0003 (OBJ_3510 3, OBJ_3568 0).
+ * object 0 the angle word $0003 (OBJ_WORK_E 3, OBJ_WORK_F 0).
  * HOW: JumpByStateTableE, PickWaterLevel.
  * WAITS: no.
  * Entry: X object. Exit: the compare of X with $10, of the state with 2, or the last store's load.
@@ -3468,7 +3468,7 @@ ObjArm PickWaterOnTenth(uint8_t slot)
     r.sub = obj_sub(PickWaterLevel());
     jsr_pop();
     wr8(PlayerByte3BF0, 2);
-    WR8(OBJ->f3510[0], 3);
+    WR8(OBJ->work_e[0], 3);
     WR8(OBJ->angle_hi[0], 0);
     r.arm = PW_PICKED;
     return r;
@@ -3603,7 +3603,7 @@ static void step_with_hit_table_enter_shim(ObjArm r)
 /*
  * @routine 09EA:547 StepWithHitTable
  * @run 70:AD47
- * WHAT IT DOES: One frame: OBJ_35C0 goes up, then FaceByCue, SwitchStateOnHitRow, AdvanceByHealth, SetHitboxFromFrameFive, and the code the state table at $AE42 names (JumpByStateTableF).
+ * WHAT IT DOES: One frame: OBJ_WORK_G goes up, then FaceByCue, SwitchStateOnHitRow, AdvanceByHealth, SetHitboxFromFrameFive, and the code the state table at $AE42 names (JumpByStateTableF).
  * HOW: INC and five calls.
  * WAITS: no.
  * Entry: X object. Exit: as the code jumped to.

@@ -1,6 +1,6 @@
 ; @routine 025B:09F SpawnRowsWhenScrollAtZero
 ; @run 70:B09F
-; WHAT IT DOES: Runs SetBossFixedFields and StepVerticalScrollTable; when the scroll's bytes ScrollXHi+1 and ScrollXLo+1 are both 0 it sets the game's sub-mode 5, counts slot 0's OBJ_3510 down, sets the byte at $3BF0 to 1, clears bit 0 of zField8E, spawns the stage's rows 3 and 4 (SpawnStageObjectsRows34) and goes on to SetTimerThenNextState; otherwise it sets ScrollStepXHi+1 to 1.
+; WHAT IT DOES: Runs SetBossFixedFields and StepVerticalScrollTable; when the scroll's bytes ScrollXHi+1 and ScrollXLo+1 are both 0 it sets the game's sub-mode 5, counts slot 0's OBJ_WORK_E down, sets the byte at $3BF0 to 1, clears bit 0 of zField8E, spawns the stage's rows 3 and 4 (SpawnStageObjectsRows34) and goes on to SetTimerThenNextState; otherwise it sets ScrollStepXHi+1 to 1.
 ; HOW: Two calls, an ORA, stores, RMWs, SpawnStageObjectsRows34 between a PHX and a PLX, a tail jump.
 ; WAITS: no.
 ; Entry: X object. Exit: as the last instruction that ran. The byte at $3BF0 keeps its address form until it has a name.
@@ -13,7 +13,7 @@ SpawnRowsWhenScrollAtZero:
     bne SpawnRowsWhenScrollAtZero_at0
     lda #$05
     sta z:zGameSubMode
-    dec a:OBJ_3510
+    dec a:OBJ_WORK_E
     lda #$01
     sta a:PlayerByte3BF0
     rmb0 z:zField8E
@@ -27,12 +27,12 @@ SpawnRowsWhenScrollAtZero_at0:
 
 ; @routine 025B:471 BossFrameRoutines
 ; @run 70:B471
-; WHAT IT DOES: One frame of the boss of overlay 025B: counts OBJ_3568 up, then runs SwingByCosineFromState0B, EnterState0BWhenFlagged, StartRandomScriptWhenFlagged, PushPlayerWhenFlagged and HitSoundThenSpawnPieces, and the code the state table names (JumpByStateTable025B545).
+; WHAT IT DOES: One frame of the boss of overlay 025B: counts OBJ_WORK_F up, then runs SwingByCosineFromState0B, EnterState0BWhenFlagged, StartRandomScriptWhenFlagged, PushPlayerWhenFlagged and HitSoundThenSpawnPieces, and the code the state table names (JumpByStateTable025B545).
 ; HOW: An INC, five calls, a call into the table's jump.
 ; WAITS: no.
 ; Entry: X object, Y kept for the sound. Exit: as the code the table names.
 BossFrameRoutines:
-    inc a:OBJ_3568,x
+    inc a:OBJ_WORK_F,x
     jsr SwingByCosineFromState0B
     jsr EnterState0BWhenFlagged
     jsr StartRandomScriptWhenFlagged
@@ -43,16 +43,16 @@ BossFrameRoutines:
 
 ; @routine 05CB:13F BossFrameRoutinesC
 ; @run 70:B13F
-; WHAT IT DOES: One frame of the boss of overlay 05CB: counts OBJ_34B8 up, runs FlagThenHitsCompare, EnterState5WhenFlagged and the code the state table names (JumpByStateTable05CB1CF); then, when OBJ_35C0 and the frame are not 0, starts the list that the table at $B169 names for the frame less 1 (plus $81) on channel 5.
+; WHAT IT DOES: One frame of the boss of overlay 05CB: counts OBJ_WORK_D up, runs FlagThenHitsCompare, EnterState5WhenFlagged and the code the state table names (JumpByStateTable05CB1CF); then, when OBJ_WORK_G and the frame are not 0, starts the list that the table at $B169 names for the frame less 1 (plus $81) on channel 5.
 ; HOW: An INC, three calls, a table read, StartListChannelKind2 between a PHX and a PLX.
 ; WAITS: no.
 ; Entry: X object. Exit: as the last instruction that ran.
 BossFrameRoutinesC:
-    inc a:OBJ_34B8,x
+    inc a:OBJ_WORK_D,x
     jsr FlagThenHitsCompare
     jsr EnterState5WhenFlagged
     jsr JumpByStateTable05CB1CF
-    lda a:OBJ_35C0,x
+    lda a:OBJ_WORK_G,x
     bne BossFrameRoutinesC_at0
     lda a:OBJ_FRAME,x
     beq BossFrameRoutinesC_at0
@@ -72,18 +72,18 @@ BossFrameRoutinesC_at0:
 
 ; @routine 0B4B:556 BossFrameRoutinesB
 ; @run 70:B556
-; WHAT IT DOES: One frame of the boss of overlay 0B4B: counts OBJ_3618 up, runs FaceThePlayerByStateTable, StateTableHurtFlag, EnterState0FWhenFlagged, HitBoxByFrameTable and the code the state table names (JumpByStateTable0B4B64C); then, when OBJ_3670 is set, starts the list $83 plus the frame less 1 on channel 5.
+; WHAT IT DOES: One frame of the boss of overlay 0B4B: counts OBJ_WORK_H up, runs FaceThePlayerByStateTable, StateTableHurtFlag, EnterState0FWhenFlagged, HitBoxByFrameTable and the code the state table names (JumpByStateTable0B4B64C); then, when OBJ_WORK_I is set, starts the list $83 plus the frame less 1 on channel 5.
 ; HOW: An INC, five calls, StartListChannelKind2 between a PHX and a PLX.
 ; WAITS: no.
 ; Entry: X object, Y kept for the sound. Exit: as the last instruction that ran.
 BossFrameRoutinesB:
-    inc a:OBJ_3618,x
+    inc a:OBJ_WORK_H,x
     jsr FaceThePlayerByStateTable
     jsr StateTableHurtFlag
     jsr EnterState0FWhenFlagged
     jsr HitBoxByFrameTable
     jsr JumpByStateTable0B4B64C
-    lda a:OBJ_3670,x
+    lda a:OBJ_WORK_I,x
     beq BossFrameRoutinesB_at0
     phx
     lda a:OBJ_FRAME,x

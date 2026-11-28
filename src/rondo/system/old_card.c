@@ -322,7 +322,7 @@ void OldCardMain(void)
     WR8(OBJ->frame[DEMO_TIMER], 0x37);
     WR8(OBJ->x_lo[DEMO_TIMER], 0x80);
     WR8(OBJ->y_lo[DEMO_TIMER], 0x58);
-    WR8(OBJ->f3510[DEMO_TIMER], 0x02);
+    WR8(OBJ->work_e[DEMO_TIMER], 0x02);
     lda_shim(0x02);
     call_orig(0x41D0, CARD_E096);
     if (call_frame(0x41D3, abi_DrawSprites))
@@ -383,7 +383,7 @@ void abi_OldCardSoftReset(void)
 void StepDemoFrame(void)
 {
     if (DEC8(OBJ->f34b8[DEMO_TIMER]) == 0) {
-        if (DEC8(OBJ->f3510[DEMO_TIMER]) == 0) {
+        if (DEC8(OBJ->work_e[DEMO_TIMER]) == 0) {
             WR8(OBJ->frame[DEMO_TIMER], 0);
         }
     }
@@ -1694,7 +1694,7 @@ static Obj1Arm object1_pick_wait(uint8_t object, Obj1Arm r)
     jsr_pop();
     r.randomized = true;
     wait = (uint8_t)((r.random.value & 0x3F) | 0x40);
-    WR8(OBJ->f3510[object], wait);
+    WR8(OBJ->work_e[object], wait);
     r.arm = OBJ1_LOADED;
     r.first = wait;
     r.second = wait;
@@ -1888,7 +1888,7 @@ Obj1Arm Object1Wait(uint8_t object)
     Obj1Arm r = { 0 };
     uint8_t value;
 
-    value = DEC8(OBJ->f3510[object]);
+    value = DEC8(OBJ->work_e[object]);
     if (value != 0) {
         r.arm = OBJ1_NZ_ONLY;
         r.second = value;
@@ -1906,7 +1906,7 @@ Obj1Arm Object1Wait(uint8_t object)
         WR8(OBJ->y_lo[object + 1], value);
         WR8(OBJ->frame[object + 1], 0x2E);
         WR8(OBJ->f34b8[object], 0x04);
-        WR8(OBJ->f3510[object], 0x80);
+        WR8(OBJ->work_e[object], 0x80);
         r.first = 0x80;
         r.second = 0x80;
         return r;
@@ -1988,7 +1988,7 @@ Obj1Arm Object1Hold(uint8_t object)
     Obj1Arm r = { 0 };
     uint8_t value;
 
-    value = DEC8(OBJ->f3510[object]);
+    value = DEC8(OBJ->work_e[object]);
     if (value != 0) {
         r.arm = OBJ1_NZ_ONLY;
         r.second = value;
@@ -2092,9 +2092,9 @@ Sum WorldToScreen(void)
         value = RD8(OBJ->f35c0[slot]);
         last = sub_bytes(value, RD8(SCROLL->x_hi[0]), last.carry);
         WR8(OBJ->x_hi[slot], last.value);
-        value = RD8(OBJ->f3670[slot]);
+        value = RD8(OBJ->work_i[slot]);
         WR8(OBJ->y_lo[slot], value);
-        value = RD8(OBJ->f36c8[slot]);
+        value = RD8(OBJ->work_j[slot]);
         WR8(OBJ->y_hi[slot], value);
         last.value = value;
         slot++;
@@ -2316,14 +2316,14 @@ WorldArm WorldObjectFallIn(uint8_t object)
     r.move = ApplyWorldVelocity(object);
     jsr_pop();
     r.moved = true;
-    y = RD8(OBJ->f3670[object]);
+    y = RD8(OBJ->work_i[object]);
     if (y < PLAYER_FLOOR) {
         r.arm = WORLD_COMPARED;
         r.first = y;
         r.second = PLAYER_FLOOR;
         return r;
     }
-    WR8(OBJ->f3670[object], PLAYER_FLOOR);
+    WR8(OBJ->work_i[object], PLAYER_FLOOR);
     WR8(OBJ->vx_lo[object], 0x80);
     WR8(OBJ->vx_hi[object], 0xFF);
     WR8(OBJ->vy_lo[object], 0);
@@ -2364,12 +2364,12 @@ static WorldArm world_object_hit(uint8_t object)
     WR8(OBJ->f3568[object - 1], value);
     value = RD8(OBJ->f35c0[object]);
     WR8(OBJ->f35c0[object - 1], value);
-    value = RD8(OBJ->f3670[object]);
+    value = RD8(OBJ->work_i[object]);
     sum = sub_bytes(value, 0x10, true);
-    WR8(OBJ->f3670[object - 1], sum.value);
+    WR8(OBJ->work_i[object - 1], sum.value);
     r.sub_v = sum.overflow;
-    value = RD8(OBJ->f36c8[object]);
-    WR8(OBJ->f36c8[object - 1], value);
+    value = RD8(OBJ->work_j[object]);
+    WR8(OBJ->work_j[object - 1], value);
     WR8(OBJ->vy_hi[object - 1], 0xFE);
     r.first = RD8(OBJ->f3250[object]);
     value = rd8((uint16_t)(WORLD_PIECE_SPEEDS + (r.first >> 1)));
@@ -2421,7 +2421,7 @@ WorldArm WorldObjectWalk(uint8_t object)
     }
     INC8(OBJ->f34b8[object]);
     WR8(OBJ->frame[object], 0x1A);
-    WR8(OBJ->f3720[object], 0x40);
+    WR8(OBJ->work_k[object], 0x40);
     r.arm = WORLD_LOADED;
     r.first = 0x40;
     r.second = 0x40;
@@ -2447,7 +2447,7 @@ WorldArm WorldObjectStunned(uint8_t object)
     WorldArm r = { 0 };
     uint8_t value;
 
-    value = DEC8(OBJ->f3720[object]);
+    value = DEC8(OBJ->work_k[object]);
     if (value != 0) {
         r.arm = WORLD_NZ_ONLY;
         r.second = value;
@@ -2489,7 +2489,7 @@ WorldArm WorldObjectFallAway(uint8_t object)
     r.move = ApplyWorldVelocity(object);
     jsr_pop();
     r.moved = true;
-    high = RD8(OBJ->f36c8[object]);
+    high = RD8(OBJ->work_j[object]);
     if (high != 0) {
         ClearObject(object);                    /* JMP $4584 */
         r.arm = WORLD_LOADED;
@@ -2540,7 +2540,7 @@ WorldArm WorldObjectPiece(uint8_t object)
     r.move = ApplyWorldVelocity(object);
     jsr_pop();
     r.moved = true;
-    high = RD8(OBJ->f36c8[object]);
+    high = RD8(OBJ->work_j[object]);
     if (high != 0) {
         ClearObject(object);                    /* JMP $4584 */
         r.arm = WORLD_LOADED;
@@ -2573,7 +2573,7 @@ void InitSpawner(void)
     jsr_push(0x4B01);
     ClearObject(SPAWNER);
     jsr_pop();
-    WR8(OBJ->f3720[SPAWNER], 0x01);
+    WR8(OBJ->work_k[SPAWNER], 0x01);
     WR8(OBJ->f3568[SPAWNER], 0xE0);
     WR8(OBJ->f35c0[SPAWNER], 0x02);
 }
@@ -2668,7 +2668,7 @@ SpawnArm SpawnerStep(uint8_t object)
 
     value = RD8(SCROLL->x_hi[0]);
     if (value >= 0x02) {
-        value = RD8(OBJ->f3720[object]);
+        value = RD8(OBJ->work_k[object]);
         r.first = value;
         r.carry = value >= 0x01;
         if (value == 0x01) {
@@ -2677,7 +2677,7 @@ SpawnArm SpawnerStep(uint8_t object)
             return r;
         }
         r.arm = SPAWN_COUNTED;
-        r.second = DEC8(OBJ->f3720[object]);
+        r.second = DEC8(OBJ->work_k[object]);
         return r;
     }
     value = RD8(ZP->frame_tick);
@@ -2688,7 +2688,7 @@ SpawnArm SpawnerStep(uint8_t object)
         r.arm = SPAWN_EVEN_FRAME;
         return r;
     }
-    r.second = DEC8(OBJ->f3720[object]);
+    r.second = DEC8(OBJ->work_k[object]);
     if (r.second != 0) {
         r.arm = SPAWN_TICKED;
         return r;
@@ -2710,10 +2710,10 @@ SpawnArm SpawnerStep(uint8_t object)
             WR8(OBJ->f3568[slot], value);
             value = RD8(OBJ->f35c0[SPAWNER]);
             WR8(OBJ->f35c0[slot], value);
-            value = RD8(OBJ->f3670[SPAWNER]);
-            WR8(OBJ->f3670[slot], value);
-            value = RD8(OBJ->f36c8[SPAWNER]);
-            WR8(OBJ->f36c8[slot], value);
+            value = RD8(OBJ->work_i[SPAWNER]);
+            WR8(OBJ->work_i[slot], value);
+            value = RD8(OBJ->work_j[SPAWNER]);
+            WR8(OBJ->work_j[slot], value);
             WR8(OBJ->frame[slot], 0x15);
             (void)pull8();
             r.arm = SPAWN_PLACED;
@@ -2771,12 +2771,12 @@ static AxisMove world_axis(uint16_t velocity_lo, uint16_t velocity_hi, uint16_t 
 
 static AxisMove world_x(uint8_t object)
 {
-    return world_axis(COL(OBJ->vx_lo), COL(OBJ->vx_hi), COL(OBJ->f3510), COL(OBJ->f3568), COL(OBJ->f35c0), object);
+    return world_axis(COL(OBJ->vx_lo), COL(OBJ->vx_hi), COL(OBJ->work_e), COL(OBJ->f3568), COL(OBJ->f35c0), object);
 }
 
 static AxisMove world_y(uint8_t object)
 {
-    return world_axis(COL(OBJ->vy_lo), COL(OBJ->vy_hi), COL(OBJ->f3618), COL(OBJ->f3670), COL(OBJ->f36c8), object);
+    return world_axis(COL(OBJ->vy_lo), COL(OBJ->vy_hi), COL(OBJ->work_h), COL(OBJ->work_i), COL(OBJ->work_j), object);
 }
 
 /*

@@ -19,7 +19,7 @@ PlayerDistanceSum:
     adc a:OBJ_KIND+$31
     sbc a:OBJ_X_LO+$32
     sbc a:OBJ_Y_LO+$33
-    adc a:OBJ_FIELDS_2EE0
+    adc a:OBJ_WORK_A
     sec
     sbc a:OBJ_HURT_TIMER
     rts
@@ -281,9 +281,9 @@ CheckPlayerAtLevelEnd:
     cmp #$EC
     bcs CheckPlayerAtLevelEnd_at0
     lda #$FF
-    sta a:OBJ_3510
+    sta a:OBJ_WORK_E
     lda #$20
-    sta a:OBJ_3568
+    sta a:OBJ_WORK_F
 CheckPlayerAtLevelEnd_at0:
     rts
 

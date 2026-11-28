@@ -376,7 +376,7 @@ static Exit start_exit(uint8_t nz, uint8_t a)
 static void set_screen_timer(uint8_t wait)
 {
     WR8(OBJ->angle_hi[0], 1);
-    WR8(OBJ->f3510[0], wait);
+    WR8(OBJ->work_e[0], wait);
 }
 
 /*
@@ -427,7 +427,7 @@ static Exit continue_count_down(Exit at)
 {
     uint8_t left;
 
-    left = DEC8(OBJ->f3510[0]);
+    left = DEC8(OBJ->work_e[0]);
     if (left != 0) {
         return over(at, kept_nz(left));
     }
@@ -1186,10 +1186,10 @@ Exit ContinueFade(uint8_t kept_x, uint8_t script)
         StartScriptSlotKind6(script, 0);
         jsr_pop();
         WR8(OBJ->life_timer[0], FADE_STEPS);
-        WR8(OBJ->f3510[0], 1);
+        WR8(OBJ->work_e[0], 1);
         return with_y(with_x(with_a(kept_nz(INC8(ZP->field80)), 1), 0), script);
     }
-    left = DEC8(OBJ->f3510[0]);
+    left = DEC8(OBJ->work_e[0]);
     if (left != 0) {
         return with_a(kept_nz(left), begun);
     }
@@ -1223,7 +1223,7 @@ Exit ContinueFade(uint8_t kept_x, uint8_t script)
     jsr_push(0x83CB);
     StartScriptSlotKind7(PALETTE_ROW, 0);
     jsr_pop();
-    WR8(OBJ->f3510[0], FADE_WAIT);
+    WR8(OBJ->work_e[0], FADE_WAIT);
     left = DEC8(OBJ->life_timer[0]);
     if (left != 0) {
         return with_v(with_c(with_y(with_x(with_a(kept_nz(left), FADE_WAIT), 0), PALETTE_ROW), true), false);

@@ -338,13 +338,13 @@ ScriptPlaceTitleObjectA:
     sta a:OBJ_START_ARG,x
     iny
     lda (zScriptPtr),y
-    sta a:OBJ_34B8,x
+    sta a:OBJ_WORK_D,x
     iny
     lda (zScriptPtr),y
-    sta a:OBJ_3510,x
+    sta a:OBJ_WORK_E,x
     iny
     lda (zScriptPtr),y
-    sta a:OBJ_3568,x
+    sta a:OBJ_WORK_F,x
     lda #$C8
     sta a:OBJ_Y_LO,x
     jmp ScriptAdvance
@@ -363,13 +363,13 @@ ScriptPlaceTitleObjectB:
     sta a:OBJ_START_ARG,x
     iny
     lda (zScriptPtr),y
-    sta a:OBJ_34B8,x
+    sta a:OBJ_WORK_D,x
     iny
     lda (zScriptPtr),y
-    sta a:OBJ_3510,x
+    sta a:OBJ_WORK_E,x
     iny
     lda (zScriptPtr),y
-    sta a:OBJ_3568,x
+    sta a:OBJ_WORK_F,x
     lda #$D8
     sta a:OBJ_Y_LO,x
     jmp ScriptAdvance
@@ -503,8 +503,8 @@ BlinkScrollFlag:
     bne BlinkScrollFlag_at0
     inc a:OBJ_STATE,x
 BlinkScrollFlag_at0:
-    inc a:OBJ_34B8,x
-    lda a:OBJ_34B8,x
+    inc a:OBJ_WORK_D,x
+    lda a:OBJ_WORK_D,x
     and #$7F
     cmp #$78
     cla
@@ -662,7 +662,7 @@ DropAndShakeScreen_at2:
     jsr VecStartScriptSlotKind1
     plx
     lda #$10
-    sta a:OBJ_34B8,x
+    sta a:OBJ_WORK_D,x
     inc a:OBJ_STATE,x
 DropAndShakeScreen_at3:
     rts
@@ -674,7 +674,7 @@ DropAndShakeScreen_at1:
     asl a
     sta a:ScrollXLo
     stz a:ScrollXHi
-    dec a:OBJ_34B8,x
+    dec a:OBJ_WORK_D,x
     bne DropAndShakeScreen_at3
     stz a:ScrollXLo
     stz a:ScrollXHi
@@ -881,16 +881,16 @@ RiseAndFallObject:
     lda #$FF
     sta a:OBJ_VY_HI,x
     lda #$10
-    sta a:OBJ_34B8,x
+    sta a:OBJ_WORK_D,x
     inc a:OBJ_STATE,x
     rts
 RiseAndFallObject_at0:
     dec a
     bne RiseAndFallObject_at1
-    dec a:OBJ_34B8,x
+    dec a:OBJ_WORK_D,x
     bne RiseAndFallObject_at2
     lda #$04
-    sta a:OBJ_34B8,x
+    sta a:OBJ_WORK_D,x
     stz a:ScrollXHi
 RiseAndFallObject_at4:
     inc a:OBJ_STATE,x
@@ -909,7 +909,7 @@ RiseAndFallObject_at3:
     lda #$05
     jsr ObjectFrameList
     bne RiseAndFallObject_at2
-    dec a:OBJ_34B8,x
+    dec a:OBJ_WORK_D,x
     bne RiseAndFallObject_at2
     lda #$0B
     sta a:$276E
@@ -980,7 +980,7 @@ SplitScreenObject:
     dec a:$2D90
     inc a:$2D91
     lda #$40
-    sta a:OBJ_34B8,x
+    sta a:OBJ_WORK_D,x
     lda #$12
     sta z:zRasterEffect
     stz z:zRasterArg
@@ -993,7 +993,7 @@ SplitScreenObject:
 SplitScreenObject_at0:
     dec a
     bne SplitScreenObject_at1
-    dec a:OBJ_34B8,x
+    dec a:OBJ_WORK_D,x
     bne SplitScreenObject_at2
     inc a:OBJ_STATE,x
     rts
@@ -1055,7 +1055,7 @@ FlingObjectRight:
     sta a:OBJ_VX_LO,x
 FlingObjectRight_at5:
     lda #$08
-    sta a:OBJ_34B8,x
+    sta a:OBJ_WORK_D,x
     inc a:OBJ_STATE,x
 FlingObjectRight_at2:
     rts
@@ -1066,7 +1066,7 @@ FlingObjectRight_at0:
     lda #$0A
     jsr ObjectFrameList
     bne FlingObjectRight_at2
-    dec a:OBJ_34B8,x
+    dec a:OBJ_WORK_D,x
     beq FlingObjectLeft_at0
     rts
 FlingObjectRight_at1:
@@ -1076,7 +1076,7 @@ FlingObjectRight_at1:
     lda #$0B
     jsr ObjectFrameList
     bne FlingObjectRight_at2
-    dec a:OBJ_34B8,x
+    dec a:OBJ_WORK_D,x
     beq FlingObjectRight_at4
     rts
 FlingObjectRight_at3:
@@ -1106,7 +1106,7 @@ FlingObjectLeft:
     dec a:OBJ_VX_HI,x
 FlingObjectLeft_at2:
     lda #$08
-    sta a:OBJ_34B8,x
+    sta a:OBJ_WORK_D,x
     inc a:OBJ_STATE,x
 FlingObjectLeft_at4:
     rts
@@ -1122,7 +1122,7 @@ FlingObjectLeft_at1:
     lda #$0A
     jsr ObjectFrameList
     bne FlingObjectLeft_at4
-    dec a:OBJ_34B8,x
+    dec a:OBJ_WORK_D,x
     beq FlingObjectLeft_at0
     rts
 FlingObjectLeft_at3:
@@ -1132,7 +1132,7 @@ FlingObjectLeft_at3:
     lda #$0C
     jsr ObjectFrameList
     bne FlingObjectLeft_at4
-    dec a:OBJ_34B8,x
+    dec a:OBJ_WORK_D,x
     beq FlingObjectLeft_at5
     rts
 FlingObjectLeft_at5:

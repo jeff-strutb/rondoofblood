@@ -86,7 +86,7 @@ void abi_StepListC192ThenClear(void)
 /*
  * @routine 10CB:2CB ClearSlot4EUnlessCamera18
  * @run 70:B2CB
- * WHAT IT DOES: Unless the camera mode is $18, clears the object in slot $4E, sets OBJ_3510 to $40 and goes on to the next OBJ_SUBSTATE.
+ * WHAT IT DOES: Unless the camera mode is $18, clears the object in slot $4E, sets OBJ_WORK_E to $40 and goes on to the next OBJ_SUBSTATE.
  * HOW: A compare, ClearObjectInY, a store, an INC.
  * WAITS: no.
  * Entry: X object. Exit: the compare, or the new OBJ_SUBSTATE's N and Z (A $40).
@@ -103,7 +103,7 @@ ObjArm ClearSlot4EUnlessCamera18(uint8_t slot)
     jsr_push(0xB2D7);
     ClearObjectInY(0x4E);
     jsr_pop();
-    WR8(OBJ->f3510[slot], 0x40);
+    WR8(OBJ->work_e[slot], 0x40);
     r.second = INC8(OBJ->substate[slot]);
     r.arm = L10_CS_CLEARED;
     return r;
@@ -172,7 +172,7 @@ void abi_StepListB697ThenStopY(void)
 /*
  * @routine 10CD:334 StartFirstObjectWhenCamera2
  * @run 71:C334
- * WHAT IT DOES: When the level's Y high byte is 2, the scroll Y low is under $30 and the first object's state and OBJ_SUBSTATE are both 0, it sets that object's OBJ_3510 to $40 and OBJ_3568 to $10 and this object goes to the next state.
+ * WHAT IT DOES: When the level's Y high byte is 2, the scroll Y low is under $30 and the first object's state and OBJ_SUBSTATE are both 0, it sets that object's OBJ_WORK_E to $40 and OBJ_WORK_F to $10 and this object goes to the next state.
  * HOW: Compares and stores, an INC.
  * WAITS: no.
  * Entry: X object. Exit: the last compare or load, or the new state's N and Z (A $10).
@@ -199,7 +199,7 @@ ObjArm StartFirstObjectWhenCamera2(uint8_t slot)
     if (r.third != 0) {
         return r;
     }
-    WR8(OBJ->f3510[0], 0x40);
+    WR8(OBJ->work_e[0], 0x40);
     WR8(OBJ->f3568[0], 0x10);
     r.fourth = INC8(OBJ->state[slot]);
     r.arm = L10_SF_STARTED;
@@ -283,7 +283,7 @@ void abi_StepListB728ThenRiseSlowly(void)
 /*
  * @routine 10CD:0C6 StepListC103ThenPickAim
  * @run 71:C0C6
- * WHAT IT DOES: Steps the animation list at $C103; when it ends the object picks OBJ_34B8: half the time the angle to the player, otherwise a random $00 to $7F plus the byte the table at $C088 gives for the player's side; it then clears OBJ_3510 and OBJ_3568, sets OBJ_3250 to 2 and goes on to the next state.
+ * WHAT IT DOES: Steps the animation list at $C103; when it ends the object picks OBJ_WORK_D: half the time the angle to the player, otherwise a random $00 to $7F plus the byte the table at $C088 gives for the player's side; it then clears OBJ_WORK_E and OBJ_WORK_F, sets OBJ_HITBOX_ON to 2 and goes on to the next state.
  * HOW: StepObjectFrames, NextRandom, SideOfPlayer, AngleToPlayer, stores, an INC.
  * WAITS: no.
  * Entry: X object, Y kept unless the step sets it. Exit: the step, or the new state's N and Z (A 2) when the list ended.
@@ -324,7 +324,7 @@ ObjArm StepListC103ThenPickAim(uint8_t slot, uint8_t y_entry)
         WR8(OBJ->f34b8[slot], r.angle.a);
         r.arm = L10_C1_AIMED;
     }
-    WR8(OBJ->f3510[slot], 0);
+    WR8(OBJ->work_e[slot], 0);
     WR8(OBJ->f3568[slot], 0);
     WR8(OBJ->hitbox_on[slot], 2);
     r.second = INC8(OBJ->state[slot]);
@@ -357,7 +357,7 @@ void abi_StepListC103ThenPickAim(void)
 /*
  * @routine 10CD:126 StepListC170ThenMoveAlongAngle
  * @run 71:C126
- * WHAT IT DOES: Steps the animation list at $C170, sets the object's speed from its angle OBJ_34B8 with the length OBJ_3510:OBJ_3568, moves it and adds $000C to the length. When the object in slot $10 is in state 6 or more, or this object's OBJ_HIT_STATUS has bit 7 set, it clears its animation step and timer and goes on to the next state (and writes 0 to the byte at $0002 plus its slot).
+ * WHAT IT DOES: Steps the animation list at $C170, sets the object's speed from its angle OBJ_WORK_D with the length OBJ_WORK_E:OBJ_WORK_F, moves it and adds $000C to the length. When the object in slot $10 is in state 6 or more, or this object's OBJ_HIT_STATUS has bit 7 set, it clears its animation step and timer and goes on to the next state (and writes 0 to the byte at $0002 plus its slot).
  * HOW: StepObjectFrames, SetVelocityFromAngle, ApplyVelocity, a 16-bit add, stores, an INC.
  * WAITS: no.
  * Entry: X object, Y kept unless the step sets it. Exit: the last test, or the new state's N and Z.
@@ -375,7 +375,7 @@ ObjArm StepListC170ThenMoveAlongAngle(uint8_t slot, uint8_t y_entry)
     r.y = y;
     value = RD8(OBJ->f3568[slot]);
     WR8(ZP->temp00, value);
-    value = RD8(OBJ->f3510[slot]);
+    value = RD8(OBJ->work_e[slot]);
     WR8(ZP->temp01, value);
     r.first = RD8(OBJ->f34b8[slot]);
     jsr_push(0xC141);
@@ -386,8 +386,8 @@ ObjArm StepListC170ThenMoveAlongAngle(uint8_t slot, uint8_t y_entry)
     jsr_pop();
     r.sum = add_bytes(RD8(OBJ->f3568[slot]), 0x0C, false);
     WR8(OBJ->f3568[slot], r.sum.value);
-    r.sum2 = add_bytes(RD8(OBJ->f3510[slot]), 0, r.sum.carry);
-    WR8(OBJ->f3510[slot], r.sum2.value);
+    r.sum2 = add_bytes(RD8(OBJ->work_e[slot]), 0, r.sum.carry);
+    WR8(OBJ->work_e[slot], r.sum2.value);
     r.second = RD8(OBJ->state[0x10]);
     r.arm = L10_C17_WAIT;
     if (r.second < 6) {
@@ -550,7 +550,7 @@ void abi_RiseThenPlaceWithSound(void)
 /*
  * @routine 10CC:74F LoadThenFallAndFlash
  * @run 70:BF4F
- * WHAT IT DOES: In state 0 loads the object's record and sets flags 1, frame $59, X speed $00C0, Y speed $0030 and OBJ_3510 $34. Later it adds $0008 to its Y speed, moves, sets its flash flags to $10 while OBJ_3510 is under $10, counts OBJ_3510 down and clears the object at zero.
+ * WHAT IT DOES: In state 0 loads the object's record and sets flags 1, frame $59, X speed $00C0, Y speed $0030 and OBJ_WORK_E $34. Later it adds $0008 to its Y speed, moves, sets its flash flags to $10 while OBJ_WORK_E is under $10, counts OBJ_WORK_E down and clears the object at zero.
  * HOW: LoadObjectRecord, a 16-bit add, ApplyVelocity, DEC, ClearObject.
  * WAITS: no.
  * Entry: X object. Exit: the record's registers and A $34 in state 0; else the count.
@@ -571,7 +571,7 @@ ObjArm LoadThenFallAndFlash(uint8_t slot)
         WR8(OBJ->vx_lo[slot], 0xC0);
         WR8(OBJ->vy_hi[slot], 0);
         WR8(OBJ->vy_lo[slot], 0x30);
-        WR8(OBJ->f3510[slot], 0x34);
+        WR8(OBJ->work_e[slot], 0x34);
         return r;
     }
     r.arm = L10_FF_FALLING;
@@ -582,11 +582,11 @@ ObjArm LoadThenFallAndFlash(uint8_t slot)
     jsr_push(0xBF8F);
     r.move = ApplyVelocity(slot);
     jsr_pop();
-    r.third = RD8(OBJ->f3510[slot]);
+    r.third = RD8(OBJ->work_e[slot]);
     if (r.third < 0x10) {
         WR8(OBJ->sprite_attr[slot], 0x10);
     }
-    r.fourth = DEC8(OBJ->f3510[slot]);
+    r.fourth = DEC8(OBJ->work_e[slot]);
     if (r.fourth == 0) {
         ClearObject(slot);
     }
@@ -618,7 +618,7 @@ void abi_LoadThenFallAndFlash(void)
 /*
  * @routine 10CB:2E0 CountThenSoleScriptAndSound
  * @run 70:B2E0
- * WHAT IT DOES: Counts OBJ_3510 down; at zero it starts the sole script 0 in slot 3, sends sound $E4, sets its flags to $81, OBJ_3510 to $60 and zTemp $9E to 4 and goes on to the next OBJ_SUBSTATE.
+ * WHAT IT DOES: Counts OBJ_WORK_E down; at zero it starts the sole script 0 in slot 3, sends sound $E4, sets its flags to $81, OBJ_WORK_E to $60 and zTemp $9E to 4 and goes on to the next OBJ_SUBSTATE.
  * HOW: DEC, StartSoleScriptSlot, SoundCommand, stores, an INC.
  * WAITS: no.
  * Entry: X object. Exit: see the wrapper.
@@ -627,7 +627,7 @@ ObjArm CountThenSoleScriptAndSound(uint8_t slot)
 {
     ObjArm r = { 0 };
 
-    r.first = DEC8(OBJ->f3510[slot]);
+    r.first = DEC8(OBJ->work_e[slot]);
     r.arm = L10_CT_COUNTING;
     if (r.first != 0) {
         return r;
@@ -644,7 +644,7 @@ ObjArm CountThenSoleScriptAndSound(uint8_t slot)
     r.call = SoundCommand(0xE4, slot, r.sole.script);
     jsr_pop();
     WR8(OBJ->scroll_band[slot], 0x81);
-    WR8(OBJ->f3510[slot], 0x60);
+    WR8(OBJ->work_e[slot], 0x60);
     wr8(0x209E, 4);
     r.third = INC8(OBJ->substate[slot]);
     r.arm = L10_CT_STARTED;
@@ -678,7 +678,7 @@ void abi_CountThenSoleScriptAndSound(void)
 /*
  * @routine 10CB:3ED StartScriptWhenCountInTable
  * @run 70:B3ED
- * WHAT IT DOES: While OBJ_3568 is not negative it counts it up and looks its old value up in the eight-byte table at $B40D; when found at index n it starts script $98 plus n in slot 5.
+ * WHAT IT DOES: While OBJ_WORK_F is not negative it counts it up and looks its old value up in the eight-byte table at $B40D; when found at index n it starts script $98 plus n in slot 5.
  * HOW: A search loop, StartScriptSlotKind1.
  * WAITS: no.
  * Entry: X object. Exit: the compare, or the script start's registers.
@@ -747,7 +747,7 @@ void abi_StartScriptWhenCountInTable(void)
 /*
  * @routine 10CB:45F RiseThenCueMusic
  * @run 70:B45F
- * WHAT IT DOES: Moves the object along Y and takes $0030 off its Y speed. Once the speed's high byte is negative it steps the animation list at $B4AA; when that ends it sets bit 4 of zField8E, sends sound $FF, clears bits 3 and 4, plays the music again (CdPlayAgain), sets bit 2, clears zTemp $9E and OBJ_3250 to 2, clears its animation step and timer, goes on to the next state and clears OBJ_SUBSTATE.
+ * WHAT IT DOES: Moves the object along Y and takes $0030 off its Y speed. Once the speed's high byte is negative it steps the animation list at $B4AA; when that ends it sets bit 4 of zField8E, sends sound $FF, clears bits 3 and 4, plays the music again (CdPlayAgain), sets bit 2, clears zTemp $9E and OBJ_HITBOX_ON to 2, clears its animation step and timer, goes on to the next state and clears OBJ_SUBSTATE.
  * HOW: ApplyVelocity, a 16-bit subtract, StepObjectFrames, SoundCommand, CdPlayAgain, stores.
  * WAITS: no.
  * Entry: X object, Y kept unless the step sets it. Exit: see the wrapper.
@@ -887,7 +887,7 @@ void abi_LoadThenStartTwoScripts(void)
 /*
  * @routine 10CB:5AB SpawnInFreeSlotEvery30
  * @run 70:B5AB
- * WHAT IT DOES: Counts OBJ_37D0 down; at zero it sets it to $1E, looks for an empty slot from $18 to $1F, clears it and starts a kind $26 object there at this object's place.
+ * WHAT IT DOES: Counts OBJ_WORK_M down; at zero it sets it to $1E, looks for an empty slot from $18 to $1F, clears it and starts a kind $26 object there at this object's place.
  * HOW: DEC, a search loop, ClearObjectInY, StartObjectAtPlace.
  * WAITS: no.
  * Entry: X object. Exit: the count, the compare, or the start's registers.
@@ -897,13 +897,13 @@ ObjArm SpawnInFreeSlotEvery30(uint8_t slot)
     ObjArm r = { 0 };
     uint8_t y;
 
-    r.first = RD8(OBJ->f37d0[slot]);
+    r.first = RD8(OBJ->work_m[slot]);
     r.arm = L10_SP_WAITING;
     if (r.first != 0) {
-        r.second = DEC8(OBJ->f37d0[slot]);
+        r.second = DEC8(OBJ->work_m[slot]);
         return r;
     }
-    WR8(OBJ->f37d0[slot], 0x1E);
+    WR8(OBJ->work_m[slot], 0x1E);
     for (y = 0x18;; y++) {
         r.bytes[r.third] = rd8((uint16_t)(0x2750 + y));
         r.third++;

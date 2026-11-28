@@ -29,7 +29,7 @@ static ObjArm flash_restart(uint8_t slot, uint16_t ret)
     kind = RD8(OBJ->start_arg[slot]);
     r.first = (uint8_t)(kind & 1);
     base = rd8((uint16_t)(FLASH_FRAMES + r.first));
-    step = RD8(OBJ->f3510[slot]);
+    step = RD8(OBJ->work_e[slot]);
     frame = add_bytes(base, step, false);
     WR8(OBJ->frame[slot], frame.value);
     r.sum = add_bytes(frame.value, rd8((uint16_t)(FLASH_LISTS + r.first)), false);
@@ -89,7 +89,7 @@ void abi_WaitForField85Two(void)
  * @run 6B:9D71
  * WHAT IT DOES: Counts the flash's frame timer down; at zero steps its list counter, and at four steps ends the flash
  * (next state, bit 7 of zField8C, sound $71); before that it starts the next list.
- * HOW: DEC of the timer, INC of OBJ_3510 read again for the CMP, flash_restart.
+ * HOW: DEC of the timer, INC of OBJ_WORK_E read again for the CMP, flash_restart.
  * WAITS: no.
  * Entry: X object, Y kept. Exit: timer running: N and Z from it. Else as the flash's restart (A 2, N and Z the object's
  * slot, C and V from the second add) or the sound. The end of the flash (four steps) is untraced (4 of 400 cases reach it
@@ -105,8 +105,8 @@ ObjArm StepFlashTimer(uint8_t slot, uint8_t y)
     if (r.first != 0) {
         return r;
     }
-    INC8(OBJ->f3510[slot]);
-    r.second = RD8(OBJ->f3510[slot]);
+    INC8(OBJ->work_e[slot]);
+    r.second = RD8(OBJ->work_e[slot]);
     if (r.second != FLASH_STEPS) {
         r.sub = obj_sub(flash_restart(slot, 0x9DAD));
         r.arm = PS_SF_RESTART;
@@ -220,7 +220,7 @@ void abi_NextStateByKindBits(void)
  * @run 6B:9DD6
  * WHAT IT DOES: The flash's other step: counts its frame timer down; at zero counts the list counter down; below zero
  * the flash ends (next state, sound $71), else the next list starts.
- * HOW: DEC of the timer, DEC of OBJ_3510, flash_restart.
+ * HOW: DEC of the timer, DEC of OBJ_WORK_E, flash_restart.
  * WAITS: no.
  * Entry: X object, Y kept. Exit: as StepFlashTimer.
  */
@@ -233,7 +233,7 @@ ObjArm StepFlashTimerDown(uint8_t slot, uint8_t y)
     if (r.first != 0) {
         return r;
     }
-    r.second = DEC8(OBJ->f3510[slot]);
+    r.second = DEC8(OBJ->work_e[slot]);
     if ((r.second & 0x80) == 0) {
         r.sub = obj_sub(flash_restart(slot, 0x9E07));
         r.arm = PS_SD_RESTART;
@@ -350,7 +350,7 @@ void abi_ObjectTouchesPlayerBox(void)
 /*
  * @routine 01BE:4E6 NudgeAngleByVelocityAndScroll
  * @run 6E:CCE6
- * WHAT IT DOES: Moves the object's angle pair OBJ_3568 and OBJ_35C0 (and the counter OBJ_3618): by two tables when it
+ * WHAT IT DOES: Moves the object's angle pair OBJ_WORK_F and OBJ_WORK_G (and the counter OBJ_WORK_H): by two tables when it
  * moves sideways (by its X speed's sign), then by the scroll speed ScrollSpeedX negated, the table at $CE79 by its sign.
  * HOW: Chains of 8-bit adds with the carry carried from one to the next.
  * WAITS: no.
@@ -369,8 +369,8 @@ ObjArm NudgeAngleByVelocityAndScroll(uint8_t slot)
         vx_hi = RD8(OBJ->vx_hi[slot]);
         index = (uint8_t)((vx_hi >> 7) & 1);
         value = rd8((uint16_t)(0xCD2D + index));
-        sum = add_bytes(value, RD8(OBJ->f3618[slot]), false);
-        WR8(OBJ->f3618[slot], sum.value);
+        sum = add_bytes(value, RD8(OBJ->work_h[slot]), false);
+        WR8(OBJ->work_h[slot], sum.value);
         value = rd8((uint16_t)(0xCD2F + index));
         sum = add_bytes(value, RD8(OBJ->angle_hi[slot]), sum.carry);
         WR8(OBJ->angle_hi[slot], sum.value);

@@ -776,7 +776,7 @@ StageSubStepTally3CD:
     stz a:PadForcedPress
     stz a:PadForcedPressB
     stz z:$88
-    stz a:OBJ_3358
+    stz a:OBJ_WORK_C
     lda #$40
     sta a:$3310
     lda a:PlayerByte3BD8
@@ -870,7 +870,7 @@ StageDeathRespawn3CD_at0:
     and #$01
     tax
     lda a:$8346,x
-    sta a:OBJ_3358
+    sta a:OBJ_WORK_C
     rts
 
 ; @routine 03CD:348 StageDeathRespawnB3CD
@@ -902,7 +902,7 @@ StageDeathRespawnB3CD_at0:
     and #$01
     tax
     lda a:$8346,x
-    sta a:OBJ_3358
+    sta a:OBJ_WORK_C
     rts
 
 ; @routine 03CD:367 StageDeathFallLeft3CD
@@ -995,7 +995,7 @@ StageDeathFallBackLeft3CD:
     lda #$20
     sta a:$3310
     lda #$20
-    sta a:OBJ_3358
+    sta a:OBJ_WORK_C
     rts
 
 ; @routine 03CD:3B6 StageDeathFallRight3CD
@@ -1049,7 +1049,7 @@ StageDeathFallRight3CD_at1:
     lda #$20
     sta a:$3310
     lda #$80
-    sta a:OBJ_3358
+    sta a:OBJ_WORK_C
     rts
 
 ; @routine 03CD:3FB StageSubModeCleared3CD
@@ -1293,7 +1293,7 @@ StageClearedWalkBack3CD:
     and #$01
     tay
     lda a:$8441,y
-    sta a:OBJ_3358
+    sta a:OBJ_WORK_C
     jsr StageFrameA0003CD
     lda z:zField8C
     dec a
@@ -1311,7 +1311,7 @@ StageClearedWalkBack3CD_at0:
     and #$7F
     sta z:zField8C
     stz a:$3310
-    stz a:OBJ_3358
+    stz a:OBJ_WORK_C
     lda #$02
     sta z:zField8A
     jsr RichterVecStart
@@ -1499,7 +1499,7 @@ StageBossWaitDoor3CD:
     lda a:OBJ_ANIM_STEP+2
     bne StageBossWaitDoor3CD_at0
     lda #$20
-    sta a:OBJ_3358
+    sta a:OBJ_WORK_C
     inc z:zField85
 StageBossWaitDoor3CD_at0:
     rts
@@ -1555,7 +1555,7 @@ StageNextRouteStage3CD:
     sta z:zDisplayDelay
     stz a:$3310
     stz a:Field2742+1
-    stz a:OBJ_3358
+    stz a:OBJ_WORK_C
     inc z:zField82
     lda z:zField82
     tay
@@ -1660,7 +1660,7 @@ StageClearedWalkOff3CD:
     and #$01
     tay
     lda a:$8441,y
-    sta a:OBJ_3358
+    sta a:OBJ_WORK_C
     sta a:$3310
     jsr StageFrameA0003CD
     lda z:zField8C
@@ -1762,13 +1762,13 @@ StageCenterPlayer3CD:
 StageCenterPlayer3CD_at0:
     lda #$80
     sta a:$3310
-    stz a:OBJ_3358
+    stz a:OBJ_WORK_C
     jsr StageFrameA0093CD
     rts
 StageCenterPlayer3CD_at1:
     lda #$80
     sta a:$3310
-    stz a:OBJ_3358
+    stz a:OBJ_WORK_C
     lda #$01
     sta a:PlayerByte3BF0
     jsr StageFrameA0093CD
@@ -2378,7 +2378,7 @@ DoorHandler3CD:
     rol a
     tay
     and #$03
-    sta a:OBJ_3358,x
+    sta a:OBJ_WORK_C,x
     tya
     rol a
     rol a
@@ -2396,7 +2396,7 @@ DoorHandler3CD_at0:
     bcs DoorHandler3CD_at1
     lda a:$3310,x
     sta z:zField83
-    lda a:OBJ_3358,x
+    lda a:OBJ_WORK_C,x
     sta z:zField87
     lda #$01
     sta z:zField8C
@@ -2439,7 +2439,7 @@ DoorHandlerB3CD:
     rol a
     rol a
     and #$03
-    sta a:OBJ_3358,x
+    sta a:OBJ_WORK_C,x
 DoorHandlerB3CD_at0:
     rts
 DoorHandlerB3CD_at1:
@@ -2458,7 +2458,7 @@ DoorHandlerB3CD_at2:
     bcs DoorHandler3CD_at1
     lda a:$3310,x
     sta z:zField83
-    lda a:OBJ_3358,x
+    lda a:OBJ_WORK_C,x
     sta z:zField87
     stz z:zField8C
     lda #$02
@@ -4602,7 +4602,7 @@ StagePlaceHitBoxes3CD_at5:
     sta a:HitboxHi+3,x
     bra StagePlaceHitBoxes3CD_at1
 StagePlaceHitBoxes3CD_at0:
-    lda a:OBJ_3670,x
+    lda a:OBJ_WORK_I,x
     sta z:zTemp01
     lda a:$2AA0,x
     beq StagePlaceHitBoxes3CD_at2
@@ -4671,7 +4671,7 @@ StageHitTestObject3CD_at0:
     bne StageHitTestObject3CD_at1
     jmp $95FB
 StageHitTestObject3CD_at1:
-    lda a:OBJ_3670,x
+    lda a:OBJ_WORK_I,x
     sta z:zTemp01
     lda a:$2AA0,x
     beq StageHitTestObject3CD_at2

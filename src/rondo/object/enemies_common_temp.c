@@ -799,7 +799,7 @@ ObjArm WalkWhileFrameChangesD(uint8_t slot, uint8_t index)
     if (r.step != FRAME_CHANGED) {
         return r;
     }
-    r.first = RD8(OBJ->f3510[slot]);
+    r.first = RD8(OBJ->work_e[slot]);
     WR8(OBJ->vx_hi[slot], rd8((uint16_t)(SPEEDS + r.first)));
     jsr_push(0xBF55);
     r.move = ApplyVelocityX(slot);

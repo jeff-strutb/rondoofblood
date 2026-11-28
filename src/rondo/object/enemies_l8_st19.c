@@ -69,7 +69,7 @@ void abi_LoadRecordInStateZero(void)
 /*
  * @routine 0B4B:57E FaceThePlayerByStateTable
  * @run 70:B57E
- * WHAT IT DOES: Every eighth frame of OBJ_3618, in the states the table at $B596 marks, the object takes the facing of the player's side.
+ * WHAT IT DOES: Every eighth frame of OBJ_WORK_H, in the states the table at $B596 marks, the object takes the facing of the player's side.
  * HOW: An AND, a table read by the state, SideOfPlayer, a store.
  * WAITS: no.
  * Entry: X object. Exit: as the last instruction that ran (l8_face_state_table_exit_shim).
@@ -78,7 +78,7 @@ L8St19FaceArm FaceThePlayerByStateTable(uint8_t slot)
 {
     L8St19FaceArm r = { 0 };
 
-    r.bits = (uint8_t)(RD8(OBJ->f3618[slot]) & 0x07);
+    r.bits = (uint8_t)(RD8(OBJ->work_h[slot]) & 0x07);
     if (r.bits != 0) {
         r.arm = ST19_FACE_BITS;
         return r;
@@ -134,7 +134,7 @@ L8St19HurtFlagArm StateTableHurtFlag(uint8_t slot)
 
     r.state = RD8(OBJ->state[slot]);
     r.value = rd8((uint16_t)(0xB5D2 + r.state));
-    WR8(OBJ->fields_2ee0[slot], r.value);
+    WR8(OBJ->work_a[slot], r.value);
     r.marked = rd8((uint16_t)(0xB5E2 + r.state));
     if (r.marked == 0) {
         r.arm = ST19_HURT_UNMARKED;
@@ -243,7 +243,7 @@ void abi_EnterState0FWhenFlagged(void)
 /*
  * @routine 0B4B:620 HitBoxByFrameTable
  * @run 70:B620
- * WHAT IT DOES: When OBJ_3250 is set, sets it 2 and takes the hit box (OBJ_HITBOX_DX, OBJ_HITBOX_DY, OBJ_HITBOX_HALF_W, OBJ_HITBOX_HALF_H) from a four byte row of the table at $C207 picked by the frame less 1.
+ * WHAT IT DOES: When OBJ_HITBOX_ON is set, sets it 2 and takes the hit box (OBJ_HITBOX_DX, OBJ_HITBOX_DY, OBJ_HITBOX_HALF_W, OBJ_HITBOX_HALF_H) from a four byte row of the table at $C207 picked by the frame less 1.
  * HOW: A test, a subtract, two shifts, four table reads, stores.
  * WAITS: no.
  * Entry: X object. Exit: as the last instruction that ran (l8_hitbox_frame_table_exit_shim).
@@ -295,7 +295,7 @@ void abi_HitBoxByFrameTable(void)
 /*
  * @routine 0B4B:67E LoadRecordStartPieceAtPlace
  * @run 70:B67E
- * WHAT IT DOES: Loads the record, sets OBJ_34B8 $60, clears slot $11 and starts an object of type $26 there at the object's place.
+ * WHAT IT DOES: Loads the record, sets OBJ_WORK_D $60, clears slot $11 and starts an object of type $26 there at the object's place.
  * HOW: LoadObjectRecord, ClearObjectInY, a tail jump into StartObjectAtPlace.
  * WAITS: no.
  * Entry: X object. Exit: A the start's last byte, Y $11 (l8_start_piece_exit_shim).
@@ -348,7 +348,7 @@ typedef struct {
 /*
  * @routine 0B4B:6BD CountDownThenMusicAgain
  * @run 70:B6BD
- * WHAT IT DOES: Counts OBJ_34B8 down; at zero clears bits 3 and 4 of zField8E, plays the track again (CdPlayAgain), sets OBJ_3670 1 and OBJ_34B8 1 and goes to the next state.
+ * WHAT IT DOES: Counts OBJ_WORK_D down; at zero clears bits 3 and 4 of zField8E, plays the track again (CdPlayAgain), sets OBJ_WORK_I 1 and OBJ_WORK_D 1 and goes to the next state.
  * HOW: A memory decrement, two RMWs of zField8E, CdPlayAgain, stores, an INC.
  * WAITS: no. (CdPlayAgain starts a disc command; it does not wait.)
  * Entry: X object, Y kept for the track call. Exit: as the last instruction that ran (l8_music_again_exit_shim).
@@ -367,7 +367,7 @@ static L8St19MusicArm count_down_then_music_again(uint8_t slot, uint8_t y_entry)
     jsr_push(0xB6C9);
     r.track = CdPlayAgain(slot, y_entry);
     jsr_pop();
-    WR8(OBJ->f3670[slot], 1);
+    WR8(OBJ->work_i[slot], 1);
     WR8(OBJ->f34b8[slot], 1);
     r.count = INC8(OBJ->state[slot]);
     r.played = true;
@@ -404,7 +404,7 @@ void abi_CountDownThenMusicAgain(void)
 /*
  * @routine 0B4B:6D7 StartScriptsFromTable
  * @run 70:B6D7
- * WHAT IT DOES: Counts OBJ_34B8 down; at zero steps OBJ_36C8 and takes OBJ_34B8 from the table at $B72B. Each frame it takes the frame and the script from the four byte row of the table at $B729 picked by OBJ_36C8 and starts the script as kind 1 in slot 5; at the marker $FF it sets bit 2 of zField8E, frame $2D, the speed X $0100 and Y -$0600, OBJ_3250 2, OBJ_34B8 $30 and goes to the next state.
+ * WHAT IT DOES: Counts OBJ_WORK_D down; at zero steps OBJ_WORK_J and takes OBJ_WORK_D from the table at $B72B. Each frame it takes the frame and the script from the four byte row of the table at $B729 picked by OBJ_WORK_J and starts the script as kind 1 in slot 5; at the marker $FF it sets bit 2 of zField8E, frame $2D, the speed X $0100 and Y -$0600, OBJ_HITBOX_ON 2, OBJ_WORK_D $30 and goes to the next state.
  * HOW: A memory decrement, table reads, StartScriptSlotKind1 between a PHX and a PLX, stores.
  * WAITS: no.
  * Entry: X object. Exit: as the last instruction that ran (l8_start_scripts_exit_shim).
@@ -416,13 +416,13 @@ L8St19ScriptsArm StartScriptsFromTable(uint8_t slot)
 
     r.timer = DEC8(OBJ->f34b8[slot]);
     if (r.timer == 0) {
-        r.inc = INC8(OBJ->f36c8[slot]);
-        r.step = RD8(OBJ->f36c8[slot]);
+        r.inc = INC8(OBJ->work_j[slot]);
+        r.step = RD8(OBJ->work_j[slot]);
         r.row = (uint8_t)(r.step << 2);
         r.value = rd8((uint16_t)(0xB72B + r.row));
         WR8(OBJ->f34b8[slot], r.value);
     }
-    r.step2 = RD8(OBJ->f36c8[slot]);
+    r.step2 = RD8(OBJ->work_j[slot]);
     r.row2 = (uint8_t)(r.step2 << 2);
     r.value2 = rd8((uint16_t)(0xB729 + r.row2));
     if (r.value2 == 0xFF) {
@@ -657,7 +657,7 @@ void abi_MoveXAndProbeWallBounce(void)
 /*
  * @routine 0B4B:7B6 StepListThenWallBounce
  * @run 70:B7B6
- * WHAT IT DOES: Steps the animation list at $B7F8; when the graphic changes it sets the X speed from the table at $B805 by OBJ_3568 and goes on to MoveXAndProbeWallBounce; otherwise says no (C 0).
+ * WHAT IT DOES: Steps the animation list at $B7F8; when the graphic changes it sets the X speed from the table at $B805 by OBJ_WORK_F and goes on to MoveXAndProbeWallBounce; otherwise says no (C 0).
  * HOW: StepObjectFrames, a table read, a store, a fall into the next routine.
  * WAITS: no.
  * Entry: X object, Y kept unless the step sets it. Exit: C 1 bounced, 0 not (l8_step_wall_bounce_exit_shim).
@@ -708,7 +708,7 @@ void abi_StepListThenWallBounce(void)
 /*
  * @routine 0B4B:79B CountDownThenHopTowardPlayer
  * @run 70:B79B
- * WHAT IT DOES: Runs CountDownOrPickNextTimer; when it says no (C 0) runs StepListThenWallBounce, copies the facing to OBJ_3568 and, when the player is within $28 in X, goes to state 6.
+ * WHAT IT DOES: Runs CountDownOrPickNextTimer; when it says no (C 0) runs StepListThenWallBounce, copies the facing to OBJ_WORK_F and, when the player is within $28 in X, goes to state 6.
  * HOW: Two calls, DistanceXToPlayer, a compare, a store.
  * WAITS: no.
  * Entry: X object, Y kept unless the step sets it. Exit: as the last instruction that ran (l8_hop_toward_exit_shim).
@@ -773,7 +773,7 @@ void abi_CountDownThenHopTowardPlayer(void)
 /*
  * @routine 0B4C:034 CountDownThenHopAwayFromPlayer
  * @run 70:B834
- * WHAT IT DOES: Runs CountDownOrPickNextTimer; when it says no (C 0) runs StepListThenWallBounce, sets OBJ_3568 to the opposite of the facing and, when the player is $40 or more away in X, goes to state 5.
+ * WHAT IT DOES: Runs CountDownOrPickNextTimer; when it says no (C 0) runs StepListThenWallBounce, sets OBJ_WORK_F to the opposite of the facing and, when the player is $40 or more away in X, goes to state 5.
  * HOW: Two calls, DistanceXToPlayer, a compare, stores.
  * WAITS: no.
  * Entry: X object, Y kept unless the step sets it. Exit: as the last instruction that ran (l8_hop_away_exit_shim).
@@ -839,7 +839,7 @@ void abi_CountDownThenHopAwayFromPlayer(void)
 /*
  * @routine 0B4C:15F StepListFallThenSoundAtGround
  * @run 70:B95F
- * WHAT IT DOES: Steps the animation list at $B97D and falls (FallToGroundAt98); on landing plays sound $4A, sets OBJ_3510 $28 and goes to the next OBJ_SUBSTATE.
+ * WHAT IT DOES: Steps the animation list at $B97D and falls (FallToGroundAt98); on landing plays sound $4A, sets OBJ_WORK_E $28 and goes to the next OBJ_SUBSTATE.
  * HOW: StepObjectFrames, FallToGroundAt98, SoundCommand, stores, an INC.
  * WAITS: no.
  * Entry: X object, Y kept unless the step sets it. Exit: as the last instruction that ran (l8_step_fall_sound_exit_shim).
@@ -858,7 +858,7 @@ L8St19StepFallSoundArm StepListFallThenSoundAtGround(uint8_t slot, uint8_t y_ent
     jsr_push(0xB974);
     r.call = SoundCommand(0x4A, slot, r.fall.y);
     jsr_pop();
-    WR8(OBJ->f3510[slot], 0x28);
+    WR8(OBJ->work_e[slot], 0x28);
     r.count = INC8(OBJ->substate[slot]);
     return r;
 }
@@ -1050,10 +1050,10 @@ void abi_WaitThenStepListWithSoundAndBounce(void)
 /*
  * @routine 0B4C:46F StepListFallThenCountLandings
  * @run 70:BC6F
- * WHAT IT DOES: Steps the animation list at $BC9B and falls (FallToGroundAt98); on landing clears the animation, goes to state 6, halves OBJ_34B8 and counts OBJ_3778 up; at 3 clears OBJ_34B8.
+ * WHAT IT DOES: Steps the animation list at $BC9B and falls (FallToGroundAt98); on landing clears the animation, goes to state 6, halves OBJ_WORK_D and counts OBJ_WORK_L up; at 3 clears OBJ_WORK_D.
  * HOW: StepObjectFrames, FallToGroundAt98, an LSR and an INC in memory, a compare.
  * WAITS: no.
- * Entry: X object, Y kept unless the step sets it. Exit: as the last instruction that ran (l8_landings_exit_shim). Clearing OBJ_34B8 ran in no script; the draft stops there.
+ * Entry: X object, Y kept unless the step sets it. Exit: as the last instruction that ran (l8_landings_exit_shim). Clearing OBJ_WORK_D ran in no script; the draft stops there.
  */
 L8St19LandingsArm StepListFallThenCountLandings(uint8_t slot, uint8_t y_entry)
 {
@@ -1070,8 +1070,8 @@ L8St19LandingsArm StepListFallThenCountLandings(uint8_t slot, uint8_t y_entry)
     WR8(OBJ->anim_timer[slot], 0);
     WR8(OBJ->state[slot], 6);
     r.shifted = LSR8(OBJ->f34b8[slot]) != 0;
-    r.inc = INC8(OBJ->f3778[slot]);
-    r.count = RD8(OBJ->f3778[slot]);
+    r.inc = INC8(OBJ->work_l[slot]);
+    r.count = RD8(OBJ->work_l[slot]);
     if (r.count >= 3) {
         WR8(OBJ->f34b8[slot], 0);
     }
@@ -1110,7 +1110,7 @@ void abi_StepListFallThenCountLandings(void)
 /*
  * @routine 0B4C:755 LoadRecordLeapByNumberThenFall
  * @run 70:BF55
- * WHAT IT DOES: In state 0 loads the record, gives it the X speed from the table at $BF9B by its facing and the Y speed high $E0, moves it once and sets the speed from a four byte row of the table at $BF9D by OBJ_34B8; facing left reverses the X speed. Later it falls (ApplyGravityUnlimited) and moves.
+ * WHAT IT DOES: In state 0 loads the record, gives it the X speed from the table at $BF9B by its facing and the Y speed high $E0, moves it once and sets the speed from a four byte row of the table at $BF9D by OBJ_WORK_D; facing left reverses the X speed. Later it falls (ApplyGravityUnlimited) and moves.
  * HOW: LoadObjectRecord, ApplyVelocity, table reads, NegateVelocityX, ApplyGravityUnlimited.
  * WAITS: no.
  * Entry: X object. Exit: as the last instruction that ran (l8_leap_by_number_exit_shim). Reversing the speed ran in no script; the draft stops there.
@@ -1188,7 +1188,7 @@ void abi_LoadRecordLeapByNumberThenFall(void)
 /*
  * @routine 0B4C:7B1 FollowObject10HitBoxByFrame
  * @run 70:BFB1
- * WHAT IT DOES: Counts OBJ_34B8 up. In state 0 loads the record. Later, when OBJ_3670 of slot $10 is 0 it clears its hit box width and height; otherwise it takes the place and facing of slot $10 and the hit box from a four byte row of the table at $C33B by slot $10's frame; a slot $10 that is not kind $24 clears the object.
+ * WHAT IT DOES: Counts OBJ_WORK_D up. In state 0 loads the record. Later, when OBJ_WORK_I of slot $10 is 0 it clears its hit box width and height; otherwise it takes the place and facing of slot $10 and the hit box from a four byte row of the table at $C33B by slot $10's frame; a slot $10 that is not kind $24 clears the object.
  * HOW: LoadObjectRecord, CopyObjectPlaceBack, table reads, stores, a tail jump into ClearObject.
  * WAITS: no.
  * Entry: X object. Exit: as the last instruction that ran (l8_follow_hitbox_exit_shim). Clearing the object ran in no script; the draft stops there.
@@ -1205,7 +1205,7 @@ L8St19FollowArm FollowObject10HitBoxByFrame(uint8_t slot)
         r.arm = ST19_FOLLOW_LOADED;
         return r;
     }
-    r.mode = RD8(OBJ->f3670[0x10]);
+    r.mode = RD8(OBJ->work_i[0x10]);
     if (r.mode == 0) {
         WR8(OBJ->hitbox_half_w[slot], 0);
         WR8(OBJ->hitbox_half_h[slot], 0);

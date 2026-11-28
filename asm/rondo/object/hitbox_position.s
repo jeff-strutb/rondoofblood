@@ -11,7 +11,7 @@
 ComputeHitboxPositions:
     ldx #$00
 ComputeHitboxPositions_at4:
-    lda a:OBJ_3250,x
+    lda a:OBJ_HITBOX_ON,x
     beq ComputeHitboxPositions_at0
     lda a:OBJ_HITBOX_DX,x
     sta z:zTemp01
@@ -61,7 +61,7 @@ ComputeHitboxPositions_at0:
 ComputeHitboxPositionsLong:
     ldx #$00
 ComputeHitboxPositionsLong_at4:
-    lda a:OBJ_3250,x
+    lda a:OBJ_HITBOX_ON,x
     beq ComputeHitboxPositionsLong_at0
     lda a:OBJ_HITBOX_DX,x
     sta z:zTemp01

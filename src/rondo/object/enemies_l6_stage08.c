@@ -239,7 +239,7 @@ void abi_StepListByIndex088A(void)
 /*
  * @routine 088B:777 SetTimersOf12To15
  * @run 70:B777
- * WHAT IT DOES: Sets OBJ_34B8 of the objects 18 to 21 to 1.
+ * WHAT IT DOES: Sets OBJ_WORK_D of the objects 18 to 21 to 1.
  * HOW: A loop of Y from 18.
  * WAITS: no.
  * Entry: nothing. Exit: A 1, Y 22, the compare of Y with 22.
@@ -270,7 +270,7 @@ void abi_SetTimersOf12To15(void)
 /*
  * @routine 088A:52D CountThenNextStateF3510
  * @run 70:AD2D
- * WHAT IT DOES: Counts OBJ_3510 down; at zero it sets it to $30 and goes on to the next state.
+ * WHAT IT DOES: Counts OBJ_WORK_E down; at zero it sets it to $30 and goes on to the next state.
  * HOW: DEC, a store, INC.
  * WAITS: no.
  * Entry: X object. Exit: the count, or the new state's N and Z (A $30).
@@ -279,11 +279,11 @@ ObjArm CountThenNextStateF3510(uint8_t slot)
 {
     ObjArm r = { 0 };
 
-    r.first = DEC8(OBJ->f3510[slot]);
+    r.first = DEC8(OBJ->work_e[slot]);
     if (r.first != 0) {
         return r;
     }
-    WR8(OBJ->f3510[slot], 0x30);
+    WR8(OBJ->work_e[slot], 0x30);
     r.second = INC8(OBJ->state[slot]);
     return r;
 }
@@ -304,7 +304,7 @@ void abi_CountThenNextStateF3510(void)
 /*
  * @routine 088A:724 SetFrameThenCountToNext
  * @run 70:AF24
- * WHAT IT DOES: Sets the object's frame (OBJ_FRAME) to $0C and counts OBJ_3568 down; at zero it sets it to $10 and goes on to the next state.
+ * WHAT IT DOES: Sets the object's frame (OBJ_FRAME) to $0C and counts OBJ_WORK_F down; at zero it sets it to $10 and goes on to the next state.
  * HOW: A store, DEC, a store, INC.
  * WAITS: no.
  * Entry: X object. Exit: the count, or the new state's N and Z (A $10).
@@ -405,7 +405,7 @@ void abi_StartFallWithFrame21(void)
 /*
  * @routine 088B:240 SpeedBySideOfScreen
  * @run 70:B240
- * WHAT IT DOES: Sets OBJ_3510 to 2, takes the X speed high from the two-byte table at $B259 by bit 7 of the object's X low and clears the X speed low, then moves the object.
+ * WHAT IT DOES: Sets OBJ_WORK_E to 2, takes the X speed high from the two-byte table at $B259 by bit 7 of the object's X low and clears the X speed low, then moves the object.
  * HOW: Two ROLs, a table read (bank 70), a tail jump into ApplyVelocity.
  * WAITS: no.
  * Entry: X object, C passed into the first ROL. Exit: as ApplyVelocity, Y the table index.
@@ -415,7 +415,7 @@ ObjArm SpeedBySideOfScreen(uint8_t slot, bool carry_in)
     ObjArm r = { 0 };
     uint8_t low, first, second, index, speed;
 
-    WR8(OBJ->f3510[slot], 2);
+    WR8(OBJ->work_e[slot], 2);
     low = RD8(OBJ->x_lo[slot]);
     first = (uint8_t)((low << 1) | (carry_in ? 1 : 0));
     second = (uint8_t)((first << 1) | ((low & 0x80) != 0 ? 1 : 0));
@@ -489,7 +489,7 @@ void abi_StartThenFallAlongList(void)
 /*
  * @routine 088A:39B FrameBySideThenTimerOnScroll
  * @run 70:AB9B
- * WHAT IT DOES: Sets the object's frame to $25 when its X low is under $C0, else 0; once the scroll's Y high byte is not zero it sets OBJ_34B8 to $C0 and goes on to the next state.
+ * WHAT IT DOES: Sets the object's frame to $25 when its X low is under $C0, else 0; once the scroll's Y high byte is not zero it sets OBJ_WORK_D to $C0 and goes on to the next state.
  * HOW: Stores, compares, an INC.
  * WAITS: no.
  * Entry: X object. Exit: the scroll's load, or the new state's N and Z (A $C0).
@@ -586,7 +586,7 @@ void abi_StepListACB2ThenNextOnScreen(void)
 /*
  * @routine 088A:53B FallAndBlinkThenClear
  * @run 70:AD3B
- * WHAT IT DOES: Adds $0008 to the object's Y speed and moves the object. Its frame is 0, or on every other frame of the wave counter OBJ_34B8 plus $47. Counts OBJ_3510 down and clears the object at zero.
+ * WHAT IT DOES: Adds $0008 to the object's Y speed and moves the object. Its frame is 0, or on every other frame of the wave counter OBJ_WORK_D plus $47. Counts OBJ_WORK_E down and clears the object at zero.
  * HOW: A 16-bit add, ApplyVelocity, a test of zTemp wave bit 0, an add, DEC, ClearObject.
  * WAITS: no.
  * Entry: X object. Exit: the count, or as ClearObject.
@@ -610,7 +610,7 @@ ObjArm FallAndBlinkThenClear(uint8_t slot)
         r.second = RD8(OBJ->f34b8[slot]);
         WR8(OBJ->frame[slot], (uint8_t)(r.second + 0x47));
     }
-    r.third = DEC8(OBJ->f3510[slot]);
+    r.third = DEC8(OBJ->work_e[slot]);
     if (r.third == 0) {
         jsr_push(0xAD69);
         ClearObject(slot);
@@ -640,10 +640,10 @@ void abi_FallAndBlinkThenClear(void)
 /*
  * @routine 088A:4FC LoadThenSpeedFromTable
  * @run 70:ACFC
- * WHAT IT DOES: Loads the object's record, takes its X speed from the two-byte entries of the table at $AD21 by OBJ_34B8, its timer from the table at $AD29 and its frame as OBJ_34B8 plus $47.
+ * WHAT IT DOES: Loads the object's record, takes its X speed from the two-byte entries of the table at $AD21 by OBJ_WORK_D, its timer from the table at $AD29 and its frame as OBJ_WORK_D plus $47.
  * HOW: LoadObjectRecord, table reads (bank 70), an add.
  * WAITS: no.
- * Entry: X object. Exit: A the frame, N, Z, C and V from the add; Y OBJ_34B8.
+ * Entry: X object. Exit: A the frame, N, Z, C and V from the add; Y OBJ_WORK_D.
  */
 ObjArm LoadThenSpeedFromTable(uint8_t slot)
 {
@@ -661,12 +661,12 @@ ObjArm LoadThenSpeedFromTable(uint8_t slot)
     WR8(OBJ->vx_lo[slot], rd8((uint16_t)(0xAD21 + y)));
     y = RD8(OBJ->f34b8[slot]);
     r.fourth = y;
-    WR8(OBJ->f3510[slot], rd8((uint16_t)(0xAD29 + y)));
+    WR8(OBJ->work_e[slot], rd8((uint16_t)(0xAD29 + y)));
     WR8(OBJ->frame[slot], (uint8_t)(y + 0x47));
     return r;
 }
 
-/* The record, the ASL (C bit 7) and TAY, the LDY of OBJ_34B8, the CLC and ADC #$47. */
+/* The record, the ASL (C bit 7) and TAY, the LDY of OBJ_WORK_D, the CLC and ADC #$47. */
 static Ended load_then_speed_from_table_exit_shim(ObjArm r)
 {
     uint8_t y = (uint8_t)(r.third << 1);
@@ -684,7 +684,7 @@ void abi_LoadThenSpeedFromTable(void)
 /*
  * @routine 088B:6C9 PlaceFromTableCopySlot10
  * @run 70:B6C9
- * WHAT IT DOES: Puts the object at the X and Y low bytes the tables at $BB66 and $BBA6 give for the row the table at $B736 names by OBJ_3510, copies the sprite set, frame and facing of the object in slot $10 and sets its flash flags to $10.
+ * WHAT IT DOES: Puts the object at the X and Y low bytes the tables at $BB66 and $BBA6 give for the row the table at $B736 names by OBJ_WORK_E, copies the sprite set, frame and facing of the object in slot $10 and sets its flash flags to $10.
  * HOW: Table reads (bank 70), copies.
  * WAITS: no.
  * Entry: X object. Exit: A $10, N and Z from it; Y the row.
@@ -693,7 +693,7 @@ ObjArm PlaceFromTableCopySlot10(uint8_t slot)
 {
     ObjArm r = { 0 };
 
-    r.first = RD8(OBJ->f3510[slot]);
+    r.first = RD8(OBJ->work_e[slot]);
     r.second = rd8((uint16_t)(0xB736 + r.first));
     WR8(OBJ->x_lo[slot], rd8((uint16_t)(0xBB66 + r.second)));
     WR8(OBJ->y_lo[slot], rd8((uint16_t)(0xBBA6 + r.second)));
@@ -704,7 +704,7 @@ ObjArm PlaceFromTableCopySlot10(uint8_t slot)
     return r;
 }
 
-/* The LDY of OBJ_3510, the row's LDA and TAY. */
+/* The LDY of OBJ_WORK_E, the row's LDA and TAY. */
 static Ended place_from_table_row_shim(ObjArm r)
 {
     return ended_then(ended_with_y(ended_nz(r.first), r.first), ended_with_y(ended_load(r.second), r.second));
@@ -724,7 +724,7 @@ void abi_PlaceFromTableCopySlot10(void)
 /*
  * @routine 088A:4B9 StartThreeNumberedObjects
  * @run 70:ACB9
- * WHAT IT DOES: Clears the objects in slots $16 to $18, starts a kind $28 object in each at the place of the object in slot $3E, gives each sprite set 7, its number (0 to 2) as OBJ_34B8 and the frame number plus $47, and then clears the object in slot $3E.
+ * WHAT IT DOES: Clears the objects in slots $16 to $18, starts a kind $28 object in each at the place of the object in slot $3E, gives each sprite set 7, its number (0 to 2) as OBJ_WORK_D and the frame number plus $47, and then clears the object in slot $3E.
  * HOW: A loop of ClearObjectInY and StartObjectAtPlace, ClearObject.
  * WAITS: no.
  * Entry: X object (kept). Exit: the last compare of Y with $19; A the last frame.
@@ -773,7 +773,7 @@ void abi_StartThreeNumberedObjects(void)
 /*
  * @routine 088B:705 PlaceFromTableThenStepList
  * @run 70:B705
- * WHAT IT DOES: Puts the object at the X and Y low bytes the tables at $BB66 and $BBA6 give for the row the table at $B73A names by OBJ_3510, sets sprite set 7, copies the facing of the object in slot $10 and steps the animation list the table at $B73E gives for OBJ_3510.
+ * WHAT IT DOES: Puts the object at the X and Y low bytes the tables at $BB66 and $BBA6 give for the row the table at $B73A names by OBJ_WORK_E, sets sprite set 7, copies the facing of the object in slot $10 and steps the animation list the table at $B73E gives for OBJ_WORK_E.
  * HOW: Table reads (bank 70), StepObjectFrames.
  * WAITS: no.
  * Entry: X object, Y overwritten. Exit: as StepObjectFrames.
@@ -783,13 +783,13 @@ ObjArm PlaceFromTableThenStepList(uint8_t slot)
     ObjArm r = { 0 };
     uint8_t y;
 
-    r.first = RD8(OBJ->f3510[slot]);
+    r.first = RD8(OBJ->work_e[slot]);
     r.second = rd8((uint16_t)(0xB73A + r.first));
     WR8(OBJ->x_lo[slot], rd8((uint16_t)(0xBB66 + r.second)));
     WR8(OBJ->y_lo[slot], rd8((uint16_t)(0xBBA6 + r.second)));
     WR8(OBJ->sprite_set[slot], 7);
     WR8(OBJ->facing_left[slot], RD8(OBJ->facing_left[0x10]));
-    r.third = RD8(OBJ->f3510[slot]);
+    r.third = RD8(OBJ->work_e[slot]);
     y = (uint8_t)(r.third << 1);
     WR8(ZP->temp10, rd8((uint16_t)(0xB73E + y)));
     WR8(ZP->temp11, rd8((uint16_t)(0xB73F + y)));
@@ -800,7 +800,7 @@ ObjArm PlaceFromTableThenStepList(uint8_t slot)
     return r;
 }
 
-/* The row, the ASL (C bit 7) and TAY of OBJ_3510, the step. */
+/* The row, the ASL (C bit 7) and TAY of OBJ_WORK_E, the step. */
 static Ended place_from_table_then_step_list_exit_shim(ObjArm r)
 {
     uint8_t y = (uint8_t)(r.third << 1);
@@ -884,7 +884,7 @@ void abi_StartThenWaitForField83(void)
 /*
  * @routine 088A:699 LoadThenStartFiveFromTable
  * @run 70:AE99
- * WHAT IT DOES: Loads the object's record, clears OBJ_3778 and its Y speed, sets OBJ_34B8 to $30 and bit 2 of zField8E, copies its X and Y low bytes into all 64 entries of the two tables at $BB66 and $BBA6, then clears the objects in slots $11 to $15 and starts in each an object whose kind the table at $AEDA gives, at this object's place.
+ * WHAT IT DOES: Loads the object's record, clears OBJ_WORK_L and its Y speed, sets OBJ_WORK_D to $30 and bit 2 of zField8E, copies its X and Y low bytes into all 64 entries of the two tables at $BB66 and $BBA6, then clears the objects in slots $11 to $15 and starts in each an object whose kind the table at $AEDA gives, at this object's place.
  * HOW: LoadObjectRecord, two loops, ClearObjectInY, StartObjectAtPlace.
  * WAITS: no.
  * Entry: X object. Exit: the last compare of Y with $16.
@@ -899,7 +899,7 @@ ObjArm LoadThenStartFiveFromTable(uint8_t slot)
     r.first = LoadObjectRecord(slot, &r.second, &carry);
     jsr_pop();
     r.flag = carry;
-    WR8(OBJ->f3778[slot], 0);
+    WR8(OBJ->work_l[slot], 0);
     WR8(OBJ->vy_hi[slot], 0);
     WR8(OBJ->vy_lo[slot], 0);
     WR8(OBJ->f34b8[slot], 0x30);
@@ -1075,7 +1075,7 @@ void abi_SetHitBoxFromFrameTable(void)
 /*
  * @routine 088B:7AF FollowSlot10WithHitBox
  * @run 70:B7AF
- * WHAT IT DOES: In state 0 loads the object's record. Later it takes the place, facing and OBJ_3250 of the object in slot $10 and a hit box from the four-byte row of the table at $B9DF that slot's frame less one names; with a zero half width and half height it clears OBJ_3250. When the object in slot $10 is no longer of kind $20 this object is cleared.
+ * WHAT IT DOES: In state 0 loads the object's record. Later it takes the place, facing and OBJ_HITBOX_ON of the object in slot $10 and a hit box from the four-byte row of the table at $B9DF that slot's frame less one names; with a zero half width and half height it clears OBJ_HITBOX_ON. When the object in slot $10 is no longer of kind $20 this object is cleared.
  * HOW: LoadObjectRecord, CopyObjectPlaceBack, table reads (bank 70), ClearObject.
  * WAITS: no.
  * Entry: X object. Exit: the compare with $20, or as ClearObject.
@@ -1119,7 +1119,7 @@ ObjArm FollowSlot10WithHitBox(uint8_t slot)
 }
 
 /* State 0: the state's LDA, the record. Later the state's LDA, the copy's A with Y $10, the row, the loads of the last
- * table byte, the facing and OBJ_3250, the ORA of the half sizes, and the kind's CMP with $20 (ClearObject, a tail jump,
+ * table byte, the facing and OBJ_HITBOX_ON, the ORA of the half sizes, and the kind's CMP with $20 (ClearObject, a tail jump,
  * leaves them). */
 static Ended follow_slot10_with_hit_box_exit_shim(ObjArm r)
 {

@@ -188,7 +188,7 @@ ThrowUpward_at1:
 ; WAITS: no.
 ; Entry: X object. Exit: A and N, Z from the timer, or A 4 at zero; X, Y and C kept.
 CountdownThenState4:
-    dec a:OBJ_3510,x
+    dec a:OBJ_WORK_E,x
     bne CountdownThenState4_at1
 CountdownThenState4_at0:
     lda #$04
@@ -231,7 +231,7 @@ EnterState6IfFlagged_at0:
 ; WAITS: no.
 ; Entry: X object. Exit: A and N, Z from the timer, or A 4 at zero; X, Y and C kept.
 CountdownStopThenState4:
-    dec a:OBJ_34B8,x
+    dec a:OBJ_WORK_D,x
     bne CountdownStopThenState4_at0
     stz a:OBJ_ANIM_STEP,x
     stz a:OBJ_ANIM_TIMER,x
@@ -284,7 +284,7 @@ LoadRecordStartAngle40:
     jsr VecApplyVelocity
 LoadRecordStartAngle40_at0:
     lda #$40
-    sta a:OBJ_3568,x
+    sta a:OBJ_WORK_F,x
     rts
 
 ; @routine 07DB:7BE LoadRecordTimer50
@@ -296,7 +296,7 @@ LoadRecordStartAngle40_at0:
 LoadRecordTimer50:
     jsr VecLoadObjectRecord
     lda #$50
-    sta a:OBJ_34B8,x
+    sta a:OBJ_WORK_D,x
     rts
 
 ; @routine 07DB:3ED StepFramesFacingPlayer
@@ -337,13 +337,13 @@ WaitThenState2:
     lda a:OBJ_SUBSTATE,x
     bne WaitThenState2_at1
     lda #$1C
-    sta a:OBJ_34B8,x
+    sta a:OBJ_WORK_D,x
     inc a:OBJ_SUBSTATE,x
     rts
 WaitThenState2_at1:
     ldy #$02
     jsr StepFramesFacingPlayer
-    dec a:OBJ_34B8,x
+    dec a:OBJ_WORK_D,x
     bne WaitThenState2_at2
     lda #$02
 WaitThenState2_at0:
@@ -381,7 +381,7 @@ WalkWhileFrameChanges:
     cly
     jsr StepFramesFacingPlayerAlways
     bcc WalkWhileFrameChanges_at0
-    ldy a:OBJ_3510,x
+    ldy a:OBJ_WORK_E,x
     lda a:$B804,y
     sta a:OBJ_VX_HI,x
     jsr VecApplyVelocityX
@@ -433,9 +433,9 @@ SpawnSixPiecesA_at1:
     asl a
     tax
     lda a:$B36C,x
-    sta a:OBJ_34B8,y
+    sta a:OBJ_WORK_D,y
     lda a:$B36D,x
-    sta a:OBJ_3510,y
+    sta a:OBJ_WORK_E,y
     lda a:$B36E,x
     sta a:OBJ_VX_HI,y
     lda a:$B36F,x
@@ -475,7 +475,7 @@ LoadRecordFacingAndRandomFrame:
 ; WAITS: no.
 ; Entry, exit: as PickSpeedAndTurnFromTable.
 PickSpeedAndTurnFromTableB:
-    lda a:OBJ_3670,x
+    lda a:OBJ_WORK_I,x
     asl a
     asl a
     tay
@@ -487,7 +487,7 @@ PickSpeedAndTurnFromTableB:
     sta a:OBJ_VY_HI,x
     lda a:$B515,y
     sta a:OBJ_VY_LO,x
-    inc a:OBJ_3510,x
+    inc a:OBJ_WORK_E,x
     jsr VecSideOfPlayer
     and #$01
     beq PickSpeedAndTurnFromTableB_at0
@@ -508,17 +508,17 @@ OrbitStepBack:
     stz z:zTemp00
     lda #$01
     sta z:zTemp01
-    lda a:OBJ_3568,x
+    lda a:OBJ_WORK_F,x
     jsr VecSetVelocityFromAngle
     jsr VecApplyVelocity
-    lda a:OBJ_3568,x
+    lda a:OBJ_WORK_F,x
     sec
     sbc #$04
-    sta a:OBJ_3568,x
+    sta a:OBJ_WORK_F,x
     cmp #$E0
     bne OrbitStepBack_at0
     lda #$40
-    sta a:OBJ_3568,x
+    sta a:OBJ_WORK_F,x
     inc a:OBJ_STATE,x
 OrbitStepBack_at0:
     rts
@@ -534,17 +534,17 @@ OrbitStepForward:
     stz z:zTemp00
     lda #$01
     sta z:zTemp01
-    lda a:OBJ_3568,x
+    lda a:OBJ_WORK_F,x
     jsr VecSetVelocityFromAngle
     jsr VecApplyVelocity
-    lda a:OBJ_3568,x
+    lda a:OBJ_WORK_F,x
     clc
     adc #$04
-    sta a:OBJ_3568,x
+    sta a:OBJ_WORK_F,x
     cmp #$A0
     bne OrbitStepForward_at0
     lda #$40
-    sta a:OBJ_3568,x
+    sta a:OBJ_WORK_F,x
     dec a:OBJ_STATE,x
 OrbitStepForward_at0:
     rts
@@ -596,12 +596,12 @@ AnimateThenFireOrWait_at0:
     stz a:OBJ_ANIM_TIMER,x
     lda #$03
     sta a:OBJ_STATE,x
-    inc a:OBJ_3568,x
-    lda a:OBJ_3568,x
+    inc a:OBJ_WORK_F,x
+    lda a:OBJ_WORK_F,x
     and #$03
     tay
     lda a:$B806,y
-    sta a:OBJ_34B8,x
+    sta a:OBJ_WORK_D,x
 AnimateThenFireOrWait_at1:
     rts
 
@@ -632,9 +632,9 @@ BurstIntoSixPieces_at1:
     asl a
     tax
     lda a:$B9B6,x
-    sta a:OBJ_34B8,y
+    sta a:OBJ_WORK_D,y
     lda a:$B9B7,x
-    sta a:OBJ_3510,y
+    sta a:OBJ_WORK_E,y
     lda a:$B9B8,x
     sta a:OBJ_VX_HI,y
     lda a:$B9B9,x
@@ -670,7 +670,7 @@ BurstWhenFlaggedHit:
     lda #$8B
     jsr VecSoundIfOnFirstScreen
     jsr SpawnSixPiecesA
-    stz a:OBJ_3250,x
+    stz a:OBJ_HITBOX_ON,x
     stz a:OBJ_ANIM_STEP,x
     stz a:OBJ_ANIM_TIMER,x
     lda #$06
@@ -717,7 +717,7 @@ ChargeWhenPlayerNear:
     and #$1F
     clc
     adc #$48
-    sta a:OBJ_36C8,x
+    sta a:OBJ_WORK_J,x
     lda #$04
     sta a:OBJ_STATE,x
     lda #$02
@@ -771,7 +771,7 @@ AnimateMoveThenSetUpNextStep:
     ldy #$04
     jsr StepFramesFacingPlayer
     jsr VecApplyVelocity
-    dec a:OBJ_34B8,x
+    dec a:OBJ_WORK_D,x
     bne AnimateMoveThenSetUpNextStep_at0
     lda #$8B
     jsr VecSoundIfOnFirstScreen
@@ -780,7 +780,7 @@ AnimateMoveThenSetUpNextStep:
     and #$3F
     clc
     adc #$58
-    sta a:OBJ_36C8,x
+    sta a:OBJ_WORK_J,x
     stz a:OBJ_ANIM_STEP,x
     stz a:OBJ_ANIM_TIMER,x
     inc a:OBJ_SUBSTATE,x
@@ -796,7 +796,7 @@ AnimateMoveThenSetUpNextStep_at0:
 ; Entry: X object, D clear. Exit: A the masked bits and N, Z from them when no sound; else as
 ; SoundIfOnFirstScreen leaves it.
 SoundEveryFourthFrameB:
-    lda a:OBJ_3618,x
+    lda a:OBJ_WORK_H,x
     and #$03
     bne SoundEveryFourthFrameB_at0
     lda #$22
@@ -830,10 +830,10 @@ TurnOnRandomBeatWalkA:
     and #$07
     tay
     lda a:$B6B0,y
-    sta a:OBJ_34B8,x
+    sta a:OBJ_WORK_D,x
     stz a:OBJ_ANIM_STEP,x
     stz a:OBJ_ANIM_TIMER,x
-    inc a:OBJ_3510,x
+    inc a:OBJ_WORK_E,x
     inc a:OBJ_SUBSTATE,x
     rts
 
@@ -848,7 +848,7 @@ TurnOnRandomBeatWalkA:
 TurnOnRandomBeatWalkFollowA:
     ldy #$02
     jsr StepFramesFacingPlayer
-    dec a:OBJ_34B8,x
+    dec a:OBJ_WORK_D,x
     beq TurnOnRandomBeatWalkFollowA_done
     jmp VecApplyVelocityX
 TurnOnRandomBeatWalkFollowA_done:
@@ -881,14 +881,14 @@ FallAnimatedThenBecomeKind9B:
 FallAnimatedThenBecomeKind9B_at1:
     rts
 FallAnimatedThenBecomeKind9B_at0:
-    dec a:OBJ_3510,x
+    dec a:OBJ_WORK_E,x
     bne FallAnimatedThenBecomeKind9B_at2
     lda #$9B
     sta a:OBJ_KIND,x
     stz a:OBJ_STATE,x
     rts
 FallAnimatedThenBecomeKind9B_at2:
-    lda a:OBJ_34B8,x
+    lda a:OBJ_WORK_D,x
     asl a
     tay
     lda a:$BA89,y

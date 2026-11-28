@@ -5,7 +5,7 @@
 ; WAITS: no.
 ; Entry: X object. Exit: A the damage, Y the table index, N and Z from A, C and V from the add.
 HitDamage0519:
-    lda a:OBJ_FIELDS_2EE0,x
+    lda a:OBJ_WORK_A,x
     asl a
     asl a
     asl a
@@ -26,7 +26,7 @@ HitDamage0519:
 ; WAITS: no.
 ; Entry: X object. Exit: A the damage, Y the table index, N and Z from A, C and V from the add.
 HitDamage05C9:
-    lda a:OBJ_FIELDS_2EE0,x
+    lda a:OBJ_WORK_A,x
     asl a
     asl a
     asl a
@@ -47,7 +47,7 @@ HitDamage05C9:
 ; WAITS: no.
 ; Entry: X object. Exit: A the damage, Y the table index, N and Z from A, C and V from the add.
 HitDamage0729:
-    lda a:OBJ_FIELDS_2EE0,x
+    lda a:OBJ_WORK_A,x
     asl a
     asl a
     asl a
@@ -68,7 +68,7 @@ HitDamage0729:
 ; WAITS: no.
 ; Entry: X object. Exit: A the damage, Y the table index, N and Z from A, C and V from the add.
 HitDamage07D9:
-    lda a:OBJ_FIELDS_2EE0,x
+    lda a:OBJ_WORK_A,x
     asl a
     asl a
     asl a
@@ -89,7 +89,7 @@ HitDamage07D9:
 ; WAITS: no.
 ; Entry: X object. Exit: A the damage, Y the table index, N and Z from A, C and V from the add.
 HitDamage0889:
-    lda a:OBJ_FIELDS_2EE0,x
+    lda a:OBJ_WORK_A,x
     asl a
     asl a
     asl a
@@ -110,7 +110,7 @@ HitDamage0889:
 ; WAITS: no.
 ; Entry: X object. Exit: A the damage, Y the table index, N and Z from A, C and V from the add.
 HitDamage0939:
-    lda a:OBJ_FIELDS_2EE0,x
+    lda a:OBJ_WORK_A,x
     asl a
     asl a
     asl a
@@ -131,7 +131,7 @@ HitDamage0939:
 ; WAITS: no.
 ; Entry: X object. Exit: A the damage, Y the table index, N and Z from A, C and V from the add.
 HitDamage0A99:
-    lda a:OBJ_FIELDS_2EE0,x
+    lda a:OBJ_WORK_A,x
     asl a
     asl a
     asl a
@@ -152,7 +152,7 @@ HitDamage0A99:
 ; WAITS: no.
 ; Entry: X object. Exit: A the damage, Y the table index, N and Z from A, C and V from the add.
 HitDamage0B49:
-    lda a:OBJ_FIELDS_2EE0,x
+    lda a:OBJ_WORK_A,x
     asl a
     asl a
     asl a
@@ -173,7 +173,7 @@ HitDamage0B49:
 ; WAITS: no.
 ; Entry: X object. Exit: A the damage, Y the table index, N and Z from A, C and V from the add.
 HitDamage0BF9:
-    lda a:OBJ_FIELDS_2EE0,x
+    lda a:OBJ_WORK_A,x
     asl a
     asl a
     asl a
@@ -194,7 +194,7 @@ HitDamage0BF9:
 ; WAITS: no.
 ; Entry: X object. Exit: A the damage, Y the table index, N and Z from A, C and V from the add.
 HitDamage0CA9:
-    lda a:OBJ_FIELDS_2EE0,x
+    lda a:OBJ_WORK_A,x
     asl a
     asl a
     asl a
@@ -215,7 +215,7 @@ HitDamage0CA9:
 ; WAITS: no.
 ; Entry: X object. Exit: A the damage, Y the table index, N and Z from A, C and V from the add.
 HitDamage0D59:
-    lda a:OBJ_FIELDS_2EE0,x
+    lda a:OBJ_WORK_A,x
     asl a
     asl a
     asl a
@@ -236,7 +236,7 @@ HitDamage0D59:
 ; WAITS: no.
 ; Entry: X object. Exit: A the damage, Y the table index, N and Z from A, C and V from the add.
 HitDamage0E09:
-    lda a:OBJ_FIELDS_2EE0,x
+    lda a:OBJ_WORK_A,x
     asl a
     asl a
     asl a
@@ -257,7 +257,7 @@ HitDamage0E09:
 ; WAITS: no.
 ; Entry: X object. Exit: A the damage, Y the table index, N and Z from A, C and V from the add.
 HitDamage0EB9:
-    lda a:OBJ_FIELDS_2EE0,x
+    lda a:OBJ_WORK_A,x
     asl a
     asl a
     asl a
@@ -278,7 +278,7 @@ HitDamage0EB9:
 ; WAITS: no.
 ; Entry: X object. Exit: A the damage, Y the table index, N and Z from A, C and V from the add.
 HitDamage1019:
-    lda a:OBJ_FIELDS_2EE0,x
+    lda a:OBJ_WORK_A,x
     asl a
     asl a
     asl a
@@ -299,7 +299,7 @@ HitDamage1019:
 ; WAITS: no.
 ; Entry: X object. Exit: A the damage, Y the table index, N and Z from A, C and V from the add.
 HitDamage10C9:
-    lda a:OBJ_FIELDS_2EE0,x
+    lda a:OBJ_WORK_A,x
     asl a
     asl a
     asl a
@@ -320,7 +320,7 @@ HitDamage10C9:
 ; WAITS: no.
 ; Entry: X object. Exit: A the damage, Y the table index, N and Z from A, C and V from the add.
 HitDamage1179:
-    lda a:OBJ_FIELDS_2EE0,x
+    lda a:OBJ_WORK_A,x
     asl a
     asl a
     asl a
@@ -341,7 +341,7 @@ HitDamage1179:
 ; WAITS: no.
 ; Entry: X object. Exit: A the damage, Y the table index, N and Z from A, C and V from the add.
 HitDamage16C9:
-    lda a:OBJ_FIELDS_2EE0,x
+    lda a:OBJ_WORK_A,x
     asl a
     asl a
     asl a
@@ -363,7 +363,7 @@ HitDamage16C9:
 ; WAITS: no.
 ; Entry: X object. Exit: A the damage, Y the table index, N and Z from A, C and V from the add.
 HitDamage0F69:
-    lda a:OBJ_FIELDS_2EE0,x
+    lda a:OBJ_WORK_A,x
     asl a
     asl a
     asl a
@@ -384,7 +384,7 @@ HitDamage0F69:
 ; WAITS: no.
 ; Entry: X object. Exit: A the damage, Y the table index, N and Z from A, C and V from the add.
 HitDamage12D9:
-    lda a:OBJ_FIELDS_2EE0,x
+    lda a:OBJ_WORK_A,x
     asl a
     asl a
     asl a
@@ -405,7 +405,7 @@ HitDamage12D9:
 ; WAITS: no.
 ; Entry: X object. Exit: A the damage, Y the table index, N and Z from A, C and V from the add.
 HitDamage13F9:
-    lda a:OBJ_FIELDS_2EE0,x
+    lda a:OBJ_WORK_A,x
     asl a
     asl a
     asl a
@@ -426,7 +426,7 @@ HitDamage13F9:
 ; WAITS: no.
 ; Entry: X object. Exit: A the damage, Y the table index, N and Z from A, C and V from the add.
 HitDamage1619:
-    lda a:OBJ_FIELDS_2EE0,x
+    lda a:OBJ_WORK_A,x
     asl a
     asl a
     asl a
@@ -447,7 +447,7 @@ HitDamage1619:
 ; WAITS: no.
 ; Entry: X object. Exit: A the damage, Y the table index, N and Z from A, C and V from the add.
 HitDamage18D9:
-    lda a:OBJ_FIELDS_2EE0,x
+    lda a:OBJ_WORK_A,x
     asl a
     asl a
     asl a

@@ -40,8 +40,8 @@ enum { HOME_FAR, HOME_X_OFF, HOME_Y_OFF, HOME_ARRIVED };
 /*
  * @routine 025B:0F0 StepVerticalScrollTable
  * @run 70:B0F0
- * WHAT IT DOES: While OBJ_3568 is not 0, steps through the table at $B129 and $B133: OBJ_3510 takes the entry and the scroll's Y (ScrollYLo+1, ScrollYHi+1) falls by it; OBJ_3568 counts up and wraps to 0 at 9. When it is 0 and the scroll byte ScrollXLo+5 is 0, a random number with its top bit set starts the table (OBJ_3568 1).
- * HOW: A table read by OBJ_3568 as the index, a 16-bit subtract, and NextRandom.
+ * WHAT IT DOES: While OBJ_WORK_F is not 0, steps through the table at $B129 and $B133: OBJ_WORK_E takes the entry and the scroll's Y (ScrollYLo+1, ScrollYHi+1) falls by it; OBJ_WORK_F counts up and wraps to 0 at 9. When it is 0 and the scroll byte ScrollXLo+5 is 0, a random number with its top bit set starts the table (OBJ_WORK_F 1).
+ * HOW: A table read by OBJ_WORK_F as the index, a 16-bit subtract, and NextRandom.
  * WAITS: no.
  * Entry: X object. Exit: the last instruction that ran (l8_vertical_scroll_table_exit_shim).
  */
@@ -71,7 +71,7 @@ L8Arm StepVerticalScrollTable(uint8_t slot)
         return r;
     }
     value = rd8((uint16_t)(0xB129 + index));
-    WR8(OBJ->f3510[slot], value);
+    WR8(OBJ->work_e[slot], value);
     r.second = value;
     low = RD8(SCROLL->y_lo[1]);
     value = rd8((uint16_t)(0xB129 + index));
@@ -124,7 +124,7 @@ void abi_StepVerticalScrollTable(void)
 /*
  * @routine 025B:068 CountdownThenStartScript80
  * @run 70:B068
- * WHAT IT DOES: Sets fixed fields (OBJ_3510 slot 0 $10, the scroll bytes ScrollXLo+1 0 and ScrollXHi+1 1, a byte at $3BF0 to 2); counts OBJ_34B8 down; at $3F starts script $80 as kind 2 in slot 5, at 0 sets the sub-step 3 and zField8C $83.
+ * WHAT IT DOES: Sets fixed fields (OBJ_WORK_E slot 0 $10, the scroll bytes ScrollXLo+1 0 and ScrollXHi+1 1, a byte at $3BF0 to 2); counts OBJ_WORK_D down; at $3F starts script $80 as kind 2 in slot 5, at 0 sets the sub-step 3 and zField8C $83.
  * HOW: Stores, a memory decrement, a compare, StartScriptSlotKind2 between a PHX and a PLX.
  * WAITS: no.
  * Entry: X object. Exit: as the last instruction that ran (l8_script80_exit_shim). The byte at $3BF0 keeps its address form until it has a name.
@@ -134,7 +134,7 @@ L8Arm CountdownThenStartScript80(uint8_t slot)
     L8Arm r = { 0 };
     uint8_t timer;
 
-    WR8(OBJ->f3510[0], 0x10);
+    WR8(OBJ->work_e[0], 0x10);
     wr8(0x3BF0, 0x02);
     WR8(OBJ->f3568[0], 0);
     WR8(OBJ->frame[0], 0);
@@ -288,7 +288,7 @@ void abi_LoadRecordAtPlayerPlace(void)
 /*
  * @routine 025B:1A1 LoadRecordThenSinkByF3520
  * @run 70:B1A1
- * WHAT IT DOES: In state 0 loads the record, sets the frame 6 and moves the object one left; then adds OBJ_3510 of slot $10 to its OBJ_Y_LO.
+ * WHAT IT DOES: In state 0 loads the record, sets the frame 6 and moves the object one left; then adds OBJ_WORK_E of slot $10 to its OBJ_Y_LO.
  * HOW: LoadObjectRecord, a memory decrement, an add.
  * WAITS: no.
  * Entry: X object. Exit: the add's A, N, Z, C and V; Y 11 when the record was loaded (l8_sink_exit_shim).
@@ -305,7 +305,7 @@ L8Arm LoadRecordThenSinkByF3520(uint8_t slot)
         r.first = DEC8(OBJ->x_hi[slot]);
         r.arm = SINK_NEW;
     }
-    fall = RD8(OBJ->f3510[0x10]);
+    fall = RD8(OBJ->work_e[0x10]);
     y = RD8(OBJ->y_lo[slot]);
     r.sum = add_bytes(fall, y, false);
     WR8(OBJ->y_lo[slot], r.sum.value);
@@ -332,7 +332,7 @@ void abi_LoadRecordThenSinkByF3520(void)
 /*
  * @routine 025B:1BC LoadRecordThenStepListByKind
  * @run 70:B1BC
- * WHAT IT DOES: In state 0 loads the record and moves the object one left; then steps an animation list picked by OBJ_START_ARG (two bytes an entry) and, from the table's second half when slot $10's state is below 4 and OBJ_34B8 is 0.
+ * WHAT IT DOES: In state 0 loads the record and moves the object one left; then steps an animation list picked by OBJ_START_ARG (two bytes an entry) and, from the table's second half when slot $10's state is below 4 and OBJ_WORK_D is 0.
  * HOW: LoadObjectRecord, a decrement, table reads, a tail jump into StepObjectFrames.
  * WAITS: no.
  * Entry: X object, Y kept unless the step sets it. Exit: the step (l8_kind_list_exit_shim).
@@ -404,7 +404,7 @@ void abi_LoadRecordThenStepListByKind(void)
 /*
  * @routine 025B:229 LoadRecordSinkThenStepListByKind
  * @run 70:B229
- * WHAT IT DOES: In state 0 loads the record and moves the object one left; then adds OBJ_3510 of slot $10 to its OBJ_Y_LO and steps the animation list picked by OBJ_START_ARG from the table at $B250.
+ * WHAT IT DOES: In state 0 loads the record and moves the object one left; then adds OBJ_WORK_E of slot $10 to its OBJ_Y_LO and steps the animation list picked by OBJ_START_ARG from the table at $B250.
  * HOW: LoadObjectRecord, a decrement, an add, table reads, a tail jump into StepObjectFrames.
  * WAITS: no.
  * Entry: X object, Y kept unless the step sets it. Exit: the step (l8_sink_list_exit_shim).
@@ -419,7 +419,7 @@ L8Arm LoadRecordSinkThenStepListByKind(uint8_t slot, uint8_t y_entry)
     if (r.load.state == 0) {
         r.first = DEC8(OBJ->x_hi[slot]);
     }
-    fall = RD8(OBJ->f3510[0x10]);
+    fall = RD8(OBJ->work_e[0x10]);
     ypos = RD8(OBJ->y_lo[slot]);
     r.sum = add_bytes(fall, ypos, false);
     WR8(OBJ->y_lo[slot], r.sum.value);
@@ -459,7 +459,7 @@ void abi_LoadRecordSinkThenStepListByKind(void)
 /*
  * @routine 025B:266 StateMachineWithSoundAndList
  * @run 70:B266
- * WHAT IT DOES: An object of several phases. State 0 loads the record. State 1 waits on the state of slot $10 (3 or 6): it steps the animation list at $B2FA or $B2FF, plays sound $72 when the scroll byte ScrollXLo+1 is clear, and at state 6 goes on. State 2 counts OBJ_3510 down and goes on. Later states fall, and once off screen to the left start a list channel and clear the object.
+ * WHAT IT DOES: An object of several phases. State 0 loads the record. State 1 waits on the state of slot $10 (3 or 6): it steps the animation list at $B2FA or $B2FF, plays sound $72 when the scroll byte ScrollXLo+1 is clear, and at state 6 goes on. State 2 counts OBJ_WORK_E down and goes on. Later states fall, and once off screen to the left start a list channel and clear the object.
  * HOW: Compares of OBJ_STATE and slot $10's state, SoundCommand, StepObjectFrames, StartListChannelKind2 between a PHX and a PLX, a tail jump into ClearObject.
  * WAITS: no.
  * Entry: X object, Y kept unless a step sets it. Exit: as the last instruction that ran (l8_phases_exit_shim).
@@ -498,7 +498,7 @@ L8St12PhaseArm StateMachineWithSoundAndList(uint8_t slot, uint8_t y_entry)
         if (act == ADVANCE) {
             WR8(OBJ->frame[slot], 0x1C);
             r.counted = INC8(OBJ->state[slot]);
-            WR8(OBJ->f3510[slot], 0x0A);
+            WR8(OBJ->work_e[slot], 0x0A);
             r.arm = PHASE_ADVANCE;
             return r;
         }
@@ -527,7 +527,7 @@ L8St12PhaseArm StateMachineWithSoundAndList(uint8_t slot, uint8_t y_entry)
         return r;
     }
     if (state == 2) {
-        r.timer = DEC8(OBJ->f3510[slot]);
+        r.timer = DEC8(OBJ->work_e[slot]);
         if (r.timer == 0) {
             flags = RD8(OBJ->scroll_band[slot]);
             r.flags = (uint8_t)((flags & 0xF0) | 0x05);
@@ -762,7 +762,7 @@ void abi_DriftRecordThenMoveWithJitter(void)
 /*
  * @routine 025B:487 SwingByCosineFromState0B
  * @run 70:B487
- * WHAT IT DOES: From state $0B on, sets the Y speed from the cosine of OBJ_3618 scaled by $0040, moves the object in Y and turns OBJ_3618 on by 2.
+ * WHAT IT DOES: From state $0B on, sets the Y speed from the cosine of OBJ_WORK_H scaled by $0040, moves the object in Y and turns OBJ_WORK_H on by 2.
  * HOW: ScaleByCosine, two copies of the product, ApplyVelocityY, an add.
  * WAITS: no.
  * Entry: X object. Exit: as the last instruction that ran (l8_swing_by_cosine_exit_shim).
@@ -779,7 +779,7 @@ L8St12SwingArm SwingByCosineFromState0B(uint8_t slot)
     }
     WR8(ZP->temp00, 0x40);
     WR8(ZP->temp01, 0);
-    r.angle = RD8(OBJ->f3618[slot]);
+    r.angle = RD8(OBJ->work_h[slot]);
     jsr_push(0xB49C);
     r.scale = ScaleByCosine(r.angle);
     jsr_pop();
@@ -790,9 +790,9 @@ L8St12SwingArm SwingByCosineFromState0B(uint8_t slot)
     jsr_push(0xB4A9);
     r.move = ApplyVelocityY(slot);
     jsr_pop();
-    angle = RD8(OBJ->f3618[slot]);
+    angle = RD8(OBJ->work_h[slot]);
     r.sum = add_bytes(angle, 2, false);
-    WR8(OBJ->f3618[slot], r.sum.value);
+    WR8(OBJ->work_h[slot], r.sum.value);
     r.arm = SWING_MOVED;
     return r;
 }
@@ -821,7 +821,7 @@ void abi_SwingByCosineFromState0B(void)
 /*
  * @routine 025B:4B3 StartRandomScriptWhenFlagged
  * @run 70:B4B3
- * WHAT IT DOES: When OBJ_3720 is set and OBJ_3568's low five bits are 0, with a chance of three in eight starts a script from the table at $B4E9 as kind 1 in slot 5.
+ * WHAT IT DOES: When OBJ_WORK_K is set and OBJ_WORK_F's low five bits are 0, with a chance of three in eight starts a script from the table at $B4E9 as kind 1 in slot 5.
  * HOW: Two NextRandom calls and StartScriptSlotKind1 between a PHX and a PLX.
  * WAITS: no.
  * Entry: X object. Exit: as the last instruction that ran (l8_random_script_exit_shim).
@@ -831,7 +831,7 @@ L8St12ScriptArm StartRandomScriptWhenFlagged(uint8_t slot)
     L8St12ScriptArm r = { 0 };
     uint8_t pick;
 
-    r.flag = RD8(OBJ->f3720[slot]);
+    r.flag = RD8(OBJ->work_k[slot]);
     if (r.flag == 0) {
         r.arm = RSCRIPT_OFF;
         return r;
@@ -892,16 +892,16 @@ void abi_StartRandomScriptWhenFlagged(void)
 /*
  * @routine 025B:4ED PushPlayerWhenFlagged
  * @run 70:B4ED
- * WHAT IT DOES: When OBJ_3778 is set, pushes the player: zPlayerPush $10 and zPushX $FF60.
+ * WHAT IT DOES: When OBJ_WORK_L is set, pushes the player: zPlayerPush $10 and zPushX $FF60.
  * HOW: A load and three stores.
  * WAITS: no.
- * Entry: X object. Exit: A $60 when set; otherwise N and Z from OBJ_3778 (l8_push_player_exit_shim).
+ * Entry: X object. Exit: A $60 when set; otherwise N and Z from OBJ_WORK_L (l8_push_player_exit_shim).
  */
 L8Arm PushPlayerWhenFlagged(uint8_t slot)
 {
     L8Arm r = { 0 };
 
-    r.first = RD8(OBJ->f3778[slot]);
+    r.first = RD8(OBJ->work_l[slot]);
     if (r.first == 0) {
         r.arm = PUSH_OFF;
         return r;
@@ -930,7 +930,7 @@ void abi_PushPlayerWhenFlagged(void)
 /*
  * @routine 025B:4FF HitSoundThenSpawnPieces
  * @run 70:B4FF
- * WHAT IT DOES: When the object's hits taken reach 5, plays sound $75 and sets OBJ_3828 to $10. While OBJ_3828 runs it counts down and, whenever the wave counter's low three bits are 0, starts an object of type $2F in a free slot of $20 to $3F at the object's place with OBJ_34B8 1.
+ * WHAT IT DOES: When the object's hits taken reach 5, plays sound $75 and sets OBJ_WORK_N to $10. While OBJ_WORK_N runs it counts down and, whenever the wave counter's low three bits are 0, starts an object of type $2F in a free slot of $20 to $3F at the object's place with OBJ_WORK_D 1.
  * HOW: SoundCommand, FindFreeSlotFrom20, StartObjectAtPlace.
  * WAITS: no.
  * Entry: X object, Y kept for the sound. Exit: as the last instruction that ran (l8_hit_sound_spawn_exit_shim).
@@ -945,14 +945,14 @@ L8St12HitArm HitSoundThenSpawnPieces(uint8_t slot, uint8_t y_entry)
         jsr_push(0xB50B);
         r.call = SoundCommand(0x75, slot, y_entry);
         jsr_pop();
-        WR8(OBJ->f3828[slot], 0x10);
+        WR8(OBJ->work_n[slot], 0x10);
     }
-    r.timer = RD8(OBJ->f3828[slot]);
+    r.timer = RD8(OBJ->work_n[slot]);
     if (r.timer == 0) {
         r.arm = HIT_IDLE;
         return r;
     }
-    r.counted = DEC8(OBJ->f3828[slot]);
+    r.counted = DEC8(OBJ->work_n[slot]);
     r.wave = RD8(ZP->wave_counter);
     if ((r.wave & 0x07) != 0) {
         r.arm = HIT_COUNTED;
@@ -1063,7 +1063,7 @@ void abi_EnterState0BWhenFlagged(void)
 /*
  * @routine 025B:56F StartPieceAtTopLeft
  * @run 70:B56F
- * WHAT IT DOES: Loads the object's record, clears slot $18, starts an object of type $28 there at the object's place, moves the new object's source to X $003C, Y $0030 with X speed $80 (OBJ_VX_LO), OBJ_34B8 4 and OBJ_3720 1.
+ * WHAT IT DOES: Loads the object's record, clears slot $18, starts an object of type $28 there at the object's place, moves the new object's source to X $003C, Y $0030 with X speed $80 (OBJ_VX_LO), OBJ_WORK_D 4 and OBJ_WORK_K 1.
  * HOW: LoadObjectRecord, ClearObjectInY, StartObjectAtPlace, stores.
  * WAITS: no.
  * Entry: X object. Exit: A 1, Y $18, C from the record (l8_top_left_exit_shim).
@@ -1087,7 +1087,7 @@ L8Arm StartPieceAtTopLeft(uint8_t slot)
     WR8(OBJ->y_lo[slot], 0x30);
     WR8(OBJ->vx_lo[slot], 0x80);
     WR8(OBJ->f34b8[slot], 0x04);
-    WR8(OBJ->f3720[slot], 0x01);
+    WR8(OBJ->work_k[slot], 0x01);
     return r;
 }
 
@@ -1109,7 +1109,7 @@ void abi_StartPieceAtTopLeft(void)
 /*
  * @routine 025B:59C CountDownThenStartScripts
  * @run 70:B59C
- * WHAT IT DOES: Counts the 16-bit timer OBJ_34B8:OBJ_3510 down; at zero starts scripts $84 (slot 5) and $86 (slot 4) as kind 1, clears OBJ_3720, sets OBJ_3510 $60 and goes to the next state.
+ * WHAT IT DOES: Counts the 16-bit timer OBJ_WORK_D:OBJ_WORK_E down; at zero starts scripts $84 (slot 5) and $86 (slot 4) as kind 1, clears OBJ_WORK_K, sets OBJ_WORK_E $60 and goes to the next state.
  * HOW: A 16-bit subtract in memory, an ORA, StartScriptSlotKind1 twice between a PHX and a PLX.
  * WAITS: no.
  * Entry: X object. Exit: as the last instruction that ran (l8_start_scripts_exit_shim).
@@ -1120,14 +1120,14 @@ L8Arm CountDownThenStartScripts(uint8_t slot)
     uint8_t low, high;
     Sum diff;
 
-    low = RD8(OBJ->f3510[slot]);
+    low = RD8(OBJ->work_e[slot]);
     diff = sub_bytes(low, 1, true);
-    WR8(OBJ->f3510[slot], diff.value);
+    WR8(OBJ->work_e[slot], diff.value);
     high = RD8(OBJ->f34b8[slot]);
     diff = sub_bytes(high, 0, diff.carry);
     WR8(OBJ->f34b8[slot], diff.value);
     r.sum = diff;
-    r.first = RD8(OBJ->f3510[slot]);
+    r.first = RD8(OBJ->work_e[slot]);
     if ((uint8_t)(diff.value | r.first) != 0) {
         r.arm = SCRIPTS_COUNTING;
         return r;
@@ -1140,8 +1140,8 @@ L8Arm CountDownThenStartScripts(uint8_t slot)
     StartScriptSlotKind1(0x86, 4);
     jsr_pop();
     slot = pull8();
-    WR8(OBJ->f3720[slot], 0);
-    WR8(OBJ->f3510[slot], 0x60);
+    WR8(OBJ->work_k[slot], 0);
+    WR8(OBJ->work_e[slot], 0x60);
     r.second = INC8(OBJ->state[slot]);
     r.arm = SCRIPTS_STARTED;
     return r;
@@ -1167,7 +1167,7 @@ void abi_CountDownThenStartScripts(void)
 /*
  * @routine 025B:5CE CountDownWithSound77
  * @run 70:B5CE
- * WHAT IT DOES: Counts OBJ_3510 down; at $35 plays sound $77; at zero sets OBJ_3510 $80 and goes to the next state.
+ * WHAT IT DOES: Counts OBJ_WORK_E down; at $35 plays sound $77; at zero sets OBJ_WORK_E $80 and goes to the next state.
  * HOW: A memory decrement, a compare, SoundCommand.
  * WAITS: no.
  * Entry: X object, Y kept for the sound. Exit: as the last instruction that ran (l8_sound77_exit_shim).
@@ -1176,14 +1176,14 @@ L8St12Sound77Arm CountDownWithSound77(uint8_t slot, uint8_t y_entry)
 {
     L8St12Sound77Arm r = { 0 };
 
-    r.timer = DEC8(OBJ->f3510[slot]);
+    r.timer = DEC8(OBJ->work_e[slot]);
     if (r.timer == 0) {
-        WR8(OBJ->f3510[slot], 0x80);
+        WR8(OBJ->work_e[slot], 0x80);
         r.counted = INC8(OBJ->state[slot]);
         r.arm = S77_ZERO;
         return r;
     }
-    r.now = RD8(OBJ->f3510[slot]);
+    r.now = RD8(OBJ->work_e[slot]);
     if (r.now != 0x35) {
         r.arm = S77_COUNTING;
         return r;
@@ -1225,7 +1225,7 @@ void abi_CountDownWithSound77(void)
 /*
  * @routine 025B:617 StartScriptAtTimerMarks
  * @run 70:B617
- * WHAT IT DOES: When OBJ_3510 is 0 sets OBJ_3720. Otherwise counts it down, and when it equals one of the eight marks at $B642 starts the script of the same index in the table at $B64A as kind 1 in slot 5.
+ * WHAT IT DOES: When OBJ_WORK_E is 0 sets OBJ_WORK_K. Otherwise counts it down, and when it equals one of the eight marks at $B642 starts the script of the same index in the table at $B64A as kind 1 in slot 5.
  * HOW: A loop over the marks, StartScriptSlotKind1 between a PHX and a PLX.
  * WAITS: no.
  * Entry: X object. Exit: as the last instruction that ran (l8_timer_marks_exit_shim).
@@ -1235,15 +1235,15 @@ L8St12MarksArm StartScriptAtTimerMarks(uint8_t slot)
     L8St12MarksArm r = { 0 };
     uint8_t y;
 
-    r.first = RD8(OBJ->f3510[slot]);
+    r.first = RD8(OBJ->work_e[slot]);
     if (r.first == 0) {
-        WR8(OBJ->f3720[slot], 1);
+        WR8(OBJ->work_k[slot], 1);
         r.arm = MARKS_IDLE;
         return r;
     }
     y = 0;
     for (;;) {
-        r.timer = RD8(OBJ->f3510[slot]);
+        r.timer = RD8(OBJ->work_e[slot]);
         r.mark = rd8((uint16_t)(0xB642 + y));
         r.at = y;
         if (r.timer == r.mark) {
@@ -1252,7 +1252,7 @@ L8St12MarksArm StartScriptAtTimerMarks(uint8_t slot)
         y++;
         r.next = y;
         if (y >= 8) {
-            r.counted = DEC8(OBJ->f3510[slot]);
+            r.counted = DEC8(OBJ->work_e[slot]);
             r.arm = MARKS_NONE;
             return r;
         }
@@ -1264,7 +1264,7 @@ L8St12MarksArm StartScriptAtTimerMarks(uint8_t slot)
     jsr_pop();
     slot = pull8();
     r.x = slot;
-    r.counted = DEC8(OBJ->f3510[slot]);
+    r.counted = DEC8(OBJ->work_e[slot]);
     r.arm = MARKS_STARTED;
     return r;
 }
@@ -1295,7 +1295,7 @@ void abi_StartScriptAtTimerMarks(void)
 /*
  * @routine 025B:652 SpinOutThenLeave
  * @run 70:B652
- * WHAT IT DOES: Moves the object on a circle of radius $0200 by OBJ_35C0 (turning on 4 a frame) while it steps the animation list at $B6A4; when the list ends it starts the next phase: slot $10's state up, OBJ_3778 1, OBJ_3250 2, slot 0's OBJ_3510 2, the byte at $3BF0 2, OBJ_3568 of slot 0 0, OBJ_35C0 $C0, OBJ_3510 $20, OBJ_3670 1 and the next state.
+ * WHAT IT DOES: Moves the object on a circle of radius $0200 by OBJ_WORK_G (turning on 4 a frame) while it steps the animation list at $B6A4; when the list ends it starts the next phase: slot $10's state up, OBJ_WORK_L 1, OBJ_HITBOX_ON 2, slot 0's OBJ_WORK_E 2, the byte at $3BF0 2, OBJ_WORK_F of slot 0 0, OBJ_WORK_G $C0, OBJ_WORK_E $20, OBJ_WORK_I 1 and the next state.
  * HOW: SetVelocityFromAngle, ApplyVelocity, an add, StepObjectFrames and stores.
  * WAITS: no.
  * Entry: X object, Y kept unless the step sets it. Exit: as the last instruction that ran (l8_spin_out_exit_shim). The byte at $3BF0 keeps its address form until it has a name.
@@ -1324,14 +1324,14 @@ L8Arm SpinOutThenLeave(uint8_t slot, uint8_t y_entry)
         return r;
     }
     INC8(OBJ->state[0x10]);
-    WR8(OBJ->f3778[slot], 1);
+    WR8(OBJ->work_l[slot], 1);
     WR8(OBJ->hitbox_on[slot], 2);
-    WR8(OBJ->f3510[0], 2);
+    WR8(OBJ->work_e[0], 2);
     wr8(0x3BF0, 2);
     WR8(OBJ->f3568[0], 0);
     WR8(OBJ->f35c0[slot], 0xC0);
-    WR8(OBJ->f3510[slot], 0x20);
-    WR8(OBJ->f3670[slot], 1);
+    WR8(OBJ->work_e[slot], 0x20);
+    WR8(OBJ->work_i[slot], 1);
     r.second = INC8(OBJ->state[slot]);
     r.arm = SPIN_OUT_ENDED;
     return r;
@@ -1360,7 +1360,7 @@ void abi_SpinOutThenLeave(void)
 /*
  * @routine 025B:6E7 SpinOnCircle
  * @run 70:B6E7
- * WHAT IT DOES: Moves the object on a circle of radius $0180 by OBJ_35C0, turning on 2 a frame; when the angle wraps to 0 it jumps to X $00D5, Y $002F with the fractions $4C and $83.
+ * WHAT IT DOES: Moves the object on a circle of radius $0180 by OBJ_WORK_G, turning on 2 a frame; when the angle wraps to 0 it jumps to X $00D5, Y $002F with the fractions $4C and $83.
  * HOW: SetVelocityFromAngle, ApplyVelocity, an add, four stores.
  * WAITS: no.
  * Entry: X object. Exit: as the last instruction that ran (l8_spin_on_circle_exit_shim).
@@ -1416,7 +1416,7 @@ void abi_SpinOnCircle(void)
 /*
  * @routine 025B:761 StepListThenBurstAtFrame18
  * @run 70:B761
- * WHAT IT DOES: Steps the animation list at $B79A. When the graphic changes and the frame is $18, plays sound $42, clears slot $50 and starts an object of type $29 there at the object's place. When the list ends it sets OBJ_34B8 1, OBJ_3510 $80, OBJ_3670 3 and goes to the next state.
+ * WHAT IT DOES: Steps the animation list at $B79A. When the graphic changes and the frame is $18, plays sound $42, clears slot $50 and starts an object of type $29 there at the object's place. When the list ends it sets OBJ_WORK_D 1, OBJ_WORK_E $80, OBJ_WORK_I 3 and goes to the next state.
  * HOW: StepObjectFrames, SoundCommand, ClearObjectInY, StartObjectAtPlace.
  * WAITS: no.
  * Entry: X object, Y kept unless the step sets it. Exit: as the last instruction that ran (l8_burst18_exit_shim).
@@ -1428,8 +1428,8 @@ L8St12BurstArm StepListThenBurstAtFrame18(uint8_t slot, uint8_t y_entry)
     r.step = l8_list_step(slot, 0xB79A, 0xB76C, false, y_entry);
     if (r.step.step == FRAME_LIST_ENDED) {
         WR8(OBJ->f34b8[slot], 1);
-        WR8(OBJ->f3510[slot], 0x80);
-        WR8(OBJ->f3670[slot], 3);
+        WR8(OBJ->work_e[slot], 0x80);
+        WR8(OBJ->work_i[slot], 3);
         r.counted = INC8(OBJ->state[slot]);
         r.arm = BURST_ENDED;
         return r;
@@ -1491,7 +1491,7 @@ void abi_StepListThenBurstAtFrame18(void)
 /*
  * @routine 025B:7F5 HomeOnPointThenRingAndSound
  * @run 70:B7F5
- * WHAT IT DOES: Steps the animation list at $B6DA while it flies toward the point X $00E0, Y $0030 on a circle of radius $0100; once on it (within 3) plays sound $73, sets OBJ_3670 4 and OBJ_3510 $B0, starts list $83 on channel 5, restarts the animation, and goes to state $0B with OBJ_SUBSTATE 2.
+ * WHAT IT DOES: Steps the animation list at $B6DA while it flies toward the point X $00E0, Y $0030 on a circle of radius $0100; once on it (within 3) plays sound $73, sets OBJ_WORK_I 4 and OBJ_WORK_E $B0, starts list $83 on channel 5, restarts the animation, and goes to state $0B with OBJ_SUBSTATE 2.
  * HOW: StepObjectFrames, AngleToPoint, SetVelocityFromAngle, ApplyVelocity, two range tests, SoundCommand, StartListChannelKind2.
  * WAITS: no.
  * Entry: X object, Y kept unless the step sets it. Exit: as the last instruction that ran (l8_home_exit_shim).
@@ -1545,8 +1545,8 @@ L8St12HomeArm HomeOnPointThenRingAndSound(uint8_t slot, uint8_t y_entry)
     jsr_push(0xB844);
     r.call = SoundCommand(0x73, slot, y);
     jsr_pop();
-    WR8(OBJ->f3670[slot], 4);
-    WR8(OBJ->f3510[slot], 0xB0);
+    WR8(OBJ->work_i[slot], 4);
+    WR8(OBJ->work_e[slot], 0xB0);
     push8(slot);
     jsr_push(0xB856);
     StartListChannelKind2(0x83, 5);

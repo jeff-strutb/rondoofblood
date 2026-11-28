@@ -24,23 +24,23 @@ LoadObjectRecord:
     sta z:zTemp11
     cly
     lda (zTemp10),y
-    sta a:OBJ_3358,x
+    sta a:OBJ_WORK_C,x
     iny
     lda (zTemp10),y
-    sta a:OBJ_3300,x
+    sta a:OBJ_WORK_B,x
     iny
     lda (zTemp10),y
     sta a:OBJ_HEALTH,x
     iny
     lda (zTemp10),y
     and #$0F
-    sta a:OBJ_3250,x
+    sta a:OBJ_HITBOX_ON,x
     lda (zTemp10),y
     lsr a
     lsr a
     lsr a
     lsr a
-    sta a:OBJ_FIELDS_2EE0,x
+    sta a:OBJ_WORK_A,x
     iny
     lda (zTemp10),y
     sta a:OBJ_HITBOX_HALF_W,x

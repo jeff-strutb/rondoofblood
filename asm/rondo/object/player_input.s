@@ -96,11 +96,11 @@ RichterAnimationTick_at0:
 ; @routine 01BB:67B RichterSetAnimation
 ; @run 6D:B67B
 ; WHAT IT DOES: Starts an animation from its first step.
-; HOW: The animation into OBJ_FIELDS_2EE0, step zero, and its first entry read.
+; HOW: The animation into OBJ_WORK_A, step zero, and its first entry read.
 ; WAITS: no.
 ; Entry: A animation. Exit: as RichterAnimationTick. Clobbers zTemp00-01.
 RichterSetAnimation:
-    sta a:OBJ_FIELDS_2EE0
+    sta a:OBJ_WORK_A
     stz a:OBJ_SCROLL_BAND
     bsr RichterAnimationPoint
     lda (zTemp00),y
@@ -122,11 +122,11 @@ RichterSetAnimation_at1:
 ; @routine 01BB:69C RichterAnimationPoint
 ; @run 6D:B69C
 ; WHAT IT DOES: Points zTemp00-01 at the list of the animation in play and gives Y twice the step in play.
-; HOW: OBJ_FIELDS_2EE0 doubled indexes AnimationLists; the step in OBJ_SCROLL_BAND doubled.
+; HOW: OBJ_WORK_A doubled indexes AnimationLists; the step in OBJ_SCROLL_BAND doubled.
 ; WAITS: no.
 ; Entry: nothing. Exit: A and Y twice the step, N and Z from it, C the step's bit 7. X and V kept.
 RichterAnimationPoint:
-    lda a:OBJ_FIELDS_2EE0
+    lda a:OBJ_WORK_A
     asl a
     tay
     lda a:AnimationLists,y
@@ -589,7 +589,7 @@ MariaAnimationTick_at0:
 ; WAITS: no.
 ; Entry, exit: as RichterSetAnimation.
 MariaSetAnimation:
-    sta a:OBJ_FIELDS_2EE0
+    sta a:OBJ_WORK_A
 MariaSetAnimation_at4:
     stz a:OBJ_SCROLL_BAND
 MariaSetAnimation_at2:
@@ -633,7 +633,7 @@ MariaNoteItemPress_at0:
 ; WAITS: no.
 ; Entry, exit: as RichterAnimationPoint.
 MariaAnimationPoint:
-    lda a:OBJ_FIELDS_2EE0
+    lda a:OBJ_WORK_A
     asl a
     tay
     lda a:AnimationLists+$322,y

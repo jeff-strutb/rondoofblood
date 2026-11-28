@@ -156,7 +156,7 @@ RichterApplyMoveAndPush_at0:
 
 ; @routine 01B9:04B RichterFrame
 ; @run 6D:A04B
-; WHAT IT DOES: One frame of Richter: the pad, forced while OBJ_3510 counts down; the
+; WHAT IT DOES: One frame of Richter: the pad, forced while OBJ_WORK_E counts down; the
 ; pad's overrides; a spike while pushed; the state's frame; the turn window and the item's
 ; hearts; the animation's sound on a change; its hitbox.
 ; HOW: The animation before and after are compared; the hitbox index comes from the table
@@ -166,14 +166,14 @@ RichterApplyMoveAndPush_at0:
 ; of the hitbox index; Y and V as RichterAnimationSound left them on a change, else as the
 ; state's frame did.
 RichterFrame:
-    lda a:OBJ_3510
+    lda a:OBJ_WORK_E
     beq RichterFrame_at0
     lda z:zPadHeld
     sta z:zPadPrevious
-    lda a:OBJ_3568
+    lda a:OBJ_WORK_F
     sta z:zPadHeld
     sta z:zPadPressed
-    dec a:OBJ_3510
+    dec a:OBJ_WORK_E
     bne RichterFrame_at1
 RichterFrame_at0:
     stz a:PlayerByte3BF0
@@ -356,8 +356,8 @@ RichterStartClear:
     jsr RichterClearWork
     jsr RichterClearKeepPlace
     lda #$01
-    sta a:OBJ_3250
-    sta a:OBJ_3828
+    sta a:OBJ_HITBOX_ON
+    sta a:OBJ_WORK_N
     lda #$01
     sta a:OBJ_ANIM_TIMER
 
@@ -585,9 +585,9 @@ RichterHitReact:
     lda a:HitInvulnerableFrames,x
     sta a:OBJ_ANIM_TIMER
     lda a:OBJ_STATE
-    sta a:OBJ_35C0
+    sta a:OBJ_WORK_G
     lda a:OBJ_SUBSTATE
-    sta a:OBJ_3618
+    sta a:OBJ_WORK_H
     lda #$09
     sta a:OBJ_STATE
     stz a:OBJ_SUBSTATE
@@ -664,7 +664,7 @@ RichterStandStep1_at2:
     jmp RichterStand
 RichterStandStep1_at4:
     lda #$06
-    sta a:OBJ_FIELDS_2EE0
+    sta a:OBJ_WORK_A
     jsr RichterAnimationTick
     lda #$02
     sta a:OBJ_STATE
@@ -1029,7 +1029,7 @@ RichterToFall:
     lda #$03
     sta a:OBJ_VY_HI
     lda #$04
-    sta a:OBJ_34B8
+    sta a:OBJ_WORK_D
     jsr RichterStopX
 
 ; @routine 01B9:542 RichterPadOverridesOff
@@ -1203,7 +1203,7 @@ RichterToHurtAir:
     jsr RichterJumpSpeed
     lda #$FF
     sta a:OBJ_ANIM_TIMER
-    stz a:OBJ_3250
+    stz a:OBJ_HITBOX_ON
     lda #$23
     jsr RichterSetAnimation
     lda #$65
@@ -1283,7 +1283,7 @@ RichterReact11:
     lda #$11
     sta a:OBJ_KIND+5
     lda #$01
-    sta a:OBJ_3250
+    sta a:OBJ_HITBOX_ON
     lda #$60
     sta a:OBJ_ANIM_TIMER
     rts
@@ -1440,7 +1440,7 @@ RichterLiftThree_at0:
 ; crouch. Otherwise the animation steps, and the pad held his way keeps him walking; held the
 ; other way with button II, he steps back; else he stands.
 ; HOW: RichterReadColumns and RichterFloorCheck, again after OBJ_Y_LO is stepped down; the
-; checks as in the stand's first step. OBJ_FIELDS_2EE0 0 to walk, $32 to step back.
+; checks as in the stand's first step. OBJ_WORK_A 0 to walk, $32 to step back.
 ; WAITS: no.
 ; Entry: nothing. Exit: as the transition taken, with what the checks before it left.
 RichterStateWalk:
@@ -1483,7 +1483,7 @@ RichterStateWalk_at6:
     bbr7 zPadHeld,RichterStateWalk_at7
 RichterStateWalk_at8:
     lda #$00
-    sta a:OBJ_FIELDS_2EE0
+    sta a:OBJ_WORK_A
     jmp RichterSpeedWalk
 RichterStateWalk_at7:
     tst #$02,z:zPadHeld
@@ -1496,7 +1496,7 @@ RichterStateWalk_at9:
     bbr7 zPadHeld,RichterStand
 RichterStateWalk_at10:
     lda #$32
-    sta a:OBJ_FIELDS_2EE0
+    sta a:OBJ_WORK_A
     jmp RichterSpeedBackstep
 
 ; @routine 01B9:7AC RichterStand
@@ -1694,7 +1694,7 @@ RichterCrouchAttack:
 ; runs.
 ; WAITS: no.
 ; Entry: nothing. Exit: falling, as $A9DD. Stood, as RichterAnimationTick, state 0 and
-; OBJ_FIELDS_2EE0 3. Waiting, as RichterAnimationRunning, A $A8 and N set. Down, A $0E, N and Z
+; OBJ_WORK_A 3. Waiting, as RichterAnimationRunning, A $A8 and N set. Down, A $0E, N and Z
 ; clear, the rest as RichterAnimationRunning. With what the checks before left.
 RichterCrouchStep1:
     jsr RichterReadColumns
@@ -1724,7 +1724,7 @@ RichterCrouchStep1_at3:
     lda #$00
     sta a:OBJ_STATE
     lda #$03
-    sta a:OBJ_FIELDS_2EE0
+    sta a:OBJ_WORK_A
     jmp RichterAnimationTick
 
 ; @routine 01B9:907 RichterCrouchStep3
@@ -1894,7 +1894,7 @@ RichterEndItemCrash:
     lda a:RichterCrashEndFrames,y
     sta a:OBJ_FRAME
     lda a:RichterCrashEndAnimations,y
-    sta a:OBJ_FIELDS_2EE0
+    sta a:OBJ_WORK_A
     lda #$FF
     sta a:OBJ_HURT_TIMER
     stz a:OBJ_SUBSTATE
@@ -1906,7 +1906,7 @@ RichterEndItemCrash:
 ; he is kept unhittable and the timer counts down, with a sound as it starts and another as it
 ; wears off, the flashing scripts at set marks, and his hit timer and flash back to 1 at the end.
 ; HOW: PlayerInvincibleTimer; zWaveCounter's low two bits pick the frame. The marks and their
-; scripts are two tables of six. OBJ_ANIM_TIMER $80 holds hits off; OBJ_3828 2 while it runs.
+; scripts are two tables of six. OBJ_ANIM_TIMER $80 holds hits off; OBJ_WORK_N 2 while it runs.
 ; WAITS: no.
 ; Entry: nothing. Exit: off, A 0, Z set. Not this frame, A the frame's bits, N and Z from them.
 ; Otherwise X, Y, C and V as a sound command left them, C from comparing A with $10 when the
@@ -1920,7 +1920,7 @@ RichterInvincibleTick_at0:
     stz a:PlayerByte3BE8
     stz a:PlayerByte3BE9
     lda #$02
-    sta a:OBJ_3828
+    sta a:OBJ_WORK_N
     lda z:zWaveCounter
     and #$03
     beq RichterInvincibleTick_at1
@@ -1956,7 +1956,7 @@ RichterInvincibleTick_at5:
 RichterInvincibleTick_at4:
     lda #$01
     sta a:OBJ_ANIM_TIMER
-    sta a:OBJ_3828
+    sta a:OBJ_WORK_N
     rts
 
 ; @routine 01BD:023 RichterLeapClearingOthers
@@ -2200,7 +2200,7 @@ MariaTurnOnPress_at2:
 ; @run 6D:A97F
 ; WHAT IT DOES: Her turn in the air: in animations $0A and $14 as MariaTurnOnPress; otherwise a press against the
 ; way she moves turns her and sets her air speed, counting the turn in zFieldC6.
-; HOW: OBJ_FIELDS_2EE0; the sign of OBJ_VX_HI picks the press looked for; the speed from her table at $A9C1.
+; HOW: OBJ_WORK_A; the sign of OBJ_VX_HI picks the press looked for; the speed from her table at $A9C1.
 ; Untraced: everything for a speed to the left ($A9A0 to $A9AC), and the return when she faces left while moving
 ; right ($A992); no script turned her in the air that way.
 ; WAITS: no.
@@ -2208,7 +2208,7 @@ MariaTurnOnPress_at2:
 ; from it or the press, C from comparing the animation with $14; a turn, A the speed's high byte, Y twice the
 ; facing, C clear; V bit 6 of the pad after a press was looked at. X kept.
 MariaAirTurn:
-    lda a:OBJ_FIELDS_2EE0
+    lda a:OBJ_WORK_A
     cmp #$0A
     beq MariaTurnOnPress
     cmp #$14
@@ -2300,7 +2300,7 @@ MariaInvincibleTick_at0:
     stz a:PlayerByte3BE8
     stz a:PlayerByte3BE9
     lda #$02
-    sta a:OBJ_3828
+    sta a:OBJ_WORK_N
     lda z:zWaveCounter
     and #$03
     beq MariaInvincibleTick_at1
@@ -2336,5 +2336,5 @@ MariaInvincibleTick_at5:
 MariaInvincibleTick_at4:
     lda #$01
     sta a:OBJ_ANIM_TIMER
-    sta a:OBJ_3828
+    sta a:OBJ_WORK_N
     rts

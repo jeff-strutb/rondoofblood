@@ -985,7 +985,7 @@ void abi_LiftObjectsBySlowFraction(void)
  * @routine 072C:0E9 ShiftObjectsX
  * @run 70:B8E9
  * WHAT IT DOES: On every second frame of the object's life timer, moves every object slot from $10 to $26
- * along X by a signed 16-bit step from the table at $B912, picked by the object's OBJ_37D0 (0 or 1).
+ * along X by a signed 16-bit step from the table at $B912, picked by the object's OBJ_WORK_M (0 or 1).
  * HOW: The table index is kept in X while the loop runs (X is pushed and pulled).
  * WAITS: no.
  * Entry: X object. Exit: odd timer: A 1, N 0, Z 0; else A the last high byte, Y $27, C 1, N and Z from X, V
@@ -1003,7 +1003,7 @@ ObjArm ShiftObjectsX(uint8_t slot)
     if (r.first != 0) {
         return r;
     }
-    side = RD8(OBJ->f37d0[slot]);
+    side = RD8(OBJ->work_m[slot]);
     index = (uint8_t)(side << 1);
     push8(slot);
     for (other = 0x10; other < 0x27; other++) {
@@ -1051,7 +1051,7 @@ static Sum speed_x_add(uint8_t slot, uint16_t table, uint8_t index)
  * @routine 072C:09C OrbitingObject
  * @run 70:B89C
  * WHAT IT DOES: An object that circles: it shifts the others (ShiftObjectsX), sets its speed from its angle
- * (OBJ_3778) with a length of $0400, adds a drift word from the table at $B8E3 by its side (OBJ_37D0),
+ * (OBJ_WORK_L) with a length of $0400, adds a drift word from the table at $B8E3 by its side (OBJ_WORK_M),
  * moves, turns its angle on by a byte from the table at $B8E7, and when its X high byte reaches $FE or 2
  * it clears its OBJ_SUBSTATE flag.
  * HOW: SetVelocityFromAngle, ApplyVelocity, tables from the disc (bank 70).
@@ -1069,21 +1069,21 @@ ObjArm OrbitingObject(uint8_t slot)
     jsr_pop();
     WR8(ZP->temp00, 0);
     WR8(ZP->temp01, 4);
-    angle = RD8(OBJ->f3778[slot]);
+    angle = RD8(OBJ->work_l[slot]);
     jsr_push(0xB8AB);
     SetVelocityFromAngle(angle, slot);
     jsr_pop();
-    side = RD8(OBJ->f37d0[slot]);
+    side = RD8(OBJ->work_m[slot]);
     index = (uint8_t)(side << 1);
     speed_x_add(slot, 0xB8E3, index);
     jsr_push(0xB8C6);
     ApplyVelocity(slot);
     jsr_pop();
-    r.first = RD8(OBJ->f37d0[slot]);
-    angle = RD8(OBJ->f3778[slot]);
+    r.first = RD8(OBJ->work_m[slot]);
+    angle = RD8(OBJ->work_l[slot]);
     step = rd8((uint16_t)(0xB8E7 + r.first));
     r.sum = add_bytes(angle, step, false);
-    WR8(OBJ->f3778[slot], r.sum.value);
+    WR8(OBJ->work_l[slot], r.sum.value);
     r.second = RD8(OBJ->x_hi[slot]);
     if (r.second == 0xFE || r.second == 0x02) {
         WR8(OBJ->substate[slot], 0);
@@ -1112,8 +1112,8 @@ void abi_OrbitingObject(void)
  * @routine 072C:242 AccelerateAndSway
  * @run 70:BA42
  * WHAT IT DOES: A thing that falls and sways: its Y speed gains $002C, it moves, its X speed gains a drift
- * word from the table at $BA7C by its side (OBJ_37D0); when its counter OBJ_36C8 runs out it takes
- * OBJ_3670 3 and moves on one OBJ_SUBSTATE state.
+ * word from the table at $BA7C by its side (OBJ_WORK_M); when its counter OBJ_WORK_J runs out it takes
+ * OBJ_WORK_I 3 and moves on one OBJ_SUBSTATE state.
  * HOW: Adds, ApplyVelocity, DEC of the counter.
  * WAITS: no.
  * Entry: X object. Exit: counter not zero: N and Z from it, C and V from the X speed's add; zero: A 3, N and Z
@@ -1134,15 +1134,15 @@ ObjArm AccelerateAndSway(uint8_t slot)
     jsr_push(0xBA56);
     ApplyVelocity(slot);
     jsr_pop();
-    side = RD8(OBJ->f37d0[slot]);
+    side = RD8(OBJ->work_m[slot]);
     r.first = (uint8_t)(side << 1);
     r.sum = speed_x_add(slot, 0xBA7C, r.first);
-    r.second = DEC8(OBJ->f36c8[slot]);
+    r.second = DEC8(OBJ->work_j[slot]);
     r.arm = AS_COUNTING;
     if (r.second != 0) {
         return r;
     }
-    WR8(OBJ->f3670[slot], 3);
+    WR8(OBJ->work_i[slot], 3);
     r.third = INC8(OBJ->substate[slot]);
     r.arm = AS_NEXT;
     return r;
@@ -1179,7 +1179,7 @@ static FrameStep step_list(uint8_t slot, uint8_t low, uint8_t high, uint16_t ret
 /*
  * @routine 072C:280 StepThenCount
  * @run 70:BA80
- * WHAT IT DOES: Steps the animation list at $BA96; when the list ends, sets the counter OBJ_36C8 to $80 and
+ * WHAT IT DOES: Steps the animation list at $BA96; when the list ends, sets the counter OBJ_WORK_J to $80 and
  * moves on one OBJ_SUBSTATE state.
  * HOW: StepObjectFrames, then the stores.
  * WAITS: no.
@@ -1196,7 +1196,7 @@ ObjArm StepThenCount(uint8_t slot)
     if (r.step != FRAME_LIST_ENDED) {
         return r;
     }
-    WR8(OBJ->f36c8[slot], 0x80);
+    WR8(OBJ->work_j[slot], 0x80);
     r.first = INC8(OBJ->substate[slot]);
     r.arm = TC_ENDED;
     return r;
@@ -1220,7 +1220,7 @@ void abi_StepThenCount(void)
 /*
  * @routine 072C:329 StepThenStop
  * @run 70:BB29
- * WHAT IT DOES: Steps the animation list at $BB45; when the list ends, sets OBJ_3670 to 4, stops the Y
+ * WHAT IT DOES: Steps the animation list at $BB45; when the list ends, sets OBJ_WORK_I to 4, stops the Y
  * speed and moves on one OBJ_SUBSTATE state.
  * HOW: StepObjectFrames, then the stores.
  * WAITS: no.
@@ -1238,7 +1238,7 @@ ObjArm StepThenStop(uint8_t slot)
     if (r.step != FRAME_LIST_ENDED) {
         return r;
     }
-    WR8(OBJ->f3670[slot], 4);
+    WR8(OBJ->work_i[slot], 4);
     WR8(OBJ->vy_hi[slot], 0);
     WR8(OBJ->vy_lo[slot], 0);
     r.first = INC8(OBJ->substate[slot]);
@@ -1318,7 +1318,7 @@ void abi_StopVerticalSpeed(void)
 /*
  * @routine 072C:5AB JumpByStageStep
  * @run 70:BDAB
- * WHAT IT DOES: Goes to the code a table at $BDBD names for the stage's step counter OBJ_3670 slot $10.
+ * WHAT IT DOES: Goes to the code a table at $BDBD names for the stage's step counter OBJ_WORK_I slot $10.
  * HOW: The table's two bytes go to zTemp00-01 and the code is jumped through them.
  * WAITS: no.
  * Entry: nothing. Exit: as the code jumped to; A the high byte, Y the doubled step.
@@ -1328,7 +1328,7 @@ ObjArm JumpByStageStep(void)
     ObjArm r = { 0 };
     uint8_t low;
 
-    r.third = RD8(OBJ->f3670[0x10]);
+    r.third = RD8(OBJ->work_i[0x10]);
     r.second = (uint8_t)(r.third << 1);
     low = rd8((uint16_t)(0xBDBD + r.second));
     WR8(ZP->temp00, low);
@@ -1414,9 +1414,9 @@ void abi_StartPieceChain(void)
 /*
  * @routine 072C:053 StartPieceStreamA
  * @run 70:B853
- * WHAT IT DOES: Starts a stream of pieces from one of two sides: sound $88, OBJ_3670 1, OBJ_3828 2, frame $10;
- * the side (OBJ_37D0) is a random bit and picks the start position from a table at $B894 (four bytes a side);
- * then StartPieceChain, OBJ_3778 0 and the next OBJ_SUBSTATE state.
+ * WHAT IT DOES: Starts a stream of pieces from one of two sides: sound $88, OBJ_WORK_I 1, OBJ_WORK_N 2, frame $10;
+ * the side (OBJ_WORK_M) is a random bit and picks the start position from a table at $B894 (four bytes a side);
+ * then StartPieceChain, OBJ_WORK_L 0 and the next OBJ_SUBSTATE state.
  * HOW: SoundCommand, NextRandom, tables read from the disc (bank 70).
  * WAITS: no.
  * Entry: X object. Exit: N and Z from the new state, C 1 from the chain's loop, V as the random's add left it.
@@ -1429,14 +1429,14 @@ ObjArm StartPieceStreamA(uint8_t slot, uint8_t y)
     jsr_push(0xB858);
     SoundCommand(0x88, slot, y);
     jsr_pop();
-    WR8(OBJ->f3670[slot], 1);
-    WR8(OBJ->f3828[slot], 2);
+    WR8(OBJ->work_i[slot], 1);
+    WR8(OBJ->work_n[slot], 2);
     WR8(OBJ->frame[slot], 0x10);
     jsr_push(0xB86A);
     r.random = NextRandom();
     jsr_pop();
     side = (uint8_t)(r.random.value & 0x01);
-    WR8(OBJ->f37d0[slot], side);
+    WR8(OBJ->work_m[slot], side);
     r.first = (uint8_t)(side << 2);
     byte = rd8((uint16_t)(0xB895 + r.first));
     WR8(OBJ->x_hi[slot], byte);
@@ -1449,7 +1449,7 @@ ObjArm StartPieceStreamA(uint8_t slot, uint8_t y)
     jsr_push(0xB88D);
     r.sub = obj_sub(StartPieceChain(slot));
     jsr_pop();
-    WR8(OBJ->f3778[slot], 0);
+    WR8(OBJ->work_l[slot], 0);
     r.third = INC8(OBJ->substate[slot]);
     return r;
 }
@@ -1472,7 +1472,7 @@ void abi_StartPieceStreamA(void)
 /*
  * @routine 072C:116 StartPieceStreamB
  * @run 70:B916
- * WHAT IT DOES: Starts a stream of pieces from the top: OBJ_3828 2, sound $89, animation reset, X 0 with a
+ * WHAT IT DOES: Starts a stream of pieces from the top: OBJ_WORK_N 2, sound $89, animation reset, X 0 with a
  * random low byte, Y $0110, StartPieceChain, then random X and Y speeds from tables at $B970 and $B978 (two
  * bytes each, four of them) and the next OBJ_SUBSTATE state; when the object is on the player's left
  * (SideOfPlayer bit 0) its X speed is reversed.
@@ -1487,7 +1487,7 @@ ObjArm StartPieceStreamB(uint8_t slot, uint8_t y)
     RandomResult random;
     uint8_t picked, byte;
 
-    WR8(OBJ->f3828[slot], 2);
+    WR8(OBJ->work_n[slot], 2);
     jsr_push(0xB920);
     SoundCommand(0x89, slot, y);
     jsr_pop();
@@ -1615,9 +1615,9 @@ void abi_StepFallingPieceStream(void)
 /*
  * @routine 072C:1F0 StartPieceStreamC
  * @run 70:B9F0
- * WHAT IT DOES: Starts a stream of pieces from the bottom: OBJ_3828 3, OBJ_3510 0, a random side (OBJ_37D0)
+ * WHAT IT DOES: Starts a stream of pieces from the bottom: OBJ_WORK_N 3, OBJ_WORK_E 0, a random side (OBJ_WORK_M)
  * picks X from the table at $BA3E and the X speed from $BA40; Y is $0110; StartPieceChain; Y speed $F7;
- * frame $80, animation reset, OBJ_3670 2, OBJ_36C8 $30 and the next OBJ_SUBSTATE state.
+ * frame $80, animation reset, OBJ_WORK_I 2, OBJ_WORK_J $30 and the next OBJ_SUBSTATE state.
  * HOW: NextRandom, tables from the disc (bank 70).
  * WAITS: no.
  * Entry: X object. Exit: N and Z from the new state, C 1 from the chain's loop, V as the random's add left it.
@@ -1627,13 +1627,13 @@ ObjArm StartPieceStreamC(uint8_t slot)
     ObjArm r = { 0 };
     uint8_t side, byte;
 
-    WR8(OBJ->f3828[slot], 3);
-    WR8(OBJ->f3510[slot], 0);
+    WR8(OBJ->work_n[slot], 3);
+    WR8(OBJ->work_e[slot], 0);
     jsr_push(0xB9FB);
     r.random = NextRandom();
     jsr_pop();
     r.first = (uint8_t)(r.random.value & 0x01);
-    WR8(OBJ->f37d0[slot], r.first);
+    WR8(OBJ->work_m[slot], r.first);
     byte = rd8((uint16_t)(0xBA3E + r.first));
     WR8(OBJ->x_lo[slot], byte);
     WR8(OBJ->x_hi[slot], 0);
@@ -1642,7 +1642,7 @@ ObjArm StartPieceStreamC(uint8_t slot)
     jsr_push(0xBA17);
     r.sub = obj_sub(StartPieceChain(slot));
     jsr_pop();
-    side = RD8(OBJ->f37d0[slot]);
+    side = RD8(OBJ->work_m[slot]);
     r.second = side;
     byte = rd8((uint16_t)(0xBA40 + side));
     WR8(OBJ->vx_hi[slot], byte);
@@ -1650,8 +1650,8 @@ ObjArm StartPieceStreamC(uint8_t slot)
     WR8(OBJ->frame[slot], 0x80);
     WR8(OBJ->anim_step[slot], 0);
     WR8(OBJ->anim_timer[slot], 0);
-    WR8(OBJ->f3670[slot], 2);
-    WR8(OBJ->f36c8[slot], 0x30);
+    WR8(OBJ->work_i[slot], 2);
+    WR8(OBJ->work_j[slot], 0x30);
     r.third = INC8(OBJ->substate[slot]);
     return r;
 }
@@ -1674,8 +1674,8 @@ void abi_StartPieceStreamC(void)
  * @run 70:BA9F
  * WHAT IT DOES: An object that sheds pieces while it plays its animation (list $BAE6): when the list ends it
  * moves on one OBJ_SUBSTATE state; otherwise, every fourth frame of its life timer, once its animation step is
- * $10 or more, on frame $13 and while OBJ_3510 is under 4, it starts an object of kind $26 at its place in the
- * first free slot from $20, copies its facing and gives it the count OBJ_3510, which then goes up one.
+ * $10 or more, on frame $13 and while OBJ_WORK_E is under 4, it starts an object of kind $26 at its place in the
+ * first free slot from $20, copies its facing and gives it the count OBJ_WORK_E, which then goes up one.
  * HOW: StepObjectFrames, FindFreeSlotFrom20, StartObjectAtPlace.
  * Untraced: one byte.
  * WAITS: no.
@@ -1710,7 +1710,7 @@ ObjArm StepPieceEmitter(uint8_t slot)
     if (r.fourth != 0x13) {
         return r;
     }
-    r.fifth = RD8(OBJ->f3510[slot]);
+    r.fifth = RD8(OBJ->work_e[slot]);
     r.arm = PE_COUNT;
     if (r.fifth >= 4) {
         return r;
@@ -1729,9 +1729,9 @@ ObjArm StepPieceEmitter(uint8_t slot)
     jsr_pop();
     facing = RD8(OBJ->facing_left[slot]);
     WR8(OBJ->facing_left[found_slot], facing);
-    count = RD8(OBJ->f3510[slot]);
+    count = RD8(OBJ->work_e[slot]);
     WR8(OBJ->life_timer[found_slot], count);
-    r.ninth = INC8(OBJ->f3510[slot]);
+    r.ninth = INC8(OBJ->work_e[slot]);
     r.arm = PE_SHOT;
     return r;
 }
@@ -2695,9 +2695,9 @@ void abi_StepThenMusicAgain(void)
 /*
  * @routine 072B:3DB FaceByVelocityAndCatch
  * @run 70:B3DB
- * WHAT IT DOES: The object faces the way it moves (facing is the X speed's sign bit turned round) and its OBJ_SPRITE_FLIP is cleared; it is then set to $80 when the stage's flag word (OBJ_3828 of slot
+ * WHAT IT DOES: The object faces the way it moves (facing is the X speed's sign bit turned round) and its OBJ_SPRITE_FLIP is cleared; it is then set to $80 when the stage's flag word (OBJ_WORK_N of slot
  * $10) has the bit the Y speed's direction names (1 for falling, 2 for rising), the object is on the first screen row and its Y low byte is from $74 to $AF.
- * HOW: Shifts through carry for the sign bits, an AND with the byte at $3838 (OBJ_3828 slot $10), compares.
+ * HOW: Shifts through carry for the sign bits, an AND with the byte at $3838 (OBJ_WORK_N slot $10), compares.
  * WAITS: no.
  * Entry: X object. Exit: the last AND, compare or load; C bit 6 of the Y speed.
  */
@@ -2713,7 +2713,7 @@ ObjArm FaceByVelocityAndCatch(uint8_t slot)
     r.third = RD8(OBJ->vy_hi[slot]);
     r.fourth = (uint8_t)((r.third >> 7) & 0x01);
     mask = (uint8_t)(r.fourth + 1);
-    r.fifth = RD8(OBJ->f3828[0x10]);
+    r.fifth = RD8(OBJ->work_n[0x10]);
     r.sixth = (uint8_t)(mask & r.fifth);
     r.arm = FV_NO_MASK;
     if (r.sixth == 0) {
@@ -2898,7 +2898,7 @@ static void abi_jump_exit(Jump jump)
 
 /*
  * DrawTilePiece's three tables in each of the 24 overlays that hold it at $A882 (the same instructions in all, only these
- * operands differ, read from the disc): the items by OBJ_3510, the rows by OBJ_3510, the entries by row plus OBJ_HIT_TAKEN.
+ * operands differ, read from the disc): the items by OBJ_WORK_E, the rows by OBJ_WORK_E, the entries by row plus OBJ_HIT_TAKEN.
  * TilePieceInRange at $A860 is the same bytes in all 24, so its C runs whichever is loaded; it and DrawTilePiece go to
  * the tables of the copy resident at $A882.
  */
@@ -2949,7 +2949,7 @@ static ObjArm piece_table_entry_at(uint8_t slot, PieceTables tables)
 
     r.first = RD8(OBJ->f33b0[slot]);
     WR8(ZP->temp00, r.first);
-    r.second = RD8(OBJ->f3510[slot]);
+    r.second = RD8(OBJ->work_e[slot]);
     r.third = rd8((uint16_t)(tables.rows + r.second));
     r.fourth = (uint8_t)(r.third << 4);
     row = RD8(ZP->temp00);
@@ -3004,8 +3004,8 @@ void abi_BitMaskFromIndex072A(void)
  * @routine 072A:082 DrawTilePiece072A
  * @run 70:A882
  * @stop A8A8
- * WHAT IT DOES: Draws the object's tile script (the item the table at $AE97 gives by OBJ_3510, plus OBJ_34B8), then looks in the table at $AEA4 (the row $AE98 gives
- * by OBJ_3510, plus OBJ_HIT_TAKEN) and goes on to the code at $A8A8 when the entry is not zero, else to the return at $A8ED (072A:0ED).
+ * WHAT IT DOES: Draws the object's tile script (the item the table at $AE97 gives by OBJ_WORK_E, plus OBJ_WORK_D), then looks in the table at $AEA4 (the row $AE98 gives
+ * by OBJ_WORK_E, plus OBJ_HIT_TAKEN) and goes on to the code at $A8A8 when the entry is not zero, else to the return at $A8ED (072A:0ED).
  * HOW: DrawTileScript, a table read (bank 70), then a tail jump into the original bytes at $A8A8 (never run in a script).
  * WAITS: no.
  * Entry: X object. Exit: entry zero: as the table read; else the jump's.
@@ -3015,7 +3015,7 @@ static ObjArm draw_tile_piece_at(uint8_t slot, PieceTables tables)
     ObjArm r = { 0 };
     uint8_t item;
 
-    r.first = RD8(OBJ->f3510[slot]);
+    r.first = RD8(OBJ->work_e[slot]);
     item = rd8((uint16_t)(tables.items + r.first));
     r.sum = add_bytes(item, RD8(OBJ->f34b8[slot]), false);
     jsr_push(0xA890);
@@ -3133,8 +3133,8 @@ void abi_TilePieceInRange072A(void)
  * @run 70:A81D
  * @stop A855
  * WHAT IT DOES: A piece of the scenery drawn from a tile script. In state 0 the object is cleared when the bit its OBJ_START_ARG names is set in zField8F; otherwise it loads
- * its record, takes OBJ_3510 as OBJ_START_ARG times 16, copies two bytes of the table at $AE95 into its hit box and draws the tile script the table's third byte (plus
- * OBJ_34B8) names. In later states TilePieceInRange072A.
+ * its record, takes OBJ_WORK_E as OBJ_START_ARG times 16, copies two bytes of the table at $AE95 into its hit box and draws the tile script the table's third byte (plus
+ * OBJ_WORK_D) names. In later states TilePieceInRange072A.
  * HOW: BitMaskFromIndex, ClearObject, LoadObjectRecord, DrawTileScript.
  * WAITS: no.
  * Entry: X object. Exit: as the draw, as ClearObject, or as TilePieceInRange072A.
@@ -3169,7 +3169,7 @@ PieceObjArm TilePieceObject072A(uint8_t slot)
     jsr_pop();
     index = RD8(OBJ->f3040[slot]);
     index = (uint8_t)(index << 4);
-    WR8(OBJ->f3510[slot], index);
+    WR8(OBJ->work_e[slot], index);
     y = index;
     WR8(OBJ->f3988[slot], rd8((uint16_t)(0xAE95 + y)));
     WR8(OBJ->f3a38[slot], rd8((uint16_t)(0xAE96 + y)));
@@ -3208,7 +3208,7 @@ void abi_TilePieceObject072A(void)
  * @run 70:A882
  * @stop A8A8
  * WHAT IT DOES: DrawTilePiece072A in the overlay at sector 025A: draws the object's tile script (the item $AE9D gives by
- * OBJ_3510, plus OBJ_34B8), then looks in $AE9A at the row $AE9E gives plus OBJ_HIT_TAKEN and goes on to $A8A8 or $A8ED.
+ * OBJ_WORK_E, plus OBJ_WORK_D), then looks in $AE9A at the row $AE9E gives plus OBJ_HIT_TAKEN and goes on to $A8A8 or $A8ED.
  * HOW: draw_tile_piece_at with this overlay's tables.
  * WAITS: no.
  * Entry: X object. Exit: as DrawTilePiece072A.
@@ -3228,7 +3228,7 @@ void abi_DrawTilePiece025A(void)
  * @run 70:A882
  * @stop A8A8
  * WHAT IT DOES: DrawTilePiece072A in the overlay at sector 051A: draws the object's tile script (the item $B081 gives by
- * OBJ_3510, plus OBJ_34B8), then looks in $B0DE at the row $B082 gives plus OBJ_HIT_TAKEN and goes on to $A8A8 or $A8ED.
+ * OBJ_WORK_E, plus OBJ_WORK_D), then looks in $B0DE at the row $B082 gives plus OBJ_HIT_TAKEN and goes on to $A8A8 or $A8ED.
  * HOW: draw_tile_piece_at with this overlay's tables.
  * WAITS: no.
  * Entry: X object. Exit: as DrawTilePiece072A.
@@ -3248,7 +3248,7 @@ void abi_DrawTilePiece051A(void)
  * @run 70:A882
  * @stop A8A8
  * WHAT IT DOES: DrawTilePiece072A in the overlay at sector 05CA: draws the object's tile script (the item $AE63 gives by
- * OBJ_3510, plus OBJ_34B8), then looks in $AE70 at the row $AE64 gives plus OBJ_HIT_TAKEN and goes on to $A8A8 or $A8ED.
+ * OBJ_WORK_E, plus OBJ_WORK_D), then looks in $AE70 at the row $AE64 gives plus OBJ_HIT_TAKEN and goes on to $A8A8 or $A8ED.
  * HOW: draw_tile_piece_at with this overlay's tables.
  * WAITS: no.
  * Entry: X object. Exit: as DrawTilePiece072A.
@@ -3268,7 +3268,7 @@ void abi_DrawTilePiece05CA(void)
  * @run 70:A882
  * @stop A8A8
  * WHAT IT DOES: DrawTilePiece072A in the overlay at sector 07DA: draws the object's tile script (the item $D39D gives by
- * OBJ_3510, plus OBJ_34B8), then looks in $D3CA at the row $D39E gives plus OBJ_HIT_TAKEN and goes on to $A8A8 or $A8ED.
+ * OBJ_WORK_E, plus OBJ_WORK_D), then looks in $D3CA at the row $D39E gives plus OBJ_HIT_TAKEN and goes on to $A8A8 or $A8ED.
  * HOW: draw_tile_piece_at with this overlay's tables.
  * WAITS: no.
  * Entry: X object. Exit: as DrawTilePiece072A.
@@ -3288,7 +3288,7 @@ void abi_DrawTilePiece07DA(void)
  * @run 70:A882
  * @stop A8A8
  * WHAT IT DOES: DrawTilePiece072A in the overlay at sector 088A: draws the object's tile script (the item $C224 gives by
- * OBJ_3510, plus OBJ_34B8), then looks in $C231 at the row $C225 gives plus OBJ_HIT_TAKEN and goes on to $A8A8 or $A8ED.
+ * OBJ_WORK_E, plus OBJ_WORK_D), then looks in $C231 at the row $C225 gives plus OBJ_HIT_TAKEN and goes on to $A8A8 or $A8ED.
  * HOW: draw_tile_piece_at with this overlay's tables.
  * WAITS: no.
  * Entry: X object. Exit: as DrawTilePiece072A.
@@ -3308,7 +3308,7 @@ void abi_DrawTilePiece088A(void)
  * @run 70:A882
  * @stop A8A8
  * WHAT IT DOES: DrawTilePiece072A in the overlay at sector 093A: draws the object's tile script (the item $B3AA gives by
- * OBJ_3510, plus OBJ_34B8), then looks in $B3B7 at the row $B3AB gives plus OBJ_HIT_TAKEN and goes on to $A8A8 or $A8ED.
+ * OBJ_WORK_E, plus OBJ_WORK_D), then looks in $B3B7 at the row $B3AB gives plus OBJ_HIT_TAKEN and goes on to $A8A8 or $A8ED.
  * HOW: draw_tile_piece_at with this overlay's tables.
  * WAITS: no.
  * Entry: X object. Exit: as DrawTilePiece072A.
@@ -3328,7 +3328,7 @@ void abi_DrawTilePiece093A(void)
  * @run 70:A882
  * @stop A8A8
  * WHAT IT DOES: DrawTilePiece072A in the overlay at sector 09EA: draws the object's tile script (the item $BCE4 gives by
- * OBJ_3510, plus OBJ_34B8), then looks in $BCF1 at the row $BCE5 gives plus OBJ_HIT_TAKEN and goes on to $A8A8 or $A8ED.
+ * OBJ_WORK_E, plus OBJ_WORK_D), then looks in $BCF1 at the row $BCE5 gives plus OBJ_HIT_TAKEN and goes on to $A8A8 or $A8ED.
  * HOW: draw_tile_piece_at with this overlay's tables.
  * WAITS: no.
  * Entry: X object. Exit: as DrawTilePiece072A.
@@ -3348,7 +3348,7 @@ void abi_DrawTilePiece09EA(void)
  * @run 70:A882
  * @stop A8A8
  * WHAT IT DOES: DrawTilePiece072A in the overlay at sector 0A9A: draws the object's tile script (the item $B67A gives by
- * OBJ_3510, plus OBJ_34B8), then looks in $B6C7 at the row $B67B gives plus OBJ_HIT_TAKEN and goes on to $A8A8 or $A8ED.
+ * OBJ_WORK_E, plus OBJ_WORK_D), then looks in $B6C7 at the row $B67B gives plus OBJ_HIT_TAKEN and goes on to $A8A8 or $A8ED.
  * HOW: draw_tile_piece_at with this overlay's tables.
  * WAITS: no.
  * Entry: X object. Exit: as DrawTilePiece072A.
@@ -3368,7 +3368,7 @@ void abi_DrawTilePiece0A9A(void)
  * @run 70:A882
  * @stop A8A8
  * WHAT IT DOES: DrawTilePiece072A in the overlay at sector 0B4A: draws the object's tile script (the item $B371 gives by
- * OBJ_3510, plus OBJ_34B8), then looks in $B36E at the row $B372 gives plus OBJ_HIT_TAKEN and goes on to $A8A8 or $A8ED.
+ * OBJ_WORK_E, plus OBJ_WORK_D), then looks in $B36E at the row $B372 gives plus OBJ_HIT_TAKEN and goes on to $A8A8 or $A8ED.
  * HOW: draw_tile_piece_at with this overlay's tables.
  * WAITS: no.
  * Entry: X object. Exit: as DrawTilePiece072A.
@@ -3388,7 +3388,7 @@ void abi_DrawTilePiece0B4A(void)
  * @run 70:A882
  * @stop A8A8
  * WHAT IT DOES: DrawTilePiece072A in the overlay at sector 0BFA: draws the object's tile script (the item $B039 gives by
- * OBJ_3510, plus OBJ_34B8), then looks in $B0A6 at the row $B03A gives plus OBJ_HIT_TAKEN and goes on to $A8A8 or $A8ED.
+ * OBJ_WORK_E, plus OBJ_WORK_D), then looks in $B0A6 at the row $B03A gives plus OBJ_HIT_TAKEN and goes on to $A8A8 or $A8ED.
  * HOW: draw_tile_piece_at with this overlay's tables.
  * WAITS: no.
  * Entry: X object. Exit: as DrawTilePiece072A.
@@ -3408,7 +3408,7 @@ void abi_DrawTilePiece0BFA(void)
  * @run 70:A882
  * @stop A8A8
  * WHAT IT DOES: DrawTilePiece072A in the overlay at sector 0CAA: draws the object's tile script (the item $AE9F gives by
- * OBJ_3510, plus OBJ_34B8), then looks in $AEBC at the row $AEA0 gives plus OBJ_HIT_TAKEN and goes on to $A8A8 or $A8ED.
+ * OBJ_WORK_E, plus OBJ_WORK_D), then looks in $AEBC at the row $AEA0 gives plus OBJ_HIT_TAKEN and goes on to $A8A8 or $A8ED.
  * HOW: draw_tile_piece_at with this overlay's tables.
  * WAITS: no.
  * Entry: X object. Exit: as DrawTilePiece072A.
@@ -3428,7 +3428,7 @@ void abi_DrawTilePiece0CAA(void)
  * @run 70:A882
  * @stop A8A8
  * WHAT IT DOES: DrawTilePiece072A in the overlay at sector 0D5A: draws the object's tile script (the item $B01E gives by
- * OBJ_3510, plus OBJ_34B8), then looks in $B07B at the row $B01F gives plus OBJ_HIT_TAKEN and goes on to $A8A8 or $A8ED.
+ * OBJ_WORK_E, plus OBJ_WORK_D), then looks in $B07B at the row $B01F gives plus OBJ_HIT_TAKEN and goes on to $A8A8 or $A8ED.
  * HOW: draw_tile_piece_at with this overlay's tables.
  * WAITS: no.
  * Entry: X object. Exit: as DrawTilePiece072A.
@@ -3448,7 +3448,7 @@ void abi_DrawTilePiece0D5A(void)
  * @run 70:A882
  * @stop A8A8
  * WHAT IT DOES: DrawTilePiece072A in the overlay at sector 0E0A: draws the object's tile script (the item $AEF6 gives by
- * OBJ_3510, plus OBJ_34B8), then looks in $AF03 at the row $AEF7 gives plus OBJ_HIT_TAKEN and goes on to $A8A8 or $A8ED.
+ * OBJ_WORK_E, plus OBJ_WORK_D), then looks in $AF03 at the row $AEF7 gives plus OBJ_HIT_TAKEN and goes on to $A8A8 or $A8ED.
  * HOW: draw_tile_piece_at with this overlay's tables.
  * WAITS: no.
  * Entry: X object. Exit: as DrawTilePiece072A.
@@ -3468,7 +3468,7 @@ void abi_DrawTilePiece0E0A(void)
  * @run 70:A882
  * @stop A8A8
  * WHAT IT DOES: DrawTilePiece072A in the overlay at sector 0EBA: draws the object's tile script (the item $AF1F gives by
- * OBJ_3510, plus OBJ_34B8), then looks in $AF3C at the row $AF20 gives plus OBJ_HIT_TAKEN and goes on to $A8A8 or $A8ED.
+ * OBJ_WORK_E, plus OBJ_WORK_D), then looks in $AF3C at the row $AF20 gives plus OBJ_HIT_TAKEN and goes on to $A8A8 or $A8ED.
  * HOW: draw_tile_piece_at with this overlay's tables.
  * WAITS: no.
  * Entry: X object. Exit: as DrawTilePiece072A.
@@ -3488,7 +3488,7 @@ void abi_DrawTilePiece0EBA(void)
  * @run 70:A882
  * @stop A8A8
  * WHAT IT DOES: DrawTilePiece072A in the overlay at sector 0F6A: draws the object's tile script (the item $ADBF gives by
- * OBJ_3510, plus OBJ_34B8), then looks in $ADBC at the row $ADC0 gives plus OBJ_HIT_TAKEN and goes on to $A8A8 or $A8ED.
+ * OBJ_WORK_E, plus OBJ_WORK_D), then looks in $ADBC at the row $ADC0 gives plus OBJ_HIT_TAKEN and goes on to $A8A8 or $A8ED.
  * HOW: draw_tile_piece_at with this overlay's tables.
  * WAITS: no.
  * Entry: X object. Exit: as DrawTilePiece072A.
@@ -3508,7 +3508,7 @@ void abi_DrawTilePiece0F6A(void)
  * @run 70:A882
  * @stop A8A8
  * WHAT IT DOES: DrawTilePiece072A in the overlay at sector 101A: draws the object's tile script (the item $B019 gives by
- * OBJ_3510, plus OBJ_34B8), then looks in $B046 at the row $B01A gives plus OBJ_HIT_TAKEN and goes on to $A8A8 or $A8ED.
+ * OBJ_WORK_E, plus OBJ_WORK_D), then looks in $B046 at the row $B01A gives plus OBJ_HIT_TAKEN and goes on to $A8A8 or $A8ED.
  * HOW: draw_tile_piece_at with this overlay's tables.
  * WAITS: no.
  * Entry: X object. Exit: as DrawTilePiece072A.
@@ -3528,7 +3528,7 @@ void abi_DrawTilePiece101A(void)
  * @run 70:A882
  * @stop A8A8
  * WHAT IT DOES: DrawTilePiece072A in the overlay at sector 10CA: draws the object's tile script (the item $AEF6 gives by
- * OBJ_3510, plus OBJ_34B8), then looks in $AF03 at the row $AEF7 gives plus OBJ_HIT_TAKEN and goes on to $A8A8 or $A8ED.
+ * OBJ_WORK_E, plus OBJ_WORK_D), then looks in $AF03 at the row $AEF7 gives plus OBJ_HIT_TAKEN and goes on to $A8A8 or $A8ED.
  * HOW: draw_tile_piece_at with this overlay's tables.
  * WAITS: no.
  * Entry: X object. Exit: as DrawTilePiece072A.
@@ -3548,7 +3548,7 @@ void abi_DrawTilePiece10CA(void)
  * @run 70:A882
  * @stop A8A8
  * WHAT IT DOES: DrawTilePiece072A in the overlay at sector 117A: draws the object's tile script (the item $B075 gives by
- * OBJ_3510, plus OBJ_34B8), then looks in $B0B2 at the row $B076 gives plus OBJ_HIT_TAKEN and goes on to $A8A8 or $A8ED.
+ * OBJ_WORK_E, plus OBJ_WORK_D), then looks in $B0B2 at the row $B076 gives plus OBJ_HIT_TAKEN and goes on to $A8A8 or $A8ED.
  * HOW: draw_tile_piece_at with this overlay's tables.
  * WAITS: no.
  * Entry: X object. Exit: as DrawTilePiece072A.
@@ -3568,7 +3568,7 @@ void abi_DrawTilePiece117A(void)
  * @run 70:A882
  * @stop A8A8
  * WHAT IT DOES: DrawTilePiece072A in the overlay at sector 12DA: draws the object's tile script (the item $AEE1 gives by
- * OBJ_3510, plus OBJ_34B8), then looks in $AEFE at the row $AEE2 gives plus OBJ_HIT_TAKEN and goes on to $A8A8 or $A8ED.
+ * OBJ_WORK_E, plus OBJ_WORK_D), then looks in $AEFE at the row $AEE2 gives plus OBJ_HIT_TAKEN and goes on to $A8A8 or $A8ED.
  * HOW: draw_tile_piece_at with this overlay's tables.
  * WAITS: no.
  * Entry: X object. Exit: as DrawTilePiece072A.
@@ -3588,7 +3588,7 @@ void abi_DrawTilePiece12DA(void)
  * @run 70:A882
  * @stop A8A8
  * WHAT IT DOES: DrawTilePiece072A in the overlay at sector 13FA: draws the object's tile script (the item $AEA9 gives by
- * OBJ_3510, plus OBJ_34B8), then looks in $AEC6 at the row $AEAA gives plus OBJ_HIT_TAKEN and goes on to $A8A8 or $A8ED.
+ * OBJ_WORK_E, plus OBJ_WORK_D), then looks in $AEC6 at the row $AEAA gives plus OBJ_HIT_TAKEN and goes on to $A8A8 or $A8ED.
  * HOW: draw_tile_piece_at with this overlay's tables.
  * WAITS: no.
  * Entry: X object. Exit: as DrawTilePiece072A.
@@ -3608,7 +3608,7 @@ void abi_DrawTilePiece13FA(void)
  * @run 70:A882
  * @stop A8A8
  * WHAT IT DOES: DrawTilePiece072A in the overlay at sector 161A: draws the object's tile script (the item $B0A5 gives by
- * OBJ_3510, plus OBJ_34B8), then looks in $B0F2 at the row $B0A6 gives plus OBJ_HIT_TAKEN and goes on to $A8A8 or $A8ED.
+ * OBJ_WORK_E, plus OBJ_WORK_D), then looks in $B0F2 at the row $B0A6 gives plus OBJ_HIT_TAKEN and goes on to $A8A8 or $A8ED.
  * HOW: draw_tile_piece_at with this overlay's tables.
  * WAITS: no.
  * Entry: X object. Exit: as DrawTilePiece072A.
@@ -3628,7 +3628,7 @@ void abi_DrawTilePiece161A(void)
  * @run 70:A882
  * @stop A8A8
  * WHAT IT DOES: DrawTilePiece072A in the overlay at sector 16CA: draws the object's tile script (the item $AE7F gives by
- * OBJ_3510, plus OBJ_34B8), then looks in $AEBC at the row $AE80 gives plus OBJ_HIT_TAKEN and goes on to $A8A8 or $A8ED.
+ * OBJ_WORK_E, plus OBJ_WORK_D), then looks in $AEBC at the row $AE80 gives plus OBJ_HIT_TAKEN and goes on to $A8A8 or $A8ED.
  * HOW: draw_tile_piece_at with this overlay's tables.
  * WAITS: no.
  * Entry: X object. Exit: as DrawTilePiece072A.
@@ -3648,7 +3648,7 @@ void abi_DrawTilePiece16CA(void)
  * @run 70:A882
  * @stop A8A8
  * WHAT IT DOES: DrawTilePiece072A in the overlay at sector 18DA: draws the object's tile script (the item $AE87 gives by
- * OBJ_3510, plus OBJ_34B8), then looks in $AEC4 at the row $AE88 gives plus OBJ_HIT_TAKEN and goes on to $A8A8 or $A8ED.
+ * OBJ_WORK_E, plus OBJ_WORK_D), then looks in $AEC4 at the row $AE88 gives plus OBJ_HIT_TAKEN and goes on to $A8A8 or $A8ED.
  * HOW: draw_tile_piece_at with this overlay's tables.
  * WAITS: no.
  * Entry: X object. Exit: as DrawTilePiece072A.

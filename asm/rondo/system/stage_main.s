@@ -23,11 +23,11 @@ RunStageFrame:
     lda z:zStage
     bne RunStageFrame_at1
     lda #$10
-    sta a:OBJ_3510
+    sta a:OBJ_WORK_E
     rts
 RunStageFrame_at1:
     lda #$01
-    sta a:OBJ_3510
+    sta a:OBJ_WORK_E
     stz a:PlayerByte3BF0
 RunStageFrame_at0:
     rts

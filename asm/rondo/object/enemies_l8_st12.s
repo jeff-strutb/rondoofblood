@@ -1,22 +1,22 @@
 ; @routine 025B:068 CountdownThenStartScript80
 ; @run 70:B068
-; WHAT IT DOES: Sets fixed fields (OBJ_3510 slot 0 $10, the scroll bytes ScrollXLo+1 0 and ScrollXHi+1 1, a byte at $3BF0 to 2); counts OBJ_34B8 down; at $3F starts script $80 as kind 2 in slot 5, at 0 sets the sub-step 3 and zField8C $83.
+; WHAT IT DOES: Sets fixed fields (OBJ_WORK_E slot 0 $10, the scroll bytes ScrollXLo+1 0 and ScrollXHi+1 1, a byte at $3BF0 to 2); counts OBJ_WORK_D down; at $3F starts script $80 as kind 2 in slot 5, at 0 sets the sub-step 3 and zField8C $83.
 ; HOW: Stores, a memory decrement, a compare, StartScriptSlotKind2 between a PHX and a PLX.
 ; WAITS: no.
 ; Entry: X object. Exit: as the last instruction that ran. The byte at $3BF0 keeps its address form until it has a name.
 CountdownThenStartScript80:
     lda #$10
-    sta a:OBJ_3510
+    sta a:OBJ_WORK_E
     lda #$02
     sta a:PlayerByte3BF0
-    stz a:OBJ_3568
+    stz a:OBJ_WORK_F
     stz a:OBJ_FRAME
     stz a:ScrollXLo+1
     lda #$01
     sta a:ScrollXHi+1
-    dec a:OBJ_34B8,x
+    dec a:OBJ_WORK_D,x
     beq CountdownThenStartScript80_at0
-    lda a:OBJ_34B8,x
+    lda a:OBJ_WORK_D,x
     cmp #$3F
     bne CountdownThenStartScript80_at1
     phx
@@ -35,16 +35,16 @@ CountdownThenStartScript80_at0:
 
 ; @routine 025B:0F0 StepVerticalScrollTable
 ; @run 70:B0F0
-; WHAT IT DOES: While OBJ_3568 is not 0, steps through the table at $B129 and $B133: OBJ_3510 takes the entry and the scroll's Y (ScrollYLo+1, ScrollYHi+1) falls by it; OBJ_3568 counts up and wraps to 0 at 9. When it is 0 and the scroll byte ScrollXLo+5 is 0, a random number with its top bit set starts the table (OBJ_3568 1).
-; HOW: A table read by OBJ_3568 as the index, a 16-bit subtract, and NextRandom.
+; WHAT IT DOES: While OBJ_WORK_F is not 0, steps through the table at $B129 and $B133: OBJ_WORK_E takes the entry and the scroll's Y (ScrollYLo+1, ScrollYHi+1) falls by it; OBJ_WORK_F counts up and wraps to 0 at 9. When it is 0 and the scroll byte ScrollXLo+5 is 0, a random number with its top bit set starts the table (OBJ_WORK_F 1).
+; HOW: A table read by OBJ_WORK_F as the index, a 16-bit subtract, and NextRandom.
 ; WAITS: no.
 ; Entry: X object. Exit: the last instruction that ran.
 StepVerticalScrollTable:
-    lda a:OBJ_3568,x
+    lda a:OBJ_WORK_F,x
     beq StepVerticalScrollTable_at0
     tay
     lda a:$B129,y
-    sta a:OBJ_3510,x
+    sta a:OBJ_WORK_E,x
     lda a:ScrollYLo+1
     sec
     sbc a:$B129,y
@@ -52,10 +52,10 @@ StepVerticalScrollTable:
     lda a:ScrollYHi+1
     sbc a:$B133,y
     sta a:ScrollYHi+1
-    inc a:OBJ_3568,x
+    inc a:OBJ_WORK_F,x
     cpy #$09
     bne StepVerticalScrollTable_at1
-    stz a:OBJ_3568,x
+    stz a:OBJ_WORK_F,x
 StepVerticalScrollTable_at1:
     rts
 StepVerticalScrollTable_at0:
@@ -64,7 +64,7 @@ StepVerticalScrollTable_at0:
     jsr VecNextRandom
     asl a
     bcc StepVerticalScrollTable_at2
-    inc a:OBJ_3568,x
+    inc a:OBJ_WORK_F,x
 StepVerticalScrollTable_at2:
     rts
 
@@ -121,7 +121,7 @@ LoadRecordAtPlayerPlace_at0:
 
 ; @routine 025B:1A1 LoadRecordThenSinkByF3520
 ; @run 70:B1A1
-; WHAT IT DOES: In state 0 loads the record, sets the frame 6 and moves the object one left; then adds OBJ_3510 of slot $10 to its OBJ_Y_LO.
+; WHAT IT DOES: In state 0 loads the record, sets the frame 6 and moves the object one left; then adds OBJ_WORK_E of slot $10 to its OBJ_Y_LO.
 ; HOW: LoadObjectRecord, a memory decrement, an add.
 ; WAITS: no.
 ; Entry: X object. Exit: the add's A, N, Z, C and V; Y 11 when the record was loaded.
@@ -140,7 +140,7 @@ LoadRecordThenSinkByF3520:
 
 ; @routine 025B:1BC LoadRecordThenStepListByKind
 ; @run 70:B1BC
-; WHAT IT DOES: In state 0 loads the record and moves the object one left; then steps an animation list picked by OBJ_START_ARG (two bytes an entry) and, from the table's second half when slot $10's state is below 4 and OBJ_34B8 is 0.
+; WHAT IT DOES: In state 0 loads the record and moves the object one left; then steps an animation list picked by OBJ_START_ARG (two bytes an entry) and, from the table's second half when slot $10's state is below 4 and OBJ_WORK_D is 0.
 ; HOW: LoadObjectRecord, a decrement, table reads, a tail jump into StepObjectFrames.
 ; WAITS: no.
 ; Entry: X object, Y kept unless the step sets it. Exit: the step.
@@ -152,14 +152,14 @@ LoadRecordThenStepListByKind:
     lda a:OBJ_START_ARG,x
     asl a
     tay
-    lda a:OBJ_34B8,x
+    lda a:OBJ_WORK_D,x
     bne StartSplitterLow
     lda a:$27B8
     cmp #$04
     bcc PickPhaseAtRandomB
     stz a:OBJ_ANIM_STEP,x
     stz a:OBJ_ANIM_TIMER,x
-    inc a:OBJ_34B8,x
+    inc a:OBJ_WORK_D,x
     bra StartSplitterLow
     tya
     clc
@@ -173,7 +173,7 @@ LoadRecordThenStepListByKind:
 
 ; @routine 025B:229 LoadRecordSinkThenStepListByKind
 ; @run 70:B229
-; WHAT IT DOES: In state 0 loads the record and moves the object one left; then adds OBJ_3510 of slot $10 to its OBJ_Y_LO and steps the animation list picked by OBJ_START_ARG from the table at $B250.
+; WHAT IT DOES: In state 0 loads the record and moves the object one left; then adds OBJ_WORK_E of slot $10 to its OBJ_Y_LO and steps the animation list picked by OBJ_START_ARG from the table at $B250.
 ; HOW: LoadObjectRecord, a decrement, an add, table reads, a tail jump into StepObjectFrames.
 ; WAITS: no.
 ; Entry: X object, Y kept unless the step sets it. Exit: the step.
@@ -198,7 +198,7 @@ LoadRecordSinkThenStepListByKind_at0:
 
 ; @routine 025B:266 StateMachineWithSoundAndList
 ; @run 70:B266
-; WHAT IT DOES: An object of several phases. State 0 loads the record. State 1 waits on the state of slot $10 (3 or 6): it steps the animation list at $B2FA or $B2FF, plays sound $72 when the scroll byte ScrollXLo+1 is clear, and at state 6 goes on. State 2 counts OBJ_3510 down and goes on. Later states fall, and once off screen to the left start a list channel and clear the object.
+; WHAT IT DOES: An object of several phases. State 0 loads the record. State 1 waits on the state of slot $10 (3 or 6): it steps the animation list at $B2FA or $B2FF, plays sound $72 when the scroll byte ScrollXLo+1 is clear, and at state 6 goes on. State 2 counts OBJ_WORK_E down and goes on. Later states fall, and once off screen to the left start a list channel and clear the object.
 ; HOW: Compares of OBJ_STATE and slot $10's state, SoundCommand, StepObjectFrames, StartListChannelKind2 between a PHX and a PLX, a tail jump into ClearObject.
 ; WAITS: no.
 ; Entry: X object, Y kept unless a step sets it. Exit: as the last instruction that ran.
@@ -214,7 +214,7 @@ StateMachineWithSoundAndList_at0:
     lda a:$27B8
     cmp #$03
     bne StateMachineWithSoundAndList_at2
-    lda a:OBJ_34B8,x
+    lda a:OBJ_WORK_D,x
     bne StateMachineWithSoundAndList_at3
     lda a:ScrollXLo+1
     and #$7F
@@ -223,7 +223,7 @@ StateMachineWithSoundAndList_at0:
 StateMachineWithSoundAndList_at2:
     cmp #$06
     beq StateMachineWithSoundAndList_at6
-    lda a:OBJ_34B8,x
+    lda a:OBJ_WORK_D,x
     bne StateMachineWithSoundAndList_at3
 StateMachineWithSoundAndList_at5:
     lda #$B2
@@ -236,7 +236,7 @@ StateMachineWithSoundAndList_at4:
     jsr VecSoundCommand
     stz a:OBJ_ANIM_STEP,x
     stz a:OBJ_ANIM_TIMER,x
-    inc a:OBJ_34B8,x
+    inc a:OBJ_WORK_D,x
 StateMachineWithSoundAndList_at3:
     lda #$B2
     sta z:zTemp11
@@ -244,13 +244,13 @@ StateMachineWithSoundAndList_at3:
     sta z:zTemp10
     jsr VecStepObjectFrames
     bne StateMachineWithSoundAndList_at7
-    stz a:OBJ_34B8,x
+    stz a:OBJ_WORK_D,x
 StateMachineWithSoundAndList_at7:
     rts
 StateMachineWithSoundAndList_at1:
     dec a
     bne StateMachineWithSoundAndList_at8
-    dec a:OBJ_3510,x
+    dec a:OBJ_WORK_E,x
     bne StateMachineWithSoundAndList_at7
     lda a:OBJ_SCROLL_BAND,x
     and #$F0
@@ -263,7 +263,7 @@ StateMachineWithSoundAndList_at6:
     sta a:OBJ_FRAME,x
     inc a:OBJ_STATE,x
     lda #$0A
-    sta a:OBJ_3510,x
+    sta a:OBJ_WORK_E,x
     rts
 StateMachineWithSoundAndList_at8:
     inc a:OBJ_Y_LO,x
@@ -298,9 +298,9 @@ DriftRecordThenMoveWithJitter:
     bcc DriftRecordThenMoveWithJitter_at0
     lda a:OBJ_START_ARG,x
     bne DriftRecordThenMoveWithJitter_at0
-    lda a:OBJ_34B8,x
+    lda a:OBJ_WORK_D,x
     bne DriftRecordThenMoveWithJitter_at1
-    inc a:OBJ_34B8,x
+    inc a:OBJ_WORK_D,x
     lda #$1D
     sta a:OBJ_FRAME,x
     rts
@@ -334,7 +334,7 @@ DriftRecordThenMoveWithJitter_at0:
 
 ; @routine 025B:487 SwingByCosineFromState0B
 ; @run 70:B487
-; WHAT IT DOES: From state $0B on, sets the Y speed from the cosine of OBJ_3618 scaled by $0040, moves the object in Y and turns OBJ_3618 on by 2.
+; WHAT IT DOES: From state $0B on, sets the Y speed from the cosine of OBJ_WORK_H scaled by $0040, moves the object in Y and turns OBJ_WORK_H on by 2.
 ; HOW: ScaleByCosine, two copies of the product, ApplyVelocityY, an add.
 ; WAITS: no.
 ; Entry: X object. Exit: as the last instruction that ran.
@@ -346,30 +346,30 @@ SwingByCosineFromState0B:
     sta z:zTemp00
     lda #$00
     sta z:zTemp01
-    lda a:OBJ_3618,x
+    lda a:OBJ_WORK_H,x
     jsr VecScaleByCosine
     lda z:zProduct2
     sta a:OBJ_VY_HI,x
     lda z:SpriteFlipMask
     sta a:OBJ_VY_LO,x
     jsr VecApplyVelocityY
-    lda a:OBJ_3618,x
+    lda a:OBJ_WORK_H,x
     clc
     adc #$02
-    sta a:OBJ_3618,x
+    sta a:OBJ_WORK_H,x
 SwingByCosineFromState0B_at0:
     rts
 
 ; @routine 025B:4B3 StartRandomScriptWhenFlagged
 ; @run 70:B4B3
-; WHAT IT DOES: When OBJ_3720 is set and OBJ_3568's low five bits are 0, with a chance of three in eight starts a script from the table at $B4E9 as kind 1 in slot 5.
+; WHAT IT DOES: When OBJ_WORK_K is set and OBJ_WORK_F's low five bits are 0, with a chance of three in eight starts a script from the table at $B4E9 as kind 1 in slot 5.
 ; HOW: Two NextRandom calls and StartScriptSlotKind1 between a PHX and a PLX.
 ; WAITS: no.
 ; Entry: X object. Exit: as the last instruction that ran.
 StartRandomScriptWhenFlagged:
-    lda a:OBJ_3720,x
+    lda a:OBJ_WORK_K,x
     beq StartRandomScriptWhenFlagged_at0
-    lda a:OBJ_3568,x
+    lda a:OBJ_WORK_F,x
     and #$1F
     bne StartRandomScriptWhenFlagged_at0
     jsr VecNextRandom
@@ -389,12 +389,12 @@ StartRandomScriptWhenFlagged_at0:
 
 ; @routine 025B:4ED PushPlayerWhenFlagged
 ; @run 70:B4ED
-; WHAT IT DOES: When OBJ_3778 is set, pushes the player: zPlayerPush $10 and zPushX $FF60.
+; WHAT IT DOES: When OBJ_WORK_L is set, pushes the player: zPlayerPush $10 and zPushX $FF60.
 ; HOW: A load and three stores.
 ; WAITS: no.
-; Entry: X object. Exit: A $60 when set; otherwise N and Z from OBJ_3778.
+; Entry: X object. Exit: A $60 when set; otherwise N and Z from OBJ_WORK_L.
 PushPlayerWhenFlagged:
-    lda a:OBJ_3778,x
+    lda a:OBJ_WORK_L,x
     beq PushPlayerWhenFlagged_at0
     lda #$10
     sta z:zPlayerPush
@@ -407,7 +407,7 @@ PushPlayerWhenFlagged_at0:
 
 ; @routine 025B:4FF HitSoundThenSpawnPieces
 ; @run 70:B4FF
-; WHAT IT DOES: When the object's hits taken reach 5, plays sound $75 and sets OBJ_3828 to $10. While OBJ_3828 runs it counts down and, whenever the wave counter's low three bits are 0, starts an object of type $2F in a free slot of $20 to $3F at the object's place with OBJ_34B8 1.
+; WHAT IT DOES: When the object's hits taken reach 5, plays sound $75 and sets OBJ_WORK_N to $10. While OBJ_WORK_N runs it counts down and, whenever the wave counter's low three bits are 0, starts an object of type $2F in a free slot of $20 to $3F at the object's place with OBJ_WORK_D 1.
 ; HOW: SoundCommand, FindFreeSlotFrom20, StartObjectAtPlace.
 ; WAITS: no.
 ; Entry: X object, Y kept for the sound. Exit: as the last instruction that ran.
@@ -418,11 +418,11 @@ HitSoundThenSpawnPieces:
     lda #$75
     jsr VecSoundCommand
     lda #$10
-    sta a:OBJ_3828,x
+    sta a:OBJ_WORK_N,x
 HitSoundThenSpawnPieces_at0:
-    lda a:OBJ_3828,x
+    lda a:OBJ_WORK_N,x
     beq HitSoundThenSpawnPieces_at1
-    dec a:OBJ_3828,x
+    dec a:OBJ_WORK_N,x
     lda z:zWaveCounter
     and #$07
     bne HitSoundThenSpawnPieces_at1
@@ -431,7 +431,7 @@ HitSoundThenSpawnPieces_at0:
     lda #$2F
     jsr VecStartObjectAtPlace
     lda #$01
-    sta a:OBJ_34B8,y
+    sta a:OBJ_WORK_D,y
 HitSoundThenSpawnPieces_at1:
     rts
 
@@ -456,7 +456,7 @@ EnterState0BWhenFlagged_at0:
 
 ; @routine 025B:56F StartPieceAtTopLeft
 ; @run 70:B56F
-; WHAT IT DOES: Loads the object's record, clears slot $18, starts an object of type $28 there at the object's place, moves the new object's source to X $003C, Y $0030 with X speed $80 (OBJ_VX_LO), OBJ_34B8 4 and OBJ_3720 1.
+; WHAT IT DOES: Loads the object's record, clears slot $18, starts an object of type $28 there at the object's place, moves the new object's source to X $003C, Y $0030 with X speed $80 (OBJ_VX_LO), OBJ_WORK_D 4 and OBJ_WORK_K 1.
 ; HOW: LoadObjectRecord, ClearObjectInY, StartObjectAtPlace, stores.
 ; WAITS: no.
 ; Entry: X object. Exit: A 1, Y $18, C from the record.
@@ -475,26 +475,26 @@ StartPieceAtTopLeft:
     lda #$80
     sta a:OBJ_VX_LO,x
     lda #$04
-    sta a:OBJ_34B8,x
+    sta a:OBJ_WORK_D,x
     lda #$01
-    sta a:OBJ_3720,x
+    sta a:OBJ_WORK_K,x
     rts
 
 ; @routine 025B:59C CountDownThenStartScripts
 ; @run 70:B59C
-; WHAT IT DOES: Counts the 16-bit timer OBJ_34B8:OBJ_3510 down; at zero starts scripts $84 (slot 5) and $86 (slot 4) as kind 1, clears OBJ_3720, sets OBJ_3510 $60 and goes to the next state.
+; WHAT IT DOES: Counts the 16-bit timer OBJ_WORK_D:OBJ_WORK_E down; at zero starts scripts $84 (slot 5) and $86 (slot 4) as kind 1, clears OBJ_WORK_K, sets OBJ_WORK_E $60 and goes to the next state.
 ; HOW: A 16-bit subtract in memory, an ORA, StartScriptSlotKind1 twice between a PHX and a PLX.
 ; WAITS: no.
 ; Entry: X object. Exit: as the last instruction that ran.
 CountDownThenStartScripts:
-    lda a:OBJ_3510,x
+    lda a:OBJ_WORK_E,x
     sec
     sbc #$01
-    sta a:OBJ_3510,x
-    lda a:OBJ_34B8,x
+    sta a:OBJ_WORK_E,x
+    lda a:OBJ_WORK_D,x
     sbc #$00
-    sta a:OBJ_34B8,x
-    ora a:OBJ_3510,x
+    sta a:OBJ_WORK_D,x
+    ora a:OBJ_WORK_E,x
     bne StartPieceAtNextSlot
     phx
     lda #$84
@@ -504,22 +504,22 @@ CountDownThenStartScripts:
     ldx #$04
     jsr VecStartScriptSlotKind1
     plx
-    stz a:OBJ_3720,x
+    stz a:OBJ_WORK_K,x
     lda #$60
-    sta a:OBJ_3510,x
+    sta a:OBJ_WORK_E,x
     inc a:OBJ_STATE,x
     rts
 
 ; @routine 025B:5CE CountDownWithSound77
 ; @run 70:B5CE
-; WHAT IT DOES: Counts OBJ_3510 down; at $35 plays sound $77; at zero sets OBJ_3510 $80 and goes to the next state.
+; WHAT IT DOES: Counts OBJ_WORK_E down; at $35 plays sound $77; at zero sets OBJ_WORK_E $80 and goes to the next state.
 ; HOW: A memory decrement, a compare, SoundCommand.
 ; WAITS: no.
 ; Entry: X object, Y kept for the sound. Exit: as the last instruction that ran.
 CountDownWithSound77:
-    dec a:OBJ_3510,x
+    dec a:OBJ_WORK_E,x
     beq CountDownWithSound77_at0
-    lda a:OBJ_3510,x
+    lda a:OBJ_WORK_E,x
     cmp #$35
     bne StepListB5FEToState4
     lda #$77
@@ -527,31 +527,31 @@ CountDownWithSound77:
     rts
 CountDownWithSound77_at0:
     lda #$80
-    sta a:OBJ_3510,x
+    sta a:OBJ_WORK_E,x
     inc a:OBJ_STATE,x
     rts
 
 ; @routine 025B:617 StartScriptAtTimerMarks
 ; @run 70:B617
-; WHAT IT DOES: When OBJ_3510 is 0 sets OBJ_3720. Otherwise counts it down, and when it equals one of the eight marks at $B642 starts the script of the same index in the table at $B64A as kind 1 in slot 5.
+; WHAT IT DOES: When OBJ_WORK_E is 0 sets OBJ_WORK_K. Otherwise counts it down, and when it equals one of the eight marks at $B642 starts the script of the same index in the table at $B64A as kind 1 in slot 5.
 ; HOW: A loop over the marks, StartScriptSlotKind1 between a PHX and a PLX.
 ; WAITS: no.
 ; Entry: X object. Exit: as the last instruction that ran.
 StartScriptAtTimerMarks:
-    lda a:OBJ_3510,x
+    lda a:OBJ_WORK_E,x
     bne ThrowUpward
     lda #$01
-    sta a:OBJ_3720,x
+    sta a:OBJ_WORK_K,x
     rts
     cly
 StartScriptAtTimerMarks_at1:
-    lda a:OBJ_3510,x
+    lda a:OBJ_WORK_E,x
     cmp a:$B642,y
     beq StartScriptAtTimerMarks_at0
     iny
     cpy #$08
     bcc StartScriptAtTimerMarks_at1
-    dec a:OBJ_3510,x
+    dec a:OBJ_WORK_E,x
     rts
 StartScriptAtTimerMarks_at0:
     phx
@@ -559,12 +559,12 @@ StartScriptAtTimerMarks_at0:
     ldx #$05
     jsr VecStartScriptSlotKind1
     plx
-    dec a:OBJ_3510,x
+    dec a:OBJ_WORK_E,x
     rts
 
 ; @routine 025B:652 SpinOutThenLeave
 ; @run 70:B652
-; WHAT IT DOES: Moves the object on a circle of radius $0200 by OBJ_35C0 (turning on 4 a frame) while it steps the animation list at $B6A4; when the list ends it starts the next phase: slot $10's state up, OBJ_3778 1, OBJ_3250 2, slot 0's OBJ_3510 2, the byte at $3BF0 2, OBJ_3568 of slot 0 0, OBJ_35C0 $C0, OBJ_3510 $20, OBJ_3670 1 and the next state.
+; WHAT IT DOES: Moves the object on a circle of radius $0200 by OBJ_WORK_G (turning on 4 a frame) while it steps the animation list at $B6A4; when the list ends it starts the next phase: slot $10's state up, OBJ_WORK_L 1, OBJ_HITBOX_ON 2, slot 0's OBJ_WORK_E 2, the byte at $3BF0 2, OBJ_WORK_F of slot 0 0, OBJ_WORK_G $C0, OBJ_WORK_E $20, OBJ_WORK_I 1 and the next state.
 ; HOW: SetVelocityFromAngle, ApplyVelocity, an add, StepObjectFrames and stores.
 ; WAITS: no.
 ; Entry: X object, Y kept unless the step sets it. Exit: as the last instruction that ran. The byte at $3BF0 keeps its address form until it has a name.
@@ -572,13 +572,13 @@ SpinOutThenLeave:
     stz z:zTemp00
     lda #$02
     sta z:zTemp01
-    lda a:OBJ_35C0,x
+    lda a:OBJ_WORK_G,x
     jsr VecSetVelocityFromAngle
     jsr VecApplyVelocity
-    lda a:OBJ_35C0,x
+    lda a:OBJ_WORK_G,x
     clc
     adc #$04
-    sta a:OBJ_35C0,x
+    sta a:OBJ_WORK_G,x
     lda #$A4
     sta z:zTemp10
     lda #$B6
@@ -587,26 +587,26 @@ SpinOutThenLeave:
     bne SoundReadCommand
     inc a:$27B8
     lda #$01
-    sta a:OBJ_3778,x
+    sta a:OBJ_WORK_L,x
     lda #$02
-    sta a:OBJ_3250,x
+    sta a:OBJ_HITBOX_ON,x
     lda #$02
-    sta a:OBJ_3510
+    sta a:OBJ_WORK_E
     lda #$02
     sta a:PlayerByte3BF0
-    stz a:OBJ_3568
+    stz a:OBJ_WORK_F
     lda #$C0
-    sta a:OBJ_35C0,x
+    sta a:OBJ_WORK_G,x
     lda #$20
-    sta a:OBJ_3510,x
+    sta a:OBJ_WORK_E,x
     lda #$01
-    sta a:OBJ_3670,x
+    sta a:OBJ_WORK_I,x
     inc a:OBJ_STATE,x
     rts
 
 ; @routine 025B:6E7 SpinOnCircle
 ; @run 70:B6E7
-; WHAT IT DOES: Moves the object on a circle of radius $0180 by OBJ_35C0, turning on 2 a frame; when the angle wraps to 0 it jumps to X $00D5, Y $002F with the fractions $4C and $83.
+; WHAT IT DOES: Moves the object on a circle of radius $0180 by OBJ_WORK_G, turning on 2 a frame; when the angle wraps to 0 it jumps to X $00D5, Y $002F with the fractions $4C and $83.
 ; HOW: SetVelocityFromAngle, ApplyVelocity, an add, four stores.
 ; WAITS: no.
 ; Entry: X object. Exit: as the last instruction that ran.
@@ -615,13 +615,13 @@ SpinOnCircle:
     sta z:zTemp00
     lda #$01
     sta z:zTemp01
-    lda a:OBJ_35C0,x
+    lda a:OBJ_WORK_G,x
     jsr VecSetVelocityFromAngle
     jsr VecApplyVelocity
-    lda a:OBJ_35C0,x
+    lda a:OBJ_WORK_G,x
     clc
     adc #$02
-    sta a:OBJ_35C0,x
+    sta a:OBJ_WORK_G,x
     bne SpinOnCircle_at0
     lda #$D5
     sta a:OBJ_X_LO,x
@@ -636,7 +636,7 @@ SpinOnCircle_at0:
 
 ; @routine 025B:761 StepListThenBurstAtFrame18
 ; @run 70:B761
-; WHAT IT DOES: Steps the animation list at $B79A. When the graphic changes and the frame is $18, plays sound $42, clears slot $50 and starts an object of type $29 there at the object's place. When the list ends it sets OBJ_34B8 1, OBJ_3510 $80, OBJ_3670 3 and goes to the next state.
+; WHAT IT DOES: Steps the animation list at $B79A. When the graphic changes and the frame is $18, plays sound $42, clears slot $50 and starts an object of type $29 there at the object's place. When the list ends it sets OBJ_WORK_D 1, OBJ_WORK_E $80, OBJ_WORK_I 3 and goes to the next state.
 ; HOW: StepObjectFrames, SoundCommand, ClearObjectInY, StartObjectAtPlace.
 ; WAITS: no.
 ; Entry: X object, Y kept unless the step sets it. Exit: as the last instruction that ran.
@@ -661,17 +661,17 @@ StepListThenBurstAtFrame18_at1:
     rts
 StepListThenBurstAtFrame18_at0:
     lda #$01
-    sta a:OBJ_34B8,x
+    sta a:OBJ_WORK_D,x
     lda #$80
-    sta a:OBJ_3510,x
+    sta a:OBJ_WORK_E,x
     lda #$03
-    sta a:OBJ_3670,x
+    sta a:OBJ_WORK_I,x
     inc a:OBJ_STATE,x
     rts
 
 ; @routine 025B:7F5 HomeOnPointThenRingAndSound
 ; @run 70:B7F5
-; WHAT IT DOES: Steps the animation list at $B6DA while it flies toward the point X $00E0, Y $0030 on a circle of radius $0100; once on it (within 3) plays sound $73, sets OBJ_3670 4 and OBJ_3510 $B0, starts list $83 on channel 5, restarts the animation, and goes to state $0B with OBJ_SUBSTATE 2.
+; WHAT IT DOES: Steps the animation list at $B6DA while it flies toward the point X $00E0, Y $0030 on a circle of radius $0100; once on it (within 3) plays sound $73, sets OBJ_WORK_I 4 and OBJ_WORK_E $B0, starts list $83 on channel 5, restarts the animation, and goes to state $0B with OBJ_SUBSTATE 2.
 ; HOW: StepObjectFrames, AngleToPoint, SetVelocityFromAngle, ApplyVelocity, two range tests, SoundCommand, StartListChannelKind2.
 ; WAITS: no.
 ; Entry: X object, Y kept unless the step sets it. Exit: as the last instruction that ran.
@@ -715,9 +715,9 @@ HomeOnPointThenRingAndSound:
     lda #$73
     jsr VecSoundCommand
     lda #$04
-    sta a:OBJ_3670,x
+    sta a:OBJ_WORK_I,x
     lda #$B0
-    sta a:OBJ_3510,x
+    sta a:OBJ_WORK_E,x
     phx
     lda #$83
     ldx #$05

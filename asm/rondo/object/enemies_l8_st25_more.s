@@ -23,7 +23,7 @@ DroppingPieceStep:
     jsr VecLoadObjectRecord
     ldy a:OBJ_START_ARG,x
     lda a:SoundVoicesFirst+5,y
-    sta a:OBJ_34B8,x
+    sta a:OBJ_WORK_D,x
     lda a:$B91D,y
     sta a:OBJ_FACING_LEFT,x
     lda a:$B921,y
@@ -87,8 +87,8 @@ DroppingPieceStep_at1:
     sta a:OBJ_Y_LO,y
 DroppingPieceStep_at3:
     lda #$06
-    sta a:OBJ_3510,x
-    stz a:OBJ_3250,x
+    sta a:OBJ_WORK_E,x
+    stz a:OBJ_HITBOX_ON,x
     lda #$10
     sta a:OBJ_SPRITE_ATTR,x
     inc a:OBJ_STATE,x

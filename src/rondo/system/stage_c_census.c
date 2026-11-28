@@ -853,7 +853,7 @@ StageRegs StageSubModeStart3CD(StageRegs r)
     if ((RD8(ZP->field8e) & 0x01) == 0) {
         r = loaded(r, 5);
         WR8(ZP->game_sub_mode, 5);
-        r.nz = DEC8(OBJ->f3300[16]);
+        r.nz = DEC8(OBJ->work_b[16]);
         r = loaded(r, 1);
         wr8(PlayerByte3BF0, 1);
         return r;
@@ -1343,9 +1343,9 @@ StageRegs StageSubStepTally3CD(StageRegs r)
     wr8(PadForcedPress, 0);
     wr8(PadForcedPressB, 0);
     wr8(FALL_STEP, 0);
-    WR8(OBJ->f3358[0], 0);
+    WR8(OBJ->work_c[0], 0);
     r = loaded(r, 0x40);
-    WR8(OBJ->f3300[16], 0x40);
+    WR8(OBJ->work_b[16], 0x40);
     return restart_fade(r);
 }
 
@@ -1453,12 +1453,12 @@ static Regs respawn(Regs r, uint16_t ret)
     if (r.a != 0) {
         WR8(ZP->field8c, 0);
         r = loaded(r, 0x18);
-        WR8(OBJ->f3300[16], 0x18);
+        WR8(OBJ->work_b[16], 0x18);
     }
     facing = (uint8_t)(RD8(OBJ->substate[24]) & 0x01);
     r.x = facing;
     r = loaded(r, rd8((uint16_t)(0x8346 + facing)));
-    WR8(OBJ->f3358[0], r.a);
+    WR8(OBJ->work_c[0], r.a);
     return r;
 }
 
@@ -1526,9 +1526,9 @@ static Regs fall_ends(Regs r, uint16_t ret, uint8_t step)
     WR8(ZP->game_sub_mode, 1);
     WR8(ZP->field8c, 0);
     r = loaded(r, 0x20);
-    WR8(OBJ->f3300[16], 0x20);
+    WR8(OBJ->work_b[16], 0x20);
     r = loaded(r, step);
-    WR8(OBJ->f3358[0], step);
+    WR8(OBJ->work_c[0], step);
     return r;
 }
 
@@ -2059,11 +2059,11 @@ StageRegs StageClearedWalkBack3CD(StageRegs r)
     uint8_t side, x, step;
 
     r = loaded(r, 0xE0);
-    WR8(OBJ->f3300[16], 0xE0);
+    WR8(OBJ->work_b[16], 0xE0);
     side = walk_side();
     r.y = side;
     r = loaded(r, rd8((uint16_t)(0x8441 + side)));
-    WR8(OBJ->f3358[0], r.a);
+    WR8(OBJ->work_c[0], r.a);
     CALL(0x84E2, StageFrameA0003CD(r));
     side = walk_side();
     r.y = side;
@@ -2079,8 +2079,8 @@ StageRegs StageClearedWalkBack3CD(StageRegs r)
     }
     r = loaded(r, (uint8_t)(RD8(ZP->field8c) & 0x7F));
     WR8(ZP->field8c, r.a);
-    WR8(OBJ->f3300[16], 0);
-    WR8(OBJ->f3358[0], 0);
+    WR8(OBJ->work_b[16], 0);
+    WR8(OBJ->work_c[0], 0);
     r = loaded(r, 2);
     WR8(ZP->field8a, 2);
     r = orig_shim(r, 0x850B, 0xA003);
@@ -2307,7 +2307,7 @@ StageRegs StageBossWaitDoor3CD(StageRegs r)
         return r;
     }
     r = loaded(r, 0x20);
-    WR8(OBJ->f3358[0], 0x20);
+    WR8(OBJ->work_c[0], 0x20);
     r.nz = (uint8_t)(rd8(SUB3_STEP) + 1);
     wr8(SUB3_STEP, r.nz);
     return r;
@@ -2340,7 +2340,7 @@ void abi_StageBossWaitDoor3CD(void)
 StageRegs StageBossWalkOut3CD(StageRegs r)
 {
     r = loaded(r, 0xB8);
-    WR8(OBJ->f3300[16], 0xB8);
+    WR8(OBJ->work_b[16], 0xB8);
     CALL(0x8605, StageFrameA0003CD(r));
     r = orig_shim(r, 0x8608, 0x40D8);
     r = orig_shim(r, 0x860B, 0xA009);
@@ -2381,9 +2381,9 @@ StageRegs StageNextRouteStage3CD(StageRegs r)
 {
     r = loaded(r, 0x02);
     WR8(ZP->display_delay, 0x02);
-    WR8(OBJ->f3300[16], 0);
+    WR8(OBJ->work_b[16], 0);
     wr8(STAGE_FLAG_2743, 0);
-    WR8(OBJ->f3358[0], 0);
+    WR8(OBJ->work_c[0], 0);
     r.nz = INC8(ZP->field82);
     r = loaded(r, RD8(ZP->field82));
     r.y = r.a;
@@ -2528,8 +2528,8 @@ StageRegs StageClearedWalkOff3CD(StageRegs r)
     side = walk_side();
     r.y = side;
     r = loaded(r, rd8((uint16_t)(0x8441 + side)));
-    WR8(OBJ->f3358[0], r.a);
-    WR8(OBJ->f3300[16], r.a);
+    WR8(OBJ->work_c[0], r.a);
+    WR8(OBJ->work_b[16], r.a);
     CALL(0x8675, StageFrameA0003CD(r));
     side = walk_side();
     r.y = side;
@@ -2657,7 +2657,7 @@ static Regs center_near(Regs r, uint8_t mask)
 static Regs center_done(Regs r)
 {
     RMW8(ZP->field8e, old, old & (uint8_t)~0x80);
-    WR8(OBJ->f3300[16], 0);
+    WR8(OBJ->work_b[16], 0);
     wr8(PlayerByte3BF0, 0);
     return r;
 }
@@ -2694,8 +2694,8 @@ StageRegs StageCenterPlayer3CD(StageRegs r)
         free_to_center = !r.c;
     }
     r = loaded(r, 0x80);
-    WR8(OBJ->f3300[16], 0x80);
-    WR8(OBJ->f3358[0], 0);
+    WR8(OBJ->work_b[16], 0x80);
+    WR8(OBJ->work_c[0], 0);
     if (!free_to_center) {
         CALL(0x86ED, StageFrameA0093CD(r));
         return r;
@@ -3050,7 +3050,7 @@ StageRegs StageSubModeOpening3CD(StageRegs r)
     wr8(PlayerByte3BD8, 0);
     r = loaded(r, 1);
     WR8(ZP->game_sub_mode, 1);
-    WR8(OBJ->f3300[16], 1);
+    WR8(OBJ->work_b[16], 1);
     wr8(PlayerByte3BF0, 0);
     return r;
 }
@@ -3508,11 +3508,11 @@ static Regs unpack_door(Regs r, uint16_t ret, uint8_t mask, bool third)
 
     r = orig_shim(r, ret, 0x40D2);
     slot = r.x;
-    packed = RD8(OBJ->fields_2ee0[64 + slot]);
+    packed = RD8(OBJ->work_a[64 + slot]);
     r = loaded(r, packed);
     r.y = packed;
     r = loaded(r, (uint8_t)(packed & mask));
-    WR8(OBJ->f3300[16 + slot], r.a);
+    WR8(OBJ->work_b[16 + slot], r.a);
     rolled = r.y;
     carry = r.c;
     for (int i = 0; i < 3; i++) {
@@ -3526,7 +3526,7 @@ static Regs unpack_door(Regs r, uint16_t ret, uint8_t mask, bool third)
         r.y = rolled;
     }
     r = loaded(r, (uint8_t)(rolled & 0x03));
-    WR8(OBJ->f3358[slot], r.a);
+    WR8(OBJ->work_c[slot], r.a);
     if (!third) {
         return r;
     }
@@ -3553,9 +3553,9 @@ static Regs door_closed(Regs r)
 /* The door taken: zField83 the room, zField87 the entry, zSubStep 2. */
 static Regs door_taken(Regs r)
 {
-    r = loaded(r, RD8(OBJ->f3300[16 + r.x]));
+    r = loaded(r, RD8(OBJ->work_b[16 + r.x]));
     WR8(ZP->field83, r.a);
-    r = loaded(r, RD8(OBJ->f3358[r.x]));
+    r = loaded(r, RD8(OBJ->work_c[r.x]));
     WR8(ZP->field87, r.a);
     return r;
 }
@@ -3586,7 +3586,7 @@ StageRegs DoorHandler3CD(StageRegs r)
     if (r.a == 0) {
         return unpack_door(r, 0x89F0, 0x0F, true);
     }
-    WR8(OBJ->f3778[24 + slot], 0);
+    WR8(OBJ->work_l[24 + slot], 0);
     r.y = RD8(OBJ->health[32 + slot]);
     r.nz = r.y;
     r = loaded(r, rd8((uint16_t)(PadOverrides + r.y)));
@@ -3641,8 +3641,8 @@ StageRegs DoorHandlerB3CD(StageRegs r)
     if (r.a == 0) {
         return unpack_door(r, 0x8A3F, 0x1F, false);
     }
-    WR8(OBJ->f3778[24 + slot], 0);
-    r = loaded(r, RD8(OBJ->fields_2ee0[64 + slot]));
+    WR8(OBJ->work_l[24 + slot], 0);
+    r = loaded(r, RD8(OBJ->work_a[64 + slot]));
     if ((r.a & 0x80) != 0) {
         r = loaded(r, rd8(PlayerByte3BD7));
         if (r.a == 0) {
@@ -4022,7 +4022,7 @@ StageRegs StageBossBarStep3CD(StageRegs r)
 {
     uint8_t health, bar;
 
-    r = loaded(r, RD8(OBJ->f3300[13]));
+    r = loaded(r, RD8(OBJ->work_b[13]));
     if (r.a != 0) {
         return StageBossBarFlash3CD(r);
     }
@@ -4040,7 +4040,7 @@ StageRegs StageBossBarStep3CD(StageRegs r)
         if (r.y != 0) {
             return r;
         }
-        WR8(OBJ->f3300[13], r.a);
+        WR8(OBJ->work_b[13], r.a);
         return r;
     }
     bar = rd8(BOSS_BAR);
@@ -4169,7 +4169,7 @@ StageRegs StageBossBarFlash3CD(StageRegs r)
         r = loaded(r, RD8(ZP->temp01));
         r = compared(r, 0x08);
     } while (!r.c);
-    r.nz = INC8(OBJ->f3358[69]);
+    r.nz = INC8(OBJ->work_c[69]);
     value = RD8(OBJ->vx_lo[37]);
     sum = add_bytes(value, 0x0C, false);
     r = loaded(r, sum.value);
@@ -4221,7 +4221,7 @@ StageRegs StageBarErase3CD(StageRegs r)
 
     r = set_vram_addresses(r, 0x8C5D);
     for (r.x = 0x40; r.x != 0; r.x--) {
-        r.y = (uint8_t)(RD8(OBJ->f3358[69]) & 0x07);
+        r.y = (uint8_t)(RD8(OBJ->work_c[69]) & 0x07);
         r = orig_shim(r, 0x8C68, 0x4051);
         mask = (uint8_t)(r.a | RD8(ZP->random2));
         mask = (uint8_t)(mask | RD8(ZP->random1));
@@ -4612,8 +4612,8 @@ StageRegs StageOpeningStart3CD(StageRegs r)
     WR8(OBJ->y_lo[84], 0x04);
     WR8(OBJ->vx_hi[53], 0x04);
     r = loaded(r, 0x20);
-    WR8(OBJ->f3300[84], 0x20);
-    WR8(OBJ->f3300[85], 0x20);
+    WR8(OBJ->work_b[84], 0x20);
+    WR8(OBJ->work_b[85], 0x20);
     r = loaded(r, 0x02);
     wr8(PlayerByte3BD8, 0x02);
     WR8(OBJ->hit_taken[52], 0);
@@ -4670,10 +4670,10 @@ StageRegs StageOpeningStep3CD(StageRegs r)
         }
         r.nz = INC8(OBJ->hit_taken[52]);
     }
-    r.nz = DEC8(OBJ->f3300[85]);
+    r.nz = DEC8(OBJ->work_b[85]);
     if (r.nz == 0) {
-        r.nz = INC8(OBJ->f3300[13]);
-        r.y = RD8(OBJ->f3300[13]);
+        r.nz = INC8(OBJ->work_b[13]);
+        r.y = RD8(OBJ->work_b[13]);
         r.c = r.y >= 0x07;
         r.nz = (uint8_t)(r.y - 0x07);
         if (r.nz == 0) {
@@ -4681,36 +4681,36 @@ StageRegs StageOpeningStep3CD(StageRegs r)
             RMW8(ZP->field8e, old, old | 0x01);
             return r;
         }
-        r = opening_next_step(r, ADDR_OF8(OBJ->vx_hi[53]), ADDR_OF8(OBJ->vx_lo[37]), ADDR_OF8(OBJ->f3300[85]));
+        r = opening_next_step(r, ADDR_OF8(OBJ->vx_hi[53]), ADDR_OF8(OBJ->vx_lo[37]), ADDR_OF8(OBJ->work_b[85]));
     }
-    r = loaded(r, RD8(OBJ->f3300[13]));
+    r = loaded(r, RD8(OBJ->work_b[13]));
     r = compared(r, 0x06);
     if (r.nz == 0) {
-        r = loaded(r, RD8(OBJ->f3300[85]));
+        r = loaded(r, RD8(OBJ->work_b[85]));
         r = compared(r, 0x1F);
         if (r.nz == 0) {
             WR8(OBJ->frame[52], 0);
         }
-        WR8(OBJ->f3358[68], r.a);
+        WR8(OBJ->work_c[68], r.a);
     }
     r.x = 0x45;
     r.nz = 0x45;
     r = orig_shim(r, 0x8EBC, 0x4063);
-    r.nz = DEC8(OBJ->f3300[84]);
+    r.nz = DEC8(OBJ->work_b[84]);
     if (r.nz == 0) {
-        r.nz = INC8(OBJ->f3300[12]);
-        r.y = RD8(OBJ->f3300[12]);
-        r = opening_next_step(r, ADDR_OF8(OBJ->y_lo[84]), ADDR_OF8(OBJ->y_frac[68]), ADDR_OF8(OBJ->f3300[84]));
+        r.nz = INC8(OBJ->work_b[12]);
+        r.y = RD8(OBJ->work_b[12]);
+        r = opening_next_step(r, ADDR_OF8(OBJ->y_lo[84]), ADDR_OF8(OBJ->y_frac[68]), ADDR_OF8(OBJ->work_b[84]));
     }
     r.x = 0x44;
     r.nz = 0x44;
     r = orig_shim(r, 0x8EDE, 0x4060);
-    r = loaded(r, RD8(OBJ->f3300[12]));
+    r = loaded(r, RD8(OBJ->work_b[12]));
     r = compared(r, 0x06);
     if (r.nz != 0) {
         return r;
     }
-    r = loaded(r, RD8(OBJ->f3358[68]));
+    r = loaded(r, RD8(OBJ->work_c[68]));
     return StageOpeningFade3CD(r);
 }
 
@@ -5459,7 +5459,7 @@ StageRegs TallyBoard3CD(StageRegs r)
     r.nz = r.x;
     CALL(0x913D, StageDrawPiece3CD(r));
     r = loaded(r, RD8(ZP->field94));
-    WR8(OBJ->f3300[13], r.a);
+    WR8(OBJ->work_b[13], r.a);
     r = loaded(r, RD8(ZP->player_health));
     r = compared(r, 0x5C);
     if (r.nz == 0) {
@@ -5598,7 +5598,7 @@ StageRegs TallyReveal3CD(StageRegs r)
         r.nz = r.x;
         RMW8(ZP->paused, old, old | 0x02);
         r = loaded(r, 0x40);
-        WR8(OBJ->f3300[16], 0x40);
+        WR8(OBJ->work_b[16], 0x40);
         return TallyNext152D(r);
     }
     for (;;) {
@@ -5816,7 +5816,7 @@ StageRegs TallyPause3CD(StageRegs r)
         return r;
     }
     r = loaded(r, 0x40);
-    WR8(OBJ->f3300[16], 0x40);
+    WR8(OBJ->work_b[16], 0x40);
     return TallyNext152D(r);
 }
 
@@ -5870,7 +5870,7 @@ StageRegs TallyCount3CD(StageRegs r)
         }
         r = loaded(r, RD8(ZP->field94));
         if (r.a == 0) {
-            r.nz = DEC8(OBJ->f3300[16]);
+            r.nz = DEC8(OBJ->work_b[16]);
             r.nz = INC8(ZP->field80);
             r.nz = INC8(ZP->field80);
             r = loaded(r, RD8(OBJ->frame[51]));
@@ -5879,7 +5879,7 @@ StageRegs TallyCount3CD(StageRegs r)
                 r.nz = DEC8(ZP->field80);
                 RMW8(ZP->paused, old, old | 0x02);
                 r = loaded(r, 0x40);
-                WR8(OBJ->f3300[16], 0x40);
+                WR8(OBJ->work_b[16], 0x40);
             }
             return TallyNext152D(r);
         }
@@ -5934,7 +5934,7 @@ StageRegs TallyWaitPress3CD(StageRegs r)
         return r;
     }
     r = loaded(r, 0x20);
-    WR8(OBJ->f3300[16], 0x20);
+    WR8(OBJ->work_b[16], 0x20);
     return TallyNext152D(r);
 }
 
@@ -5978,7 +5978,7 @@ StageRegs TallyStockBonus3CD(StageRegs r)
     CALL(0x9335, StageDrawStock3CD(r));
     r = loaded(r, 0x3E);
     r = orig_shim(r, 0x933A, SOUND_HOOK);
-    r.nz = DEC8(OBJ->f3300[16]);
+    r.nz = DEC8(OBJ->work_b[16]);
     return TallyNext152D(r);
 }
 
@@ -6012,7 +6012,7 @@ StageRegs TallyEnd3CD(StageRegs r)
     if (wait.dropped) {
         return r;
     }
-    r = loaded(r, RD8(OBJ->f3300[13]));
+    r = loaded(r, RD8(OBJ->work_b[13]));
     WR8(ZP->field94, r.a);
     r.nz = INC8(ZP->mode_done);
     return r;
@@ -6322,10 +6322,10 @@ StageRegs StageObjectHits3CD(StageRegs r)
     r.x = 0x47;
     do {
         CALL(0x94F3, StageHitTestObject3CD(r));
-        r = loaded(r, RD8(OBJ->f3778[24 + r.x]));
+        r = loaded(r, RD8(OBJ->work_l[24 + r.x]));
         if (r.a != 0) {
             WR8(OBJ->hit_status[80 + r.x], 0);
-            r.nz = DEC8(OBJ->f3778[24 + r.x]);
+            r.nz = DEC8(OBJ->work_l[24 + r.x]);
         }
         r.x--;
         r.c = r.x >= 0x10;
@@ -6347,7 +6347,7 @@ static uint8_t facing_offset(uint8_t x)
 {
     uint8_t offset;
 
-    offset = RD8(OBJ->f3670[x]);
+    offset = RD8(OBJ->work_i[x]);
     WR8(ZP->temp01, offset);
     if (RD8(OBJ->frame[56 + x]) != 0) {
         offset = (uint8_t)((RD8(ZP->temp01) ^ 0xFF) + 1);
@@ -6412,9 +6412,9 @@ StageRegs StagePlaceHitBoxes3CD(StageRegs r)
             value = RD8(OBJ->sprite_attr[24 + r.x]);
             sum = add_bytes(value, RD8(ZP->temp00), sum.carry);
             wr8((uint16_t)(HIT_HI + r.x), sum.value);
-            (void)signed_offset(ADDR_OF8(OBJ->f36c8[56 + r.x]));
+            (void)signed_offset(ADDR_OF8(OBJ->work_j[56 + r.x]));
             value = RD8(OBJ->x_frac[48 + r.x]);
-            offset = RD8(OBJ->f36c8[56 + r.x]);
+            offset = RD8(OBJ->work_j[56 + r.x]);
             sum = add_bytes(value, offset, false);
             wr8((uint16_t)(HIT_Y + r.x), sum.value);
             value = RD8(OBJ->x_lo[64 + r.x]);
@@ -6442,12 +6442,12 @@ static bool box_hit(Regs *r)
     Sum sum;
     uint8_t value, other;
 
-    value = RD8(OBJ->f3670[72 + r->x]);
-    other = RD8(OBJ->f3670[72 + r->y]);
+    value = RD8(OBJ->work_i[72 + r->x]);
+    other = RD8(OBJ->work_i[72 + r->y]);
     sum = add_bytes(value, other, false);
     wr8(REACH_X, sum.value);
-    value = RD8(OBJ->f3720[40 + r->x]);
-    other = RD8(OBJ->f3720[40 + r->y]);
+    value = RD8(OBJ->work_k[40 + r->x]);
+    other = RD8(OBJ->work_k[40 + r->y]);
     sum = add_bytes(value, other, false);
     wr8(REACH_Y, sum.value);
     value = rd8(TEST_X);
@@ -6499,8 +6499,8 @@ StageRegs StageHitTestObject3CD(StageRegs r)
     if (r.a == 0) {
         return StageSubStepNone152D(r);
     }
-    value = RD8(OBJ->f3670[72 + r.x]);
-    r = loaded(r, (uint8_t)(value | RD8(OBJ->f3720[40 + r.x])));
+    value = RD8(OBJ->work_i[72 + r.x]);
+    r = loaded(r, (uint8_t)(value | RD8(OBJ->work_k[40 + r.x])));
     if (r.a == 0) {
         return StageSubStepNone152D(r);
     }
@@ -6516,7 +6516,7 @@ StageRegs StageHitTestObject3CD(StageRegs r)
     if (r.a != 0) {
         return StageSubStepNone152D(r);
     }
-    offset = signed_offset(ADDR_OF8(OBJ->f36c8[56 + r.x]));
+    offset = signed_offset(ADDR_OF8(OBJ->work_j[56 + r.x]));
     value = RD8(OBJ->x_frac[48 + r.x]);
     sum = add_bytes(offset, value, false);
     wr8(TEST_Y, sum.value);
@@ -6653,7 +6653,7 @@ void abi_HitKindReport3CD(void)
 static Regs hit_side_set(Regs r, uint8_t side)
 {
     r = loaded(r, side);
-    wr8((uint16_t)(ADDR_OF8(OBJ->f3618[16]) + r.y), side);
+    wr8((uint16_t)(ADDR_OF8(OBJ->work_h[16]) + r.y), side);
     r = compared(r, 0x02);
     if (r.nz == 0) {
         return r;
@@ -7522,7 +7522,7 @@ void abi_GateObjectStep3CD(void)
 StageRegs GateStart3CD(StageRegs r)
 {
     r = orig_shim(r, 0x99CF, 0x40D2);
-    r.y = (uint8_t)(RD8(OBJ->fields_2ee0[64 + r.x]) & 0x01);
+    r.y = (uint8_t)(RD8(OBJ->work_a[64 + r.x]) & 0x01);
     r = loaded(r, rd8((uint16_t)(0x99DC + r.y)));
     WR8(OBJ->sprite_set[72 + r.x], r.a);
     return StageSubStepNone152D(r);
@@ -7569,7 +7569,7 @@ StageRegs GateWaitPlayer3CD(StageRegs r)
     if (r.c) {
         return r;
     }
-    r = loaded(r, (uint8_t)((RD8(OBJ->fields_2ee0[64 + r.x]) & 0x0F) + 1));
+    r = loaded(r, (uint8_t)((RD8(OBJ->work_a[64 + r.x]) & 0x0F) + 1));
     WR8(ZP->field8c, r.a);
     r = loaded(r, (uint8_t)(RD8(SCROLLLIM->camera_mode) - 1));
     if (r.a == 0) {
@@ -7578,12 +7578,12 @@ StageRegs GateWaitPlayer3CD(StageRegs r)
     r = loaded(r, 0x03);
     WR8(ZP->sub_step, 0x03);
     r.nz = INC8(OBJ->substate[24 + r.x]);
-    WR8(OBJ->f3300[16 + r.x], 0);
+    WR8(OBJ->work_b[16 + r.x], 0);
     r = loaded(r, 0x04);
     WR8(OBJ->health[32 + r.x], 0x04);
-    r = loaded(r, (uint8_t)(RD8(OBJ->fields_2ee0[64 + r.x]) & 0xF0));
+    r = loaded(r, (uint8_t)(RD8(OBJ->work_a[64 + r.x]) & 0xF0));
     if (r.a == 0) {
-        r = loaded(r, RD8(OBJ->fields_2ee0[64 + r.x]));
+        r = loaded(r, RD8(OBJ->work_a[64 + r.x]));
         r = compared(r, 0x02);
         if (!r.c) {
             return r;
@@ -7658,9 +7658,9 @@ static Regs gate_frame(Regs r, uint16_t ret)
 
     r = loaded(r, 0x04);
     WR8(OBJ->health[32 + r.x], 0x04);
-    r.y = (uint8_t)(RD8(OBJ->fields_2ee0[64 + r.x]) & 0x01);
+    r.y = (uint8_t)(RD8(OBJ->work_a[64 + r.x]) & 0x01);
     base = rd8((uint16_t)(0x99DC + r.y));
-    count = RD8(OBJ->f3300[16 + r.x]);
+    count = RD8(OBJ->work_b[16 + r.x]);
     sum = add_bytes(base, count, false);
     WR8(OBJ->sprite_set[72 + r.x], sum.value);
     step = rd8((uint16_t)(0x99DE + r.y));
@@ -7700,8 +7700,8 @@ StageRegs GateOpen3CD(StageRegs r)
     if (r.nz != 0) {
         return r;
     }
-    r.nz = INC8(OBJ->f3300[16 + r.x]);
-    r = loaded(r, RD8(OBJ->f3300[16 + r.x]));
+    r.nz = INC8(OBJ->work_b[16 + r.x]);
+    r = loaded(r, RD8(OBJ->work_b[16 + r.x]));
     r = compared(r, 0x04);
     if (r.nz != 0) {
         return gate_frame(r, 0x9A87);
@@ -7746,7 +7746,7 @@ StageRegs GateWaitClear3CD(StageRegs r)
     r.nz = INC8(OBJ->substate[24 + r.x]);
     r = loaded(r, 0x04);
     WR8(OBJ->health[32 + r.x], 0x04);
-    r = loaded(r, RD8(OBJ->fields_2ee0[64 + r.x]));
+    r = loaded(r, RD8(OBJ->work_a[64 + r.x]));
     r = compared(r, 0x02);
     if (!r.c) {
         return r;
@@ -7787,7 +7787,7 @@ StageRegs GateClose3CD(StageRegs r)
     if (r.nz != 0) {
         return r;
     }
-    r.nz = DEC8(OBJ->f3300[16 + r.x]);
+    r.nz = DEC8(OBJ->work_b[16 + r.x]);
     if ((r.nz & 0x80) == 0) {
         return gate_frame(r, 0x9AD7);
     }

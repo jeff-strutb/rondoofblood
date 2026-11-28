@@ -132,7 +132,7 @@
 ; Entry: X object. Exit: A 2, N and Z clear; X, Y, C and V kept.
 SetPhase2:
     lda #$02
-    sta a:OBJ_34B8,x
+    sta a:OBJ_WORK_D,x
     rts
 
 ; @routine 0D5B:206 SetPhase3
@@ -143,7 +143,7 @@ SetPhase2:
 ; Entry: X object. Exit: A 3, N and Z clear; X, Y, C and V kept.
 SetPhase3:
     lda #$03
-    sta a:OBJ_34B8,x
+    sta a:OBJ_WORK_D,x
     rts
 
 ; @routine 0D5B:20C SetPhase4
@@ -154,7 +154,7 @@ SetPhase3:
 ; Entry: X object. Exit: A 4, N and Z clear; X, Y, C and V kept.
 SetPhase4:
     lda #$04
-    sta a:OBJ_34B8,x
+    sta a:OBJ_WORK_D,x
 SetPhase4_at0:
     rts
 
@@ -173,7 +173,7 @@ SetSpeedFromPhaseTable:
     ldy a:OBJ_FACING_LEFT,x
     lda a:$B23F,y
     sta z:zTemp00
-    lda a:OBJ_34B8,x
+    lda a:OBJ_WORK_D,x
     asl a
     asl a
     clc
@@ -225,7 +225,7 @@ AdvanceState:
 ; Entry: X object. Exit: A 3, N and Z clear; X, Y, C and V kept.
 EnterState3WithTallHitbox:
     lda #$02
-    sta a:OBJ_3358,x
+    sta a:OBJ_WORK_C,x
     lda #$06
     sta a:OBJ_HITBOX_HALF_W,x
     lda #$18
@@ -280,7 +280,7 @@ StartFacingPlayerThenCheck:
     and #$01
     sta a:OBJ_FACING_LEFT,x
     lda #$18
-    sta a:OBJ_3510,x
+    sta a:OBJ_WORK_E,x
     lda a:OBJ_START_ARG,x
     cmp #$01
     bne StartFacingPlayerThenCheck_at0
@@ -317,7 +317,7 @@ AnimateThenCountToState3:
     beq AnimateThenCountToState3_at0
     lda a:OBJ_X_HI,x
     bne AnimateThenCountToState3_at0
-    dec a:OBJ_3510,x
+    dec a:OBJ_WORK_E,x
     bne AnimateThenCountToState3_at0
     lda #$03
     sta a:OBJ_STATE,x
@@ -343,7 +343,7 @@ PickPhaseAtRandomA:
     cmp #$03
     beq PickPhaseAtRandomB_at0
 PickPhaseAtRandomA_at0:
-    stz a:OBJ_34B8,x
+    stz a:OBJ_WORK_D,x
     rts
 
 ; @routine 0D5B:1E3 PickPhaseAtRandomB
@@ -368,7 +368,7 @@ PickPhaseAtRandomB:
     bne PickPhaseAtRandomA_at0
 PickPhaseAtRandomB_at0:
     lda #$01
-    sta a:OBJ_34B8,x
+    sta a:OBJ_WORK_D,x
     rts
 
 ; @routine 0D5E:15C StartWithTimerByNextKind
@@ -382,9 +382,9 @@ StartWithTimerByNextKind:
     jsr VecLoadObjectRecord
     ldy a:OBJ_START_ARG,x
     lda a:$C96F,y
-    sta a:OBJ_34B8,x
-    stz a:OBJ_3510,x
-    stz a:OBJ_3568,x
+    sta a:OBJ_WORK_D,x
+    stz a:OBJ_WORK_E,x
+    stz a:OBJ_WORK_F,x
     rts
 
 ; @routine 0D5E:18F WalkWhileFrameChangesC
@@ -398,7 +398,7 @@ WalkWhileFrameChangesC:
     cly
     jsr StepFramesFacingPlayerE
     bcc WalkWhileFrameChangesC_at0
-    ldy a:OBJ_3510,x
+    ldy a:OBJ_WORK_E,x
     lda a:$C9A2,y
     sta a:OBJ_VX_HI,x
     jsr VecApplyVelocityX
@@ -432,7 +432,7 @@ StepFramesFacingPlayerE:
 ; Entry: X object, D clear. Exit: A the frame, N, Z from it; C bit 3 of next_kind; Y 0 or 1.
 StartWithFrameByNextKind:
     jsr VecLoadObjectRecord
-    stz a:OBJ_3568,x
+    stz a:OBJ_WORK_F,x
     lda a:OBJ_START_ARG,x
     lsr a
     lsr a
@@ -469,7 +469,7 @@ AnimateByKindThenNextState:
     jsr VecStepObjectFrames
     bne AnimateByKindThenNextState_at0
     lda #$02
-    sta a:OBJ_3250,x
+    sta a:OBJ_HITBOX_ON,x
     inc a:OBJ_STATE,x
 AnimateByKindThenNextState_at0:
     rts
@@ -507,12 +507,12 @@ AnimateAndSpawnThenPause_at1:
     stz a:OBJ_ANIM_TIMER,x
     lda #$03
     sta a:OBJ_STATE,x
-    inc a:OBJ_3568,x
-    lda a:OBJ_3568,x
+    inc a:OBJ_WORK_F,x
+    lda a:OBJ_WORK_F,x
     and #$03
     tay
     lda a:$CAC7,y
-    sta a:OBJ_34B8,x
+    sta a:OBJ_WORK_D,x
 AnimateAndSpawnThenPause_at2:
     rts
 

@@ -80,7 +80,7 @@ static TriggerEnd load_trigger(uint8_t x, uint8_t number_mask, bool takes_count,
     a = RD8(OBJ->start_arg[x]);
     y = a;
     a = (uint8_t)(a & number_mask);
-    WR8(OBJ->f3510[x], a);
+    WR8(OBJ->work_e[x], a);
     a = y;
     carry = sum.carry;
     a = rol_a(a, &carry);
@@ -174,7 +174,7 @@ TriggerEnd StageTriggerObject(uint8_t x)
         WR8(OBJ->hit_taken[x], 0);
         return end;
     }
-    a = RD8(OBJ->f3510[x]);
+    a = RD8(OBJ->work_e[x]);
     WR8(ZP->field83, a);
     a = RD8(OBJ->angle_hi[x]);
     WR8(ZP->field87, a);
@@ -240,7 +240,7 @@ TriggerEnd StageTriggerObjectB(uint8_t x)
         WR8(OBJ->hit_taken[x], 0);
         return end;
     }
-    a = RD8(OBJ->f3510[x]);
+    a = RD8(OBJ->work_e[x]);
     WR8(ZP->field83, a);
     a = RD8(OBJ->angle_hi[x]);
     WR8(ZP->field87, a);

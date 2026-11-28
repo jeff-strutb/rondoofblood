@@ -22,7 +22,7 @@ LoadThenStartTwoScripts:
 
 ; @routine 10CB:2CB ClearSlot4EUnlessCamera18
 ; @run 70:B2CB
-; WHAT IT DOES: Unless the camera mode is $18, clears the object in slot $4E, sets OBJ_3510 to $40 and goes on to the next OBJ_SUBSTATE.
+; WHAT IT DOES: Unless the camera mode is $18, clears the object in slot $4E, sets OBJ_WORK_E to $40 and goes on to the next OBJ_SUBSTATE.
 ; HOW: A compare, ClearObjectInY, a store, an INC.
 ; WAITS: no.
 ; Entry: X object. Exit: the compare, or the new OBJ_SUBSTATE's N and Z (A $40).
@@ -33,19 +33,19 @@ ClearSlot4EUnlessCamera18:
     ldy #$4E
     jsr VecClearObjectInY
     lda #$40
-    sta a:OBJ_3510,x
+    sta a:OBJ_WORK_E,x
     inc a:OBJ_SUBSTATE,x
 ClearSlot4EUnlessCamera18_at0:
     rts
 
 ; @routine 10CB:2E0 CountThenSoleScriptAndSound
 ; @run 70:B2E0
-; WHAT IT DOES: Counts OBJ_3510 down; at zero it starts the sole script 0 in slot 3, sends sound $E4, sets its flags to $81, OBJ_3510 to $60 and zTemp $9E to 4 and goes on to the next OBJ_SUBSTATE.
+; WHAT IT DOES: Counts OBJ_WORK_E down; at zero it starts the sole script 0 in slot 3, sends sound $E4, sets its flags to $81, OBJ_WORK_E to $60 and zTemp $9E to 4 and goes on to the next OBJ_SUBSTATE.
 ; HOW: DEC, StartSoleScriptSlot, SoundCommand, stores, an INC.
 ; WAITS: no.
 ; Entry: X object. Exit: see the wrapper.
 CountThenSoleScriptAndSound:
-    dec a:OBJ_3510,x
+    dec a:OBJ_WORK_E,x
     bne CountThenSoleScriptAndSound_at0
     phx
     cla
@@ -57,7 +57,7 @@ CountThenSoleScriptAndSound:
     lda #$81
     sta a:OBJ_SCROLL_BAND,x
     lda #$60
-    sta a:OBJ_3510,x
+    sta a:OBJ_WORK_E,x
     lda #$04
     sta z:zRasterStage
     inc a:OBJ_SUBSTATE,x
@@ -84,14 +84,14 @@ CountScriptsThenStepList_at0:
 
 ; @routine 10CB:3ED StartScriptWhenCountInTable
 ; @run 70:B3ED
-; WHAT IT DOES: While OBJ_3568 is not negative it counts it up and looks its old value up in the eight-byte table at $B40D; when found at index n it starts script $98 plus n in slot 5.
+; WHAT IT DOES: While OBJ_WORK_F is not negative it counts it up and looks its old value up in the eight-byte table at $B40D; when found at index n it starts script $98 plus n in slot 5.
 ; HOW: A search loop, StartScriptSlotKind1.
 ; WAITS: no.
 ; Entry: X object. Exit: the compare, or the script start's registers.
 StartScriptWhenCountInTable:
-    lda a:OBJ_3568,x
+    lda a:OBJ_WORK_F,x
     bmi StartScriptWhenCountInTable_at0
-    inc a:OBJ_3568,x
+    inc a:OBJ_WORK_F,x
     cly
 StartScriptWhenCountInTable_at2:
     cmp a:$B40D,y
@@ -152,7 +152,7 @@ RiseThenPlaceWithSound_at0:
 
 ; @routine 10CB:45F RiseThenCueMusic
 ; @run 70:B45F
-; WHAT IT DOES: Moves the object along Y and takes $0030 off its Y speed. Once the speed's high byte is negative it steps the animation list at $B4AA; when that ends it sets bit 4 of zField8E, sends sound $FF, clears bits 3 and 4, plays the music again (CdPlayAgain), sets bit 2, clears zTemp $9E and OBJ_3250 to 2, clears its animation step and timer, goes on to the next state and clears OBJ_SUBSTATE.
+; WHAT IT DOES: Moves the object along Y and takes $0030 off its Y speed. Once the speed's high byte is negative it steps the animation list at $B4AA; when that ends it sets bit 4 of zField8E, sends sound $FF, clears bits 3 and 4, plays the music again (CdPlayAgain), sets bit 2, clears zTemp $9E and OBJ_HITBOX_ON to 2, clears its animation step and timer, goes on to the next state and clears OBJ_SUBSTATE.
 ; HOW: ApplyVelocity, a 16-bit subtract, StepObjectFrames, SoundCommand, CdPlayAgain, stores.
 ; WAITS: no.
 ; Entry: X object, Y kept unless the step sets it. Exit: see the wrapper.
@@ -183,7 +183,7 @@ RiseThenCueMusic:
     sta z:zField8E
     stz z:zRasterStage
     lda #$02
-    sta a:OBJ_3250,x
+    sta a:OBJ_HITBOX_ON,x
     stz a:OBJ_ANIM_STEP,x
     stz a:OBJ_ANIM_TIMER,x
     inc a:OBJ_STATE,x
@@ -193,18 +193,18 @@ RiseThenCueMusic_at0:
 
 ; @routine 10CB:5AB SpawnInFreeSlotEvery30
 ; @run 70:B5AB
-; WHAT IT DOES: Counts OBJ_37D0 down; at zero it sets it to $1E, looks for an empty slot from $18 to $1F, clears it and starts a kind $26 object there at this object's place.
+; WHAT IT DOES: Counts OBJ_WORK_M down; at zero it sets it to $1E, looks for an empty slot from $18 to $1F, clears it and starts a kind $26 object there at this object's place.
 ; HOW: DEC, a search loop, ClearObjectInY, StartObjectAtPlace.
 ; WAITS: no.
 ; Entry: X object. Exit: the count, the compare, or the start's registers.
 SpawnInFreeSlotEvery30:
-    lda a:OBJ_37D0,x
+    lda a:OBJ_WORK_M,x
     beq SpawnInFreeSlotEvery30_at0
-    dec a:OBJ_37D0,x
+    dec a:OBJ_WORK_M,x
     rts
 SpawnInFreeSlotEvery30_at0:
     lda #$1E
-    sta a:OBJ_37D0,x
+    sta a:OBJ_WORK_M,x
     ldy #$18
     lda a:OBJ_KIND,y
     beq SpawnInFreeSlotEvery30_at1
@@ -305,7 +305,7 @@ StepListB728ThenRiseSlowly_at0:
 
 ; @routine 10CC:74F LoadThenFallAndFlash
 ; @run 70:BF4F
-; WHAT IT DOES: In state 0 loads the object's record and sets flags 1, frame $59, X speed $00C0, Y speed $0030 and OBJ_3510 $34. Later it adds $0008 to its Y speed, moves, sets its flash flags to $10 while OBJ_3510 is under $10, counts OBJ_3510 down and clears the object at zero.
+; WHAT IT DOES: In state 0 loads the object's record and sets flags 1, frame $59, X speed $00C0, Y speed $0030 and OBJ_WORK_E $34. Later it adds $0008 to its Y speed, moves, sets its flash flags to $10 while OBJ_WORK_E is under $10, counts OBJ_WORK_E down and clears the object at zero.
 ; HOW: LoadObjectRecord, a 16-bit add, ApplyVelocity, DEC, ClearObject.
 ; WAITS: no.
 ; Entry: X object. Exit: the record's registers and A $34 in state 0; else the count.
@@ -326,7 +326,7 @@ LoadThenFallAndFlash:
     lda #$30
     sta a:OBJ_VY_LO,x
     lda #$34
-    sta a:OBJ_3510,x
+    sta a:OBJ_WORK_E,x
     rts
     lda a:OBJ_VY_LO,x
     clc
@@ -336,13 +336,13 @@ LoadThenFallAndFlash:
     adc #$00
     sta a:OBJ_VY_HI,x
     jsr VecApplyVelocity
-    lda a:OBJ_3510,x
+    lda a:OBJ_WORK_E,x
     cmp #$10
     bcs LoadThenFallAndFlash_at0
     lda #$10
     sta a:OBJ_SPRITE_ATTR,x
 LoadThenFallAndFlash_at0:
-    dec a:OBJ_3510,x
+    dec a:OBJ_WORK_E,x
     bne LoadThenFallAndFlash_at1
     jmp VecClearObject
 LoadThenFallAndFlash_at1:
@@ -350,7 +350,7 @@ LoadThenFallAndFlash_at1:
 
 ; @routine 10CD:0C6 StepListC103ThenPickAim
 ; @run 71:C0C6
-; WHAT IT DOES: Steps the animation list at $C103; when it ends the object picks OBJ_34B8: half the time the angle to the player, otherwise a random $00 to $7F plus the byte the table at $C088 gives for the player's side; it then clears OBJ_3510 and OBJ_3568, sets OBJ_3250 to 2 and goes on to the next state.
+; WHAT IT DOES: Steps the animation list at $C103; when it ends the object picks OBJ_WORK_D: half the time the angle to the player, otherwise a random $00 to $7F plus the byte the table at $C088 gives for the player's side; it then clears OBJ_WORK_E and OBJ_WORK_F, sets OBJ_HITBOX_ON to 2 and goes on to the next state.
 ; HOW: StepObjectFrames, NextRandom, SideOfPlayer, AngleToPlayer, stores, an INC.
 ; WAITS: no.
 ; Entry: X object, Y kept unless the step sets it. Exit: the step, or the new state's N and Z (A 2) when the list ended.
@@ -371,23 +371,23 @@ StepListC103ThenPickAim:
     and #$7F
     clc
     adc a:$C088,y
-    sta a:OBJ_34B8,x
+    sta a:OBJ_WORK_D,x
     bra StepListC103ThenPickAim_at2
 StepListC103ThenPickAim_at1:
     jsr VecAngleToPlayer
-    sta a:OBJ_34B8,x
+    sta a:OBJ_WORK_D,x
 StepListC103ThenPickAim_at2:
-    stz a:OBJ_3510,x
-    stz a:OBJ_3568,x
+    stz a:OBJ_WORK_E,x
+    stz a:OBJ_WORK_F,x
     lda #$02
-    sta a:OBJ_3250,x
+    sta a:OBJ_HITBOX_ON,x
     inc a:OBJ_STATE,x
 StepListC103ThenPickAim_at0:
     rts
 
 ; @routine 10CD:126 StepListC170ThenMoveAlongAngle
 ; @run 71:C126
-; WHAT IT DOES: Steps the animation list at $C170, sets the object's speed from its angle OBJ_34B8 with the length OBJ_3510:OBJ_3568, moves it and adds $000C to the length. When the object in slot $10 is in state 6 or more, or this object's OBJ_HIT_STATUS has bit 7 set, it clears its animation step and timer and goes on to the next state (and writes 0 to the byte at $0002 plus its slot).
+; WHAT IT DOES: Steps the animation list at $C170, sets the object's speed from its angle OBJ_WORK_D with the length OBJ_WORK_E:OBJ_WORK_F, moves it and adds $000C to the length. When the object in slot $10 is in state 6 or more, or this object's OBJ_HIT_STATUS has bit 7 set, it clears its animation step and timer and goes on to the next state (and writes 0 to the byte at $0002 plus its slot).
 ; HOW: StepObjectFrames, SetVelocityFromAngle, ApplyVelocity, a 16-bit add, stores, an INC.
 ; WAITS: no.
 ; Entry: X object, Y kept unless the step sets it. Exit: the last test, or the new state's N and Z.
@@ -397,20 +397,20 @@ StepListC170ThenMoveAlongAngle:
     lda #$C1
     sta z:zTemp11
     jsr VecStepObjectFrames
-    lda a:OBJ_3568,x
+    lda a:OBJ_WORK_F,x
     sta z:zTemp00
-    lda a:OBJ_3510,x
+    lda a:OBJ_WORK_E,x
     sta z:zTemp01
-    lda a:OBJ_34B8,x
+    lda a:OBJ_WORK_D,x
     jsr VecSetVelocityFromAngle
     jsr VecApplyVelocity
-    lda a:OBJ_3568,x
+    lda a:OBJ_WORK_F,x
     clc
     adc #$0C
-    sta a:OBJ_3568,x
-    lda a:OBJ_3510,x
+    sta a:OBJ_WORK_F,x
+    lda a:OBJ_WORK_E,x
     adc #$00
-    sta a:OBJ_3510,x
+    sta a:OBJ_WORK_E,x
     lda a:$27B8
     cmp #$06
     bcs WalkAndAttackB
@@ -441,7 +441,7 @@ StepListC192ThenClear:
     rts
 ; @routine 10CD:334 StartFirstObjectWhenCamera2
 ; @run 71:C334
-; WHAT IT DOES: When the level's Y high byte is 2, the scroll Y low is under $30 and the first object's state and OBJ_SUBSTATE are both 0, it sets that object's OBJ_3510 to $40 and OBJ_3568 to $10 and this object goes to the next state.
+; WHAT IT DOES: When the level's Y high byte is 2, the scroll Y low is under $30 and the first object's state and OBJ_SUBSTATE are both 0, it sets that object's OBJ_WORK_E to $40 and OBJ_WORK_F to $10 and this object goes to the next state.
 ; HOW: Compares and stores, an INC.
 ; WAITS: no.
 ; Entry: X object. Exit: the last compare or load, or the new state's N and Z (A $10).
@@ -456,9 +456,9 @@ StartFirstObjectWhenCamera2:
     ora a:OBJ_SUBSTATE
     bne StartFirstObjectWhenCamera2_at0
     lda #$40
-    sta a:OBJ_3510
+    sta a:OBJ_WORK_E
     lda #$10
-    sta a:OBJ_3568
+    sta a:OBJ_WORK_F
     inc a:OBJ_STATE,x
 StartFirstObjectWhenCamera2_at0:
     rts

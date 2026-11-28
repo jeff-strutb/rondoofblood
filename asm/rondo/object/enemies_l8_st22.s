@@ -1,6 +1,6 @@
 ; @routine 0F6B:45D StepListThenStartFivePieces
 ; @run 70:B45D
-; WHAT IT DOES: Runs StepListByNumberTable; when the list ends starts objects of type $A9 in the slots $11 to $15 (each cleared first) at the object's place, numbered 0 to 4 in OBJ_START_ARG, sets frame 2 and OBJ_3510 $C0 and goes to the next state.
+; WHAT IT DOES: Runs StepListByNumberTable; when the list ends starts objects of type $A9 in the slots $11 to $15 (each cleared first) at the object's place, numbered 0 to 4 in OBJ_START_ARG, sets frame 2 and OBJ_WORK_E $C0 and goes to the next state.
 ; HOW: StepListByNumberTable, a loop of ClearObjectInY and StartObjectAtPlace, a counter in zTemp00.
 ; WAITS: no.
 ; Entry: X object, Y kept unless the step sets it. Exit: as the last instruction that ran.
@@ -22,31 +22,31 @@ StepListThenStartFivePieces_at0:
     lda #$02
     sta a:OBJ_FRAME,x
     lda #$C0
-    sta a:OBJ_3510,x
+    sta a:OBJ_WORK_E,x
     inc a:OBJ_STATE,x
     rts
 
 ; @routine 0F6B:4C9 StepListThenRunPhaseTable
 ; @run 70:B4C9
-; WHAT IT DOES: Runs StepListByNumberTable and counts OBJ_3568 down; at zero tries StartPieceABInFreeSlot and, when it started one, keeps OBJ_SUBSTATE in OBJ_38D8, clears it, sets OBJ_3510 $40 and takes OBJ_3568 from OBJ_35C0. Then runs the code the table at $B501 names for OBJ_SUBSTATE (50B, 51C, 52F, 59E, 5B1).
+; WHAT IT DOES: Runs StepListByNumberTable and counts OBJ_WORK_F down; at zero tries StartPieceABInFreeSlot and, when it started one, keeps OBJ_SUBSTATE in OBJ_WORK_P, clears it, sets OBJ_WORK_E $40 and takes OBJ_WORK_F from OBJ_WORK_G. Then runs the code the table at $B501 names for OBJ_SUBSTATE (50B, 51C, 52F, 59E, 5B1).
 ; HOW: Two calls, a table of two bytes to zTemp00-01, a jump through them.
 ; WAITS: no.
 ; Entry: X object, Y kept unless the step sets it. Exit: as the code jumped to; A the high byte, Y the doubled OBJ_SUBSTATE.
 StepListThenRunPhaseTable:
     jsr StepListByNumberTable
-    lda a:OBJ_3568,x
+    lda a:OBJ_WORK_F,x
     beq PickNextPhaseFromTable
-    dec a:OBJ_3568,x
+    dec a:OBJ_WORK_F,x
     bne StepListThenRunPhaseTable_at0
     jsr StartPieceABInFreeSlot
     bcc StepListThenRunPhaseTable_at0
     lda a:OBJ_SUBSTATE,x
-    sta a:OBJ_38D8,x
+    sta a:OBJ_WORK_P,x
     stz a:OBJ_SUBSTATE,x
     lda #$40
-    sta a:OBJ_3510,x
-    lda a:OBJ_35C0,x
-    sta a:OBJ_3568,x
+    sta a:OBJ_WORK_E,x
+    lda a:OBJ_WORK_G,x
+    sta a:OBJ_WORK_F,x
 StepListThenRunPhaseTable_at0:
     lda a:OBJ_SUBSTATE,x
     asl a
@@ -59,7 +59,7 @@ StepListThenRunPhaseTable_at0:
 
 ; @routine 0F6B:52F OrbitCosineSineThenSettle
 ; @run 70:B52F
-; WHAT IT DOES: Moves the object on an ellipse: X speed from the cosine of OBJ_37D0 scaled by $0120, Y speed from the sine scaled by $0050; turns OBJ_37D0 on by -$0070 a frame (a 16-bit add with OBJ_3778); when OBJ_37D0 reaches $80 it is placed at Y $0040, X $B0 less the scroll and goes to the next OBJ_SUBSTATE.
+; WHAT IT DOES: Moves the object on an ellipse: X speed from the cosine of OBJ_WORK_M scaled by $0120, Y speed from the sine scaled by $0050; turns OBJ_WORK_M on by -$0070 a frame (a 16-bit add with OBJ_WORK_L); when OBJ_WORK_M reaches $80 it is placed at Y $0040, X $B0 less the scroll and goes to the next OBJ_SUBSTATE.
 ; HOW: ScaleByCosine, ScaleBySine, ApplyVelocityX and Y, a 16-bit add in memory, two compares.
 ; WAITS: no.
 ; Entry: X object. Exit: as the last instruction that ran.
@@ -68,7 +68,7 @@ OrbitCosineSineThenSettle:
     sta z:zTemp00
     lda #$01
     sta z:zTemp01
-    lda a:OBJ_37D0,x
+    lda a:OBJ_WORK_M,x
     jsr VecScaleByCosine
     lda z:zProduct2
     sta a:OBJ_VX_HI,x
@@ -79,22 +79,22 @@ OrbitCosineSineThenSettle:
     sta z:zTemp00
     lda #$00
     sta z:zTemp01
-    lda a:OBJ_37D0,x
+    lda a:OBJ_WORK_M,x
     jsr VecScaleBySine
     lda z:zProduct2
     sta a:OBJ_VY_HI,x
     lda z:SpriteFlipMask
     sta a:OBJ_VY_LO,x
     jsr VecApplyVelocityY
-    lda a:OBJ_37D0,x
+    lda a:OBJ_WORK_M,x
     sta z:zTemp00
     lda #$90
     clc
-    adc a:OBJ_3778,x
-    sta a:OBJ_3778,x
+    adc a:OBJ_WORK_L,x
+    sta a:OBJ_WORK_L,x
     lda #$FF
-    adc a:OBJ_37D0,x
-    sta a:OBJ_37D0,x
+    adc a:OBJ_WORK_M,x
+    sta a:OBJ_WORK_M,x
     cmp z:zTemp00
     beq OrbitCosineSineThenSettle_at0
     cmp #$80
@@ -102,7 +102,7 @@ OrbitCosineSineThenSettle:
     lda #$40
     sta a:OBJ_Y_LO,x
     stz a:OBJ_Y_FRAC,x
-    stz a:OBJ_3778,x
+    stz a:OBJ_WORK_L,x
     lda #$B0
     sec
     sbc a:ScrollXLo
@@ -114,23 +114,23 @@ OrbitCosineSineThenSettle_at0:
 
 ; @routine 0F6B:59E ResetOrbitAndAdvance
 ; @run 70:B59E
-; WHAT IT DOES: Clears OBJ_3778, sets OBJ_37D0 and OBJ_35C0 $80 and goes to the next OBJ_SUBSTATE.
+; WHAT IT DOES: Clears OBJ_WORK_L, sets OBJ_WORK_M and OBJ_WORK_G $80 and goes to the next OBJ_SUBSTATE.
 ; HOW: Stores and an INC.
 ; WAITS: no.
 ; Entry: X object. Exit: A $80, N and Z from the new OBJ_SUBSTATE.
 ResetOrbitAndAdvance:
     lda #$00
-    sta a:OBJ_3778,x
+    sta a:OBJ_WORK_L,x
     lda #$80
-    sta a:OBJ_37D0,x
+    sta a:OBJ_WORK_M,x
     lda #$80
-    sta a:OBJ_35C0,x
+    sta a:OBJ_WORK_G,x
     inc a:OBJ_SUBSTATE,x
     rts
 
 ; @routine 0F6B:5B1 OrbitWithRisingSineThenSettle
 ; @run 70:B5B1
-; WHAT IT DOES: As OrbitCosineSineThenSettle, but the Y speed comes from the sine of OBJ_3828 scaled by $0100, which turns on by $01C0 a frame; at $80 the object goes to OBJ_SUBSTATE 2.
+; WHAT IT DOES: As OrbitCosineSineThenSettle, but the Y speed comes from the sine of OBJ_WORK_N scaled by $0100, which turns on by $01C0 a frame; at $80 the object goes to OBJ_SUBSTATE 2.
 ; HOW: ScaleBySine, ScaleByCosine, ApplyVelocityY and X, two 16-bit adds in memory, two compares.
 ; WAITS: no.
 ; Entry: X object. Exit: as the last instruction that ran.
@@ -139,7 +139,7 @@ OrbitWithRisingSineThenSettle:
     sta z:zTemp00
     lda #$01
     sta z:zTemp01
-    lda a:OBJ_3828,x
+    lda a:OBJ_WORK_N,x
     jsr VecScaleBySine
     lda z:zProduct2
     sta a:OBJ_VY_HI,x
@@ -148,31 +148,31 @@ OrbitWithRisingSineThenSettle:
     jsr VecApplyVelocityY
     lda #$C0
     clc
-    adc a:OBJ_3880,x
-    sta a:OBJ_3880,x
+    adc a:OBJ_WORK_O,x
+    sta a:OBJ_WORK_O,x
     lda #$01
-    adc a:OBJ_3828,x
-    sta a:OBJ_3828,x
+    adc a:OBJ_WORK_N,x
+    sta a:OBJ_WORK_N,x
     lda #$20
     sta z:zTemp00
     lda #$01
     sta z:zTemp01
-    lda a:OBJ_37D0,x
+    lda a:OBJ_WORK_M,x
     jsr VecScaleByCosine
     lda z:zProduct2
     sta a:OBJ_VX_HI,x
     lda z:SpriteFlipMask
     sta a:OBJ_VX_LO,x
     jsr VecApplyVelocityX
-    lda a:OBJ_37D0,x
+    lda a:OBJ_WORK_M,x
     sta z:zTemp00
     lda #$90
     clc
-    adc a:OBJ_3778,x
-    sta a:OBJ_3778,x
+    adc a:OBJ_WORK_L,x
+    sta a:OBJ_WORK_L,x
     lda #$FF
-    adc a:OBJ_37D0,x
-    sta a:OBJ_37D0,x
+    adc a:OBJ_WORK_M,x
+    sta a:OBJ_WORK_M,x
     cmp z:zTemp00
     beq SoundEveryFourthFrameB
     cmp #$80
@@ -180,7 +180,7 @@ OrbitWithRisingSineThenSettle:
     lda #$40
     sta a:OBJ_Y_LO,x
     stz a:OBJ_Y_FRAC,x
-    stz a:OBJ_3778,x
+    stz a:OBJ_WORK_L,x
     lda #$B0
     sec
     sbc a:ScrollXLo
@@ -202,12 +202,12 @@ ClearAnimationThenStepListByNumber:
 
 ; @routine 0F6B:711 StepListByNumberTable
 ; @run 70:B711
-; WHAT IT DOES: Steps the animation list that the table at $BA0A names for OBJ_34B8.
+; WHAT IT DOES: Steps the animation list that the table at $BA0A names for OBJ_WORK_D.
 ; HOW: A table read of two bytes into zTemp10-11, a tail jump into StepObjectFrames.
 ; WAITS: no.
 ; Entry: X object, Y kept unless the step sets it. Exit: the step.
 StepListByNumberTable:
-    lda a:OBJ_34B8,x
+    lda a:OBJ_WORK_D,x
     asl a
     tay
     lda a:$BA0A,y
@@ -233,7 +233,7 @@ StartPieceABInFreeSlot_at0:
 
 ; @routine 0F6B:72F LoadRecordFrameByKindThenFall
 ; @run 70:B72F
-; WHAT IT DOES: In state 0 loads the record, sets sprite set 4 and takes the frame and OBJ_3510 from tables at $B76C and $B771 by OBJ_START_ARG. Later, while OBJ_3510 counts down, kind 4 sets bit 4 of zField8E and plays sound $FE at zero; at zero it moves in Y and falls.
+; WHAT IT DOES: In state 0 loads the record, sets sprite set 4 and takes the frame and OBJ_WORK_E from tables at $B76C and $B771 by OBJ_START_ARG. Later, while OBJ_WORK_E counts down, kind 4 sets bit 4 of zField8E and plays sound $FE at zero; at zero it moves in Y and falls.
 ; HOW: LoadObjectRecord, table reads, a memory decrement, SoundCommand, ApplyVelocityY, ApplyGravity.
 ; WAITS: no.
 ; Entry: X object, Y kept for the sound. Exit: as the last instruction that ran.
@@ -247,12 +247,12 @@ LoadRecordFrameByKindThenFall:
     lda a:$B76C,y
     sta a:OBJ_FRAME,x
     lda a:$B771,y
-    sta a:OBJ_3510,x
+    sta a:OBJ_WORK_E,x
     rts
 LoadRecordFrameByKindThenFall_at0:
-    lda a:OBJ_3510,x
+    lda a:OBJ_WORK_E,x
     beq SoundCommandReturn
-    dec a:OBJ_3510,x
+    dec a:OBJ_WORK_E,x
     bne LoadRecordFrameByKindThenFall_at1
     lda a:OBJ_START_ARG,x
     cmp #$04

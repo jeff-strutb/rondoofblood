@@ -207,9 +207,9 @@ EnterNextStateWhenPlayerNear:
     cmp a:OBJ_START_ARG,x
     bcs EnterNextStateWhenPlayerNear_at0
     lda #$02
-    sta a:OBJ_3250,x
+    sta a:OBJ_HITBOX_ON,x
     lda #$20
-    sta a:OBJ_34B8,x
+    sta a:OBJ_WORK_D,x
     inc a:OBJ_STATE,x
 EnterNextStateWhenPlayerNear_at0:
     rts
@@ -232,17 +232,17 @@ SwingOnCosine:
     sta z:zTemp00
     lda #$01
     sta z:zTemp01
-    lda a:OBJ_34B8,x
+    lda a:OBJ_WORK_D,x
     jsr VecScaleByCosine
     lda z:zProduct2
     sta a:OBJ_VY_HI,x
     lda z:SpriteFlipMask
     sta a:OBJ_VY_LO,x
     jsr VecApplyVelocity
-    lda a:OBJ_34B8,x
+    lda a:OBJ_WORK_D,x
     clc
     adc #$02
-    sta a:OBJ_34B8,x
+    sta a:OBJ_WORK_D,x
     rts
 
 ; @routine 0BFC:330 AnimateThenFrameRecord
@@ -261,9 +261,9 @@ AnimateThenFrameRecord:
     jsr VecStepObjectFrames
     bne AnimateThenFrameRecord_at0
     lda #$02
-    sta a:OBJ_3358,x
+    sta a:OBJ_WORK_C,x
     lda #$0E
-    sta a:OBJ_3300,x
+    sta a:OBJ_WORK_B,x
     inc a:OBJ_STATE,x
 AnimateThenFrameRecord_at0:
     rts
@@ -350,7 +350,7 @@ SpawnEightPiecesType37_at1:
     lda #$37
     jsr VecStartObjectAtPlace
     lda z:zHitSlot
-    sta a:OBJ_34B8,y
+    sta a:OBJ_WORK_D,y
     ldy z:zHitSlot
     iny
     cpy #$08
@@ -391,7 +391,7 @@ StartWithRecordTableRow:
     lda a:OBJ_STATE,x
     bne FallAndLeaveWhenLow
     jsr VecLoadObjectRecord
-    lda a:OBJ_34B8,x
+    lda a:OBJ_WORK_D,x
     asl a
     asl a
     asl a
@@ -446,16 +446,16 @@ CountTimerPairDownThenSpawn36:
     bne CountTimerPairDownThenSpawn36_at0
     jmp VecLoadObjectRecord
 CountTimerPairDownThenSpawn36_at0:
-    lda a:OBJ_34B8,x
-    ora a:OBJ_3510,x
+    lda a:OBJ_WORK_D,x
+    ora a:OBJ_WORK_E,x
     beq CountTimerPairDownThenSpawn36_at1
-    lda a:OBJ_3510,x
+    lda a:OBJ_WORK_E,x
     sec
     sbc #$01
-    sta a:OBJ_3510,x
-    lda a:OBJ_34B8,x
+    sta a:OBJ_WORK_E,x
+    lda a:OBJ_WORK_D,x
     sbc #$00
-    sta a:OBJ_34B8,x
+    sta a:OBJ_WORK_D,x
     rts
 CountTimerPairDownThenSpawn36_at1:
     jsr RemoveFirstFreeSlotFrom1C
@@ -467,9 +467,9 @@ CountTimerPairDownThenSpawn36_at1:
     asl a
     tay
     lda a:RichterItemAttacks+8,y
-    sta a:OBJ_34B8,x
+    sta a:OBJ_WORK_D,x
     lda a:RichterItemAttacks+7,y
-    sta a:OBJ_3510,x
+    sta a:OBJ_WORK_E,x
     rts
 
 ; @routine 0BFC:2E3 StartAtRandomSpeedTowardPlayer

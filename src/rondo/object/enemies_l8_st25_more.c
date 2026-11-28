@@ -416,7 +416,7 @@ L8DropPieceArm DroppingPieceStep(uint8_t slot, uint8_t y_entry)
         r.feet = add_bytes(a, PIECE_FEET, false);
         WR8(OBJ->y_lo[r.found.slot], r.feet.value);
     }
-    WR8(OBJ->f3510[slot], 6);
+    WR8(OBJ->work_e[slot], 6);
     WR8(OBJ->hitbox_on[slot], 0);
     WR8(OBJ->sprite_attr[slot], PIECE_FALL_STEP);
     r.count = INC8(OBJ->state[slot]);

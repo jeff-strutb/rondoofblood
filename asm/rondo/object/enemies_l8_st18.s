@@ -1,26 +1,26 @@
 ; @routine 0B4C:007 CountDownOrPickNextTimer
 ; @run 70:B807
-; WHAT IT DOES: Counts OBJ_34B8 down and says no (C 0). At zero it clears the animation and OBJ_3778, goes to state 7, advances OBJ_35C0, takes OBJ_34B8 from the table at $B830 by its low two bits and says yes (C 1).
+; WHAT IT DOES: Counts OBJ_WORK_D down and says no (C 0). At zero it clears the animation and OBJ_WORK_L, goes to state 7, advances OBJ_WORK_G, takes OBJ_WORK_D from the table at $B830 by its low two bits and says yes (C 1).
 ; HOW: A test, a memory decrement, stores, an INC, a table read.
 ; WAITS: no.
 ; Entry: X object. Exit: C 1 when the timer ran out, 0 when not; N and Z from the last load or decrement.
 CountDownOrPickNextTimer:
-    lda a:OBJ_34B8,x
+    lda a:OBJ_WORK_D,x
     beq CountdownNextStateC
-    dec a:OBJ_34B8,x
+    dec a:OBJ_WORK_D,x
     clc
     rts
     stz a:OBJ_ANIM_STEP,x
     stz a:OBJ_ANIM_TIMER,x
     lda #$07
     sta a:OBJ_STATE,x
-    stz a:OBJ_3778,x
-    inc a:OBJ_35C0,x
-    lda a:OBJ_35C0,x
+    stz a:OBJ_WORK_L,x
+    inc a:OBJ_WORK_G,x
+    lda a:OBJ_WORK_G,x
     and #$03
     tay
     lda a:$B830,y
-    sta a:OBJ_34B8,x
+    sta a:OBJ_WORK_D,x
     sec
     rts
 
@@ -111,12 +111,12 @@ StepListThenLeapByDistance_at0:
 
 ; @routine 0B4C:18A CountDownThenState5
 ; @run 70:B98A
-; WHAT IT DOES: Counts OBJ_3510 down; at zero clears the animation and goes to state 5.
+; WHAT IT DOES: Counts OBJ_WORK_E down; at zero clears the animation and goes to state 5.
 ; HOW: A memory decrement, stores.
 ; WAITS: no.
 ; Entry: X object. Exit: as the last instruction that ran.
 CountDownThenState5:
-    dec a:OBJ_3510,x
+    dec a:OBJ_WORK_E,x
     bne CountDownThenState5_at0
     stz a:OBJ_ANIM_STEP,x
     stz a:OBJ_ANIM_TIMER,x
@@ -173,7 +173,7 @@ SoundAndTileWriteAtFrame24_at0:
 
 ; @routine 0B4C:38C SoundAndSpawnFiveAtFrame27
 ; @run 70:BB8C
-; WHAT IT DOES: At frame $27 plays sound $B5 and starts up to five objects of type $27 in free slots of $20 to $3F at its place, each facing as this one and numbered 0 to 4 in OBJ_34B8.
+; WHAT IT DOES: At frame $27 plays sound $B5 and starts up to five objects of type $27 in free slots of $20 to $3F at its place, each facing as this one and numbered 0 to 4 in OBJ_WORK_D.
 ; HOW: SoundCommand, a loop of FindFreeSlotFrom20 and StartObjectAtPlace with a counter in zTemp00.
 ; WAITS: no.
 ; Entry: X object, Y kept for the sound. Exit: as the last instruction that ran.
@@ -191,7 +191,7 @@ SoundAndSpawnFiveAtFrame27:
     lda a:OBJ_FACING_LEFT,x
     sta a:OBJ_FACING_LEFT,y
     lda z:zTemp00
-    sta a:OBJ_34B8,y
+    sta a:OBJ_WORK_D,y
     cmp #$04
     beq SoundAndSpawnFiveAtFrame27_at0
     inc z:zTemp00
@@ -244,7 +244,7 @@ SoundThenLeapByFacing:
 
 ; @routine 0B4C:5BB MaybeSound19AndSpawnPiece
 ; @run 70:BDBB
-; WHAT IT DOES: When the low two bits of A are 0 plays sound $19 and starts an object of type $9A in a free slot of $30 to $3F at the object's place at Y low $BE with OBJ_34B8 1 and OBJ_3510 a random number to 7 plus the facing.
+; WHAT IT DOES: When the low two bits of A are 0 plays sound $19 and starts an object of type $9A in a free slot of $30 to $3F at the object's place at Y low $BE with OBJ_WORK_D 1 and OBJ_WORK_E a random number to 7 plus the facing.
 ; HOW: An AND, SoundCommand, FindFreeSlotFrom30, StartObjectAtPlace, NextRandom.
 ; WAITS: no.
 ; Entry: A the number, X object, Y kept for the sound. Exit: as the last instruction that ran.
@@ -260,11 +260,11 @@ MaybeSound19AndSpawnPiece:
     lda #$BE
     sta a:OBJ_Y_LO,y
     lda #$01
-    sta a:OBJ_34B8,y
+    sta a:OBJ_WORK_D,y
     jsr VecNextRandom
     and #$07
     clc
     adc a:OBJ_FACING_LEFT,x
-    sta a:OBJ_3510,y
+    sta a:OBJ_WORK_E,y
 MaybeSound19AndSpawnPiece_at0:
     rts

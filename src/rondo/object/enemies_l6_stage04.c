@@ -89,8 +89,8 @@ void abi_LoadRecordB04(void)
  * @routine 051B:7C4 StepListB819
  * @run 70:B7C4
  * WHAT IT DOES: Steps the animation list at $B819, then asks StopOnLanding with a probe height of 6. Against a wall it
- * sets bit 7 of OBJ_HIT_STATUS. On landing it takes its speeds from the four-byte row of the table at $B83A that OBJ_34B8
- * picks (X high, X low, Y high, Y low at +1, +0, +3, +2) and, while OBJ_34B8 is under 5, counts it up, with sound
+ * sets bit 7 of OBJ_HIT_STATUS. On landing it takes its speeds from the four-byte row of the table at $B83A that OBJ_WORK_D
+ * picks (X high, X low, Y high, Y low at +1, +0, +3, +2) and, while OBJ_WORK_D is under 5, counts it up, with sound
  * $2C the first time.
  * HOW: StepObjectFrames, StopOnLanding (its flags kept across the wall test by PHP and PLP), table reads (bank 70),
  * SoundCommand, an INC.
@@ -190,7 +190,7 @@ void abi_StepListB819(void)
 /*
  * @routine 051E:109 RandomTimer10
  * @run 71:C909
- * WHAT IT DOES: Sets the object's timer OBJ_34B8 to a random number from 0 to 15 plus 16.
+ * WHAT IT DOES: Sets the object's timer OBJ_WORK_D to a random number from 0 to 15 plus 16.
  * HOW: NextRandom.
  * WAITS: no.
  * Entry: X object. Exit: A the timer, N, Z, C and V from the add.
@@ -222,7 +222,7 @@ void abi_RandomTimer10(void)
 /*
  * @routine 051D:4E8 CopyScrollToTimer
  * @run 71:C4E8
- * WHAT IT DOES: Sets the object's OBJ_34B8 to the scroll's X fraction of slot 4 and then to its X low of slot 4 (the second store stays).
+ * WHAT IT DOES: Sets the object's OBJ_WORK_D to the scroll's X fraction of slot 4 and then to its X low of slot 4 (the second store stays).
  * HOW: Two reads and two stores.
  * WAITS: no.
  * Entry: X object. Exit: A the scroll X low, N and Z from it.
@@ -458,7 +458,7 @@ void abi_StartJumpUpLeft(void)
 /*
  * @routine 051B:135 StepListByTimerWithGravity
  * @run 70:B135
- * WHAT IT DOES: Steps the animation list the table at $B14D gives for OBJ_34B8, applies gravity without a limit and moves the object.
+ * WHAT IT DOES: Steps the animation list the table at $B14D gives for OBJ_WORK_D, applies gravity without a limit and moves the object.
  * HOW: Two table reads (bank 70), StepObjectFrames, ApplyGravityUnlimited, a tail jump into ApplyVelocity.
  * WAITS: no.
  * Entry: X object, Y overwritten. Exit: as ApplyVelocity, Y as the step left it.
@@ -548,7 +548,7 @@ void abi_StepListB37FUnlessFar(void)
 /*
  * @routine 051B:6ED StartFourPiecesWithCount
  * @run 70:B6ED
- * WHAT IT DOES: Starts up to four kind $33 objects at this object's place, each in a free slot from $30, and gives each its number (0 to 3) as OBJ_34B8.
+ * WHAT IT DOES: Starts up to four kind $33 objects at this object's place, each in a free slot from $30, and gives each its number (0 to 3) as OBJ_WORK_D.
  * HOW: A loop of FindFreeSlotFrom30, StartObjectAtPlace and a counter in zTemp00.
  * WAITS: no.
  * Entry: X object. Exit: the last compare, or as FindFreeSlotFrom30 when no slot was free.
@@ -599,7 +599,7 @@ void abi_StartFourPiecesWithCount(void)
 /*
  * @routine 051B:648 StepListB66BToState2
  * @run 70:B648
- * WHAT IT DOES: Steps the animation list at $B66B; when it ends the object gets an X speed of $FEE0, clears OBJ_35C0 and OBJ_SUBSTATE and goes to state 2.
+ * WHAT IT DOES: Steps the animation list at $B66B; when it ends the object gets an X speed of $FEE0, clears OBJ_WORK_G and OBJ_SUBSTATE and goes to state 2.
  * HOW: StepObjectFrames, stores.
  * WAITS: no.
  * Entry: X object, Y kept unless the step sets it. Exit: the step, or A 2 when the list ended.
@@ -643,7 +643,7 @@ void abi_StepListB66BToState2(void)
 /*
  * @routine 051B:241 StartPhaseWhenScrolled
  * @run 70:B241
- * WHAT IT DOES: Once the level's X position high byte is 3 or more it clears the object in slot $41, clears the wave counter, sets OBJ_34B8 to $5B, sets bit 1 of the hit attack flags and zTemp $3C to 1, and goes on to the next state.
+ * WHAT IT DOES: Once the level's X position high byte is 3 or more it clears the object in slot $41, clears the wave counter, sets OBJ_WORK_D to $5B, sets bit 1 of the hit attack flags and zTemp $3C to 1, and goes on to the next state.
  * HOW: A compare, ClearObjectInY, stores, an INC.
  * WAITS: no.
  * Entry: X object. Exit: the compare, or the new state's N and Z (A 1).
@@ -695,7 +695,7 @@ void abi_StartPhaseWhenScrolled(void)
  * @routine 051B:0FE LoadOrFallAlongListByTimer
  * @run 70:B0FE
  * @stop B125
- * WHAT IT DOES: In state 0 loads the object's record and takes its two speeds from the four-byte rows of the table at $B125 by OBJ_34B8. Later it goes on as StepListByTimerWithGravity.
+ * WHAT IT DOES: In state 0 loads the object's record and takes its two speeds from the four-byte rows of the table at $B125 by OBJ_WORK_D. Later it goes on as StepListByTimerWithGravity.
  * HOW: LoadObjectRecord, table reads (bank 70); a tail jump into StepListByTimerWithGravity.
  * WAITS: no.
  * Entry: X object. Exit: state 0: the last table byte, Y the row; else as StepListByTimerWithGravity.
@@ -802,7 +802,7 @@ void abi_StepListB3B8ThenLand(void)
 /*
  * @routine 051B:707 LandThenFaceAndRun
  * @run 70:B707
- * WHAT IT DOES: Asks StopOnLanding with a probe height of 4; on landing the object faces the player (bit 0 of SideOfPlayer), takes an X speed from the table at $B3BF by that side, clears OBJ_35C0 and OBJ_SUBSTATE and goes to state 2.
+ * WHAT IT DOES: Asks StopOnLanding with a probe height of 4; on landing the object faces the player (bit 0 of SideOfPlayer), takes an X speed from the table at $B3BF by that side, clears OBJ_WORK_G and OBJ_SUBSTATE and goes to state 2.
  * HOW: StopOnLanding, SideOfPlayer, table reads (bank 70), stores.
  * WAITS: no.
  * Entry: X object, Y the probe's column, C passed on. Exit: the mover's registers, then A 2 when landed.
@@ -858,7 +858,7 @@ void abi_LandThenFaceAndRun(void)
 /*
  * @routine 051B:324 LoadThenStateByKindByte
  * @run 70:B324
- * WHAT IT DOES: Loads the object's record and sets OBJ_SUBSTATE to 1; then by OBJ_START_ARG: zero leaves it; positive goes to state 5 with OBJ_SUBSTATE 0; negative clears OBJ_3250 and bit 6 of OBJ_LOOP_FLAGS and goes to state 4 with OBJ_SUBSTATE 0.
+ * WHAT IT DOES: Loads the object's record and sets OBJ_SUBSTATE to 1; then by OBJ_START_ARG: zero leaves it; positive goes to state 5 with OBJ_SUBSTATE 0; negative clears OBJ_HITBOX_ON and bit 6 of OBJ_LOOP_FLAGS and goes to state 4 with OBJ_SUBSTATE 0.
  * HOW: LoadObjectRecord, tests, stores.
  * WAITS: no.
  * Entry: X object. Exit: A the state, or OBJ_START_ARG when zero.
@@ -915,10 +915,10 @@ void abi_LoadThenStateByKindByte(void)
 /*
  * @routine 051E:090 LoadThenSinkAlongList
  * @run 71:C890
- * WHAT IT DOES: In state 0 loads the object's record, sets OBJ_SPRITE_FLIP to $80, keeps its Y low in OBJ_34B8 and gives OBJ_ANIM_STEP a random $00 to $0F. Each frame it adds $FE80 to its Y position (fraction and low byte) and steps the animation list at $C8D0; when the list ends it puts its Y low back from OBJ_34B8.
+ * WHAT IT DOES: In state 0 loads the object's record, sets OBJ_SPRITE_FLIP to $80, keeps its Y low in OBJ_WORK_D and gives OBJ_ANIM_STEP a random $00 to $0F. Each frame it adds $FE80 to its Y position (fraction and low byte) and steps the animation list at $C8D0; when the list ends it puts its Y low back from OBJ_WORK_D.
  * HOW: LoadObjectRecord, NextRandom, a 16-bit add, StepObjectFrames.
  * WAITS: no.
- * Entry: X object, Y kept unless the step sets it. Exit: the step, or the load of OBJ_34B8 when the list ended.
+ * Entry: X object, Y kept unless the step sets it. Exit: the step, or the load of OBJ_WORK_D when the list ended.
  */
 ObjArm LoadThenSinkAlongList(uint8_t slot, uint8_t y_entry)
 {
@@ -962,7 +962,7 @@ ObjArm LoadThenSinkAlongList(uint8_t slot, uint8_t y_entry)
 }
 
 /* The state's LDA; in state 0 the record (its Y 11 stands; the stores, NextRandom and loads after it are all set again
- * below); the two adds; LDA #$C8; the step; when the list ended, the LDA of OBJ_34B8. */
+ * below); the two adds; LDA #$C8; the step; when the list ended, the LDA of OBJ_WORK_D. */
 static Ended load_then_sink_along_list_exit_shim(ObjArm r)
 {
     Ended e = ended_load(r.fourth);
@@ -984,7 +984,7 @@ void abi_LoadThenSinkAlongList(void)
 /*
  * @routine 051B:5DC WalkWhileNearPlayer
  * @run 70:B5DC
- * WHAT IT DOES: Counts toward the end of a walk: when the player is within $60 along X and $20 along Y, or when OBJ_3568's low nibble is zero and OBJ_START_ARG counts down to zero, it clears its animation step and timer and goes on to the next OBJ_SUBSTATE. Otherwise it flips OBJ_35C0 when OBJ_3568 is zero, steps the animation list at $B62F and, on a changed frame, takes its X speed from the table at $B644 by OBJ_35C0 and moves along X.
+ * WHAT IT DOES: Counts toward the end of a walk: when the player is within $60 along X and $20 along Y, or when OBJ_WORK_F's low nibble is zero and OBJ_START_ARG counts down to zero, it clears its animation step and timer and goes on to the next OBJ_SUBSTATE. Otherwise it flips OBJ_WORK_G when OBJ_WORK_F is zero, steps the animation list at $B62F and, on a changed frame, takes its X speed from the table at $B644 by OBJ_WORK_G and moves along X.
  * HOW: DistanceXToPlayer, DistanceYToPlayer, tests, StepObjectFrames, ApplyVelocityX.
  * WAITS: no.
  * Entry: X object, Y kept unless the step sets it. Exit: the last test or step.
@@ -1047,7 +1047,7 @@ ObjArm WalkWhileNearPlayer(uint8_t slot, uint8_t y_entry)
 }
 
 /* The X distance and CMP #$60; the Y distance and CMP #$20; the nibble's LDA and the DEC; then the INC at the walk's end,
- * or the LDA of OBJ_3568, the EOR, the step, the speed index's LDA and TAY, and ApplyVelocityX. */
+ * or the LDA of OBJ_WORK_F, the EOR, the step, the speed index's LDA and TAY, and ApplyVelocityX. */
 static Ended walk_while_near_player_exit_shim(ObjArm r)
 {
     Ended e = ended_then(ended_of_distance(r.distance), ended_compare(r.distance.distance, 0x60));
@@ -1083,7 +1083,7 @@ void abi_WalkWhileNearPlayer(void)
 /*
  * @routine 051B:286 LoadThenSpawnWhileScrolling
  * @run 70:B286
- * WHAT IT DOES: In state 0 loads the object's record and looks for a free pair of slots. Later, while the screen scrolls right, it counts the 16-bit timer OBJ_34B8:OBJ_3510 down; at zero it looks in slots $30, $32 and $34 for one whose two kind bytes are zero, clears that object, starts a kind $22 object there at its place and sets its timer from a four-entry table at $B2DF by a random number.
+ * WHAT IT DOES: In state 0 loads the object's record and looks for a free pair of slots. Later, while the screen scrolls right, it counts the 16-bit timer OBJ_WORK_D:OBJ_WORK_E down; at zero it looks in slots $30, $32 and $34 for one whose two kind bytes are zero, clears that object, starts a kind $22 object there at its place and sets its timer from a four-entry table at $B2DF by a random number.
  * HOW: LoadObjectRecord, a 16-bit subtract, a search loop, ClearObjectInY, StartObjectAtPlace, NextRandom.
  * WAITS: no.
  * Entry: X object. Exit: the last test or load.
@@ -1109,12 +1109,12 @@ ObjArm LoadThenSpawnWhileScrolling(uint8_t slot)
             return r;
         }
         high_byte = RD8(OBJ->f34b8[slot]);
-        low_byte = RD8(OBJ->f3510[slot]);
+        low_byte = RD8(OBJ->work_e[slot]);
         r.fifth = (uint8_t)(high_byte | low_byte);
         if (r.fifth != 0) {
-            r.sixth = RD8(OBJ->f3510[slot]);
+            r.sixth = RD8(OBJ->work_e[slot]);
             low = sub_bytes(r.sixth, 1, true);
-            WR8(OBJ->f3510[slot], low.value);
+            WR8(OBJ->work_e[slot], low.value);
             r.seventh = RD8(OBJ->f34b8[slot]);
             WR8(OBJ->f34b8[slot], sub_bytes(r.seventh, 0, low.carry).value);
             r.arm = LS_COUNTING;
@@ -1146,7 +1146,7 @@ ObjArm LoadThenSpawnWhileScrolling(uint8_t slot)
     r.random = random;
     index = (uint8_t)((random.value & 0x03) << 1);
     r.ninth = index;
-    WR8(OBJ->f3510[slot], rd8((uint16_t)(0xB2DF + index)));
+    WR8(OBJ->work_e[slot], rd8((uint16_t)(0xB2DF + index)));
     r.tenth = rd8((uint16_t)(0xB2E0 + index));
     WR8(OBJ->f34b8[slot], r.tenth);
     r.arm = LS_SPAWNED;
@@ -1207,10 +1207,10 @@ void abi_LoadThenSpawnWhileScrolling(void)
 /*
  * @routine 051E:115 SpawnPointFromTables
  * @run 71:C915
- * WHAT IT DOES: Counts OBJ_34B8 down; at zero it gives itself a new timer (RandomTimer10), finds a free slot from $30 and there starts a kind $AF object with this object's OBJ_START_ARG, placed from the tables at $C97A and $CA99 by that byte and OBJ_3510's low three bits (four bytes a row: X low, X high, Y low, Y high; the X and Y low plus a random 0 to 7), and OBJ_3510 low two bits; then counts OBJ_3510 up.
+ * WHAT IT DOES: Counts OBJ_WORK_D down; at zero it gives itself a new timer (RandomTimer10), finds a free slot from $30 and there starts a kind $AF object with this object's OBJ_START_ARG, placed from the tables at $C97A and $CA99 by that byte and OBJ_WORK_E's low three bits (four bytes a row: X low, X high, Y low, Y high; the X and Y low plus a random 0 to 7), and OBJ_WORK_E low two bits; then counts OBJ_WORK_E up.
  * HOW: RandomTimer10, FindFreeSlotFrom30, table reads (bank 70), NextRandom twice.
  * WAITS: no.
- * Entry: X object. Exit: the new OBJ_3510's N and Z, Y the new slot; or the count.
+ * Entry: X object. Exit: the new OBJ_WORK_E's N and Z, Y the new slot; or the count.
  */
 ObjArm SpawnPointFromTables(uint8_t slot)
 {
@@ -1242,7 +1242,7 @@ ObjArm SpawnPointFromTables(uint8_t slot)
     kind = RD8(OBJ->f3040[slot]);
     WR8(OBJ->f3040[y], kind);
     WR8(ZP->temp10, kind);
-    offset = (uint8_t)((RD8(OBJ->f3510[slot]) & 0x07) << 2);
+    offset = (uint8_t)((RD8(OBJ->work_e[slot]) & 0x07) << 2);
     index = RD8(ZP->temp10);
     index = (uint8_t)(offset + rd8((uint16_t)(0xC97A + index)));
     WR8(OBJ->x_lo[y], rd8((uint16_t)(0xCA99 + index)));
@@ -1260,10 +1260,10 @@ ObjArm SpawnPointFromTables(uint8_t slot)
     r.fourth = (uint8_t)(random.value & 0x07);
     r.fifth = RD8(OBJ->y_lo[y]);
     WR8(OBJ->y_lo[y], (uint8_t)(r.fourth + r.fifth));
-    r.sixth = (uint8_t)(RD8(OBJ->f3510[slot]) & 0x03);
-    WR8(OBJ->f3510[y], r.sixth);
+    r.sixth = (uint8_t)(RD8(OBJ->work_e[slot]) & 0x03);
+    WR8(OBJ->work_e[y], r.sixth);
     r.y = y;
-    r.seventh = INC8(OBJ->f3510[slot]);
+    r.seventh = INC8(OBJ->work_e[slot]);
     r.arm = PT_SPAWNED;
     return r;
 }
@@ -1293,7 +1293,7 @@ void abi_SpawnPointFromTables(void)
 /*
  * @routine 051B:514 ResetAnimThenNextPhase
  * @run 70:B514
- * WHAT IT DOES: Clears OBJ_3250 and the animation step and timer, sets OBJ_34B8 to 4 and goes on to the next OBJ_SUBSTATE.
+ * WHAT IT DOES: Clears OBJ_HITBOX_ON and the animation step and timer, sets OBJ_WORK_D to 4 and goes on to the next OBJ_SUBSTATE.
  * HOW: Stores and an INC.
  * WAITS: no.
  * Entry: X object. Exit: A 4, N and Z from the new OBJ_SUBSTATE.
@@ -1324,7 +1324,7 @@ void abi_ResetAnimThenNextPhase(void)
 /*
  * @routine 051B:264 SetFirstObjectTimersThenCount
  * @run 70:B264
- * WHAT IT DOES: Clears the wave counter and sets the first object's OBJ_3510 to 4 and OBJ_3568 to $20 and the byte at $3BF0 to 2; counts OBJ_34B8 down and at zero sets zTemp $8C to $80, zTemp $38 to 3 and clears the hit attack flags.
+ * WHAT IT DOES: Clears the wave counter and sets the first object's OBJ_WORK_E to 4 and OBJ_WORK_F to $20 and the byte at $3BF0 to 2; counts OBJ_WORK_D down and at zero sets zTemp $8C to $80, zTemp $38 to 3 and clears the hit attack flags.
  * HOW: Stores, DEC.
  * WAITS: no.
  * Entry: X object. Exit: the count, or A 3 at zero.
@@ -1334,7 +1334,7 @@ ObjArm SetFirstObjectTimersThenCount(uint8_t slot)
     ObjArm r = { 0 };
 
     WR8(ZP->wave_counter, 0);
-    WR8(OBJ->f3510[0], 4);
+    WR8(OBJ->work_e[0], 4);
     wr8(PlayerByte3BF0, 2);
     WR8(OBJ->f3568[0], 0x20);
     r.first = DEC8(OBJ->f34b8[slot]);
@@ -1535,7 +1535,7 @@ void abi_LoadThenStepListBreakAtFive(void)
 /*
  * @routine 051B:3E2 WalkTurnOrJumpOnLanding
  * @run 70:B3E2
- * WHAT IT DOES: When OBJ_3568's low five bits are zero and the player is within $24 along X and $1C along Y, the object faces the player's side (bit 0 of SideOfPlayer) in OBJ_35C0, clears its animation step and timer and goes to state 3. Otherwise it steps the animation list at $B45E and, on a changed frame, asks MoveAndLand with a probe height of 4: a wall hit gives it a Y speed of $FC80 and X speed of $FF00 and state 1; a floor stop clears its speeds; both clear the animation step and timer, with OBJ_SUBSTATE 0 or 1.
+ * WHAT IT DOES: When OBJ_WORK_F's low five bits are zero and the player is within $24 along X and $1C along Y, the object faces the player's side (bit 0 of SideOfPlayer) in OBJ_WORK_G, clears its animation step and timer and goes to state 3. Otherwise it steps the animation list at $B45E and, on a changed frame, asks MoveAndLand with a probe height of 4: a wall hit gives it a Y speed of $FC80 and X speed of $FF00 and state 1; a floor stop clears its speeds; both clear the animation step and timer, with OBJ_SUBSTATE 0 or 1.
  * HOW: DistanceXToPlayer, DistanceYToPlayer, SideOfPlayer, StepObjectFrames, MoveAndLand, stores.
  * WAITS: no.
  * Entry: X object, Y the column kept unless the step sets it. Exit: see the wrapper.

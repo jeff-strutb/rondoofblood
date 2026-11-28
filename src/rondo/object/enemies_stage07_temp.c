@@ -294,8 +294,8 @@ ObjArm AnimateThenFrameRecord(uint8_t slot)
     if (r.step != FRAME_LIST_ENDED) {
         return r;
     }
-    WR8(OBJ->f3358[slot], 2);
-    WR8(OBJ->f3300[slot], 0x0E);
+    WR8(OBJ->work_c[slot], 2);
+    WR8(OBJ->work_b[slot], 0x0E);
     r.first = INC8(OBJ->state[slot]);
     r.arm = S7_AF_ENDED;
     return r;
@@ -760,12 +760,12 @@ ObjArm CountTimerPairDownThenSpawn36(uint8_t slot)
         return r;
     }
     r.first = RD8(OBJ->life_timer[slot]);
-    r.first = (uint8_t)(r.first | RD8(OBJ->f3510[slot]));
+    r.first = (uint8_t)(r.first | RD8(OBJ->work_e[slot]));
     if (r.first != 0) {
         r.arm = S7_CT_COUNTING;
-        low = RD8(OBJ->f3510[slot]);
+        low = RD8(OBJ->work_e[slot]);
         sum = sub_bytes(low, 1, true);
-        WR8(OBJ->f3510[slot], sum.value);
+        WR8(OBJ->work_e[slot], sum.value);
         high = RD8(OBJ->life_timer[slot]);
         r.sum = sub_bytes(high, 0, sum.carry);
         WR8(OBJ->life_timer[slot], r.sum.value);
@@ -788,7 +788,7 @@ ObjArm CountTimerPairDownThenSpawn36(uint8_t slot)
     r.second = (uint8_t)((r.sum2.value & 3) << 1);
     WR8(OBJ->life_timer[slot], rd8((uint16_t)(0xBA40 + r.second)));
     r.third = rd8((uint16_t)(0xBA3F + r.second));
-    WR8(OBJ->f3510[slot], r.third);
+    WR8(OBJ->work_e[slot], r.third);
     r.arm = S7_CT_SPAWNED;
     return r;
 }

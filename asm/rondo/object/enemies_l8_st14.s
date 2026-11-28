@@ -1,6 +1,6 @@
 ; @routine 025D:040 LoadRecordFlashByNumberThenMoveOrClear
 ; @run 71:C040
-; WHAT IT DOES: In state 0 loads the record, gives it the speed X -$0400 and Y -$0180 (OBJ_VY_LO $80) and the flash flags from the table at $C061 by OBJ_34B8. Later it steps the animation list at $C076 and moves, or is cleared when the list ends.
+; WHAT IT DOES: In state 0 loads the record, gives it the speed X -$0400 and Y -$0180 (OBJ_VY_LO $80) and the flash flags from the table at $C061 by OBJ_WORK_D. Later it steps the animation list at $C076 and moves, or is cleared when the list ends.
 ; HOW: LoadObjectRecord, stores, StepObjectFrames, tail jumps into ClearObject or ApplyVelocity.
 ; WAITS: no.
 ; Entry: X object, Y kept unless the step sets it. Exit: as the last instruction that ran.
@@ -14,7 +14,7 @@ LoadRecordFlashByNumberThenMoveOrClear:
     sta a:OBJ_VY_LO,x
     lda #$FC
     sta a:OBJ_VX_HI,x
-    ldy a:OBJ_34B8,x
+    ldy a:OBJ_WORK_D,x
     lda a:$C061,y
     sta a:OBJ_SPRITE_ATTR,x
     rts

@@ -263,7 +263,7 @@ SelectRasterStage1:
 ; subtract; Y the table index when read; X kept.
 SetHitboxDxFromFrame:
     lda #$02
-    sta a:OBJ_3250,x
+    sta a:OBJ_HITBOX_ON,x
     lda a:OBJ_FRAME,x
     cmp #$07
     bcs SetHitboxDxFromFrame_at0
@@ -274,7 +274,7 @@ SetHitboxDxFromFrame:
     sta a:OBJ_HITBOX_DX,x
     rts
 SetHitboxDxFromFrame_at0:
-    stz a:OBJ_3250,x
+    stz a:OBJ_HITBOX_ON,x
     stz a:OBJ_HITBOX_DX,x
     rts
 
@@ -287,7 +287,7 @@ SetHitboxDxFromFrame_at0:
 ; WAITS: no.
 ; Entry: X object. Exit: A and N, Z from the last value loaded; X, Y, C and V kept.
 PhaseTimerToState1:
-    dec a:OBJ_3720,x
+    dec a:OBJ_WORK_K,x
     beq PhaseTimerToState1_at0
     stz a:OBJ_ANIM_STEP,x
     stz a:OBJ_ANIM_TIMER,x
@@ -299,7 +299,7 @@ PhaseTimerToState1_at0:
     sta a:OBJ_STATE,x
     lda #$01
     sta a:OBJ_FRAME,x
-    lda a:OBJ_36C8,x
+    lda a:OBJ_WORK_J,x
     beq PhaseTimerToState1_at1
     lda #$04
     sta a:OBJ_FRAME,x
@@ -396,7 +396,7 @@ SetHitboxFromFrameRowsIndirect:
 ; Entry: X object. Exit: A 8; N, Z from the step byte's new value; Y the f3510 byte; X and C
 ; kept.
 LaunchHopByF3510:
-    ldy a:OBJ_3510,x
+    ldy a:OBJ_WORK_E,x
     lda a:$C45C,y
     sta a:OBJ_VX_HI,x
     lda #$FD
@@ -406,7 +406,7 @@ LaunchHopByF3510:
     lda #$36
     sta a:OBJ_FRAME,x
     lda #$08
-    sta a:OBJ_35C0,x
+    sta a:OBJ_WORK_G,x
     inc a:OBJ_SUBSTATE,x
     rts
 
@@ -418,7 +418,7 @@ LaunchHopByF3510:
 ; WAITS: no.
 ; Entry: X object. Exit: A and N, Z from the timer, or A 3 at zero; X, Y and C kept.
 CountdownStopThenState3:
-    dec a:OBJ_35C0,x
+    dec a:OBJ_WORK_G,x
     bne CountdownStopThenState3_at0
     stz a:OBJ_ANIM_STEP,x
     stz a:OBJ_ANIM_TIMER,x
@@ -483,7 +483,7 @@ ThrowByNextKind:
 ; Entry: X object. Exit: as StepObjectFrames (Y the list's offset when the step did not change
 ; it); when the list ended, A 1, N clear, Z clear. X and V kept. Clobbers zTemp10-11.
 AnimateThenState1:
-    lda a:OBJ_3618,x
+    lda a:OBJ_WORK_H,x
     and #$01
     asl a
     tay
@@ -493,7 +493,7 @@ AnimateThenState1:
     sta z:zTemp11
     jsr VecStepObjectFrames
     bne AnimateThenState1_at0
-    inc a:OBJ_3618,x
+    inc a:OBJ_WORK_H,x
     lda #$01
     sta a:OBJ_STATE,x
 AnimateThenState1_at0:
@@ -510,10 +510,10 @@ AnimateThenState1_at0:
 ; with A 0; V from the offset's add; Y the offset when the step did not change it. Clobbers
 ; zTemp10-11.
 AnimateThenNextStep:
-    lda a:OBJ_3670,x
+    lda a:OBJ_WORK_I,x
     asl a
     clc
-    adc a:OBJ_36C8,x
+    adc a:OBJ_WORK_J,x
     tay
     lda a:RichterColumnOffsets+7,y
     sta z:zTemp10
@@ -534,7 +534,7 @@ AnimateThenNextStep_at0:
 ; Entry: X object. Exit: A the parent's state, N, Z, C from its compare with 4; Y the parent's
 ; slot; X and V kept.
 FollowParentYAndLeave:
-    ldy a:OBJ_3568,x
+    ldy a:OBJ_WORK_F,x
     lda a:OBJ_Y_LO,y
     sta a:OBJ_Y_LO,x
     lda a:OBJ_STATE,y
@@ -574,7 +574,7 @@ AnimateThenNextStepB_at0:
 ; Entry: X object. Exit: as ApplyVelocity while counting; at zero A $9B, N set, Z clear (C, V
 ; kept); X and Y kept. Clobbers zTemp10.
 CountdownThenFallOrBecomeType9B:
-    dec a:OBJ_3510,x
+    dec a:OBJ_WORK_E,x
     bne CountdownThenFallOrBecomeType9B_at0
     lda #$9B
     sta a:OBJ_KIND,x
@@ -598,9 +598,9 @@ PickTimersAtRandom:
     asl a
     tay
     lda a:$B9B9,y
-    sta a:OBJ_3510,x
+    sta a:OBJ_WORK_E,x
     lda a:$B9BA,y
-    sta a:OBJ_34B8,x
+    sta a:OBJ_WORK_D,x
     rts
 
 ; @routine 093C:1C1 PickAngleAtRandom
@@ -616,9 +616,9 @@ PickAngleAtRandom:
     asl a
     tay
     lda a:$B9D5,y
-    sta a:OBJ_35C0,x
+    sta a:OBJ_WORK_G,x
     lda a:$B9D6,y
-    sta a:OBJ_3568,x
+    sta a:OBJ_WORK_F,x
     rts
 
 ; @routine 093C:4A3 AnimateMoveAndSag
@@ -632,7 +632,7 @@ PickAngleAtRandom:
 ; (the Y speed's high byte); V from ApplyVelocity or that add; Y the list's offset unless the
 ; animation step changed it; X kept. Clobbers zTemp10-11.
 AnimateMoveAndSag:
-    lda a:OBJ_34B8,x
+    lda a:OBJ_WORK_D,x
     asl a
     tay
     lda a:$BCD1,y
@@ -641,7 +641,7 @@ AnimateMoveAndSag:
     sta z:zTemp11
     jsr VecStepObjectFrames
     jsr VecApplyVelocity
-    lda a:OBJ_34B8,x
+    lda a:OBJ_WORK_D,x
     cmp #$01
     bne AnimateMoveAndSag_at0
     lda a:OBJ_VY_LO,x
@@ -700,15 +700,15 @@ FaceThePlayerInSomeStates_at0:
 ; Entry: X object, D clear. Exit: A the new step byte, N and Z from it, C and V clear; Y the table
 ; offset; X kept. Clobbers zTemp00.
 NextPhaseAtRandom:
-    inc a:OBJ_3568,x
-    lda a:OBJ_3568,x
+    inc a:OBJ_WORK_F,x
+    lda a:OBJ_WORK_F,x
     and #$03
     tay
     lda a:$C4CE,y
-    sta a:OBJ_34B8,x
+    sta a:OBJ_WORK_D,x
     jsr VecSideOfPlayer
     and #$01
-    sta a:OBJ_3510,x
+    sta a:OBJ_WORK_E,x
     jsr VecNextRandom
     and #$01
     clc
@@ -788,7 +788,7 @@ ShowOnScreenAndWrapX_at3:
 ; zTemp00, zTemp08.
 ChooseNextMoveWhenFacingAway:
     lda a:OBJ_FACING_LEFT,x
-    eor a:OBJ_3618,x
+    eor a:OBJ_WORK_H,x
     and #$01
     sta z:zTemp08
     jsr VecSideOfPlayer
@@ -803,7 +803,7 @@ ChooseNextMoveWhenFacingAway_at0:
     and #$0F
     tay
     lda a:$BAD5,y
-    sta a:OBJ_3670,x
+    sta a:OBJ_WORK_I,x
     asl a
     asl a
     sta z:zTemp00
@@ -813,12 +813,12 @@ ChooseNextMoveWhenFacingAway_at0:
     adc z:zTemp00
     tay
     lda a:$BAE5,y
-    sta a:OBJ_3720,x
-    lda a:OBJ_3618,x
+    sta a:OBJ_WORK_K,x
+    lda a:OBJ_WORK_H,x
     and #$01
     tay
     lda a:$BAF1,y
-    sta a:OBJ_36C8,x
+    sta a:OBJ_WORK_J,x
     inc a:OBJ_SUBSTATE,x
     rts
 
@@ -853,7 +853,7 @@ StartChargeWhenPlayerNear:
     and #$7F
     clc
     adc #$44
-    sta a:OBJ_36C8,x
+    sta a:OBJ_WORK_J,x
     lda #$04
     sta a:OBJ_STATE,x
     lda #$02
@@ -873,13 +873,13 @@ WaitThenState2B:
     lda a:OBJ_SUBSTATE,x
     bne WaitThenState2B_at0
     lda #$1C
-    sta a:OBJ_34B8,x
+    sta a:OBJ_WORK_D,x
     inc a:OBJ_SUBSTATE,x
     rts
 WaitThenState2B_at0:
     ldy #$02
     jsr StepFramesFacingPlayerC
-    dec a:OBJ_34B8,x
+    dec a:OBJ_WORK_D,x
     bne WaitThenState2B_at1
     lda #$02
     sta a:OBJ_STATE,x
@@ -896,8 +896,8 @@ WaitThenState2B_at1:
 ; Entry: X object, D clear. Exit: A the new high byte and N, Z from it, C and V from the borrow
 ; subtract; or A 2 and N, Z clear with C, V and Y as the random pick left them.
 CountTimerPairDownOrRepick:
-    lda a:OBJ_34B8,x
-    ora a:OBJ_3510,x
+    lda a:OBJ_WORK_D,x
+    ora a:OBJ_WORK_E,x
     bne CountTimerPairDownOrRepick_at0
     jsr PickTimersAtRandom
     stz a:OBJ_ANIM_STEP,x
@@ -906,13 +906,13 @@ CountTimerPairDownOrRepick:
     sta a:OBJ_STATE,x
     rts
 CountTimerPairDownOrRepick_at0:
-    lda a:OBJ_3510,x
+    lda a:OBJ_WORK_E,x
     sec
     sbc #$01
-    sta a:OBJ_3510,x
-    lda a:OBJ_34B8,x
+    sta a:OBJ_WORK_E,x
+    lda a:OBJ_WORK_D,x
     sbc #$00
-    sta a:OBJ_34B8,x
+    sta a:OBJ_WORK_D,x
     rts
 
 ; @routine 093C:20D CountAnglePairDownOrRepick
@@ -927,8 +927,8 @@ CountTimerPairDownOrRepick_at0:
 CountAnglePairDownOrRepick:
     lda a:OBJ_X_HI,x
     bne CountAnglePairDownOrRepick_at0
-    lda a:OBJ_3568,x
-    ora a:OBJ_35C0,x
+    lda a:OBJ_WORK_F,x
+    ora a:OBJ_WORK_G,x
     bne CountAnglePairDownOrRepick_at1
     jsr PickAngleAtRandom
     stz a:OBJ_ANIM_STEP,x
@@ -938,13 +938,13 @@ CountAnglePairDownOrRepick:
     sta a:OBJ_STATE,x
     rts
 CountAnglePairDownOrRepick_at1:
-    lda a:OBJ_35C0,x
+    lda a:OBJ_WORK_G,x
     sec
     sbc #$01
-    sta a:OBJ_35C0,x
-    lda a:OBJ_3568,x
+    sta a:OBJ_WORK_G,x
+    lda a:OBJ_WORK_F,x
     sbc #$00
-    sta a:OBJ_3568,x
+    sta a:OBJ_WORK_F,x
 CountAnglePairDownOrRepick_at0:
     rts
 
@@ -964,7 +964,7 @@ AnimateHitboxThenExpire:
     sta z:zTemp10
     jsr VecStepObjectFrames
     jsr SetHitboxFromFrameRows
-    dec a:OBJ_3510,x
+    dec a:OBJ_WORK_E,x
     bne AnimateHitboxThenExpire_at0
     jmp VecClearObject
 AnimateHitboxThenExpire_at0:
@@ -986,7 +986,7 @@ WalkWhileFrameChangesB:
     sta z:zTemp11
     jsr VecStepObjectFrames
     bcc WalkWhileFrameChangesB_at0
-    ldy a:OBJ_3510,x
+    ldy a:OBJ_WORK_E,x
     lda a:$C35A,y
     sta a:OBJ_VX_HI,x
     jsr VecApplyVelocityX
@@ -1020,7 +1020,7 @@ LeapAwayFromPlayerTable:
     sta a:OBJ_VY_HI,x
     lda #$80
     sta a:OBJ_VY_LO,x
-    lda a:OBJ_3510,x
+    lda a:OBJ_WORK_E,x
     beq LeapAwayFromPlayerTable_at0
     jsr VecNegateVelocityX
 LeapAwayFromPlayerTable_at0:
@@ -1040,18 +1040,18 @@ StartThenBlinkAndExpire:
     bne StartThenBlinkAndExpire_at0
     jsr VecLoadObjectRecord
     lda #$10
-    sta a:OBJ_3510,x
+    sta a:OBJ_WORK_E,x
     rts
 StartThenBlinkAndExpire_at0:
-    dec a:OBJ_3510,x
+    dec a:OBJ_WORK_E,x
     bne StartThenBlinkAndExpire_at1
     jmp VecClearObject
 StartThenBlinkAndExpire_at1:
     stz a:OBJ_FRAME,x
-    lda a:OBJ_3510,x
+    lda a:OBJ_WORK_E,x
     and #$03
     bne StartThenBlinkAndExpire_at2
-    lda a:OBJ_34B8,x
+    lda a:OBJ_WORK_D,x
     sta a:OBJ_FRAME,x
 StartThenBlinkAndExpire_at2:
     rts
@@ -1092,7 +1092,7 @@ PickStateByPlayerDistanceB_at1:
 ; WAITS: no.
 ; Entry, exit: as PickSpeedAndTurnFromTable.
 PickSpeedAndTurnFromTableC:
-    lda a:OBJ_3670,x
+    lda a:OBJ_WORK_I,x
     asl a
     asl a
     tay
@@ -1104,7 +1104,7 @@ PickSpeedAndTurnFromTableC:
     sta a:OBJ_VY_HI,x
     lda a:$BFD8,y
     sta a:OBJ_VY_LO,x
-    inc a:OBJ_3510,x
+    inc a:OBJ_WORK_E,x
     jsr VecSideOfPlayer
     and #$01
     beq PickSpeedAndTurnFromTableC_at0
@@ -1138,10 +1138,10 @@ TurnOnRandomBeatWalkB:
     and #$07
     tay
     lda a:$C173,y
-    sta a:OBJ_34B8,x
+    sta a:OBJ_WORK_D,x
     stz a:OBJ_ANIM_STEP,x
     stz a:OBJ_ANIM_TIMER,x
-    inc a:OBJ_3510,x
+    inc a:OBJ_WORK_E,x
     inc a:OBJ_SUBSTATE,x
     rts
 
@@ -1156,7 +1156,7 @@ TurnOnRandomBeatWalkB:
 TurnOnRandomBeatWalkFollowB:
     ldy #$02
     jsr StepFramesFacingPlayerC
-    dec a:OBJ_34B8,x
+    dec a:OBJ_WORK_D,x
     beq TurnOnRandomBeatWalkFollowB_done
     jmp VecApplyVelocityX
 TurnOnRandomBeatWalkFollowB_done:
@@ -1178,15 +1178,15 @@ StartThenAnimateAndExpire:
     lda a:OBJ_STATE,x
     bne StartThenAnimateAndExpire_at0
     jsr VecLoadObjectRecord
-    lda a:OBJ_34B8,x
+    lda a:OBJ_WORK_D,x
     clc
     adc #$03
     sta a:OBJ_SPRITE_SET,x
     lda #$28
-    sta a:OBJ_3510,x
+    sta a:OBJ_WORK_E,x
     rts
 StartThenAnimateAndExpire_at0:
-    lda a:OBJ_34B8,x
+    lda a:OBJ_WORK_D,x
     asl a
     tay
     lda a:$BDF8,y
@@ -1194,7 +1194,7 @@ StartThenAnimateAndExpire_at0:
     lda a:$BDF9,y
     sta z:zTemp11
     jsr VecStepObjectFrames
-    dec a:OBJ_3510,x
+    dec a:OBJ_WORK_E,x
     bne StartThenAnimateAndExpire_at1
     jmp VecClearObject
 StartThenAnimateAndExpire_at1:
@@ -1217,9 +1217,9 @@ StartAndMakeNeighbour:
     lda #$2D
     jsr VecStartObjectAtPlace
     lda #$01
-    sta a:OBJ_3670,x
+    sta a:OBJ_WORK_I,x
     lda #$50
-    sta a:OBJ_34B8,x
+    sta a:OBJ_WORK_D,x
     rts
 
 ; @routine 093D:51F SpawnShotFromFrame
@@ -1241,7 +1241,7 @@ SpawnShotFromFrame:
     lda a:OBJ_FACING_LEFT,x
     sta a:OBJ_FACING_LEFT,y
     lda a:OBJ_FRAME,x
-    sta a:OBJ_34B8,y
+    sta a:OBJ_WORK_D,y
 SpawnShotFromFrame_at0:
     rts
 
@@ -1259,7 +1259,7 @@ StartWithFrameAndFace:
     lda a:OBJ_STATE,x
     bne CountdownThenFallOrBecomeType9B
     jsr VecLoadObjectRecord
-    ldy a:OBJ_34B8,x
+    ldy a:OBJ_WORK_D,x
     lda a:$C787,y
     sta a:OBJ_FRAME,x
     jsr VecSideOfPlayer
@@ -1278,14 +1278,14 @@ StartWithFrameAndFace_at0:
 ; Entry: X object. Exit: N, Z from the timer, or A 2 and N, Z from the new state; C, V and Y as
 ; the sound call left them at zero; X kept.
 CountdownSoundThenNextState:
-    dec a:OBJ_3510,x
+    dec a:OBJ_WORK_E,x
     bne CountdownSoundThenNextState_at0
     lda #$26
     jsr VecSoundCommand
     lda #$40
-    sta a:OBJ_3510,x
+    sta a:OBJ_WORK_E,x
     lda #$02
-    sta a:OBJ_3250,x
+    sta a:OBJ_HITBOX_ON,x
     inc a:OBJ_STATE,x
 CountdownSoundThenNextState_at0:
     rts
@@ -1298,7 +1298,7 @@ CountdownSoundThenNextState_at0:
 ; Entry: X object. Exit: A the masked bits and N, Z from them when no sound; else as the sound
 ; call left them.
 SoundEveryFourthFrame:
-    lda a:OBJ_3618,x
+    lda a:OBJ_WORK_H,x
     and #$03
     bne SoundEveryFourthFrame_at0
     lda #$22
@@ -1314,12 +1314,12 @@ SoundEveryFourthFrame_at0:
 ; WAITS: no.
 ; Entry: X object, D clear. Exit: as FollowParentYAndLeave.
 CountdownSoundThenFollowParent:
-    dec a:OBJ_3510,x
+    dec a:OBJ_WORK_E,x
     bne CountdownSoundThenFollowParent_at0
     lda #$25
     jsr VecSoundCommand
     lda #$02
-    sta a:OBJ_3250,x
+    sta a:OBJ_HITBOX_ON,x
     stz a:OBJ_ANIM_STEP,x
     stz a:OBJ_ANIM_TIMER,x
     inc a:OBJ_STATE,x
@@ -1337,7 +1337,7 @@ CountdownSoundThenFollowParent_at0:
 ; Entry: X object, D clear. Exit: when the list went on, as StepObjectFrames; when it ended, A, N, Z,
 ; C from the loop's last compare and Y the end slot (X kept); clobbers zTemp00, zTemp01, zTemp03.
 AnimateThenNumberGroupAndLeave:
-    lda a:OBJ_3618,x
+    lda a:OBJ_WORK_H,x
     and #$01
     asl a
     tay
@@ -1347,9 +1347,9 @@ AnimateThenNumberGroupAndLeave:
     sta z:zTemp11
     jsr VecStepObjectFrames
     bne AnimateThenNumberGroupAndLeave_at0
-    ldy a:OBJ_37D0,x
+    ldy a:OBJ_WORK_M,x
     stz z:zTemp00
-    lda a:OBJ_3828,x
+    lda a:OBJ_WORK_N,x
     sta z:zTemp01
     inc z:zTemp01
     lda a:OBJ_KIND,y
@@ -1365,7 +1365,7 @@ AnimateThenNumberGroupAndLeave_at2:
     lda z:zTemp00
     sta a:OBJ_START_ARG,y
     lda z:zTemp03
-    sta a:OBJ_37D0,y
+    sta a:OBJ_WORK_M,y
     inc z:zTemp00
 AnimateThenNumberGroupAndLeave_at1:
     iny
@@ -1389,7 +1389,7 @@ AnimateMoveThenSetUpAtRandom:
     ldy #$04
     jsr StepFramesFacingPlayerC
     jsr VecApplyVelocity
-    dec a:OBJ_34B8,x
+    dec a:OBJ_WORK_D,x
     bne AnimateMoveThenSetUpAtRandom_at0
     lda #$93
     jsr VecSoundCommand
@@ -1398,7 +1398,7 @@ AnimateMoveThenSetUpAtRandom:
     and #$7F
     clc
     adc #$18
-    sta a:OBJ_36C8,x
+    sta a:OBJ_WORK_J,x
     stz a:OBJ_ANIM_STEP,x
     stz a:OBJ_ANIM_TIMER,x
     inc a:OBJ_SUBSTATE,x
@@ -1421,7 +1421,7 @@ FollowPreviousPieceB_at0:
     dey
     jsr VecCopyObjectPlaceBack
     lda a:$324F,x
-    sta a:OBJ_3250,x
+    sta a:OBJ_HITBOX_ON,x
     lda a:$2A67,x
     sec
     sbc #$27
@@ -1457,13 +1457,13 @@ FollowPreviousPieceB_at1:
 StartSidewaysAndSpawn29:
     jsr VecLoadObjectRecord
     lda #$28
-    sta a:OBJ_3510,x
+    sta a:OBJ_WORK_E,x
     lda a:OBJ_FACING_LEFT,x
     beq StartSidewaysAndSpawn29_at0
     jsr VecNegateVelocityX
 StartSidewaysAndSpawn29_at0:
     jsr VecApplyVelocityX
-    lda a:OBJ_34B8,x
+    lda a:OBJ_WORK_D,x
     asl a
     asl a
     asl a
@@ -1486,8 +1486,8 @@ StartSidewaysAndSpawn29_at0:
     bcc StartSidewaysAndSpawn29_at1
     lda #$29
     jsr VecStartObjectAtPlace
-    lda a:OBJ_3568,x
-    sta a:OBJ_3568,y
+    lda a:OBJ_WORK_F,x
+    sta a:OBJ_WORK_F,y
 StartSidewaysAndSpawn29_at1:
     rts
 
@@ -1504,7 +1504,7 @@ StartSidewaysAndSpawn29_at1:
 StartSidewaysAndSpawn29B:
     jsr VecLoadObjectRecord
     lda #$40
-    sta a:OBJ_3510,x
+    sta a:OBJ_WORK_E,x
     lda a:OBJ_FACING_LEFT,x
     beq StartSidewaysAndSpawn29B_at0
     jsr VecNegateVelocityX
@@ -1515,9 +1515,9 @@ StartSidewaysAndSpawn29B_at0:
     lda #$29
     jsr VecStartObjectAtPlace
     lda #$01
-    sta a:OBJ_34B8,y
-    lda a:OBJ_3568,x
-    sta a:OBJ_3568,y
+    sta a:OBJ_WORK_D,y
+    lda a:OBJ_WORK_F,x
+    sta a:OBJ_WORK_F,y
 StartSidewaysAndSpawn29B_at1:
     ldy a:OBJ_FACING_LEFT,x
     lda a:$BD32,y
@@ -1558,9 +1558,9 @@ BurstIntoEightPieces_at1:
     adc z:zTemp00
     tax
     lda a:$C674,x
-    sta a:OBJ_34B8,y
+    sta a:OBJ_WORK_D,y
     lda a:$C675,x
-    sta a:OBJ_3510,y
+    sta a:OBJ_WORK_E,y
     lda a:$C676,x
     sta a:OBJ_VX_HI,y
     lda a:$C677,x
@@ -1595,10 +1595,10 @@ StartGroupThenThrow:
     lda a:OBJ_START_ARG,x
     bmi StartGroupThenThrow_at0
     txa
-    sta a:OBJ_37D0,x
+    sta a:OBJ_WORK_M,x
     clc
     adc a:OBJ_START_ARG,x
-    sta a:OBJ_3828,x
+    sta a:OBJ_WORK_N,x
     txa
     tay
     iny
@@ -1611,9 +1611,9 @@ StartGroupThenThrow_at1:
     lda z:zTemp00
     sta a:OBJ_START_ARG,y
     txa
-    sta a:OBJ_37D0,y
-    lda a:OBJ_3828,x
-    sta a:OBJ_3828,y
+    sta a:OBJ_WORK_M,y
+    lda a:OBJ_WORK_N,x
+    sta a:OBJ_WORK_N,y
     inc z:zTemp00
     iny
     dec a:OBJ_START_ARG,x

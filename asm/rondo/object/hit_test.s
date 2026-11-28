@@ -37,7 +37,7 @@ HitTestAllObjects_at0:
 ; Entry: X the object. Exit: with no hit A the last value, Y $FF, N set; with one, as the handler.
 HitTestObject:
     stz a:OBJ_HIT_TAKEN,x
-    lda a:OBJ_3250,x
+    lda a:OBJ_HITBOX_ON,x
     bne HitTestObject_at0
     jmp HitTestObject_at1
 HitTestObject_at0:
@@ -77,14 +77,14 @@ HitTestObject_at5:
     lda a:OBJ_Y_HI,x
     adc z:zTemp00
     bne HitTestObject_at1
-    lda a:OBJ_3250,x
+    lda a:OBJ_HITBOX_ON,x
     bpl HitTestObject_at6
     cly
     bra HitTestObject_at7
 HitTestObject_at6:
     ldy #$0F
 HitTestObject_at7:
-    lda a:OBJ_3250,y
+    lda a:OBJ_HITBOX_ON,y
     beq HitTestObject_at8
     lda a:HitboxHi,y
     bne HitTestObject_at8
@@ -121,9 +121,9 @@ HitTestObject_at1:
     rts
 HitTestObject_at11:
     txa
-    sta a:OBJ_3880,y
+    sta a:OBJ_WORK_O,y
     sty z:zHitSlot
-    lda a:OBJ_3828,y
+    lda a:OBJ_WORK_N,y
     beq HitStoreHandler_at0
     dec a
     asl a
@@ -145,13 +145,13 @@ HitTestObject_at11:
 ; WAITS: no.
 ; Entry: X the object, Y the hit slot. Exit: A the last byte loaded, N and Z from it. C and V kept.
 HitStoreHandler:
-    lda a:OBJ_3828,y
+    lda a:OBJ_WORK_N,y
     sta a:OBJ_HIT_TAKEN,x
     lda a:OBJ_HIT_TAKEN
     bne HitStoreHandler_at0
-    lda a:OBJ_3358,x
+    lda a:OBJ_WORK_C,x
     sta a:OBJ_HIT_TAKEN
-    lda a:OBJ_3300,x
+    lda a:OBJ_WORK_B,x
     sta a:OBJ_HEALTH
 HitStoreHandler_at0:
     rts
@@ -174,7 +174,7 @@ HitReportHandler:
     sta a:StageHitReport+2
     lda a:HitboxYLo+3
     sta a:StageHitReport+3
-    lda a:OBJ_3828,y
+    lda a:OBJ_WORK_N,y
     sta a:OBJ_HIT_TAKEN,x
     rts
 
@@ -211,7 +211,7 @@ HitTestAllObjectsLong_at0:
 ; Entry, exit: as HitTestObject.
 HitTestObjectLong:
     stz a:OBJ_HIT_TAKEN,x
-    lda a:OBJ_3250,x
+    lda a:OBJ_HITBOX_ON,x
     bne HitTestObjectLong_at0
     jmp HitTestObjectLong_at1
 HitTestObjectLong_at0:
@@ -251,14 +251,14 @@ HitTestObjectLong_at5:
     lda a:OBJ_Y_HI,x
     adc z:zTemp00
     bne HitTestObjectLong_at1
-    lda a:OBJ_3250,x
+    lda a:OBJ_HITBOX_ON,x
     bpl HitTestObjectLong_at6
     cly
     bra HitTestObjectLong_at7
 HitTestObjectLong_at6:
     ldy #$0F
 HitTestObjectLong_at7:
-    lda a:OBJ_3250,y
+    lda a:OBJ_HITBOX_ON,y
     beq HitTestObjectLong_at8
     lda a:HitboxHi,y
     bne HitTestObjectLong_at8
@@ -295,9 +295,9 @@ HitTestObjectLong_at1:
     rts
 HitTestObjectLong_at11:
     txa
-    sta a:OBJ_3880,y
+    sta a:OBJ_WORK_O,y
     sty z:zHitSlot
-    lda a:OBJ_3828,y
+    lda a:OBJ_WORK_N,y
     beq $986C
     dec a
     asl a
@@ -319,7 +319,7 @@ HitTestObjectLong_at11:
 ; Entry, exit: as HitTestObject.
 HitTestObjectLongB:
     stz a:OBJ_HIT_TAKEN,x
-    lda a:OBJ_3250,x
+    lda a:OBJ_HITBOX_ON,x
     bne HitTestObjectLongB_at0
     jmp HitTestObjectLongB_at1
 HitTestObjectLongB_at0:
@@ -359,14 +359,14 @@ HitTestObjectLongB_at5:
     lda a:OBJ_Y_HI,x
     adc z:zTemp00
     bne HitTestObjectLongB_at1
-    lda a:OBJ_3250,x
+    lda a:OBJ_HITBOX_ON,x
     bpl HitTestObjectLongB_at6
     cly
     bra HitTestObjectLongB_at7
 HitTestObjectLongB_at6:
     ldy #$0F
 HitTestObjectLongB_at7:
-    lda a:OBJ_3250,y
+    lda a:OBJ_HITBOX_ON,y
     beq HitTestObjectLongB_at8
     lda a:HitboxHi,y
     bne HitTestObjectLongB_at8
@@ -403,9 +403,9 @@ HitTestObjectLongB_at1:
     rts
 HitTestObjectLongB_at11:
     txa
-    sta a:OBJ_3880,y
+    sta a:OBJ_WORK_O,y
     sty z:zHitSlot
-    lda a:OBJ_3828,y
+    lda a:OBJ_WORK_N,y
     beq $986C
     dec a
     asl a
@@ -426,13 +426,13 @@ HitTestObjectLongB_at11:
 ; WAITS: no.
 ; Entry: X the object, Y the hit slot. Exit: as HitStoreHandler.
 HitStoreHandlerLong:
-    lda a:OBJ_3828,y
+    lda a:OBJ_WORK_N,y
     sta a:OBJ_HIT_TAKEN,x
     lda a:OBJ_HIT_TAKEN
     bne HitStoreHandlerLong_at0
-    lda a:OBJ_3358,x
+    lda a:OBJ_WORK_C,x
     sta a:OBJ_HIT_TAKEN
-    lda a:OBJ_3300,x
+    lda a:OBJ_WORK_B,x
     sta a:OBJ_HEALTH
 HitStoreHandlerLong_at0:
     rts
@@ -453,6 +453,6 @@ HitReportHandlerLong:
     sta a:StageHitReport+2
     lda a:HitboxYLo+3
     sta a:StageHitReport+3
-    lda a:OBJ_3828,y
+    lda a:OBJ_WORK_N,y
     sta a:OBJ_HIT_TAKEN,x
     rts

@@ -46,21 +46,21 @@ StartAtX120OrApplyVelocity_at0:
 
 ; @routine 025A:722 SetBossFixedFields
 ; @run 70:AF22
-; WHAT IT DOES: Sets the fixed fields of slot 0: OBJ_3510 $10, OBJ_FRAME 0 and OBJ_3568 $40.
+; WHAT IT DOES: Sets the fixed fields of slot 0: OBJ_WORK_E $10, OBJ_FRAME 0 and OBJ_WORK_F $40.
 ; HOW: Three stores.
 ; WAITS: no.
 ; Entry: nothing. Exit: A $40, N and Z from it.
 SetBossFixedFields:
     lda #$10
-    sta a:OBJ_3510
+    sta a:OBJ_WORK_E
     stz a:OBJ_FRAME
     lda #$40
-    sta a:OBJ_3568
+    sta a:OBJ_WORK_F
     rts
 
 ; @routine 025A:730 StartBossWhenStageC0OrLoad
 ; @run 70:AF30
-; WHAT IT DOES: Sets the fixed fields (SetBossFixedFields). When the requested stage zStageRequested is $C0 it starts list $84 on channel 0 and script $8E in slot 5, clears the enemy slots, clears the frames of slots $56 and $57, starts five objects of type $2B from the slots 0 to 4 into free slots of $30 to $3F (OBJ_START_ARG the number), advances ScrollXHi+1 and plays the track again (CdPlayAgain). Otherwise it loads the object's record, sets OBJ_34B8 $80 and advances ScrollXHi+1.
+; WHAT IT DOES: Sets the fixed fields (SetBossFixedFields). When the requested stage zStageRequested is $C0 it starts list $84 on channel 0 and script $8E in slot 5, clears the enemy slots, clears the frames of slots $56 and $57, starts five objects of type $2B from the slots 0 to 4 into free slots of $30 to $3F (OBJ_START_ARG the number), advances ScrollXHi+1 and plays the track again (CdPlayAgain). Otherwise it loads the object's record, sets OBJ_WORK_D $80 and advances ScrollXHi+1.
 ; HOW: SetBossFixedFields, StartListChannelKind2, StartScriptSlotKind1, ClearEnemySlots, a loop of FindFreeSlotFrom30 and StartObjectAtPlace, CdPlayAgain, LoadObjectRecord.
 ; WAITS: no. (CdPlayAgain starts a disc command; it does not wait.)
 ; Entry: X object, Y kept for the track call. Exit: as the last instruction that ran. The $C0 arm ran in no script; the draft stops there and the arm is written from the decoded bytes.
@@ -96,30 +96,30 @@ StartBossWhenStageC0OrLoad_at1:
 StartBossWhenStageC0OrLoad_at0:
     jsr VecLoadObjectRecord
     lda #$80
-    sta a:OBJ_34B8,x
+    sta a:OBJ_WORK_D,x
     inc a:ScrollXHi+1
     rts
 
 ; @routine 025A:776 CountdownThenNextState
 ; @run 70:AF76
-; WHAT IT DOES: Sets the fixed fields; counts the object's OBJ_34B8 down; at zero clears it and goes to the next state; before that it may spawn a piece.
+; WHAT IT DOES: Sets the fixed fields; counts the object's OBJ_WORK_D down; at zero clears it and goes to the next state; before that it may spawn a piece.
 ; HOW: SetBossFixedFields, a memory decrement, then SetTimerThenNextState with A 0 or the fall into SpawnPiece21Mask1F.
 ; WAITS: no.
 ; Entry: X object. Exit: as the routine it ends in.
 CountdownThenNextState:
     jsr SetBossFixedFields
-    dec a:OBJ_34B8,x
+    dec a:OBJ_WORK_D,x
     bne SpawnPiece21Mask1F
     cla
 
 ; @routine 025A:77F SetTimerThenNextState
 ; @run 70:AF7F
-; WHAT IT DOES: Sets the object's OBJ_34B8 to A and goes to the next state.
+; WHAT IT DOES: Sets the object's OBJ_WORK_D to A and goes to the next state.
 ; HOW: A store and an INC.
 ; WAITS: no.
 ; Entry: A the timer, X object. Exit: the new state's N and Z.
 SetTimerThenNextState:
-    sta a:OBJ_34B8,x
+    sta a:OBJ_WORK_D,x
     inc a:OBJ_STATE,x
     rts
 
@@ -147,13 +147,13 @@ SpawnPiece21UnlessMasked:
 
 ; @routine 025A:795 CountdownThenSpawnPieces
 ; @run 70:AF95
-; WHAT IT DOES: Sets the fixed fields and counts OBJ_34B8 down; at zero sets it to $40 and goes to the next state; before that it may spawn a piece and, once in a while, a second one.
+; WHAT IT DOES: Sets the fixed fields and counts OBJ_WORK_D down; at zero sets it to $40 and goes to the next state; before that it may spawn a piece and, once in a while, a second one.
 ; HOW: SetBossFixedFields, SetTimerThenNextState or SpawnPiece21UnlessMasked, a compare of the scroll byte, NextRandom, FindFreeSlotFrom30 and StartObjectAtPlace.
 ; WAITS: no.
 ; Entry: X object. Exit: the last instruction that ran.
 CountdownThenSpawnPieces:
     jsr SetBossFixedFields
-    dec a:OBJ_34B8,x
+    dec a:OBJ_WORK_D,x
     bne CountdownThenSpawnPieces_at0
     bra SetTimerThenNextState
 CountdownThenSpawnPieces_at0:
@@ -196,10 +196,10 @@ HoldScrollStepThenNextState_at0:
 
 ; @routine 025A:7DE StepScrollThenMoveOrFadeOut
 ; @run 70:AFDE
-; WHAT IT DOES: Runs StepVerticalScrollTable. When slots 0's state and OBJ_SUBSTATE and Y speed high byte are all 0 and the byte at $3BC3 is not 0 it acts by OBJ_3670: at 0 it speeds up the object named by OBJ_START_ARG by $0010, sets ScrollStepXHi+1 to the negative of its X speed high byte, sets slot 0's OBJ_3510 $10 and OBJ_3568 0, hands slot 0's sprite set, frame and facing to the object named by OBJ_START_ARG and clears slot 0's frame; when ScrollXHi+1 is $FE it then sets the timer $40 and goes to the next state. At 1 it clears OBJ_3670, clears the object named by OBJ_START_ARG, makes it kind $31, sets slot 0's OBJ_3510 $10 and OBJ_3568 0 and fades the CD with type $0C.
+; WHAT IT DOES: Runs StepVerticalScrollTable. When slots 0's state and OBJ_SUBSTATE and Y speed high byte are all 0 and the byte at $3BC3 is not 0 it acts by OBJ_WORK_I: at 0 it speeds up the object named by OBJ_START_ARG by $0010, sets ScrollStepXHi+1 to the negative of its X speed high byte, sets slot 0's OBJ_WORK_E $10 and OBJ_WORK_F 0, hands slot 0's sprite set, frame and facing to the object named by OBJ_START_ARG and clears slot 0's frame; when ScrollXHi+1 is $FE it then sets the timer $40 and goes to the next state. At 1 it clears OBJ_WORK_I, clears the object named by OBJ_START_ARG, makes it kind $31, sets slot 0's OBJ_WORK_E $10 and OBJ_WORK_F 0 and fades the CD with type $0C.
 ; HOW: StepVerticalScrollTable, tests, 16-bit adds in memory, ClearObjectInY, cd_fade (the card's volume fade), a tail jump into SetTimerThenNextState.
 ; WAITS: no.
-; Entry: X object. Exit: as the last instruction that ran; with the fade, as cd_fade leaves them. The byte at $3BC3 and $3BF0 keep their address form until they have names. The OBJ_3670 not 0 arm ran in no script; the draft stops there.
+; Entry: X object. Exit: as the last instruction that ran; with the fade, as cd_fade leaves them. The byte at $3BC3 and $3BF0 keep their address form until they have names. The OBJ_WORK_I not 0 arm ran in no script; the draft stops there.
 StepScrollThenMoveOrFadeOut:
     jsr StepVerticalScrollTable
     lda a:OBJ_STATE
@@ -209,7 +209,7 @@ StepScrollThenMoveOrFadeOut:
     bne $AFDD
     lda a:RichterColumnHit
     beq $AFDD
-    lda a:OBJ_3670,x
+    lda a:OBJ_WORK_I,x
     bne StepScrollThenMoveOrFadeOut_at0
     phx
     lda a:OBJ_START_ARG,x
@@ -227,10 +227,10 @@ StepScrollThenMoveOrFadeOut:
     sta a:ScrollStepXHi+1
     plx
     lda #$10
-    sta a:OBJ_3510
+    sta a:OBJ_WORK_E
     lda #$02
     sta a:PlayerByte3BF0
-    stz a:OBJ_3568
+    stz a:OBJ_WORK_F
     ldy a:OBJ_START_ARG,x
     lda a:OBJ_SPRITE_SET
     sta a:OBJ_SPRITE_SET,y
@@ -248,15 +248,15 @@ StepScrollThenMoveOrFadeOut:
 StepScrollThenMoveOrFadeOut_at1:
     rts
 StepScrollThenMoveOrFadeOut_at0:
-    stz a:OBJ_3670,x
+    stz a:OBJ_WORK_I,x
     ldy a:OBJ_START_ARG,x
     jsr VecClearObjectInY
     lda #$31
     sta a:OBJ_KIND,y
     lda #$10
-    sta a:OBJ_3510
+    sta a:OBJ_WORK_E
     lda #$02
     sta a:PlayerByte3BF0
-    stz a:OBJ_3568
+    stz a:OBJ_WORK_F
     lda #$0C
     jmp BiosCdFade

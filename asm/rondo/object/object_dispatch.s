@@ -166,16 +166,16 @@ InitObjectFromRecord:
     sta a:OBJ_HITBOX_HALF_W,x
     sta a:OBJ_HITBOX_HALF_H,x
     lda #$04
-    sta a:OBJ_3510,x
+    sta a:OBJ_WORK_E,x
     lda #$60
-    sta a:OBJ_34B8,x
+    sta a:OBJ_WORK_D,x
     rts
 
 ; @routine 0519:49E ClearOnLanding
 ; @run 70:A49E
 ; WHAT IT DOES: One frame of an object that falls away: while it is not rising (its Y speed's top bit
 ; clear) it asks the floor with a probe height of 2 and, if the probe says floor, the object is cleared.
-; Otherwise it takes its frame from OBJ_3510 and moves on one state.
+; Otherwise it takes its frame from OBJ_WORK_E and moves on one state.
 ; HOW: ProbeTerrain with the carry and column the caller left; the clear is a tail jump into
 ; ClearObject.
 ; Untraced: the arm that clears (the jump at A4B0) ran in no script.
@@ -193,7 +193,7 @@ ClearOnLanding:
     beq ClearOnLanding_at0
     jmp VecClearObject
 ClearOnLanding_at0:
-    lda a:OBJ_3510,x
+    lda a:OBJ_WORK_E,x
     sta a:OBJ_FRAME,x
     inc a:OBJ_STATE,x
     rts
@@ -205,7 +205,7 @@ ClearOnLanding_at0:
 ; from its angle (the full cosine) and its Y speed to $80, and its angle is turned on by
 ; $0280.
 ; HOW: Calls ApplyVelocity and ProbeTerrain (floor, height 0), then ScaleByCosine with a
-; multiplier of 256; the angle is the two bytes OBJ_35C0 (low) and OBJ_3568 (high).
+; multiplier of 256; the angle is the two bytes OBJ_WORK_G (low) and OBJ_WORK_F (high).
 ; WAITS: no.
 ; Entry: X object. Exit: A and flags from the last AND or add; X kept; Y as ScaleByCosine
 ; left it.
@@ -226,7 +226,7 @@ FallAndBounce_at0:
     sta z:zTemp00
     lda #$01
     sta z:zTemp01
-    lda a:OBJ_3568,x
+    lda a:OBJ_WORK_F,x
     jsr VecScaleByCosine
     lda z:zProduct2
     sta a:OBJ_VX_HI,x
@@ -235,13 +235,13 @@ FallAndBounce_at0:
     stz a:OBJ_VY_HI,x
     lda #$80
     sta a:OBJ_VY_LO,x
-    lda a:OBJ_35C0,x
+    lda a:OBJ_WORK_G,x
     clc
     adc #$80
-    sta a:OBJ_35C0,x
-    lda a:OBJ_3568,x
+    sta a:OBJ_WORK_G,x
+    lda a:OBJ_WORK_F,x
     adc #$02
-    sta a:OBJ_3568,x
+    sta a:OBJ_WORK_F,x
 FallAndBounce_out:
     rts
 
@@ -255,10 +255,10 @@ FallAndBounce_out:
 ; then the timer's N and Z; at zero A $40 and N, Z from the new state).
 FallThenWait:
     jsr FallUntilFloor
-    dec a:OBJ_34B8,x
+    dec a:OBJ_WORK_D,x
     bne FallThenWait_at0
     lda #$40
-    sta a:OBJ_34B8,x
+    sta a:OBJ_WORK_D,x
     inc a:OBJ_STATE,x
 FallThenWait_at0:
     rts
@@ -298,21 +298,21 @@ FallUntilFloor_at0:
 ; @run 70:A53A
 ; WHAT IT DOES: A falling object that goes away: it falls as FallUntilFloor does and counts its life
 ; timer down; at zero the object is cleared. Until then its frame is 0, and it shows the frame in
-; OBJ_3510 on the beats where bit 1 of the timer is set (a flicker).
+; OBJ_WORK_E on the beats where bit 1 of the timer is set (a flicker).
 ; HOW: FallUntilFloor, DEC of the timer; the clear is a tail jump into ClearObject.
 ; WAITS: no.
 ; Entry: X object, Y the probe's column, C passed on. Exit: see the wrapper.
 FallThenClear:
     jsr FallUntilFloor
-    dec a:OBJ_34B8,x
+    dec a:OBJ_WORK_D,x
     bne FallThenClear_at0
     jmp VecClearObject
 FallThenClear_at0:
     stz a:OBJ_FRAME,x
-    lda a:OBJ_34B8,x
+    lda a:OBJ_WORK_D,x
     and #$02
     beq FallThenClear_at1
-    lda a:OBJ_3510,x
+    lda a:OBJ_WORK_E,x
     sta a:OBJ_FRAME,x
 FallThenClear_at1:
     rts
@@ -400,7 +400,7 @@ CollectScoreItem_at0:
     phy
     jsr BlendStageRowsOfPlayer
     pla
-    sta a:OBJ_34B8,x
+    sta a:OBJ_WORK_D,x
     lda #$9F
     sta a:OBJ_KIND,x
     stz a:OBJ_STATE,x
@@ -494,7 +494,7 @@ RunObjectState:
 ; @routine 0519:72C AnimateKind88
 ; @run 70:A72C
 ; WHAT IT DOES: For an object of kind $88 only: steps its animation list (at $A745) and keeps the
-; frame it shows in OBJ_3510. Any other kind is left alone.
+; frame it shows in OBJ_WORK_E. Any other kind is left alone.
 ; HOW: Compares the kind with $88; then StepObjectFrames with the list's pointer in zTemp10-11 and a
 ; copy of the frame byte.
 ; WAITS: no.
@@ -510,7 +510,7 @@ AnimateKind88:
     sta z:zTemp10
     jsr VecStepObjectFrames
     lda a:OBJ_FRAME,x
-    sta a:OBJ_3510,x
+    sta a:OBJ_WORK_E,x
 AnimateKind88_at0:
     rts
 
@@ -539,7 +539,7 @@ SetBlinkFlash_out:
 ; @run 70:A764
 ; WHAT IT DOES: Starts an object whose kind is a pair: a kind $93 with zField90 set becomes kind $84,
 ; and an object whose kind is already the one the table at $A668 gives for zField93 becomes $84; then
-; the record is loaded, slot 0's byte of the OBJ_SPRITE_FLIP column is copied into the object's, and OBJ_3510
+; the record is loaded, slot 0's byte of the OBJ_SPRITE_FLIP column is copied into the object's, and OBJ_WORK_E
 ; is set from the table at $A79E, row of two bytes by the kind less $84, the second by which character
 ; plays.
 ; HOW: Compares and, on equality, stores kind $84; LoadObjectRecord; the row by an add with the
@@ -575,7 +575,7 @@ StartKindFromCharacter_at1:
     adc z:zCharacter
     tay
     lda a:$A79E,y
-    sta a:OBJ_3510,x
+    sta a:OBJ_WORK_E,x
     rts
 
 ; @routine 0519:7BE SettleOnLanding
@@ -590,7 +590,7 @@ SettleOnLanding:
     jsr VecStopOnLanding
     bcc SettleOnLanding_at0
     lda #$F0
-    sta a:OBJ_34B8,x
+    sta a:OBJ_WORK_D,x
     inc a:OBJ_STATE,x
 SettleOnLanding_at0:
     rts
@@ -608,17 +608,17 @@ LandThenWait:
     lda #$00
     jsr VecStopOnLanding
 LandThenWait_at0:
-    dec a:OBJ_34B8,x
+    dec a:OBJ_WORK_D,x
     bne LandThenWait_at1
     lda #$50
-    sta a:OBJ_34B8,x
+    sta a:OBJ_WORK_D,x
     inc a:OBJ_STATE,x
 LandThenWait_at1:
     rts
 
 ; @routine 0519:7E6 LandThenClear
 ; @run 70:A7E6
-; WHAT IT DOES: As LandThenWait, but at zero the object is cleared; until then its frame is 0, and it shows OBJ_3510 on the beats where bit 1
+; WHAT IT DOES: As LandThenWait, but at zero the object is cleared; until then its frame is 0, and it shows OBJ_WORK_E on the beats where bit 1
 ; of the timer is set.
 ; HOW: StopOnLanding, DEC; the clear is a tail jump into ClearObject.
 ; WAITS: no.
@@ -629,15 +629,15 @@ LandThenClear:
     lda #$00
     jsr VecStopOnLanding
 LandThenClear_at0:
-    dec a:OBJ_34B8,x
+    dec a:OBJ_WORK_D,x
     bne LandThenClear_at1
     jmp VecClearObject
 LandThenClear_at1:
     stz a:OBJ_FRAME,x
-    lda a:OBJ_34B8,x
+    lda a:OBJ_WORK_D,x
     and #$02
     beq LandThenClear_at2
-    lda a:OBJ_3510,x
+    lda a:OBJ_WORK_E,x
     sta a:OBJ_FRAME,x
 LandThenClear_at2:
     rts
@@ -662,21 +662,21 @@ BitMaskFromIndex_out:
 ; @run 70:A92E
 ; @stop A95E
 ; WHAT IT DOES: A thrown item: from state 0 it loads its record, takes its frame from a table by its
-; life timer and its speeds from a four-byte row of the table at $A95E picked by OBJ_3510; in any other
+; life timer and its speeds from a four-byte row of the table at $A95E picked by OBJ_WORK_E; in any other
 ; state it goes on as DropOffScreen.
 ; HOW: Tables read from the disc (bank 70) by address; the other states are a tail branch into
 ; DropOffScreen.
 ; WAITS: no.
-; Entry: X object. Exit: started: A the last speed byte, Y the row's start, C bit 6 of OBJ_3510, N and
+; Entry: X object. Exit: started: A the last speed byte, Y the row's start, C bit 6 of OBJ_WORK_E, N and
 ; Z from A; else as DropOffScreen.
 StartThrownItem:
     lda a:OBJ_STATE,x
     bne DropOffScreen
     jsr VecLoadObjectRecord
-    ldy a:OBJ_34B8,x
+    ldy a:OBJ_WORK_D,x
     lda a:$A97E,y
     sta a:OBJ_FRAME,x
-    lda a:OBJ_3510,x
+    lda a:OBJ_WORK_E,x
     asl a
     asl a
     tay
@@ -710,7 +710,7 @@ DropOffScreen_at0:
 ; @routine 051A:1A8 StartScorePickup
 ; @run 70:A9A8
 ; WHAT IT DOES: Loads the object's record, clears its facing and adds the score a table at $A9E1 gives for its timer (two bytes of BCD); when that carries over
-; the mark the score tests for it the player gets an extra life (GiveExtraLife). The frame comes from a table at $A9DC by the timer, the angle OBJ_3510 is $18 and the Y speed $FE00.
+; the mark the score tests for it the player gets an extra life (GiveExtraLife). The frame comes from a table at $A9DC by the timer, the angle OBJ_WORK_E is $18 and the Y speed $FE00.
 ; HOW: LoadObjectRecord, AddScoreWord, GiveExtraLife, table reads (bank 70).
 ; Untraced: the extra life (A9C2).
 ; WAITS: no.
@@ -718,7 +718,7 @@ DropOffScreen_at0:
 StartScorePickup:
     jsr VecLoadObjectRecord
     stz a:OBJ_FACING_LEFT,x
-    lda a:OBJ_34B8,x
+    lda a:OBJ_WORK_D,x
     asl a
     tay
     lda a:$A9E1,y
@@ -729,11 +729,11 @@ StartScorePickup:
     bcc StartScorePickup_at0
     jsr GiveExtraLife
 StartScorePickup_at0:
-    ldy a:OBJ_34B8,x
+    ldy a:OBJ_WORK_D,x
     lda a:$A9DC,y
     sta a:OBJ_FRAME,x
     lda #$18
-    sta a:OBJ_3510,x
+    sta a:OBJ_WORK_E,x
     lda #$FE
     sta a:OBJ_VY_HI,x
     stz a:OBJ_VY_LO,x
@@ -741,30 +741,30 @@ StartScorePickup_at0:
 
 ; @routine 051A:1EB FallThenState
 ; @run 70:A9EB
-; WHAT IT DOES: Moves an object down by its Y speed; OBJ_3510 counts down and at zero becomes $10
+; WHAT IT DOES: Moves an object down by its Y speed; OBJ_WORK_E counts down and at zero becomes $10
 ; while the object moves on one state.
-; HOW: ApplyVelocityY, then DEC of OBJ_3510.
+; HOW: ApplyVelocityY, then DEC of OBJ_WORK_E.
 ; WAITS: no.
 ; Entry: X object. Exit: the move's registers, then N and Z of the count; at zero A $10 and N, Z of
 ; the new state.
 FallThenState:
     jsr VecApplyVelocityY
-    dec a:OBJ_3510,x
+    dec a:OBJ_WORK_E,x
     bne FallThenState_at0
     lda #$10
-    sta a:OBJ_3510,x
+    sta a:OBJ_WORK_E,x
     inc a:OBJ_STATE,x
 FallThenState_at0:
     rts
 
 ; @routine 051A:1FC ClearWhenCountEnds
 ; @run 70:A9FC
-; WHAT IT DOES: OBJ_3510 counts down; at zero the object is cleared.
+; WHAT IT DOES: OBJ_WORK_E counts down; at zero the object is cleared.
 ; HOW: DEC; the clear is a tail jump into ClearObject.
 ; WAITS: no.
 ; Entry: X object. Exit: N and Z of the count; A, Y and the rest kept.
 ClearWhenCountEnds:
-    dec a:OBJ_3510,x
+    dec a:OBJ_WORK_E,x
     bne ClearWhenCountEnds_at0
     jmp VecClearObject
 ClearWhenCountEnds_at0:

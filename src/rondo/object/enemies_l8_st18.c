@@ -27,7 +27,7 @@ enum { ST18_STATE5_STEPPED, ST18_STATE5_ENDED };
 /*
  * @routine 0B4C:007 CountDownOrPickNextTimer
  * @run 70:B807
- * WHAT IT DOES: Counts OBJ_34B8 down and says no (C 0). At zero it clears the animation and OBJ_3778, goes to state 7, advances OBJ_35C0, takes OBJ_34B8 from the table at $B830 by its low two bits and says yes (C 1).
+ * WHAT IT DOES: Counts OBJ_WORK_D down and says no (C 0). At zero it clears the animation and OBJ_WORK_L, goes to state 7, advances OBJ_WORK_G, takes OBJ_WORK_D from the table at $B830 by its low two bits and says yes (C 1).
  * HOW: A test, a memory decrement, stores, an INC, a table read.
  * WAITS: no.
  * Entry: X object. Exit: C 1 when the timer ran out, 0 when not; N and Z from the last load or decrement (l8_count_down_or_pick_exit_shim).
@@ -46,7 +46,7 @@ L8Arm CountDownOrPickNextTimer(uint8_t slot)
     WR8(OBJ->anim_step[slot], 0);
     WR8(OBJ->anim_timer[slot], 0);
     WR8(OBJ->state[slot], 7);
-    WR8(OBJ->f3778[slot], 0);
+    WR8(OBJ->work_l[slot], 0);
     r.second = INC8(OBJ->f35c0[slot]);
     step = RD8(OBJ->f35c0[slot]);
     r.y = step & 0x03;
@@ -242,7 +242,7 @@ void abi_StepListThenLeapByDistance(void)
 /*
  * @routine 0B4C:18A CountDownThenState5
  * @run 70:B98A
- * WHAT IT DOES: Counts OBJ_3510 down; at zero clears the animation and goes to state 5.
+ * WHAT IT DOES: Counts OBJ_WORK_E down; at zero clears the animation and goes to state 5.
  * HOW: A memory decrement, stores.
  * WAITS: no.
  * Entry: X object. Exit: as the last instruction that ran (l8_state5_count_exit_shim).
@@ -251,7 +251,7 @@ L8Arm CountDownThenState5(uint8_t slot)
 {
     L8Arm r = { 0 };
 
-    r.first = DEC8(OBJ->f3510[slot]);
+    r.first = DEC8(OBJ->work_e[slot]);
     if (r.first != 0) {
         r.arm = ST18_STATE5_COUNTING;
         return r;
@@ -360,7 +360,7 @@ void abi_SoundAndTileWriteAtFrame24(void)
 /*
  * @routine 0B4C:38C SoundAndSpawnFiveAtFrame27
  * @run 70:BB8C
- * WHAT IT DOES: At frame $27 plays sound $B5 and starts up to five objects of type $27 in free slots of $20 to $3F at its place, each facing as this one and numbered 0 to 4 in OBJ_34B8.
+ * WHAT IT DOES: At frame $27 plays sound $B5 and starts up to five objects of type $27 in free slots of $20 to $3F at its place, each facing as this one and numbered 0 to 4 in OBJ_WORK_D.
  * HOW: SoundCommand, a loop of FindFreeSlotFrom20 and StartObjectAtPlace with a counter in zTemp00.
  * WAITS: no.
  * Entry: X object, Y kept for the sound. Exit: as the last instruction that ran (l8_spawn_five_27_exit_shim).
@@ -519,7 +519,7 @@ void abi_SoundThenLeapByFacing(void)
 /*
  * @routine 0B4C:5BB MaybeSound19AndSpawnPiece
  * @run 70:BDBB
- * WHAT IT DOES: When the low two bits of A are 0 plays sound $19 and starts an object of type $9A in a free slot of $30 to $3F at the object's place at Y low $BE with OBJ_34B8 1 and OBJ_3510 a random number to 7 plus the facing.
+ * WHAT IT DOES: When the low two bits of A are 0 plays sound $19 and starts an object of type $9A in a free slot of $30 to $3F at the object's place at Y low $BE with OBJ_WORK_D 1 and OBJ_WORK_E a random number to 7 plus the facing.
  * HOW: An AND, SoundCommand, FindFreeSlotFrom30, StartObjectAtPlace, NextRandom.
  * WAITS: no.
  * Entry: A the number, X object, Y kept for the sound. Exit: as the last instruction that ran (l8_sound19_piece_exit_shim).
@@ -551,7 +551,7 @@ L8SpawnPieceArm MaybeSound19AndSpawnPiece(uint8_t slot, uint8_t number, uint8_t 
     r.pick = r.random.value & 0x07;
     facing = RD8(OBJ->facing_left[slot]);
     r.sum = add_bytes(r.pick, facing, false);
-    WR8(OBJ->f3510[r.found.slot], r.sum.value);
+    WR8(OBJ->work_e[r.found.slot], r.sum.value);
     r.spawned = true;
     return r;
 }

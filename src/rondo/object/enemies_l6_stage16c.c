@@ -22,7 +22,7 @@ enum { BC5C_STEPPED, BC5C_AIMED };
 /*
  * @routine 16CC:436 StepListBC5CThenAimAtPlayer
  * @run 70:BC36
- * WHAT IT DOES: Steps the animation list at $BC5C; when it ends the object sets OBJ_3250 to 2, takes the angle to the player as OBJ_3568, sets OBJ_3510 to $80 and OBJ_34B8 to 0 and goes on to the next state.
+ * WHAT IT DOES: Steps the animation list at $BC5C; when it ends the object sets OBJ_HITBOX_ON to 2, takes the angle to the player as OBJ_WORK_F, sets OBJ_WORK_E to $80 and OBJ_WORK_D to 0 and goes on to the next state.
  * HOW: StepObjectFrames, AngleToPlayer, stores, an INC.
  * WAITS: no.
  * Entry: X object, Y kept unless the step sets it. Exit: the step, or the new state's N and Z (A 0) when the list ended.
@@ -47,7 +47,7 @@ ObjArm StepListBC5CThenAimAtPlayer(uint8_t slot, uint8_t y_entry)
     r.angle = AngleToPlayer(slot);
     jsr_pop();
     WR8(OBJ->f3568[slot], r.angle.a);
-    WR8(OBJ->f3510[slot], 0x80);
+    WR8(OBJ->work_e[slot], 0x80);
     WR8(OBJ->f34b8[slot], 0);
     r.arm = BC5C_AIMED;
     r.first = INC8(OBJ->state[slot]);

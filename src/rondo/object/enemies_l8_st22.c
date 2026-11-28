@@ -27,14 +27,14 @@ static L8OrbitEnd st22_orbit_step(uint8_t slot)
     uint8_t low, high, scroll;
     L8OrbitEnd r = { 0 };
 
-    r.before = RD8(OBJ->f37d0[slot]);
+    r.before = RD8(OBJ->work_m[slot]);
     WR8(ZP->temp00, r.before);
-    low = RD8(OBJ->f3778[slot]);
+    low = RD8(OBJ->work_l[slot]);
     r.sum = add_bytes(0x90, low, false);
-    WR8(OBJ->f3778[slot], r.sum.value);
-    high = RD8(OBJ->f37d0[slot]);
+    WR8(OBJ->work_l[slot], r.sum.value);
+    high = RD8(OBJ->work_m[slot]);
     r.sum = add_bytes(0xFF, high, r.sum.carry);
-    WR8(OBJ->f37d0[slot], r.sum.value);
+    WR8(OBJ->work_m[slot], r.sum.value);
     r.other = RD8(ZP->temp00);
     if (r.sum.value == r.other) {
         r.arm = L8_ORBIT_SAME;
@@ -46,7 +46,7 @@ static L8OrbitEnd st22_orbit_step(uint8_t slot)
     }
     WR8(OBJ->y_lo[slot], 0x40);
     WR8(OBJ->y_frac[slot], 0);
-    WR8(OBJ->f3778[slot], 0);
+    WR8(OBJ->work_l[slot], 0);
     scroll = RD8(SCROLL->x_lo[0]);
     r.diff = sub_bytes(0xB0, scroll, true);
     WR8(OBJ->x_lo[slot], r.diff.value);
@@ -75,7 +75,7 @@ static Ended st22_orbit_ended(L8OrbitEnd r)
 /*
  * @routine 0F6B:52F OrbitCosineSineThenSettle
  * @run 70:B52F
- * WHAT IT DOES: Moves the object on an ellipse: X speed from the cosine of OBJ_37D0 scaled by $0120, Y speed from the sine scaled by $0050; turns OBJ_37D0 on by -$0070 a frame (a 16-bit add with OBJ_3778); when OBJ_37D0 reaches $80 it is placed at Y $0040, X $B0 less the scroll and goes to the next OBJ_SUBSTATE.
+ * WHAT IT DOES: Moves the object on an ellipse: X speed from the cosine of OBJ_WORK_M scaled by $0120, Y speed from the sine scaled by $0050; turns OBJ_WORK_M on by -$0070 a frame (a 16-bit add with OBJ_WORK_L); when OBJ_WORK_M reaches $80 it is placed at Y $0040, X $B0 less the scroll and goes to the next OBJ_SUBSTATE.
  * HOW: ScaleByCosine, ScaleBySine, ApplyVelocityX and Y, a 16-bit add in memory, two compares.
  * WAITS: no.
  * Entry: X object. Exit: as the last instruction that ran (l8_orbit_settle_exit_shim).
@@ -87,7 +87,7 @@ L8OrbitArm OrbitCosineSineThenSettle(uint8_t slot)
 
     WR8(ZP->temp00, 0x20);
     WR8(ZP->temp01, 1);
-    r.angle1 = RD8(OBJ->f37d0[slot]);
+    r.angle1 = RD8(OBJ->work_m[slot]);
     jsr_push(0xB53D);
     r.scale1 = ScaleByCosine(r.angle1);
     jsr_pop();
@@ -100,7 +100,7 @@ L8OrbitArm OrbitCosineSineThenSettle(uint8_t slot)
     jsr_pop();
     WR8(ZP->temp00, 0x50);
     WR8(ZP->temp01, 0);
-    r.angle2 = RD8(OBJ->f37d0[slot]);
+    r.angle2 = RD8(OBJ->work_m[slot]);
     jsr_push(0xB558);
     r.scale2 = ScaleBySine(r.angle2);
     jsr_pop();
@@ -145,15 +145,15 @@ void abi_OrbitCosineSineThenSettle(void)
 /*
  * @routine 0F6B:59E ResetOrbitAndAdvance
  * @run 70:B59E
- * WHAT IT DOES: Clears OBJ_3778, sets OBJ_37D0 and OBJ_35C0 $80 and goes to the next OBJ_SUBSTATE.
+ * WHAT IT DOES: Clears OBJ_WORK_L, sets OBJ_WORK_M and OBJ_WORK_G $80 and goes to the next OBJ_SUBSTATE.
  * HOW: Stores and an INC.
  * WAITS: no.
  * Entry: X object. Exit: A $80, N and Z from the new OBJ_SUBSTATE (l8_reset_orbit_exit_shim).
  */
 uint8_t ResetOrbitAndAdvance(uint8_t slot)
 {
-    WR8(OBJ->f3778[slot], 0);
-    WR8(OBJ->f37d0[slot], 0x80);
+    WR8(OBJ->work_l[slot], 0);
+    WR8(OBJ->work_m[slot], 0x80);
     WR8(OBJ->f35c0[slot], 0x80);
     return INC8(OBJ->substate[slot]);
 }
@@ -172,7 +172,7 @@ void abi_ResetOrbitAndAdvance(void)
 /*
  * @routine 0F6B:5B1 OrbitWithRisingSineThenSettle
  * @run 70:B5B1
- * WHAT IT DOES: As OrbitCosineSineThenSettle, but the Y speed comes from the sine of OBJ_3828 scaled by $0100, which turns on by $01C0 a frame; at $80 the object goes to OBJ_SUBSTATE 2.
+ * WHAT IT DOES: As OrbitCosineSineThenSettle, but the Y speed comes from the sine of OBJ_WORK_N scaled by $0100, which turns on by $01C0 a frame; at $80 the object goes to OBJ_SUBSTATE 2.
  * HOW: ScaleBySine, ScaleByCosine, ApplyVelocityY and X, two 16-bit adds in memory, two compares.
  * WAITS: no.
  * Entry: X object. Exit: as the last instruction that ran (l8_orbit_rising_exit_shim).
@@ -184,7 +184,7 @@ L8OrbitArm OrbitWithRisingSineThenSettle(uint8_t slot)
 
     WR8(ZP->temp00, 0);
     WR8(ZP->temp01, 1);
-    r.angle1 = RD8(OBJ->f3828[slot]);
+    r.angle1 = RD8(OBJ->work_n[slot]);
     jsr_push(0xB5BF);
     r.scale1 = ScaleBySine(r.angle1);
     jsr_pop();
@@ -195,15 +195,15 @@ L8OrbitArm OrbitWithRisingSineThenSettle(uint8_t slot)
     jsr_push(0xB5CC);
     r.move1 = ApplyVelocityY(slot);
     jsr_pop();
-    low = RD8(OBJ->f3880[slot]);
+    low = RD8(OBJ->work_o[slot]);
     r.sum = add_bytes(0xC0, low, false);
-    WR8(OBJ->f3880[slot], r.sum.value);
-    high = RD8(OBJ->f3828[slot]);
+    WR8(OBJ->work_o[slot], r.sum.value);
+    high = RD8(OBJ->work_n[slot]);
     r.sum = add_bytes(1, high, r.sum.carry);
-    WR8(OBJ->f3828[slot], r.sum.value);
+    WR8(OBJ->work_n[slot], r.sum.value);
     WR8(ZP->temp00, 0x20);
     WR8(ZP->temp01, 1);
-    r.angle2 = RD8(OBJ->f37d0[slot]);
+    r.angle2 = RD8(OBJ->work_m[slot]);
     jsr_push(0xB5EB);
     r.scale2 = ScaleByCosine(r.angle2);
     jsr_pop();
@@ -249,7 +249,7 @@ void abi_OrbitWithRisingSineThenSettle(void)
 /*
  * @routine 0F6B:711 StepListByNumberTable
  * @run 70:B711
- * WHAT IT DOES: Steps the animation list that the table at $BA0A names for OBJ_34B8.
+ * WHAT IT DOES: Steps the animation list that the table at $BA0A names for OBJ_WORK_D.
  * HOW: A table read of two bytes into zTemp10-11, a tail jump into StepObjectFrames.
  * WAITS: no.
  * Entry: X object, Y kept unless the step sets it. Exit: the step (l8_number_step_exit_shim).
@@ -350,7 +350,7 @@ void abi_StartPieceABInFreeSlot(void)
 /*
  * @routine 0F6B:72F LoadRecordFrameByKindThenFall
  * @run 70:B72F
- * WHAT IT DOES: In state 0 loads the record, sets sprite set 4 and takes the frame and OBJ_3510 from tables at $B76C and $B771 by OBJ_START_ARG. Later, while OBJ_3510 counts down, kind 4 sets bit 4 of zField8E and plays sound $FE at zero; at zero it moves in Y and falls.
+ * WHAT IT DOES: In state 0 loads the record, sets sprite set 4 and takes the frame and OBJ_WORK_E from tables at $B76C and $B771 by OBJ_START_ARG. Later, while OBJ_WORK_E counts down, kind 4 sets bit 4 of zField8E and plays sound $FE at zero; at zero it moves in Y and falls.
  * HOW: LoadObjectRecord, table reads, a memory decrement, SoundCommand, ApplyVelocityY, ApplyGravity.
  * WAITS: no.
  * Entry: X object, Y kept for the sound. Exit: as the last instruction that ran (l8_frame_by_kind_exit_shim).
@@ -370,11 +370,11 @@ L8FrameByKindArm LoadRecordFrameByKindThenFall(uint8_t slot, uint8_t y_entry)
         value = rd8((uint16_t)(0xB76C + r.kind));
         WR8(OBJ->frame[slot], value);
         r.value = rd8((uint16_t)(0xB771 + r.kind));
-        WR8(OBJ->f3510[slot], r.value);
+        WR8(OBJ->work_e[slot], r.value);
         r.arm = ST22_FALL_LOADED;
         return r;
     }
-    r.timer = RD8(OBJ->f3510[slot]);
+    r.timer = RD8(OBJ->work_e[slot]);
     if (r.timer == 0) {
         jsr_push(0xB768);
         r.move = ApplyVelocityY(slot);
@@ -385,7 +385,7 @@ L8FrameByKindArm LoadRecordFrameByKindThenFall(uint8_t slot, uint8_t y_entry)
         r.arm = ST22_FALL_FELL;
         return r;
     }
-    r.now = DEC8(OBJ->f3510[slot]);
+    r.now = DEC8(OBJ->work_e[slot]);
     if (r.now != 0) {
         r.arm = ST22_FALL_COUNTING;
         return r;
@@ -447,7 +447,7 @@ void abi_LoadRecordFrameByKindThenFall(void)
 /*
  * @routine 0F6B:45D StepListThenStartFivePieces
  * @run 70:B45D
- * WHAT IT DOES: Runs StepListByNumberTable; when the list ends starts objects of type $A9 in the slots $11 to $15 (each cleared first) at the object's place, numbered 0 to 4 in OBJ_START_ARG, sets frame 2 and OBJ_3510 $C0 and goes to the next state.
+ * WHAT IT DOES: Runs StepListByNumberTable; when the list ends starts objects of type $A9 in the slots $11 to $15 (each cleared first) at the object's place, numbered 0 to 4 in OBJ_START_ARG, sets frame 2 and OBJ_WORK_E $C0 and goes to the next state.
  * HOW: StepListByNumberTable, a loop of ClearObjectInY and StartObjectAtPlace, a counter in zTemp00.
  * WAITS: no.
  * Entry: X object, Y kept unless the step sets it. Exit: as the last instruction that ran (l8_five_pieces_exit_shim).
@@ -479,7 +479,7 @@ L8FivePiecesArm StepListThenStartFivePieces(uint8_t slot, uint8_t y_entry)
         y++;
     } while (y != 0x16);
     WR8(OBJ->frame[slot], 2);
-    WR8(OBJ->f3510[slot], 0xC0);
+    WR8(OBJ->work_e[slot], 0xC0);
     r.count = INC8(OBJ->state[slot]);
     r.started = true;
     return r;
@@ -509,7 +509,7 @@ void abi_StepListThenStartFivePieces(void)
 /*
  * @routine 0F6B:4C9 StepListThenRunPhaseTable
  * @run 70:B4C9
- * WHAT IT DOES: Runs StepListByNumberTable and counts OBJ_3568 down; at zero tries StartPieceABInFreeSlot and, when it started one, keeps OBJ_SUBSTATE in OBJ_38D8, clears it, sets OBJ_3510 $40 and takes OBJ_3568 from OBJ_35C0. Then runs the code the table at $B501 names for OBJ_SUBSTATE (50B, 51C, 52F, 59E, 5B1).
+ * WHAT IT DOES: Runs StepListByNumberTable and counts OBJ_WORK_F down; at zero tries StartPieceABInFreeSlot and, when it started one, keeps OBJ_SUBSTATE in OBJ_WORK_P, clears it, sets OBJ_WORK_E $40 and takes OBJ_WORK_F from OBJ_WORK_G. Then runs the code the table at $B501 names for OBJ_SUBSTATE (50B, 51C, 52F, 59E, 5B1).
  * HOW: Two calls, a table of two bytes to zTemp00-01, a jump through them.
  * WAITS: no.
  * Entry: X object, Y kept unless the step sets it. Exit: as the code jumped to; A the high byte, Y the doubled OBJ_SUBSTATE (l8_phase_table_exit_shim).
@@ -535,9 +535,9 @@ L8PhaseTableArm StepListThenRunPhaseTable(uint8_t slot, uint8_t y_entry)
         jsr_pop();
         if (r.started.found.found) {
             value = RD8(OBJ->substate[slot]);
-            WR8(OBJ->f38d8[slot], value);
+            WR8(OBJ->work_p[slot], value);
             WR8(OBJ->substate[slot], 0);
-            WR8(OBJ->f3510[slot], 0x40);
+            WR8(OBJ->work_e[slot], 0x40);
             r.value = RD8(OBJ->f35c0[slot]);
             WR8(OBJ->f3568[slot], r.value);
         }

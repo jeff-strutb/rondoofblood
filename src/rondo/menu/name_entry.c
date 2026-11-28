@@ -111,7 +111,7 @@ void abi_NameBackspace(void)
  * @run 6B:95D2
  * WHAT IT DOES: Types the character the cursor is on: it is drawn at the next place, put in the
  * buffer, the count goes up by one, and unless the name is full the cursor tile follows it.
- * HOW: The character is read from the grid table at the row (OBJ->f3618 of object 2) times 8
+ * HOW: The character is read from the grid table at the row (OBJ->work_h of object 2) times 8
  * plus the column (OBJ->f34b8 of object 2), with the carry of the row's third shift added in as
  * the original does; written to the VDC as a tile with palette 1 and to the buffer at the count.
  * The count rises; at 8 the routine stops, otherwise it runs on into ShowNameCursor.
@@ -138,7 +138,7 @@ NameExit NameTypeCharacter(void)
     jsr_push(0x95E3);
     SelectVramData();
     jsr_pop();
-    row = RD8(OBJ->f3618[2]);
+    row = RD8(OBJ->work_h[2]);
     shifted_out = (row & 0x20) != 0;
     column = RD8(OBJ->f34b8[2]);
     grid_base = (uint8_t)(row << 3);
@@ -179,7 +179,7 @@ void abi_NameTypeCharacter(void)
  * @run 6B:9665
  * WHAT IT DOES: Sends the name cursor object (and its pair, the next object) to the place of the
  * grid character it is on: the last row, the "end" key, is wide, from $60 to $A0.
- * HOW: The object's row (OBJ->f3618) picks the Y place from a table, written to both objects;
+ * HOW: The object's row (OBJ->work_h) picks the Y place from a table, written to both objects;
  * on row 4 the X places are $60 and $A0, otherwise the column (OBJ->f34b8) picks a place from a
  * table for both; both are marked as moving.
  * WAITS: no.
@@ -191,7 +191,7 @@ NameCursorExit NameCursorTarget(uint8_t object)
     NameCursorExit result;
     uint8_t place;
 
-    result.y = RD8(OBJ->f3618[object]);
+    result.y = RD8(OBJ->work_h[object]);
     place = rd8((uint16_t)(NAME_ROW_PLACES + result.y));
     WR8(OBJ->f35c0[object], place);
     WR8(OBJ->f35c0[object + 1], place);
@@ -206,8 +206,8 @@ NameCursorExit NameCursorTarget(uint8_t object)
         WR8(OBJ->f3568[object], place);
         WR8(OBJ->f3568[object + 1], place);
     }
-    WR8(OBJ->f3510[object], 1);
-    WR8(OBJ->f3510[object + 1], 1);
+    WR8(OBJ->work_e[object], 1);
+    WR8(OBJ->work_e[object + 1], 1);
     return result;
 }
 

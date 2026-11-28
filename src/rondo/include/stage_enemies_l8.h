@@ -950,7 +950,7 @@ L8SpawnPieceArm MaybeSound19AndSpawnPiece(uint8_t slot, uint8_t number, uint8_t 
 SoundEnd l8_sound19_piece_exit_shim(L8SpawnPieceArm r);
 
 /* object/enemies_l8_st19.c */
-/* FaceThePlayerByStateTable: the bits of OBJ_3618, the state, the table byte, and when it was marked the side and the facing. */
+/* FaceThePlayerByStateTable: the bits of OBJ_WORK_H, the state, the table byte, and when it was marked the side and the facing. */
 typedef struct {
     int arm;
     uint8_t bits, state, marked, facing;
@@ -1436,7 +1436,7 @@ typedef struct {
     Sum negated;
 } L8PieceWalkArm;
 
-/* StartLeapWhenHurtAnswerYes: its answer, OBJ_35C0, the hits, the start, the move, the step, the facing and the reversed speed. */
+/* StartLeapWhenHurtAnswerYes: its answer, OBJ_WORK_G, the hits, the start, the move, the step, the facing and the reversed speed. */
 typedef struct {
     int arm;
     bool yes;

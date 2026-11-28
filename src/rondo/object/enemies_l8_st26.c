@@ -147,17 +147,17 @@ void abi_PlaySound58B(void)
 /*
  * @routine 101B:426 SettleWhenLowOnFirstRow
  * @run 70:B426
- * WHAT IT DOES: When OBJ_3670 and the Y high byte are both 0 and the Y low byte is below $D0, sets OBJ_3670 1 and clears the flash flags.
+ * WHAT IT DOES: When OBJ_WORK_I and the Y high byte are both 0 and the Y low byte is below $D0, sets OBJ_WORK_I 1 and clears the flash flags.
  * HOW: An ORA, a compare, an INC, a store.
  * WAITS: no.
- * Entry: X object. Exit: as the last instruction that ran (l8_settle_low_exit_shim). The body returns the ORA (first), the Y low byte (second) and the new OBJ_3670 (third).
+ * Entry: X object. Exit: as the last instruction that ran (l8_settle_low_exit_shim). The body returns the ORA (first), the Y low byte (second) and the new OBJ_WORK_I (third).
  */
 L8Arm SettleWhenLowOnFirstRow(uint8_t slot)
 {
     L8Arm r = { 0 };
     uint8_t flag, high;
 
-    flag = RD8(OBJ->f3670[slot]);
+    flag = RD8(OBJ->work_i[slot]);
     high = RD8(OBJ->y_hi[slot]);
     r.first = (uint8_t)(flag | high);
     if (r.first != 0) {
@@ -169,7 +169,7 @@ L8Arm SettleWhenLowOnFirstRow(uint8_t slot)
         r.arm = SETTLE_LOW_ROW;
         return r;
     }
-    r.third = INC8(OBJ->f3670[slot]);
+    r.third = INC8(OBJ->work_i[slot]);
     WR8(OBJ->sprite_attr[slot], 0);
     r.arm = SETTLE_SETTLED;
     return r;
@@ -280,7 +280,7 @@ void abi_CapPlayerXOnScreen1(void)
 /*
  * @routine 161E:617 LoadRecordThenDriftAndCount
  * @run 71:CE17
- * WHAT IT DOES: In state 0 loads the record, sets sprite set 6, frame $45, OBJ_3510 $10 and the speeds' low bytes 1. In state 1 it moves, counts OBJ_34B8 down through $FF and then OBJ_3510; when that goes below 0 it goes to the next state.
+ * WHAT IT DOES: In state 0 loads the record, sets sprite set 6, frame $45, OBJ_WORK_E $10 and the speeds' low bytes 1. In state 1 it moves, counts OBJ_WORK_D down through $FF and then OBJ_WORK_E; when that goes below 0 it goes to the next state.
  * HOW: LoadObjectRecord, ApplyVelocity, memory decrements, a compare, an INC.
  * WAITS: no.
  * Entry: X object. Exit: as the last instruction that ran (l8_drift_count_exit_shim).
@@ -296,7 +296,7 @@ DriftArm LoadRecordThenDriftAndCount(uint8_t slot, L8Layout lay)
         jsr_pop();
         WR8(OBJ->sprite_set[slot], 6);
         WR8(OBJ->frame[slot], 0x45);
-        WR8(OBJ->f3510[slot], 0x10);
+        WR8(OBJ->work_e[slot], 0x10);
         WR8(OBJ->vx_lo[slot], 1);
         WR8(OBJ->vy_lo[slot], 1);
         r.arm = DRIFT_START;
@@ -315,7 +315,7 @@ DriftArm LoadRecordThenDriftAndCount(uint8_t slot, L8Layout lay)
         r.arm = DRIFT_COUNTING;
         return r;
     }
-    r.wait = DEC8(OBJ->f3510[slot]);
+    r.wait = DEC8(OBJ->work_e[slot]);
     if ((r.wait & 0x80) == 0) {
         r.arm = DRIFT_WAITING;
         return r;
@@ -392,7 +392,7 @@ void abi_LoadRecordAtX80(void)
 /*
  * @routine 101B:296 CountDownThenStartPieceInSlots18To1B
  * @run 70:B296
- * WHAT IT DOES: In state 0 loads the record. Later, once the player's screen position (OBJ_X_LO of slot 0 plus the scroll) is past page 4, it counts the 16-bit timer OBJ_34B8:OBJ_3510 down; at zero it clears the first empty slot of $18 to $1B and starts an object of type $28 there at its place with OBJ_34B8 1 and OBJ_3510 $20.
+ * WHAT IT DOES: In state 0 loads the record. Later, once the player's screen position (OBJ_X_LO of slot 0 plus the scroll) is past page 4, it counts the 16-bit timer OBJ_WORK_D:OBJ_WORK_E down; at zero it clears the first empty slot of $18 to $1B and starts an object of type $28 there at its place with OBJ_WORK_D 1 and OBJ_WORK_E $20.
  * HOW: LoadObjectRecord, a 16-bit add and subtract, a search, ClearObjectInY, StartObjectAtPlace.
  * WAITS: no.
  * Entry: X object. Exit: as the last instruction that ran (l8_piece_slots_exit_shim). The exit when no slot is empty ran in no script.
@@ -422,12 +422,12 @@ PieceSlotsArm CountDownThenStartPieceInSlots18To1B(uint8_t slot)
         return r;
     }
     high = RD8(OBJ->f34b8[slot]);
-    timer = RD8(OBJ->f3510[slot]);
+    timer = RD8(OBJ->work_e[slot]);
     r.joined = (uint8_t)(high | timer);
     if (r.joined != 0) {
-        timer = RD8(OBJ->f3510[slot]);
+        timer = RD8(OBJ->work_e[slot]);
         diff = sub_bytes(timer, 1, true);
-        WR8(OBJ->f3510[slot], diff.value);
+        WR8(OBJ->work_e[slot], diff.value);
         high = RD8(OBJ->f34b8[slot]);
         r.diff = sub_bytes(high, 0, diff.carry);
         WR8(OBJ->f34b8[slot], r.diff.value);
@@ -457,7 +457,7 @@ PieceSlotsArm CountDownThenStartPieceInSlots18To1B(uint8_t slot)
     placed = StartObjectAtPlace(0x28, slot, y);
     jsr_pop();
     WR8(OBJ->f34b8[slot], 1);
-    WR8(OBJ->f3510[slot], 0x20);
+    WR8(OBJ->work_e[slot], 0x20);
     (void)placed;
     r.arm = SLOTS_STARTED;
     return r;
@@ -503,7 +503,7 @@ static Ended ended_of_turn_angle(TurnAngleResult r)
 /*
  * @routine 101B:2EB ChaseWanderingPointWithSpeedRamp
  * @run 70:B2EB
- * WHAT IT DOES: In state 0 loads the record, sets bit 4 of the flash flags and places the object at X $0020, Y $0110. Later it steps the list at $B3E3, runs SettleWhenLowOnFirstRow, faces the player, and every $30 to $6F frames (OBJ_3618) picks one of eight offsets (OBJ_35C0, table at $B406) around the player as its target. It moves by the speed made from the angle OBJ_34B8 and the length OBJ_3510:OBJ_3568, turns the angle two steps toward the target and speeds up by 8 when the angle is within 3 of it (slowing by $10 when it is not and it is going faster than $50).
+ * WHAT IT DOES: In state 0 loads the record, sets bit 4 of the flash flags and places the object at X $0020, Y $0110. Later it steps the list at $B3E3, runs SettleWhenLowOnFirstRow, faces the player, and every $30 to $6F frames (OBJ_WORK_H) picks one of eight offsets (OBJ_WORK_G, table at $B406) around the player as its target. It moves by the speed made from the angle OBJ_WORK_D and the length OBJ_WORK_E:OBJ_WORK_F, turns the angle two steps toward the target and speeds up by 8 when the angle is within 3 of it (slowing by $10 when it is not and it is going faster than $50).
  * HOW: LoadObjectRecord, StepObjectFrames, SettleWhenLowOnFirstRow, SideOfPlayer, NextRandom, SetVelocityFromAngle, ApplyVelocity, AngleToPoint, TurnAngleToward, 16-bit adds in memory.
  * WAITS: no.
  * Entry: X object, Y kept unless the step sets it. Exit: as the last instruction that ran (l8_chase_point_exit_shim).
@@ -538,13 +538,13 @@ ChaseArm ChaseWanderingPointWithSpeedRamp(uint8_t slot, uint8_t y_entry)
     jsr_pop();
     r.facing = r.side.sides & 0x01;
     WR8(OBJ->facing_left[slot], r.facing);
-    r.wait = RD8(OBJ->f3618[slot]);
+    r.wait = RD8(OBJ->work_h[slot]);
     if (r.wait == 0) {
         jsr_push(0xB32C);
         r.random = NextRandom();
         jsr_pop();
         r.wait_sum = add_bytes((uint8_t)(r.random.value & 0x3F), 0x30, false);
-        WR8(OBJ->f3618[slot], r.wait_sum.value);
+        WR8(OBJ->work_h[slot], r.wait_sum.value);
         jsr_push(0xB337);
         r.random2 = NextRandom();
         jsr_pop();
@@ -552,10 +552,10 @@ ChaseArm ChaseWanderingPointWithSpeedRamp(uint8_t slot, uint8_t y_entry)
         WR8(OBJ->f35c0[slot], r.pick);
         r.picked = true;
     }
-    r.counted = DEC8(OBJ->f3618[slot]);
+    r.counted = DEC8(OBJ->work_h[slot]);
     scale_lo = RD8(OBJ->f3568[slot]);
     WR8(ZP->temp00, scale_lo);
-    scale_hi = RD8(OBJ->f3510[slot]);
+    scale_hi = RD8(OBJ->work_e[slot]);
     WR8(ZP->temp01, scale_hi);
     r.angle = RD8(OBJ->f34b8[slot]);
     jsr_push(0xB34F);
@@ -595,7 +595,7 @@ ChaseArm ChaseWanderingPointWithSpeedRamp(uint8_t slot, uint8_t y_entry)
     r.diff = sub_bytes(r.value, RD8(ZP->temp02), true);
     r.sum = add_bytes(r.diff.value, 4, false);
     if (r.sum.value >= 8) {
-        r.high = RD8(OBJ->f3510[slot]);
+        r.high = RD8(OBJ->work_e[slot]);
         if (r.high == 0) {
             r.low = RD8(OBJ->f3568[slot]);
             if (r.low < 0x50) {
@@ -606,17 +606,17 @@ ChaseArm ChaseWanderingPointWithSpeedRamp(uint8_t slot, uint8_t y_entry)
         low = RD8(OBJ->f3568[slot]);
         diff = sub_bytes(low, 0x10, true);
         WR8(OBJ->f3568[slot], diff.value);
-        high = RD8(OBJ->f3510[slot]);
+        high = RD8(OBJ->work_e[slot]);
         r.speed = sub_bytes(high, 0, diff.carry);
-        WR8(OBJ->f3510[slot], r.speed.value);
+        WR8(OBJ->work_e[slot], r.speed.value);
         r.arm = CHASE_SLOWED;
         return r;
     }
-    r.high = RD8(OBJ->f3510[slot]);
+    r.high = RD8(OBJ->work_e[slot]);
     if (r.high >= 1) {
         r.low = RD8(OBJ->f3568[slot]);
         if (r.low >= 0x10) {
-            WR8(OBJ->f3510[slot], 1);
+            WR8(OBJ->work_e[slot], 1);
             WR8(OBJ->f3568[slot], 0x10);
             r.arm = CHASE_CAPPED;
             return r;
@@ -625,9 +625,9 @@ ChaseArm ChaseWanderingPointWithSpeedRamp(uint8_t slot, uint8_t y_entry)
     low = RD8(OBJ->f3568[slot]);
     sum = add_bytes(low, 8, false);
     WR8(OBJ->f3568[slot], sum.value);
-    high = RD8(OBJ->f3510[slot]);
+    high = RD8(OBJ->work_e[slot]);
     r.speed = add_bytes(high, 0, sum.carry);
-    WR8(OBJ->f3510[slot], r.speed.value);
+    WR8(OBJ->work_e[slot], r.speed.value);
     r.arm = CHASE_SPED;
     return r;
 }
@@ -691,7 +691,7 @@ void abi_ChaseWanderingPointWithSpeedRamp(void)
 /*
  * @routine 161B:126 SpawnerWithScrollGates
  * @run 70:B126
- * WHAT IT DOES: In state 0 loads the record. State 1 starts list $8D on channel 3 when OBJ_START_ARG is not 0 and goes on. Later it runs CapPlayerXOnScreen1 when OBJ_START_ARG is 0, waits OBJ_34B8 down, then with OBJ_START_ARG 0 and the scroll in the right window starts an object of type $2C in a free slot of $1A to $1F numbered by OBJ_3510 (which counts up) and takes a random wait of $80 to $BF; with OBJ_START_ARG not 0 and the scroll's Y in range clears and starts an object of type $55 in the first free slot of $11 to $1F and waits $D0.
+ * WHAT IT DOES: In state 0 loads the record. State 1 starts list $8D on channel 3 when OBJ_START_ARG is not 0 and goes on. Later it runs CapPlayerXOnScreen1 when OBJ_START_ARG is 0, waits OBJ_WORK_D down, then with OBJ_START_ARG 0 and the scroll in the right window starts an object of type $2C in a free slot of $1A to $1F numbered by OBJ_WORK_E (which counts up) and takes a random wait of $80 to $BF; with OBJ_START_ARG not 0 and the scroll's Y in range clears and starts an object of type $55 in the first free slot of $11 to $1F and waits $D0.
  * HOW: LoadObjectRecord, StartListChannelKind2, CapPlayerXOnScreen1, searches of the slot kinds, StartObjectAtPlace, NextRandom, ClearObjectInY.
  * WAITS: no.
  * Entry: X object. Exit: as the last instruction that ran (l8_scroll_gates_exit_shim). Everything past state 0 ran in no script; the draft stops there and the arms are written from the decoded bytes.
@@ -770,9 +770,9 @@ GatesArm SpawnerWithScrollGates(uint8_t slot)
         jsr_push(0xB188);
         r.placed = StartObjectAtPlace(0x2C, slot, y);
         jsr_pop();
-        r.number = RD8(OBJ->f3510[slot]);
+        r.number = RD8(OBJ->work_e[slot]);
         WR8(OBJ->f3040[y], r.number);
-        r.counted = INC8(OBJ->f3510[slot]);
+        r.counted = INC8(OBJ->work_e[slot]);
         jsr_push(0xB194);
         r.random = NextRandom();
         jsr_pop();

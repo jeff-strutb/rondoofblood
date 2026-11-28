@@ -807,7 +807,7 @@ InitPlayerObject:
 ; Entry: nothing. Exit: X 0; the rest as the handler leaves them.
 RunPlayerObject:
     ldx #$00
-    lda a:OBJ_34B8,x
+    lda a:OBJ_WORK_D,x
     asl a
     tay
     lda a:$46F3,y
@@ -825,7 +825,7 @@ RunPlayerObject:
 ; WAITS: no.
 ; Entry: X the object. Exit: as player_exit_shim's arms. X kept.
 PlayerStand:
-    lda a:OBJ_3250,x
+    lda a:OBJ_HITBOX_ON,x
     bne PlayerStand_at0
     lda a:BiosJoyTrigger
     lsr a
@@ -838,14 +838,14 @@ PlayerStand:
     stz a:OBJ_ANIM_STEP,x
     stz a:OBJ_ANIM_TIMER,x
     lda #$01
-    sta a:OBJ_34B8,x
+    sta a:OBJ_WORK_D,x
     jmp $47A7
 PlayerStand_at3:
     stz a:OBJ_ANIM_STEP,x
     stz a:OBJ_ANIM_TIMER,x
-    stz a:OBJ_34B8,x
+    stz a:OBJ_WORK_D,x
 PlayerStand_at6:
-    lda a:OBJ_34B8,x
+    lda a:OBJ_WORK_D,x
     jmp StartObjectAnimation
 PlayerStand_at1:
     stz a:OBJ_ANIM_STEP,x
@@ -866,20 +866,20 @@ PlayerStand_at5:
     dec a:OBJ_VX_HI,x
 PlayerStand_at4:
     lda #$02
-    sta a:OBJ_34B8,x
+    sta a:OBJ_WORK_D,x
     bra PlayerStand_at6
 PlayerStand_at2:
     stz a:OBJ_ANIM_STEP,x
     stz a:OBJ_ANIM_TIMER,x
     lda #$03
-    sta a:OBJ_34B8,x
+    sta a:OBJ_WORK_D,x
     bra PlayerStand_at6
 PlayerStand_at0:
     stz a:OBJ_ANIM_STEP,x
     stz a:OBJ_ANIM_TIMER,x
     lda #$80
     sta a:OBJ_VX_LO,x
-    lda a:OBJ_3250,x
+    lda a:OBJ_HITBOX_ON,x
     lsr a
     tay
     lda a:$478D,y
@@ -888,7 +888,7 @@ PlayerStand_at0:
     lda #$FC
     sta a:OBJ_VY_HI,x
     lda #$04
-    sta a:OBJ_34B8,x
+    sta a:OBJ_WORK_D,x
     rts
 
 ; @routine 0023:78F PlayerRestFromWalk
@@ -908,7 +908,7 @@ PlayerRestFromWalk:
 ; WAITS: no.
 ; Entry: X the object. Exit: as player_exit_shim's arms. X kept.
 PlayerWalk:
-    lda a:OBJ_3250,x
+    lda a:OBJ_HITBOX_ON,x
     bne PlayerStand_at0
     lda a:BiosJoyTrigger
     lsr a
@@ -948,7 +948,7 @@ PlayerWalk_at2:
 ; WAITS: no.
 ; Entry: X the object. Exit: as player_exit_shim's arms, V that of the move. X kept.
 PlayerJump:
-    lda a:OBJ_3250,x
+    lda a:OBJ_HITBOX_ON,x
     bne PlayerStand_at0
     lda #$20
     clc
@@ -966,7 +966,7 @@ PlayerJump:
     stz a:OBJ_VX_HI,x
     stz a:OBJ_VX_LO,x
 PlayerJump_at0:
-    lda a:OBJ_34B8,x
+    lda a:OBJ_WORK_D,x
     jsr StartObjectAnimation
     tay
     bne PlayerJump_at1
@@ -994,9 +994,9 @@ PlayerHurtFromAttack:
 ; WAITS: no.
 ; Entry: X the object. Exit: as player_exit_shim's arms. X kept.
 PlayerAttack:
-    lda a:OBJ_3250,x
+    lda a:OBJ_HITBOX_ON,x
     bne PlayerHurtFromAttack
-    lda a:OBJ_34B8,x
+    lda a:OBJ_WORK_D,x
     jsr StartObjectAnimation
     tay
     bne PlayerAttack_at0
@@ -1058,7 +1058,7 @@ InitObject1:
 ; Entry: nothing. Exit: X 1; the rest as the handler leaves them.
 RunObject1:
     ldx #$01
-    lda a:OBJ_34B8,x
+    lda a:OBJ_WORK_D,x
     asl a
     tay
     lda a:$4877,y
@@ -1076,7 +1076,7 @@ RunObject1:
 Object1WaitForScroll:
     lda a:ScrollXFrac+1
     beq Object1WaitForScroll_at0
-    inc a:OBJ_34B8,x
+    inc a:OBJ_WORK_D,x
 Object1WaitForScroll_at0:
     rts
 
@@ -1097,12 +1097,12 @@ Object1WalkIn:
     bne Object1WalkIn_at0
 Object1WalkIn_at1:
     lda #$02
-    sta a:OBJ_34B8,x
+    sta a:OBJ_WORK_D,x
     stz a:OBJ_VX_HI,x
     jsr $4692
     and #$3F
     ora #$40
-    sta a:OBJ_3510,x
+    sta a:OBJ_WORK_E,x
 Object1WalkIn_at0:
     rts
 
@@ -1122,11 +1122,11 @@ Object1FacePlayer:
     lda a:OBJ_X_LO,x
     bpl Object1FacePlayer_at0
     lda #$05
-    sta a:OBJ_34B8,x
+    sta a:OBJ_WORK_D,x
     rts
 Object1FacePlayer_at0:
     lda #$06
-    sta a:OBJ_34B8,x
+    sta a:OBJ_WORK_D,x
     rts
 
 ; @routine 0024:0CF Object1Wait
@@ -1137,7 +1137,7 @@ Object1FacePlayer_at0:
 ; WAITS: no.
 ; Entry: X the object. Exit: as object1_exit_shim. X kept.
 Object1Wait:
-    dec a:OBJ_3510,x
+    dec a:OBJ_WORK_E,x
     bne Object1Wait_at0
     jsr $4692
     and #$03
@@ -1151,9 +1151,9 @@ Object1Wait:
     lda #$2E
     sta a:OBJ_FRAME+1,x
     lda #$04
-    sta a:OBJ_34B8,x
+    sta a:OBJ_WORK_D,x
     lda #$80
-    sta a:OBJ_3510,x
+    sta a:OBJ_WORK_E,x
 Object1Wait_at0:
     rts
 Object1Wait_at1:
@@ -1163,7 +1163,7 @@ Object1Wait_at1:
     sta a:OBJ_VY_HI,x
     stz a:OBJ_VY_LO,x
     lda #$03
-    sta a:OBJ_34B8,x
+    sta a:OBJ_WORK_D,x
     rts
 
 ; @routine 0024:110 Object1Jump
@@ -1206,7 +1206,7 @@ Object1Jump_at1:
 ; WAITS: no.
 ; Entry: X the object. Exit: as object1_exit_shim. X kept.
 Object1Hold:
-    dec a:OBJ_3510,x
+    dec a:OBJ_WORK_E,x
     bne Object1Hold_at0
     stz a:OBJ_FRAME+1,x
     jmp Object1FacePlayer
@@ -1260,16 +1260,16 @@ Object1StepRight_at0:
 WorldToScreen:
     ldx #$04
 WorldToScreen_at0:
-    lda a:OBJ_3568,x
+    lda a:OBJ_WORK_F,x
     sec
     sbc a:ScrollXLo
     sta a:OBJ_X_LO,x
-    lda a:OBJ_35C0,x
+    lda a:OBJ_WORK_G,x
     sbc a:ScrollXHi
     sta a:OBJ_X_HI,x
-    lda a:OBJ_3670,x
+    lda a:OBJ_WORK_I,x
     sta a:OBJ_Y_LO,x
-    lda a:OBJ_36C8,x
+    lda a:OBJ_WORK_J,x
     sta a:OBJ_Y_HI,x
     inx
     cpx #$14
@@ -1318,7 +1318,7 @@ RunWorldObjects_at0:
 ; WAITS: no.
 ; Entry: X the object. Exit: as the handler leaves them. X kept.
 RunWorldObject:
-    lda a:OBJ_34B8,x
+    lda a:OBJ_WORK_D,x
     asl a
     tay
     lda a:$49D0,y
@@ -1343,13 +1343,13 @@ WorldObjectFallIn:
     adc a:OBJ_VY_HI,x
     sta a:OBJ_VY_HI,x
     jsr ApplyWorldVelocity
-    lda a:OBJ_3670,x
+    lda a:OBJ_WORK_I,x
     cmp #$A0
     bcs WorldObjectFallIn_at0
     rts
 WorldObjectFallIn_at0:
     lda #$A0
-    sta a:OBJ_3670,x
+    sta a:OBJ_WORK_I,x
     lda #$80
     sta a:OBJ_VX_LO,x
     lda #$FF
@@ -1357,7 +1357,7 @@ WorldObjectFallIn_at0:
     stz a:OBJ_VY_LO,x
     stz a:OBJ_VY_HI,x
     lda #$01
-    sta a:OBJ_34B8,x
+    sta a:OBJ_WORK_D,x
     rts
 
 ; @routine 0024:210 WorldObjectWalk
@@ -1368,21 +1368,21 @@ WorldObjectFallIn_at0:
 ; WAITS: no.
 ; Entry: X the object. Exit: as world_exit_shim. X kept.
 WorldObjectWalk:
-    lda a:OBJ_3250,x
+    lda a:OBJ_HITBOX_ON,x
     bne WorldObjectWalk_at0
     jsr ApplyWorldVelocity
-    lda a:OBJ_35C0,x
+    lda a:OBJ_WORK_G,x
     bmi WorldObjectWalk_at1
     bne WorldObjectWalk_at2
-    lda a:OBJ_3568,x
+    lda a:OBJ_WORK_F,x
     cmp #$28
     bcs WorldObjectWalk_at2
 WorldObjectWalk_at1:
-    inc a:OBJ_34B8,x
+    inc a:OBJ_WORK_D,x
     lda #$1A
     sta a:OBJ_FRAME,x
     lda #$40
-    sta a:OBJ_3720,x
+    sta a:OBJ_WORK_K,x
     rts
 WorldObjectWalk_at2:
     lda #$05
@@ -1391,7 +1391,7 @@ WorldObjectWalk_at0:
     stz a:OBJ_ANIM_STEP,x
     stz a:OBJ_ANIM_TIMER,x
     stz a:OBJ_VX_LO,x
-    lda a:OBJ_3250,x
+    lda a:OBJ_HITBOX_ON,x
     lsr a
     tay
     lda a:$4A8B,y
@@ -1400,20 +1400,20 @@ WorldObjectWalk_at0:
     lda #$FC
     sta a:OBJ_VY_HI,x
     lda #$04
-    sta a:OBJ_34B8,x
-    lda a:OBJ_3568,x
+    sta a:OBJ_WORK_D,x
+    lda a:OBJ_WORK_F,x
     sta a:$3567,x
-    lda a:OBJ_35C0,x
+    lda a:OBJ_WORK_G,x
     sta a:$35BF,x
-    lda a:OBJ_3670,x
+    lda a:OBJ_WORK_I,x
     sec
     sbc #$10
     sta a:$366F,x
-    lda a:OBJ_36C8,x
+    lda a:OBJ_WORK_J,x
     sta a:$36C7,x
     lda #$FE
     sta a:$2E2F,x
-    lda a:OBJ_3250,x
+    lda a:OBJ_HITBOX_ON,x
     lsr a
     tay
     lda a:$4A8D,y
@@ -1430,7 +1430,7 @@ WorldObjectWalk_at0:
 ; WAITS: no.
 ; Entry: X the object. Exit: as world_exit_shim. X kept.
 WorldObjectStunned:
-    dec a:OBJ_3720,x
+    dec a:OBJ_WORK_K,x
     bne WorldObjectStunned_at0
     stz a:OBJ_ANIM_STEP,x
     stz a:OBJ_ANIM_TIMER,x
@@ -1439,7 +1439,7 @@ WorldObjectStunned:
     stz a:OBJ_VY_LO,x
     lda #$FC
     sta a:OBJ_VY_HI,x
-    inc a:OBJ_34B8,x
+    inc a:OBJ_WORK_D,x
 WorldObjectStunned_at0:
     rts
 
@@ -1459,7 +1459,7 @@ WorldObjectFallAway:
     adc a:OBJ_VY_HI,x
     sta a:OBJ_VY_HI,x
     jsr ApplyWorldVelocity
-    lda a:OBJ_36C8,x
+    lda a:OBJ_WORK_J,x
     bne WorldObjectFallAway_at0
     lda #$06
     jsr StartObjectAnimation
@@ -1491,7 +1491,7 @@ WorldObjectPiece_at0:
     adc a:OBJ_VY_HI,x
     sta a:OBJ_VY_HI,x
     jsr ApplyWorldVelocity
-    lda a:OBJ_36C8,x
+    lda a:OBJ_WORK_J,x
     beq WorldObjectPiece_at1
     jmp $4584
 WorldObjectPiece_at1:
@@ -1508,11 +1508,11 @@ InitSpawner:
     ldx #$03
     jsr $4584
     lda #$01
-    sta a:OBJ_3720,x
+    sta a:OBJ_WORK_K,x
     lda #$E0
-    sta a:OBJ_3568,x
+    sta a:OBJ_WORK_F,x
     lda #$02
-    sta a:OBJ_35C0,x
+    sta a:OBJ_WORK_G,x
     rts
 
 ; @routine 0024:311 RunSpawner
@@ -1523,7 +1523,7 @@ InitSpawner:
 ; Entry: nothing. Exit: X 3 or as the handler leaves it; the rest as the handler leaves them.
 RunSpawner:
     ldx #$03
-    lda a:OBJ_34B8,x
+    lda a:OBJ_WORK_D,x
     asl a
     tay
     lda a:$4B25,y
@@ -1547,7 +1547,7 @@ SpawnerStep:
     lda z:zFrameTick
     lsr a
     bcc SpawnerStep_at1
-    dec a:OBJ_3720,x
+    dec a:OBJ_WORK_K,x
     bne SpawnerStep_at1
     phx
     ldx #$04
@@ -1563,23 +1563,23 @@ SpawnerStep_at4:
 SpawnerStep_at1:
     rts
 SpawnerStep_at0:
-    lda a:OBJ_3720,x
+    lda a:OBJ_WORK_K,x
     cmp #$01
     beq SpawnerStep_at1
-    dec a:OBJ_3720,x
+    dec a:OBJ_WORK_K,x
     rts
 SpawnerStep_at2:
     jsr $4584
     inx
     jsr $4584
-    lda a:OBJ_3568+3
-    sta a:OBJ_3568,x
-    lda a:OBJ_35C0+3
-    sta a:OBJ_35C0,x
-    lda a:OBJ_3670+3
-    sta a:OBJ_3670,x
-    lda a:OBJ_36C8+3
-    sta a:OBJ_36C8,x
+    lda a:OBJ_WORK_F+3
+    sta a:OBJ_WORK_F,x
+    lda a:OBJ_WORK_G+3
+    sta a:OBJ_WORK_G,x
+    lda a:OBJ_WORK_I+3
+    sta a:OBJ_WORK_I,x
+    lda a:OBJ_WORK_J+3
+    sta a:OBJ_WORK_J,x
     lda #$15
     sta a:OBJ_FRAME,x
     jmp SpawnerStep_at4
@@ -1599,14 +1599,14 @@ ApplyWorldVelocity:
 ApplyWorldVelocity_at0:
     lda a:OBJ_VX_LO,x
     clc
-    adc a:OBJ_3510,x
-    sta a:OBJ_3510,x
+    adc a:OBJ_WORK_E,x
+    sta a:OBJ_WORK_E,x
     lda a:OBJ_VX_HI,x
-    adc a:OBJ_3568,x
-    sta a:OBJ_3568,x
+    adc a:OBJ_WORK_F,x
+    sta a:OBJ_WORK_F,x
     lda z:zTemp10
-    adc a:OBJ_35C0,x
-    sta a:OBJ_35C0,x
+    adc a:OBJ_WORK_G,x
+    sta a:OBJ_WORK_G,x
     stz z:zTemp10
     lda a:OBJ_VY_HI,x
     bpl ApplyWorldVelocity_at1
@@ -1614,14 +1614,14 @@ ApplyWorldVelocity_at0:
 ApplyWorldVelocity_at1:
     lda a:OBJ_VY_LO,x
     clc
-    adc a:OBJ_3618,x
-    sta a:OBJ_3618,x
+    adc a:OBJ_WORK_H,x
+    sta a:OBJ_WORK_H,x
     lda a:OBJ_VY_HI,x
-    adc a:OBJ_3670,x
-    sta a:OBJ_3670,x
+    adc a:OBJ_WORK_I,x
+    sta a:OBJ_WORK_I,x
     lda z:zTemp10
-    adc a:OBJ_36C8,x
-    sta a:OBJ_36C8,x
+    adc a:OBJ_WORK_J,x
+    sta a:OBJ_WORK_J,x
     rts
 
 ; @routine 0024:3C3 ApplyWorldVelocityX
@@ -1638,14 +1638,14 @@ ApplyWorldVelocityX:
 ApplyWorldVelocityX_at0:
     lda a:OBJ_VX_LO,x
     clc
-    adc a:OBJ_3510,x
-    sta a:OBJ_3510,x
+    adc a:OBJ_WORK_E,x
+    sta a:OBJ_WORK_E,x
     lda a:OBJ_VX_HI,x
-    adc a:OBJ_3568,x
-    sta a:OBJ_3568,x
+    adc a:OBJ_WORK_F,x
+    sta a:OBJ_WORK_F,x
     lda z:zTemp10
-    adc a:OBJ_35C0,x
-    sta a:OBJ_35C0,x
+    adc a:OBJ_WORK_G,x
+    sta a:OBJ_WORK_G,x
     rts
 
 ; @routine 0024:3E8 CheckPlayerHits
@@ -1663,12 +1663,12 @@ CheckPlayerHits:
     sta z:zTemp00
     lda a:OBJ_Y_LO
     sta z:zTemp01
-    stz a:OBJ_3250
+    stz a:OBJ_HITBOX_ON
     ldx #$05
 CheckPlayerHits_at3:
     lda a:OBJ_X_HI,x
     bne CheckPlayerHits_at0
-    lda a:OBJ_34B8,x
+    lda a:OBJ_WORK_D,x
     cmp #$02
     bcs CheckPlayerHits_at0
     lda a:OBJ_Y_LO,x
@@ -1694,7 +1694,7 @@ CheckPlayerHits_at2:
     bcs CheckPlayerHits_at0
     lda z:zTemp08
     inc a
-    sta a:OBJ_3250
+    sta a:OBJ_HITBOX_ON
 CheckPlayerHits_at0:
     inx
     inx
@@ -1721,10 +1721,10 @@ CheckPlayerHits_at5:
 CheckPlayerHits_at6:
     ldx #$05
 CheckPlayerHits_at11:
-    stz a:OBJ_3250,x
+    stz a:OBJ_HITBOX_ON,x
     lda a:OBJ_X_HI,x
     bne CheckPlayerHits_at7
-    lda a:OBJ_34B8,x
+    lda a:OBJ_WORK_D,x
     cmp #$02
     bcs CheckPlayerHits_at7
     lda a:OBJ_Y_LO,x
@@ -1755,7 +1755,7 @@ CheckPlayerHits_at9:
 CheckPlayerHits_at10:
     lda z:zTemp08
     inc a
-    sta a:OBJ_3250,x
+    sta a:OBJ_HITBOX_ON,x
 CheckPlayerHits_at7:
     inx
     inx

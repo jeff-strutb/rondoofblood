@@ -1,20 +1,20 @@
 ; @routine 0F6B:488 CountDownThenRestartMusicAndScript
 ; @run 70:B488
-; WHAT IT DOES: Counts OBJ_3510 down; at zero clears OBJ_34B8, sets OBJ_38D8 1, OBJ_35C0 and OBJ_3568 $E0 and OBJ_3510 $40, goes to the next state, clears bits 3 and 4 of zField8E, plays the track again (CdPlayAgain), sets bit 2 of zField8E and bit 1 of OBJ_3250, plays sound $D1 and starts script 1 in the only free script slot 3.
+; WHAT IT DOES: Counts OBJ_WORK_E down; at zero clears OBJ_WORK_D, sets OBJ_WORK_P 1, OBJ_WORK_G and OBJ_WORK_F $E0 and OBJ_WORK_E $40, goes to the next state, clears bits 3 and 4 of zField8E, plays the track again (CdPlayAgain), sets bit 2 of zField8E and bit 1 of OBJ_HITBOX_ON, plays sound $D1 and starts script 1 in the only free script slot 3.
 ; HOW: A memory decrement, stores, RMWs of zField8E, CdPlayAgain, SoundCommand, StartSoleScriptSlot between a PHX and a PLX.
 ; WAITS: no. (CdPlayAgain starts a disc command; it does not wait.)
 ; Entry: X object, Y kept for the track and the sound. Exit: as the last instruction that ran.
 CountDownThenRestartMusicAndScript:
-    dec a:OBJ_3510,x
+    dec a:OBJ_WORK_E,x
     bne CountDownThenRestartMusicAndScript_at0
-    stz a:OBJ_34B8,x
+    stz a:OBJ_WORK_D,x
     lda #$01
-    sta a:OBJ_38D8,x
+    sta a:OBJ_WORK_P,x
     lda #$E0
-    sta a:OBJ_35C0,x
-    sta a:OBJ_3568,x
+    sta a:OBJ_WORK_G,x
+    sta a:OBJ_WORK_F,x
     lda #$40
-    sta a:OBJ_3510,x
+    sta a:OBJ_WORK_E,x
     inc a:OBJ_STATE,x
     rmb3 z:zField8E
     rmb4 z:zField8E
@@ -23,8 +23,8 @@ CountDownThenRestartMusicAndScript:
     ora #$04
     sta z:zField8E
     lda #$02
-    ora a:OBJ_3250,x
-    sta a:OBJ_3250,x
+    ora a:OBJ_HITBOX_ON,x
+    sta a:OBJ_HITBOX_ON,x
     lda #$D1
     jsr VecSoundCommand
     phx
@@ -37,7 +37,7 @@ CountDownThenRestartMusicAndScript_at0:
 
 ; @routine 0F6B:776 ThrownPieceThenScatterAndLeave
 ; @run 70:B776
-; WHAT IT DOES: In state 0 loads the record, sets the speed X $0800 and Y -$0800 (moved once each) and OBJ_34B8 3. In state 1 it falls (ApplyVelocityY, ApplyGravity) and steps the list by OBJ_34B8 until it reaches Y $D0; there it stops, shrinks its hit box to 8 by 8, starts four objects of type $AC numbered 0 to 3 in free slots of $30 to $3F, plays sound $26, goes to the next state and restarts the animation. In later states, every fourth frame, it starts an object of type $9B in the first empty slot of $50 to $54 with a random speed, steps the list and clears itself when the list ends.
+; WHAT IT DOES: In state 0 loads the record, sets the speed X $0800 and Y -$0800 (moved once each) and OBJ_WORK_D 3. In state 1 it falls (ApplyVelocityY, ApplyGravity) and steps the list by OBJ_WORK_D until it reaches Y $D0; there it stops, shrinks its hit box to 8 by 8, starts four objects of type $AC numbered 0 to 3 in free slots of $30 to $3F, plays sound $26, goes to the next state and restarts the animation. In later states, every fourth frame, it starts an object of type $9B in the first empty slot of $50 to $54 with a random speed, steps the list and clears itself when the list ends.
 ; HOW: LoadObjectRecord, ApplyVelocityX and Y, ApplyGravity, FindFreeSlotFrom30, StartObjectAtPlace, SoundCommand, NextRandom, StepListByNumberTable, ClearObject.
 ; WAITS: no.
 ; Entry: X object, Y kept for the sound. Exit: as the last instruction that ran.
@@ -53,7 +53,7 @@ ThrownPieceThenScatterAndLeave:
     jsr VecApplyVelocityY
     stz a:OBJ_VY_HI,x
     lda #$03
-    sta a:OBJ_34B8,x
+    sta a:OBJ_WORK_D,x
     rts
 ThrownPieceThenScatterAndLeave_at0:
     dec a
@@ -87,7 +87,7 @@ ThrownPieceThenScatterAndLeave_at3:
     lda #$26
     jsr VecSoundCommand
     inc a:OBJ_STATE,x
-    inc a:OBJ_34B8,x
+    inc a:OBJ_WORK_D,x
     jsr ClearAnimationThenStepListByNumber
     rts
 ThrownPieceThenScatterAndLeave_at1:

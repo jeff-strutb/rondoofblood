@@ -73,7 +73,7 @@ StartThenFallAlongList_at0:
 
 ; @routine 088A:39B FrameBySideThenTimerOnScroll
 ; @run 70:AB9B
-; WHAT IT DOES: Sets the object's frame to $25 when its X low is under $C0, else 0; once the scroll's Y high byte is not zero it sets OBJ_34B8 to $C0 and goes on to the next state.
+; WHAT IT DOES: Sets the object's frame to $25 when its X low is under $C0, else 0; once the scroll's Y high byte is not zero it sets OBJ_WORK_D to $C0 and goes on to the next state.
 ; HOW: Stores, compares, an INC.
 ; WAITS: no.
 ; Entry: X object. Exit: the scroll's load, or the new state's N and Z (A $C0).
@@ -88,7 +88,7 @@ FrameBySideThenTimerOnScroll_at0:
     lda a:ScrollYHi
     beq FrameBySideThenTimerOnScroll_at1
     lda #$C0
-    sta a:OBJ_34B8,x
+    sta a:OBJ_WORK_D,x
     inc a:OBJ_STATE,x
 FrameBySideThenTimerOnScroll_at1:
     rts
@@ -134,7 +134,7 @@ StartListSoundThenSpawn20:
 
 ; @routine 088A:4B9 StartThreeNumberedObjects
 ; @run 70:ACB9
-; WHAT IT DOES: Clears the objects in slots $16 to $18, starts a kind $28 object in each at the place of the object in slot $3E, gives each sprite set 7, its number (0 to 2) as OBJ_34B8 and the frame number plus $47, and then clears the object in slot $3E.
+; WHAT IT DOES: Clears the objects in slots $16 to $18, starts a kind $28 object in each at the place of the object in slot $3E, gives each sprite set 7, its number (0 to 2) as OBJ_WORK_D and the frame number plus $47, and then clears the object in slot $3E.
 ; HOW: A loop of ClearObjectInY and StartObjectAtPlace, ClearObject.
 ; WAITS: no.
 ; Entry: X object (kept). Exit: the last compare of Y with $19; A the last frame.
@@ -150,7 +150,7 @@ StartThreeNumberedObjects_at0:
     lda #$07
     sta a:OBJ_SPRITE_SET,y
     lda z:zTemp00
-    sta a:OBJ_34B8,y
+    sta a:OBJ_WORK_D,y
     clc
     adc #$47
     sta a:OBJ_FRAME,y
@@ -164,22 +164,22 @@ StartThreeNumberedObjects_at0:
 
 ; @routine 088A:4FC LoadThenSpeedFromTable
 ; @run 70:ACFC
-; WHAT IT DOES: Loads the object's record, takes its X speed from the two-byte entries of the table at $AD21 by OBJ_34B8, its timer from the table at $AD29 and its frame as OBJ_34B8 plus $47.
+; WHAT IT DOES: Loads the object's record, takes its X speed from the two-byte entries of the table at $AD21 by OBJ_WORK_D, its timer from the table at $AD29 and its frame as OBJ_WORK_D plus $47.
 ; HOW: LoadObjectRecord, table reads (bank 70), an add.
 ; WAITS: no.
-; Entry: X object. Exit: A the frame, N, Z, C and V from the add; Y OBJ_34B8.
+; Entry: X object. Exit: A the frame, N, Z, C and V from the add; Y OBJ_WORK_D.
 LoadThenSpeedFromTable:
     jsr VecLoadObjectRecord
-    lda a:OBJ_34B8,x
+    lda a:OBJ_WORK_D,x
     asl a
     tay
     lda a:$AD22,y
     sta a:OBJ_VX_HI,x
     lda a:$AD21,y
     sta a:OBJ_VX_LO,x
-    ldy a:OBJ_34B8,x
+    ldy a:OBJ_WORK_D,x
     lda a:$AD29,y
-    sta a:OBJ_3510,x
+    sta a:OBJ_WORK_E,x
     tya
     clc
     adc #$47
@@ -188,22 +188,22 @@ LoadThenSpeedFromTable:
 
 ; @routine 088A:52D CountThenNextStateF3510
 ; @run 70:AD2D
-; WHAT IT DOES: Counts OBJ_3510 down; at zero it sets it to $30 and goes on to the next state.
+; WHAT IT DOES: Counts OBJ_WORK_E down; at zero it sets it to $30 and goes on to the next state.
 ; HOW: DEC, a store, INC.
 ; WAITS: no.
 ; Entry: X object. Exit: the count, or the new state's N and Z (A $30).
 CountThenNextStateF3510:
-    dec a:OBJ_3510,x
+    dec a:OBJ_WORK_E,x
     bne CountThenNextStateF3510_at0
     lda #$30
-    sta a:OBJ_3510,x
+    sta a:OBJ_WORK_E,x
     inc a:OBJ_STATE,x
 CountThenNextStateF3510_at0:
     rts
 
 ; @routine 088A:53B FallAndBlinkThenClear
 ; @run 70:AD3B
-; WHAT IT DOES: Adds $0008 to the object's Y speed and moves the object. Its frame is 0, or on every other frame of the wave counter OBJ_34B8 plus $47. Counts OBJ_3510 down and clears the object at zero.
+; WHAT IT DOES: Adds $0008 to the object's Y speed and moves the object. Its frame is 0, or on every other frame of the wave counter OBJ_WORK_D plus $47. Counts OBJ_WORK_E down and clears the object at zero.
 ; HOW: A 16-bit add, ApplyVelocity, a test of zTemp wave bit 0, an add, DEC, ClearObject.
 ; WAITS: no.
 ; Entry: X object. Exit: the count, or as ClearObject.
@@ -220,12 +220,12 @@ FallAndBlinkThenClear:
     lda z:zWaveCounter
     and #$01
     beq FallAndBlinkThenClear_at0
-    lda a:OBJ_34B8,x
+    lda a:OBJ_WORK_D,x
     clc
     adc #$47
     sta a:OBJ_FRAME,x
 FallAndBlinkThenClear_at0:
-    dec a:OBJ_3510,x
+    dec a:OBJ_WORK_E,x
     bne FallAndBlinkThenClear_at1
     jsr VecClearObject
 FallAndBlinkThenClear_at1:
@@ -256,17 +256,17 @@ SetHitBoxFromFrameTable:
 
 ; @routine 088A:699 LoadThenStartFiveFromTable
 ; @run 70:AE99
-; WHAT IT DOES: Loads the object's record, clears OBJ_3778 and its Y speed, sets OBJ_34B8 to $30 and bit 2 of zField8E, copies its X and Y low bytes into all 64 entries of the two tables at $BB66 and $BBA6, then clears the objects in slots $11 to $15 and starts in each an object whose kind the table at $AEDA gives, at this object's place.
+; WHAT IT DOES: Loads the object's record, clears OBJ_WORK_L and its Y speed, sets OBJ_WORK_D to $30 and bit 2 of zField8E, copies its X and Y low bytes into all 64 entries of the two tables at $BB66 and $BBA6, then clears the objects in slots $11 to $15 and starts in each an object whose kind the table at $AEDA gives, at this object's place.
 ; HOW: LoadObjectRecord, two loops, ClearObjectInY, StartObjectAtPlace.
 ; WAITS: no.
 ; Entry: X object. Exit: the last compare of Y with $16.
 LoadThenStartFiveFromTable:
     jsr VecLoadObjectRecord
-    stz a:OBJ_3778,x
+    stz a:OBJ_WORK_L,x
     stz a:OBJ_VY_HI,x
     stz a:OBJ_VY_LO,x
     lda #$30
-    sta a:OBJ_34B8,x
+    sta a:OBJ_WORK_D,x
     lda z:zField8E
     ora #$04
     sta z:zField8E
@@ -308,17 +308,17 @@ PlaySoundTwo:
 
 ; @routine 088A:724 SetFrameThenCountToNext
 ; @run 70:AF24
-; WHAT IT DOES: Sets the object's frame (OBJ_FRAME) to $0C and counts OBJ_3568 down; at zero it sets it to $10 and goes on to the next state.
+; WHAT IT DOES: Sets the object's frame (OBJ_FRAME) to $0C and counts OBJ_WORK_F down; at zero it sets it to $10 and goes on to the next state.
 ; HOW: A store, DEC, a store, INC.
 ; WAITS: no.
 ; Entry: X object. Exit: the count, or the new state's N and Z (A $10).
 SetFrameThenCountToNext:
     lda #$0C
     sta a:OBJ_FRAME,x
-    dec a:OBJ_3568,x
+    dec a:OBJ_WORK_F,x
     bne SetFrameThenCountToNext_at0
     lda #$10
-    sta a:OBJ_3568,x
+    sta a:OBJ_WORK_F,x
     inc a:OBJ_STATE,x
 SetFrameThenCountToNext_at0:
     rts
@@ -470,13 +470,13 @@ FallBackInState9:
 
 ; @routine 088B:240 SpeedBySideOfScreen
 ; @run 70:B240
-; WHAT IT DOES: Sets OBJ_3510 to 2, takes the X speed high from the two-byte table at $B259 by bit 7 of the object's X low and clears the X speed low, then moves the object.
+; WHAT IT DOES: Sets OBJ_WORK_E to 2, takes the X speed high from the two-byte table at $B259 by bit 7 of the object's X low and clears the X speed low, then moves the object.
 ; HOW: Two ROLs, a table read (bank 70), a tail jump into ApplyVelocity.
 ; WAITS: no.
 ; Entry: X object, C passed into the first ROL. Exit: as ApplyVelocity, Y the table index.
 SpeedBySideOfScreen:
     lda #$02
-    sta a:OBJ_3510,x
+    sta a:OBJ_WORK_E,x
     lda a:OBJ_X_LO,x
     rol a
     rol a
@@ -540,12 +540,12 @@ ClearFrame:
     rts
 ; @routine 088B:6C9 PlaceFromTableCopySlot10
 ; @run 70:B6C9
-; WHAT IT DOES: Puts the object at the X and Y low bytes the tables at $BB66 and $BBA6 give for the row the table at $B736 names by OBJ_3510, copies the sprite set, frame and facing of the object in slot $10 and sets its flash flags to $10.
+; WHAT IT DOES: Puts the object at the X and Y low bytes the tables at $BB66 and $BBA6 give for the row the table at $B736 names by OBJ_WORK_E, copies the sprite set, frame and facing of the object in slot $10 and sets its flash flags to $10.
 ; HOW: Table reads (bank 70), copies.
 ; WAITS: no.
 ; Entry: X object. Exit: A $10, N and Z from it; Y the row.
 PlaceFromTableCopySlot10:
-    ldy a:OBJ_3510,x
+    ldy a:OBJ_WORK_E,x
     lda a:$B736,y
     tay
     lda a:RichterWallPushBits+1,y
@@ -564,12 +564,12 @@ PlaceFromTableCopySlot10:
 
 ; @routine 088B:705 PlaceFromTableThenStepList
 ; @run 70:B705
-; WHAT IT DOES: Puts the object at the X and Y low bytes the tables at $BB66 and $BBA6 give for the row the table at $B73A names by OBJ_3510, sets sprite set 7, copies the facing of the object in slot $10 and steps the animation list the table at $B73E gives for OBJ_3510.
+; WHAT IT DOES: Puts the object at the X and Y low bytes the tables at $BB66 and $BBA6 give for the row the table at $B73A names by OBJ_WORK_E, sets sprite set 7, copies the facing of the object in slot $10 and steps the animation list the table at $B73E gives for OBJ_WORK_E.
 ; HOW: Table reads (bank 70), StepObjectFrames.
 ; WAITS: no.
 ; Entry: X object, Y overwritten. Exit: as StepObjectFrames.
 PlaceFromTableThenStepList:
-    ldy a:OBJ_3510,x
+    ldy a:OBJ_WORK_E,x
     lda a:$B73A,y
     tay
     lda a:RichterWallPushBits+1,y
@@ -580,7 +580,7 @@ PlaceFromTableThenStepList:
     sta a:OBJ_SPRITE_SET,x
     lda a:$2AD0
     sta a:OBJ_FACING_LEFT,x
-    lda a:OBJ_3510,x
+    lda a:OBJ_WORK_E,x
     asl a
     tay
     lda a:$B73E,y
@@ -592,7 +592,7 @@ PlaceFromTableThenStepList:
 
 ; @routine 088B:777 SetTimersOf12To15
 ; @run 70:B777
-; WHAT IT DOES: Sets OBJ_34B8 of the objects 18 to 21 to 1.
+; WHAT IT DOES: Sets OBJ_WORK_D of the objects 18 to 21 to 1.
 ; HOW: A loop of Y from 18.
 ; WAITS: no.
 ; Entry: nothing. Exit: A 1, Y 22, the compare of Y with 22.
@@ -600,14 +600,14 @@ SetTimersOf12To15:
     ldy #$12
 SetTimersOf12To15_at0:
     lda #$01
-    sta a:OBJ_34B8,y
+    sta a:OBJ_WORK_D,y
     iny
     cpy #$16
     bcc SetTimersOf12To15_at0
     rts
 ; @routine 088B:7AF FollowSlot10WithHitBox
 ; @run 70:B7AF
-; WHAT IT DOES: In state 0 loads the object's record. Later it takes the place, facing and OBJ_3250 of the object in slot $10 and a hit box from the four-byte row of the table at $B9DF that slot's frame less one names; with a zero half width and half height it clears OBJ_3250. When the object in slot $10 is no longer of kind $20 this object is cleared.
+; WHAT IT DOES: In state 0 loads the object's record. Later it takes the place, facing and OBJ_HITBOX_ON of the object in slot $10 and a hit box from the four-byte row of the table at $B9DF that slot's frame less one names; with a zero half width and half height it clears OBJ_HITBOX_ON. When the object in slot $10 is no longer of kind $20 this object is cleared.
 ; HOW: LoadObjectRecord, CopyObjectPlaceBack, table reads (bank 70), ClearObject.
 ; WAITS: no.
 ; Entry: X object. Exit: the compare with $20, or as ClearObject.
@@ -635,11 +635,11 @@ FollowSlot10WithHitBox_at0:
     lda a:$2AD0
     sta a:OBJ_FACING_LEFT,x
     lda a:$3260
-    sta a:OBJ_3250,x
+    sta a:OBJ_HITBOX_ON,x
     lda a:OBJ_HITBOX_HALF_W,x
     ora a:OBJ_HITBOX_HALF_H,x
     bne FollowSlot10WithHitBox_at1
-    stz a:OBJ_3250,x
+    stz a:OBJ_HITBOX_ON,x
 FollowSlot10WithHitBox_at1:
     lda a:$2760
     cmp #$20

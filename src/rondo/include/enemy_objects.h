@@ -560,7 +560,7 @@ static inline ObjArm spawn_six_pieces(uint8_t slot, uint8_t type, uint16_t table
         value = rd8((uint16_t)(table + row));
         WR8(OBJ->life_timer[found_slot], value);
         value = rd8((uint16_t)(table + 1 + row));
-        WR8(OBJ->f3510[found_slot], value);
+        WR8(OBJ->work_e[found_slot], value);
         value = rd8((uint16_t)(table + 2 + row));
         WR8(OBJ->vx_hi[found_slot], value);
         value = rd8((uint16_t)(table + 3 + row));
@@ -588,7 +588,7 @@ static inline Ended spawn_six_pieces_exit_shim(ObjArm r)
 static inline ObjArm sound_every_fourth_frame(uint8_t slot, uint8_t entry_y, uint16_t ret)
 {
     ObjArm r = { 0 };
-    uint8_t bits = RD8(OBJ->f3618[slot]);
+    uint8_t bits = RD8(OBJ->work_h[slot]);
 
     bits = (uint8_t)(bits & 3);
     if (bits != 0) {
@@ -840,7 +840,7 @@ static inline Ended hop_from_index_exit_shim(ObjArm r)
 static inline ObjArm pick_speed_and_turn(uint8_t slot, uint16_t entries, uint16_t ret_side)
 {
     ObjArm r = { 0 };
-    uint8_t row = RD8(OBJ->f3670[slot]);
+    uint8_t row = RD8(OBJ->work_i[slot]);
     uint8_t y = (uint8_t)(row << 2);
     uint8_t value;
 
@@ -852,7 +852,7 @@ static inline ObjArm pick_speed_and_turn(uint8_t slot, uint16_t entries, uint16_
     r.first = value;
     r.flag = (row & 0x40) != 0;
     r.y = y;
-    r.second = INC8(OBJ->f3510[slot]);
+    r.second = INC8(OBJ->work_e[slot]);
     jsr_push(ret_side);
     r.side = SideOfPlayer(slot);
     jsr_pop();
@@ -995,7 +995,7 @@ static inline ObjArm pick_pair_at_random(uint8_t slot, uint16_t table, uint16_t 
     if (angle) {
         WR8(OBJ->f35c0[slot], value);
     } else {
-        WR8(OBJ->f3510[slot], value);
+        WR8(OBJ->work_e[slot], value);
     }
     value = rd8((uint16_t)(table + 1 + y));
     if (angle) {
@@ -1039,7 +1039,7 @@ static inline ObjArm walk_on_random_beat_first(uint8_t slot, uint16_t base, uint
     WR8(OBJ->life_timer[slot], value);
     WR8(OBJ->anim_step[slot], 0);
     WR8(OBJ->anim_timer[slot], 0);
-    INC8(OBJ->f3510[slot]);
+    INC8(OBJ->work_e[slot]);
     r.first = INC8(OBJ->substate[slot]);
     r.second = value;
     r.y = y;

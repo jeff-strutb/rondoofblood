@@ -649,7 +649,7 @@ static Exit script_place_title_object(uint8_t object, uint8_t y_low, uint16_t re
     WR8(OBJ->f34b8[object], value);
     y = 5;
     value = RD8_PTR_Y(ZP->SCRIPT_PTR, y);
-    WR8(OBJ->f3510[object], value);
+    WR8(OBJ->work_e[object], value);
     y = 6;
     value = RD8_PTR_Y(ZP->SCRIPT_PTR, y);
     WR8(OBJ->f3568[object], value);

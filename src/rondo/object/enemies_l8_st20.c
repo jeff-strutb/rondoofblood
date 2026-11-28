@@ -31,7 +31,7 @@ enum {
 /*
  * @routine 0B4D:0A9 RecordEventWhenSlot10InState0F
  * @run 71:C0A9
- * WHAT IT DOES: When the state of slot $10 is $0F records the object's event, takes OBJ_34B8 from the table at $C0C0 by OBJ_START_ARG and goes to the next state.
+ * WHAT IT DOES: When the state of slot $10 is $0F records the object's event, takes OBJ_WORK_D from the table at $C0C0 by OBJ_START_ARG and goes to the next state.
  * HOW: A compare, RecordObjectEvent, a table read, a store, an INC.
  * WAITS: no.
  * Entry: X object. Exit: as the last instruction that ran (l8_record_event_exit_shim). The arm past the compare ran in no script; the draft stops there.
@@ -77,7 +77,7 @@ void abi_RecordEventWhenSlot10InState0F(void)
 /*
  * @routine 0E0B:071 FaceThePlayerByStateTableB
  * @run 70:B071
- * WHAT IT DOES: Every eighth frame of OBJ_3568, in the states the table at $B089 marks, the object takes the facing of the player's side.
+ * WHAT IT DOES: Every eighth frame of OBJ_WORK_F, in the states the table at $B089 marks, the object takes the facing of the player's side.
  * HOW: An AND, a table read by the state, SideOfPlayer, a store.
  * WAITS: no.
  * Entry: X object. Exit: as the last instruction that ran (l8_face_by_table_b_exit_shim).
@@ -315,10 +315,10 @@ void abi_StepListFacePlayerUntilNear(void)
 /*
  * @routine 0EBE:6F6 FacePlayerThenPickPhase
  * @run 71:CEF6
- * WHAT IT DOES: Takes the facing of the player's side and sets OBJ_SUBSTATE from the table at $CF0E by the low four bits of OBJ_34B8, which then counts up.
+ * WHAT IT DOES: Takes the facing of the player's side and sets OBJ_SUBSTATE from the table at $CF0E by the low four bits of OBJ_WORK_D, which then counts up.
  * HOW: SideOfPlayer, a table read, stores, an INC.
  * WAITS: no.
- * Entry: X object. Exit: A the table byte, Y the index, N and Z from the new OBJ_34B8 (l8_pick_phase_exit_shim).
+ * Entry: X object. Exit: A the table byte, Y the index, N and Z from the new OBJ_WORK_D (l8_pick_phase_exit_shim).
  */
 PhaseArm FacePlayerThenPickPhase(uint8_t slot)
 {
@@ -354,7 +354,7 @@ void abi_FacePlayerThenPickPhase(void)
 /*
  * @routine 0EBE:71E LeapByPlayerDistance
  * @run 71:CF1E
- * WHAT IT DOES: When the player is $40 or more away in X clears OBJ_3568 and gives the object the speed X -$01C0, Y -$00C0; when nearer plays sound $C6, sets OBJ_3568 1 and the speed X -$00E0, Y -$0400. Goes to the next OBJ_SUBSTATE and, facing left, reverses the X speed.
+ * WHAT IT DOES: When the player is $40 or more away in X clears OBJ_WORK_F and gives the object the speed X -$01C0, Y -$00C0; when nearer plays sound $C6, sets OBJ_WORK_F 1 and the speed X -$00E0, Y -$0400. Goes to the next OBJ_SUBSTATE and, facing left, reverses the X speed.
  * HOW: DistanceXToPlayer, SoundCommand, stores, an INC, NegateVelocityX.
  * WAITS: no.
  * Entry: X object, Y kept for the sound. Exit: as the last instruction that ran (l8_leap_by_distance_exit_shim). The near arm and the reverse ran in no
@@ -428,14 +428,14 @@ void abi_LeapByPlayerDistance(void)
 /*
  * @routine 0EBE:7B9 CountDownThenClearPhase
  * @run 71:CFB9
- * WHAT IT DOES: Counts OBJ_3510 down; at zero clears OBJ_SUBSTATE.
+ * WHAT IT DOES: Counts OBJ_WORK_E down; at zero clears OBJ_SUBSTATE.
  * HOW: A memory decrement and a store.
  * WAITS: no.
  * Entry: X object. Exit: the decrement's N and Z (the body returns the count). The store ran in no script; the draft stops there.
  */
 uint8_t CountDownThenClearPhase(uint8_t slot)
 {
-    uint8_t timer = DEC8(OBJ->f3510[slot]);
+    uint8_t timer = DEC8(OBJ->work_e[slot]);
 
     if (timer == 0) {
         WR8(OBJ->substate[slot], 0);
@@ -481,7 +481,7 @@ static Ended launch_ended(HopLaunch r)
 /*
  * @routine 0EBF:006 HopBetweenSidesWithBox
  * @run 71:D006
- * WHAT IT DOES: Sets the hit box by the frame (HitBoxByFrameTableCE8F). In state 0 loads the record, picks a side at random, places the object from the table at $D0BD (X) and a random Y near $00DC, and launches it up and aside. In state 1 it steps the list at $D0B8 and moves; its X speed grows by the table at $D0C1 for its side until it changes sign, then it stops, takes the Y speed $FFC0, OBJ_34B8 $10 and goes to state 2. In later states it counts OBJ_34B8 down while it moves in Y and at zero goes back to state 1 and launches again.
+ * WHAT IT DOES: Sets the hit box by the frame (HitBoxByFrameTableCE8F). In state 0 loads the record, picks a side at random, places the object from the table at $D0BD (X) and a random Y near $00DC, and launches it up and aside. In state 1 it steps the list at $D0B8 and moves; its X speed grows by the table at $D0C1 for its side until it changes sign, then it stops, takes the Y speed $FFC0, OBJ_WORK_D $10 and goes to state 2. In later states it counts OBJ_WORK_D down while it moves in Y and at zero goes back to state 1 and launches again.
  * HOW: HitBoxByFrameTableCE8F, LoadObjectRecord, NextRandom twice, StepObjectFrames, ApplyVelocityY and X, 16-bit adds, NegateVelocityX.
  * WAITS: no.
  * Entry: X object, Y kept unless the step sets it. Exit: as the last instruction that ran (l8_hop_sides_exit_shim).
@@ -606,7 +606,7 @@ void abi_HopBetweenSidesWithBox(void)
 /*
  * @routine 0EBD:2A7 SpawnerByKindAndScreen
  * @run 71:C2A7
- * WHAT IT DOES: In state 0 loads the record. Unless frame $54's byte is 4 it waits OBJ_34B8 down; then by OBJ_START_ARG: 0 starts an object of type $2C in a free slot (every second one from $1A) when the scroll's screen byte is 2 or 4, and waits $50 to $8F; 2 starts one of type $CB in a free slot of $30 to $3F and waits $80; otherwise, with OBJ_3568 below $80, it finds a group of four empty slots from $20 and starts four objects of type $49 there (each cleared first) numbered 3, 2, 1, 0 in OBJ_35C0 with one random number to 3 in OBJ_3670, and waits $F0.
+ * WHAT IT DOES: In state 0 loads the record. Unless frame $54's byte is 4 it waits OBJ_WORK_D down; then by OBJ_START_ARG: 0 starts an object of type $2C in a free slot (every second one from $1A) when the scroll's screen byte is 2 or 4, and waits $50 to $8F; 2 starts one of type $CB in a free slot of $30 to $3F and waits $80; otherwise, with OBJ_WORK_F below $80, it finds a group of four empty slots from $20 and starts four objects of type $49 there (each cleared first) numbered 3, 2, 1, 0 in OBJ_WORK_G with one random number to 3 in OBJ_WORK_I, and waits $F0.
  * HOW: LoadObjectRecord, searches of the slot kinds, StartObjectAtPlace, ClearObjectInY, NextRandom, FindFreeSlotFrom30.
  * WAITS: no.
  * Entry: X object. Exit: as the last instruction that ran (l8_spawner_exit_shim). Everything past state 0 ran in no script; the draft stops there and the
@@ -731,7 +731,7 @@ SpawnerArm SpawnerByKindAndScreen(uint8_t slot)
         count = RD8(ZP->temp00);
         WR8(OBJ->f35c0[y], (uint8_t)(count - 1));
         random_bits = RD8(ZP->temp01);
-        WR8(OBJ->f3670[y], random_bits);
+        WR8(OBJ->work_i[y], random_bits);
         y++;
         count = DEC8(ZP->temp00);
         (void)placed;

@@ -16,7 +16,7 @@ static L8HitDamage hit_damage_from(uint8_t slot, uint16_t table)
     L8HitDamage r;
     uint8_t row, hit;
 
-    row = RD8(OBJ->fields_2ee0[slot]);
+    row = RD8(OBJ->work_a[slot]);
     row = (uint8_t)(row << 4);
     r.row = row;
     WR8(ZP->temp00, row);

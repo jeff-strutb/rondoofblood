@@ -86,7 +86,7 @@ LoadThenStepListBreakAtFive_at1:
 ; @routine 051B:0FE LoadOrFallAlongListByTimer
 ; @run 70:B0FE
 ; @stop B125
-; WHAT IT DOES: In state 0 loads the object's record and takes its two speeds from the four-byte rows of the table at $B125 by OBJ_34B8. Later it goes on as StepListByTimerWithGravity.
+; WHAT IT DOES: In state 0 loads the object's record and takes its two speeds from the four-byte rows of the table at $B125 by OBJ_WORK_D. Later it goes on as StepListByTimerWithGravity.
 ; HOW: LoadObjectRecord, table reads (bank 70); a tail jump into StepListByTimerWithGravity.
 ; WAITS: no.
 ; Entry: X object. Exit: state 0: the last table byte, Y the row; else as StepListByTimerWithGravity.
@@ -94,7 +94,7 @@ LoadOrFallAlongListByTimer:
     lda a:OBJ_STATE,x
     bne StepListByTimerWithGravity
     jsr VecLoadObjectRecord
-    lda a:OBJ_34B8,x
+    lda a:OBJ_WORK_D,x
     asl a
     asl a
     tay
@@ -110,12 +110,12 @@ LoadOrFallAlongListByTimer:
 
 ; @routine 051B:135 StepListByTimerWithGravity
 ; @run 70:B135
-; WHAT IT DOES: Steps the animation list the table at $B14D gives for OBJ_34B8, applies gravity without a limit and moves the object.
+; WHAT IT DOES: Steps the animation list the table at $B14D gives for OBJ_WORK_D, applies gravity without a limit and moves the object.
 ; HOW: Two table reads (bank 70), StepObjectFrames, ApplyGravityUnlimited, a tail jump into ApplyVelocity.
 ; WAITS: no.
 ; Entry: X object, Y overwritten. Exit: as ApplyVelocity.
 StepListByTimerWithGravity:
-    lda a:OBJ_34B8,x
+    lda a:OBJ_WORK_D,x
     asl a
     tay
     lda a:$B14D,y
@@ -138,7 +138,7 @@ LoadRecordA04:
 
 ; @routine 051B:241 StartPhaseWhenScrolled
 ; @run 70:B241
-; WHAT IT DOES: Once the level's X position high byte is 3 or more it clears the object in slot $41, clears the wave counter, sets OBJ_34B8 to $5B, sets bit 1 of the hit attack flags and zTemp $3C to 1, and goes on to the next state.
+; WHAT IT DOES: Once the level's X position high byte is 3 or more it clears the object in slot $41, clears the wave counter, sets OBJ_WORK_D to $5B, sets bit 1 of the hit attack flags and zTemp $3C to 1, and goes on to the next state.
 ; HOW: A compare, ClearObjectInY, stores, an INC.
 ; WAITS: no.
 ; Entry: X object. Exit: the compare, or the new state's N and Z (A 1).
@@ -150,7 +150,7 @@ StartPhaseWhenScrolled:
     jsr VecClearObjectInY
     stz z:zWaveCounter
     lda #$5B
-    sta a:OBJ_34B8,x
+    sta a:OBJ_WORK_D,x
     lda a:HitAttackFlags
     ora #$02
     sta a:HitAttackFlags
@@ -162,19 +162,19 @@ StartPhaseWhenScrolled_at0:
 
 ; @routine 051B:264 SetFirstObjectTimersThenCount
 ; @run 70:B264
-; WHAT IT DOES: Clears the wave counter and sets the first object's OBJ_3510 to 4 and OBJ_3568 to $20 and the byte at $3BF0 to 2; counts OBJ_34B8 down and at zero sets zTemp $8C to $80, zTemp $38 to 3 and clears the hit attack flags.
+; WHAT IT DOES: Clears the wave counter and sets the first object's OBJ_WORK_E to 4 and OBJ_WORK_F to $20 and the byte at $3BF0 to 2; counts OBJ_WORK_D down and at zero sets zTemp $8C to $80, zTemp $38 to 3 and clears the hit attack flags.
 ; HOW: Stores, DEC.
 ; WAITS: no.
 ; Entry: X object. Exit: the count, or A 3 at zero.
 SetFirstObjectTimersThenCount:
     stz z:zWaveCounter
     lda #$04
-    sta a:OBJ_3510
+    sta a:OBJ_WORK_E
     lda #$02
     sta a:PlayerByte3BF0
     lda #$20
-    sta a:OBJ_3568
-    dec a:OBJ_34B8,x
+    sta a:OBJ_WORK_F
+    dec a:OBJ_WORK_D,x
     bne SetFirstObjectTimersThenCount_at0
     lda #$80
     sta z:zField8C
@@ -186,7 +186,7 @@ SetFirstObjectTimersThenCount_at0:
 
 ; @routine 051B:286 LoadThenSpawnWhileScrolling
 ; @run 70:B286
-; WHAT IT DOES: In state 0 loads the object's record and looks for a free pair of slots. Later, while the screen scrolls right, it counts the 16-bit timer OBJ_34B8:OBJ_3510 down; at zero it looks in slots $30, $32 and $34 for one whose two kind bytes are zero, clears that object, starts a kind $22 object there at its place and sets its timer from a four-entry table at $B2DF by a random number.
+; WHAT IT DOES: In state 0 loads the object's record and looks for a free pair of slots. Later, while the screen scrolls right, it counts the 16-bit timer OBJ_WORK_D:OBJ_WORK_E down; at zero it looks in slots $30, $32 and $34 for one whose two kind bytes are zero, clears that object, starts a kind $22 object there at its place and sets its timer from a four-entry table at $B2DF by a random number.
 ; HOW: LoadObjectRecord, a 16-bit subtract, a search loop, ClearObjectInY, StartObjectAtPlace, NextRandom.
 ; WAITS: no.
 ; Entry: X object. Exit: the last test or load.
@@ -200,16 +200,16 @@ LoadThenSpawnWhileScrolling_at0:
     lda a:ScrollSpeedX
     beq LoadThenSpawnWhileScrolling_at2
     bmi LoadThenSpawnWhileScrolling_at2
-    lda a:OBJ_34B8,x
-    ora a:OBJ_3510,x
+    lda a:OBJ_WORK_D,x
+    ora a:OBJ_WORK_E,x
     beq LoadThenSpawnWhileScrolling_at1
-    lda a:OBJ_3510,x
+    lda a:OBJ_WORK_E,x
     sec
     sbc #$01
-    sta a:OBJ_3510,x
-    lda a:OBJ_34B8,x
+    sta a:OBJ_WORK_E,x
+    lda a:OBJ_WORK_D,x
     sbc #$00
-    sta a:OBJ_34B8,x
+    sta a:OBJ_WORK_D,x
     rts
 LoadThenSpawnWhileScrolling_at1:
     ldy #$30
@@ -231,9 +231,9 @@ LoadThenSpawnWhileScrolling_at3:
     asl a
     tay
     lda a:$B2DF,y
-    sta a:OBJ_3510,x
+    sta a:OBJ_WORK_E,x
     lda a:$B2E0,y
-    sta a:OBJ_34B8,x
+    sta a:OBJ_WORK_D,x
 LoadThenSpawnWhileScrolling_at2:
     rts
 
@@ -258,7 +258,7 @@ StateSixOnStatusBit7_at0:
 
 ; @routine 051B:324 LoadThenStateByKindByte
 ; @run 70:B324
-; WHAT IT DOES: Loads the object's record and sets OBJ_SUBSTATE to 1; then by OBJ_START_ARG: zero leaves it; positive goes to state 5 with OBJ_SUBSTATE 0; negative clears OBJ_3250 and bit 6 of OBJ_LOOP_FLAGS and goes to state 4 with OBJ_SUBSTATE 0.
+; WHAT IT DOES: Loads the object's record and sets OBJ_SUBSTATE to 1; then by OBJ_START_ARG: zero leaves it; positive goes to state 5 with OBJ_SUBSTATE 0; negative clears OBJ_HITBOX_ON and bit 6 of OBJ_LOOP_FLAGS and goes to state 4 with OBJ_SUBSTATE 0.
 ; HOW: LoadObjectRecord, tests, stores.
 ; WAITS: no.
 ; Entry: X object. Exit: A the state, or OBJ_START_ARG when zero.
@@ -275,7 +275,7 @@ LoadThenStateByKindByte:
 LoadThenStateByKindByte_at0:
     rts
 LoadThenStateByKindByte_at1:
-    stz a:OBJ_3250,x
+    stz a:OBJ_HITBOX_ON,x
     lda a:OBJ_LOOP_FLAGS,x
     and #$BF
     sta a:OBJ_LOOP_FLAGS,x
@@ -353,12 +353,12 @@ StepListB37FUnlessFar_at1:
 
 ; @routine 051B:3E2 WalkTurnOrJumpOnLanding
 ; @run 70:B3E2
-; WHAT IT DOES: When OBJ_3568's low five bits are zero and the player is within $24 along X and $1C along Y, the object faces the player's side (bit 0 of SideOfPlayer) in OBJ_35C0, clears its animation step and timer and goes to state 3. Otherwise it steps the animation list at $B45E and, on a changed frame, asks MoveAndLand with a probe height of 4: a wall hit gives it a Y speed of $FC80 and X speed of $FF00 and state 1; a floor stop clears its speeds; both clear the animation step and timer, with OBJ_SUBSTATE 0 or 1.
+; WHAT IT DOES: When OBJ_WORK_F's low five bits are zero and the player is within $24 along X and $1C along Y, the object faces the player's side (bit 0 of SideOfPlayer) in OBJ_WORK_G, clears its animation step and timer and goes to state 3. Otherwise it steps the animation list at $B45E and, on a changed frame, asks MoveAndLand with a probe height of 4: a wall hit gives it a Y speed of $FC80 and X speed of $FF00 and state 1; a floor stop clears its speeds; both clear the animation step and timer, with OBJ_SUBSTATE 0 or 1.
 ; HOW: DistanceXToPlayer, DistanceYToPlayer, SideOfPlayer, StepObjectFrames, MoveAndLand, stores.
 ; WAITS: no.
 ; Entry: X object, Y the column kept unless the step sets it. Exit: see the wrapper.
 WalkTurnOrJumpOnLanding:
-    lda a:OBJ_3568,x
+    lda a:OBJ_WORK_F,x
     and #$1F
     bne WalkTurnOrJumpOnLanding_at0
     jsr VecDistanceXToPlayer
@@ -369,7 +369,7 @@ WalkTurnOrJumpOnLanding:
     bcs WalkTurnOrJumpOnLanding_at0
     jsr VecSideOfPlayer
     and #$01
-    sta a:OBJ_35C0,x
+    sta a:OBJ_WORK_G,x
     stz a:OBJ_ANIM_STEP,x
     stz a:OBJ_ANIM_TIMER,x
     lda #$03
@@ -431,16 +431,16 @@ SetHitBox0C18:
 
 ; @routine 051B:514 ResetAnimThenNextPhase
 ; @run 70:B514
-; WHAT IT DOES: Clears OBJ_3250 and the animation step and timer, sets OBJ_34B8 to 4 and goes on to the next OBJ_SUBSTATE.
+; WHAT IT DOES: Clears OBJ_HITBOX_ON and the animation step and timer, sets OBJ_WORK_D to 4 and goes on to the next OBJ_SUBSTATE.
 ; HOW: Stores and an INC.
 ; WAITS: no.
 ; Entry: X object. Exit: A 4, N and Z from the new OBJ_SUBSTATE.
 ResetAnimThenNextPhase:
-    stz a:OBJ_3250,x
+    stz a:OBJ_HITBOX_ON,x
     stz a:OBJ_ANIM_STEP,x
     stz a:OBJ_ANIM_TIMER,x
     lda #$04
-    sta a:OBJ_34B8,x
+    sta a:OBJ_WORK_D,x
     inc a:OBJ_SUBSTATE,x
     rts
 
@@ -462,7 +462,7 @@ StartPieceAtNextSlot:
 
 ; @routine 051B:5DC WalkWhileNearPlayer
 ; @run 70:B5DC
-; WHAT IT DOES: Counts toward the end of a walk: when the player is within $60 along X and $20 along Y, or when OBJ_3568's low nibble is zero and OBJ_START_ARG counts down to zero, it clears its animation step and timer and goes on to the next OBJ_SUBSTATE. Otherwise it flips OBJ_35C0 when OBJ_3568 is zero, steps the animation list at $B62F and, on a changed frame, takes its X speed from the table at $B644 by OBJ_35C0 and moves along X.
+; WHAT IT DOES: Counts toward the end of a walk: when the player is within $60 along X and $20 along Y, or when OBJ_WORK_F's low nibble is zero and OBJ_START_ARG counts down to zero, it clears its animation step and timer and goes on to the next OBJ_SUBSTATE. Otherwise it flips OBJ_WORK_G when OBJ_WORK_F is zero, steps the animation list at $B62F and, on a changed frame, takes its X speed from the table at $B644 by OBJ_WORK_G and moves along X.
 ; HOW: DistanceXToPlayer, DistanceYToPlayer, tests, StepObjectFrames, ApplyVelocityX.
 ; WAITS: no.
 ; Entry: X object, Y kept unless the step sets it. Exit: the last test or step.
@@ -474,7 +474,7 @@ WalkWhileNearPlayer:
     cmp #$20
     bcc WalkWhileNearPlayer_at1
 WalkWhileNearPlayer_at0:
-    lda a:OBJ_3568,x
+    lda a:OBJ_WORK_F,x
     and #$0F
     bne WalkWhileNearPlayer_at2
     dec a:OBJ_START_ARG,x
@@ -485,11 +485,11 @@ WalkWhileNearPlayer_at1:
     inc a:OBJ_SUBSTATE,x
     rts
 WalkWhileNearPlayer_at2:
-    lda a:OBJ_3568,x
+    lda a:OBJ_WORK_F,x
     bne WalkWhileNearPlayer_at3
-    lda a:OBJ_35C0,x
+    lda a:OBJ_WORK_G,x
     eor #$01
-    sta a:OBJ_35C0,x
+    sta a:OBJ_WORK_G,x
 WalkWhileNearPlayer_at3:
     lda #$2F
     sta z:zTemp10
@@ -497,7 +497,7 @@ WalkWhileNearPlayer_at3:
     sta z:zTemp11
     jsr VecStepObjectFrames
     bcc SoundReadPair
-    lda a:OBJ_35C0,x
+    lda a:OBJ_WORK_G,x
     asl a
     tay
     lda a:$B644,y
@@ -509,7 +509,7 @@ WalkWhileNearPlayer_at3:
 
 ; @routine 051B:648 StepListB66BToState2
 ; @run 70:B648
-; WHAT IT DOES: Steps the animation list at $B66B; when it ends the object gets an X speed of $FEE0, clears OBJ_35C0 and OBJ_SUBSTATE and goes to state 2.
+; WHAT IT DOES: Steps the animation list at $B66B; when it ends the object gets an X speed of $FEE0, clears OBJ_WORK_G and OBJ_SUBSTATE and goes to state 2.
 ; HOW: StepObjectFrames, stores.
 ; WAITS: no.
 ; Entry: X object, Y kept unless the step sets it. Exit: the step, or A 2 when the list ended.
@@ -524,7 +524,7 @@ StepListB66BToState2:
     sta a:OBJ_VX_HI,x
     lda #$E0
     sta a:OBJ_VX_LO,x
-    stz a:OBJ_35C0,x
+    stz a:OBJ_WORK_G,x
     lda #$02
     sta a:OBJ_STATE,x
     stz a:OBJ_SUBSTATE,x
@@ -551,7 +551,7 @@ DrawTileScriptByHighBits:
 
 ; @routine 051B:6ED StartFourPiecesWithCount
 ; @run 70:B6ED
-; WHAT IT DOES: Starts up to four kind $33 objects at this object's place, each in a free slot from $30, and gives each its number (0 to 3) as OBJ_34B8.
+; WHAT IT DOES: Starts up to four kind $33 objects at this object's place, each in a free slot from $30, and gives each its number (0 to 3) as OBJ_WORK_D.
 ; HOW: A loop of FindFreeSlotFrom30, StartObjectAtPlace and a counter in zTemp00.
 ; WAITS: no.
 ; Entry: X object. Exit: the last compare, or as FindFreeSlotFrom30 when no slot was free.
@@ -563,7 +563,7 @@ StartFourPiecesWithCount_at1:
     lda #$33
     jsr VecStartObjectAtPlace
     lda z:zTemp00
-    sta a:OBJ_34B8,y
+    sta a:OBJ_WORK_D,y
     inc z:zTemp00
     lda z:zTemp00
     cmp #$04
@@ -573,7 +573,7 @@ StartFourPiecesWithCount_at0:
 
 ; @routine 051B:707 LandThenFaceAndRun
 ; @run 70:B707
-; WHAT IT DOES: Asks StopOnLanding with a probe height of 4; on landing the object faces the player (bit 0 of SideOfPlayer), takes an X speed from the table at $B3BF by that side, clears OBJ_35C0 and OBJ_SUBSTATE and goes to state 2.
+; WHAT IT DOES: Asks StopOnLanding with a probe height of 4; on landing the object faces the player (bit 0 of SideOfPlayer), takes an X speed from the table at $B3BF by that side, clears OBJ_WORK_G and OBJ_SUBSTATE and goes to state 2.
 ; HOW: StopOnLanding, SideOfPlayer, table reads (bank 70), stores.
 ; WAITS: no.
 ; Entry: X object, Y the probe's column, C passed on. Exit: the mover's registers, then A 2 when landed.
@@ -590,7 +590,7 @@ LandThenFaceAndRun:
     sta a:OBJ_VX_HI,x
     lda a:$B3BF,y
     sta a:OBJ_VX_LO,x
-    stz a:OBJ_35C0,x
+    stz a:OBJ_WORK_G,x
     lda #$02
     sta a:OBJ_STATE,x
     stz a:OBJ_SUBSTATE,x
@@ -685,7 +685,7 @@ StepListB819:
 StepListB819_at0:
     plp
     bcc StepListB819_at1
-    lda a:OBJ_34B8,x
+    lda a:OBJ_WORK_D,x
     asl a
     asl a
     tay
@@ -697,37 +697,37 @@ StepListB819_at0:
     sta a:OBJ_VY_HI,x
     lda a:$B83C,y
     sta a:OBJ_VY_LO,x
-    lda a:OBJ_34B8,x
+    lda a:OBJ_WORK_D,x
     cmp #$05
     bcs StepListB819_at1
-    lda a:OBJ_34B8,x
+    lda a:OBJ_WORK_D,x
     bne StepListB819_at2
     lda #$2C
     jsr VecSoundCommand
 StepListB819_at2:
-    inc a:OBJ_34B8,x
+    inc a:OBJ_WORK_D,x
 StepListB819_at1:
     rts
 
 ; @routine 051D:4E8 CopyScrollToTimer
 ; @run 71:C4E8
-; WHAT IT DOES: Sets the object's OBJ_34B8 to the scroll's X fraction of slot 4 and then to its X low of slot 4 (the second store stays).
+; WHAT IT DOES: Sets the object's OBJ_WORK_D to the scroll's X fraction of slot 4 and then to its X low of slot 4 (the second store stays).
 ; HOW: Two reads and two stores.
 ; WAITS: no.
 ; Entry: X object. Exit: A the scroll X low, N and Z from it.
 CopyScrollToTimer:
     lda a:ScrollXFrac+4
-    sta a:OBJ_34B8,x
+    sta a:OBJ_WORK_D,x
     lda a:ScrollXLo+4
-    sta a:OBJ_34B8,x
+    sta a:OBJ_WORK_D,x
     rts
 
 ; @routine 051E:090 LoadThenSinkAlongList
 ; @run 71:C890
-; WHAT IT DOES: In state 0 loads the object's record, sets OBJ_SPRITE_FLIP to $80, keeps its Y low in OBJ_34B8 and gives OBJ_ANIM_STEP a random $00 to $0F. Each frame it adds $FE80 to its Y position (fraction and low byte) and steps the animation list at $C8D0; when the list ends it puts its Y low back from OBJ_34B8.
+; WHAT IT DOES: In state 0 loads the object's record, sets OBJ_SPRITE_FLIP to $80, keeps its Y low in OBJ_WORK_D and gives OBJ_ANIM_STEP a random $00 to $0F. Each frame it adds $FE80 to its Y position (fraction and low byte) and steps the animation list at $C8D0; when the list ends it puts its Y low back from OBJ_WORK_D.
 ; HOW: LoadObjectRecord, NextRandom, a 16-bit add, StepObjectFrames.
 ; WAITS: no.
-; Entry: X object, Y kept unless the step sets it. Exit: the step, or the load of OBJ_34B8 when the list ended.
+; Entry: X object, Y kept unless the step sets it. Exit: the step, or the load of OBJ_WORK_D when the list ended.
 LoadThenSinkAlongList:
     lda a:OBJ_STATE,x
     bne LoadThenSinkAlongList_at0
@@ -735,7 +735,7 @@ LoadThenSinkAlongList:
     lda #$80
     sta a:OBJ_SPRITE_FLIP,x
     lda a:OBJ_Y_LO,x
-    sta a:OBJ_34B8,x
+    sta a:OBJ_WORK_D,x
     jsr VecNextRandom
     and #$0F
     sta a:OBJ_ANIM_STEP,x
@@ -753,14 +753,14 @@ LoadThenSinkAlongList_at0:
     sta z:zTemp11
     jsr VecStepObjectFrames
     bne LoadThenSinkAlongList_at1
-    lda a:OBJ_34B8,x
+    lda a:OBJ_WORK_D,x
     sta a:OBJ_Y_LO,x
 LoadThenSinkAlongList_at1:
     rts
 
 ; @routine 051E:109 RandomTimer10
 ; @run 71:C909
-; WHAT IT DOES: Sets the object's timer OBJ_34B8 to a random number from 0 to 15 plus 16.
+; WHAT IT DOES: Sets the object's timer OBJ_WORK_D to a random number from 0 to 15 plus 16.
 ; HOW: NextRandom.
 ; WAITS: no.
 ; Entry: X object. Exit: A the timer, N, Z, C and V from the add.
@@ -769,16 +769,16 @@ RandomTimer10:
     and #$0F
     clc
     adc #$10
-    sta a:OBJ_34B8,x
+    sta a:OBJ_WORK_D,x
     rts
 ; @routine 051E:115 SpawnPointFromTables
 ; @run 71:C915
-; WHAT IT DOES: Counts OBJ_34B8 down; at zero it gives itself a new timer (RandomTimer10), finds a free slot from $30 and there starts a kind $AF object with this object's OBJ_START_ARG, placed from the table at $C99A by that byte and OBJ_3510's low three bits (four bytes a row: X low, X high, Y low, Y high; the X and Y low plus a random 0 to 7), and OBJ_3510 low two bits; then counts OBJ_3510 up.
+; WHAT IT DOES: Counts OBJ_WORK_D down; at zero it gives itself a new timer (RandomTimer10), finds a free slot from $30 and there starts a kind $AF object with this object's OBJ_START_ARG, placed from the table at $C99A by that byte and OBJ_WORK_E's low three bits (four bytes a row: X low, X high, Y low, Y high; the X and Y low plus a random 0 to 7), and OBJ_WORK_E low two bits; then counts OBJ_WORK_E up.
 ; HOW: RandomTimer10, FindFreeSlotFrom30, table reads (bank 70), NextRandom twice.
 ; WAITS: no.
-; Entry: X object. Exit: the new OBJ_3510's N and Z, Y the new slot; or the count.
+; Entry: X object. Exit: the new OBJ_WORK_E's N and Z, Y the new slot; or the count.
 SpawnPointFromTables:
-    dec a:OBJ_34B8,x
+    dec a:OBJ_WORK_D,x
     bne SpawnPointFromTables_at0
     bsr RandomTimer10
     jsr VecFindFreeSlotFrom30
@@ -789,7 +789,7 @@ SpawnPointFromTables:
     lda a:OBJ_START_ARG,x
     sta a:OBJ_START_ARG,y
     sta z:zTemp10
-    lda a:OBJ_3510,x
+    lda a:OBJ_WORK_E,x
     and #$07
     asl a
     asl a
@@ -816,9 +816,9 @@ SpawnPointFromTables:
     clc
     adc a:OBJ_Y_LO,y
     sta a:OBJ_Y_LO,y
-    lda a:OBJ_3510,x
+    lda a:OBJ_WORK_E,x
     and #$03
-    sta a:OBJ_3510,y
-    inc a:OBJ_3510,x
+    sta a:OBJ_WORK_E,y
+    inc a:OBJ_WORK_E,x
 SpawnPointFromTables_at0:
     rts

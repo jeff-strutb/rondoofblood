@@ -485,7 +485,7 @@ StageSubStepBoss152D:
     stz a:PadForcedPress
     stz a:PadForcedPressB
     stz z:$88
-    stz a:OBJ_3358
+    stz a:OBJ_WORK_C
     lda #$40
     sta a:$3310
     lda a:PlayerByte3BD8
@@ -573,7 +573,7 @@ StageDeathRespawn152D:
     and #$01
     tax
     lda a:$8209,x
-    sta a:OBJ_3358
+    sta a:OBJ_WORK_C
     rts
 
 ; @routine 152D:20B StageDeathRespawnB152D
@@ -600,7 +600,7 @@ StageDeathRespawnB152D:
     and #$01
     tax
     lda a:$8209,x
-    sta a:OBJ_3358
+    sta a:OBJ_WORK_C
     rts
 
 ; @routine 152D:224 StageDeathFallLeft152D
@@ -692,7 +692,7 @@ StageDeathFallBackLeft152D:
     lda #$20
     sta a:$3310
     lda #$20
-    sta a:OBJ_3358
+    sta a:OBJ_WORK_C
     rts
 
 ; @routine 152D:271 StageDeathFallRight152D
@@ -747,7 +747,7 @@ StageDeathFallRight152D_at1:
     lda #$20
     sta a:$3310
     lda #$80
-    sta a:OBJ_3358
+    sta a:OBJ_WORK_C
     rts
 
 ; @routine 152D:2B4 StageSubModeCleared152D
@@ -967,7 +967,7 @@ StageClearedWalkBack152D:
     and #$01
     tay
     lda a:$82F8,y
-    sta a:OBJ_3358
+    sta a:OBJ_WORK_C
     jsr $8021
     jsr RunObjects1619
     lda z:zField8C
@@ -986,7 +986,7 @@ StageClearedWalkBack152D_at0:
     and #$7F
     sta z:zField8C
     stz a:$3310
-    stz a:OBJ_3358
+    stz a:OBJ_WORK_C
     lda #$02
     sta z:zField8A
     jsr RichterVecStart
@@ -1159,7 +1159,7 @@ StageBossWaitDoor152D:
     lda a:OBJ_ANIM_STEP+2
     bne StageBossWaitDoor152D_at0
     lda #$20
-    sta a:OBJ_3358
+    sta a:OBJ_WORK_C
     inc z:zField85
 StageBossWaitDoor152D_at0:
     rts
@@ -1199,7 +1199,7 @@ StageBossWalkOut152D:
 StageBossWalkOut152D_at0:
     stz a:$3310
     stz a:Field2742+1
-    stz a:OBJ_3358
+    stz a:OBJ_WORK_C
     inc z:zField82
     lda z:zField82
     tay
@@ -1274,7 +1274,7 @@ StageClearedWalkOff152D:
     and #$01
     tay
     lda a:$82F8,y
-    sta a:OBJ_3358
+    sta a:OBJ_WORK_C
     sta a:$3310
     jsr $8021
     jsr RunObjects1619
@@ -1883,7 +1883,7 @@ DoorHandler152D:
     rol a
     tay
     and #$03
-    sta a:OBJ_3358,x
+    sta a:OBJ_WORK_C,x
     tya
     rol a
     rol a
@@ -1901,7 +1901,7 @@ DoorHandler152D_at0:
     bcs DoorHandler152D_at1
     lda a:$3310,x
     sta z:zField83
-    lda a:OBJ_3358,x
+    lda a:OBJ_WORK_C,x
     sta z:zField87
     lda #$02
     sta z:zSubStep
@@ -1939,7 +1939,7 @@ DoorHandlerB152D:
     rol a
     rol a
     and #$03
-    sta a:OBJ_3358,x
+    sta a:OBJ_WORK_C,x
     rts
 DoorHandlerB152D_at0:
     stz a:$3790,x
@@ -1951,7 +1951,7 @@ DoorHandlerB152D_at0:
     bcs DoorHandler152D_at1
     lda a:$3310,x
     sta z:zField83
-    lda a:OBJ_3358,x
+    lda a:OBJ_WORK_C,x
     sta z:zField87
     lda #$02
     sta z:zSubStep
@@ -4549,13 +4549,13 @@ StagePlaceHitBox152D:
     rts
 StagePlaceHitBox152D_at0:
     stz z:zTemp00
-    lda a:OBJ_3670,x
+    lda a:OBJ_WORK_I,x
     bpl StagePlaceHitBox152D_at1
     dec z:zTemp00
 StagePlaceHitBox152D_at1:
     lda a:OBJ_X_HI+8,x
     clc
-    adc a:OBJ_3670,x
+    adc a:OBJ_WORK_I,x
     sta a:HitboxXLo+3,x
     lda a:$2B30,x
     adc z:zTemp00
@@ -4596,7 +4596,7 @@ StagePlaceHitBox152D_at2:
 StageHitEvent152D:
     stz a:$31F0,x
     stz z:zTemp00
-    lda a:OBJ_3670,x
+    lda a:OBJ_WORK_I,x
     bpl StageHitEvent152D_at0
     dec z:zTemp00
 StageHitEvent152D_at0:

@@ -229,7 +229,7 @@ EndingCommandPlaceTimed:
     sta a:OBJ_START_ARG,x
     iny
     lda (zScriptPtr),y
-    sta a:OBJ_34B8,x
+    sta a:OBJ_WORK_D,x
     lda #$03
     sta a:OBJ_KIND,x
     jmp EndingScriptAdvance
@@ -373,7 +373,7 @@ EndingCreditScrollStart:
     jsr VecStartScriptSlot0Kind1
     plx
     lda #$06
-    sta a:OBJ_34B8,x
+    sta a:OBJ_WORK_D,x
     inc a:ScrollXHi
     inc a:ScrollYHi
     dec a:ScrollYLo
@@ -390,7 +390,7 @@ EndingCreditScrollStart:
     lda a:$8285,y
     sta a:ScrollYHi
     lda #$06
-    sta a:OBJ_34B8,x
+    sta a:OBJ_WORK_D,x
     inc a:OBJ_STATE,x
 EndingCreditScrollStart_at0:
     rts
@@ -656,7 +656,7 @@ EndingScrollWindowSteps:
     sta a:ScrollYLo+6
     sta a:ScrollYLo+2
     lda #$20
-    sta a:OBJ_34B8,x
+    sta a:OBJ_WORK_D,x
     inc a:OBJ_STATE,x
     rts
 EndingScrollWindowSteps_at0:
@@ -832,7 +832,7 @@ EndingScrollWindowHold:
     sta a:ScrollYLo+6
     sta a:ScrollYLo+2
     lda #$40
-    sta a:OBJ_34B8,x
+    sta a:OBJ_WORK_D,x
     inc a:OBJ_STATE,x
     rts
 
@@ -854,7 +854,7 @@ EndingStartList3:
 EndingStartList3_at0:
     plx
     lda #$20
-    sta a:OBJ_34B8,x
+    sta a:OBJ_WORK_D,x
     inc a:OBJ_STATE,x
     rts
 
@@ -898,7 +898,7 @@ EndingScrollSlide:
     bcs EndingScrollSlide_at0
     inc a:ScrollYHi+6
     lda #$30
-    sta a:OBJ_34B8,x
+    sta a:OBJ_WORK_D,x
     inc a:OBJ_STATE+4
     phx
     lda #$17
@@ -930,7 +930,7 @@ EndingSplitScrolls:
     stz a:ScrollXHi+2
     stz a:ScrollXLo+2
     lda #$20
-    sta a:OBJ_34B8,x
+    sta a:OBJ_WORK_D,x
     inc a:OBJ_STATE+1
     inc a:OBJ_STATE,x
     rts
@@ -971,7 +971,7 @@ EndingNothing:
 ; address (the last PLA), N and Z from it; when it has run out N and Z from the timer (zero). X, Y and C kept.
 ; not checked: it pulls its caller's frame and cannot run alone; its callers compare it.
 EndingHoldTimer:
-    dec a:OBJ_34B8,x
+    dec a:OBJ_WORK_D,x
     beq EndingHoldTimer_at0
     pla
     pla
@@ -1191,7 +1191,7 @@ EndingRiseFrame31:
     dec a:OBJ_VY_HI,x
     dec a:OBJ_VY_HI,x
     lda #$B0
-    sta a:OBJ_34B8,x
+    sta a:OBJ_WORK_D,x
     inc a:OBJ_STATE,x
     rts
 EndingRiseFrame31_at0:
@@ -1230,7 +1230,7 @@ EndingRiseFrame32A:
     dec a:OBJ_VY_HI,x
     dec a:OBJ_VY_HI,x
     lda #$90
-    sta a:OBJ_34B8,x
+    sta a:OBJ_WORK_D,x
     lda a:$345F,x
     clc
     adc #$10
@@ -1271,7 +1271,7 @@ EndingRiseWithList:
     sta a:OBJ_SPRITE_SET,x
     dec a:OBJ_VY_HI,x
     lda #$80
-    sta a:OBJ_34B8,x
+    sta a:OBJ_WORK_D,x
     inc a:OBJ_STATE,x
     rts
 EndingRiseWithList_at0:
@@ -1310,7 +1310,7 @@ EndingRiseFrame32B:
     dec a:OBJ_VY_HI,x
     dec a:OBJ_VY_HI,x
     lda #$A0
-    sta a:OBJ_34B8,x
+    sta a:OBJ_WORK_D,x
     lda a:$345F,x
     clc
     adc #$20
@@ -1357,7 +1357,7 @@ EndingHoldThenScript19:
     sta a:ScrollYLo+2
     sta a:ScrollYLo+6
     lda #$40
-    sta a:OBJ_34B8,x
+    sta a:OBJ_WORK_D,x
     inc a:OBJ_STATE,x
     rts
 EndingHoldThenScript19_at0:
@@ -1441,14 +1441,14 @@ EndingScrollSqueeze:
     lda #$A7
     sta a:ScrollYLo+4
     lda #$40
-    sta a:OBJ_34B8,x
+    sta a:OBJ_WORK_D,x
     inc a:OBJ_STATE,x
 EndingScrollSqueeze_at2:
     rts
 EndingScrollSqueeze_at0:
     dec a
     bne EndingScrollSqueeze_at1
-    dec a:OBJ_34B8,x
+    dec a:OBJ_WORK_D,x
     bne EndingScrollSqueeze_at2
     inc a:OBJ_STATE,x
     rts
@@ -1547,10 +1547,10 @@ EndingDropAndBounce_at1:
     sta z:zTemp00
     lda #$07
     sta z:zTemp01
-    lda a:OBJ_34B8,x
+    lda a:OBJ_WORK_D,x
     clc
     adc #$10
-    sta a:OBJ_34B8,x
+    sta a:OBJ_WORK_D,x
     bmi EndingDropAndBounce_at4
     jsr VecScaleBySine
     lda z:zProduct2
@@ -1622,7 +1622,7 @@ EndingFlyOff_at0:
     dec a
     bne EndingFlyOff_at1
     jsr VecApplyVelocity
-    dec a:OBJ_34B8,x
+    dec a:OBJ_WORK_D,x
     beq EndingFlyOff_at2
 EndingFlyOff_at1:
     rts

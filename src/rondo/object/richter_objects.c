@@ -313,7 +313,7 @@ void abi_MariaObjectNextState(void)
  * @run 6E:C47C
  * WHAT IT DOES: Once, at its animation's step 6 and while PlayerByte3BE1 is set, makes an object's
  * frame last 4 longer and Richter's one frame shorter than that.
- * HOW: OBJ_35C0 marks it done; OBJ_2F38 the step; OBJ_HURT_TIMER the frame's time.
+ * HOW: OBJ_WORK_G marks it done; OBJ_2F38 the step; OBJ_HURT_TIMER the frame's time.
  * WAITS: no.
  * Entry: X object. Exit: X and Y kept. Stopped, A what was read last, N and Z from it, or from
  * comparing the step with 6 and C with it. Done, A Richter's new time, N and Z from the mark, C
@@ -324,7 +324,7 @@ Quicken RichterObjectQuicken(uint8_t object)
     Quicken quicken = { QUICKEN_DONE_BEFORE, 0, 0, { 0, false, false } };
     uint8_t time;
 
-    quicken.value = rd8((uint16_t)(OBJ_35C0 + object));
+    quicken.value = rd8((uint16_t)(OBJ_WORK_G + object));
     if (quicken.value != 0)
         return quicken;
     quicken.value = rd8((uint16_t)(OBJ_SCROLL_BAND + object));
@@ -340,8 +340,8 @@ Quicken RichterObjectQuicken(uint8_t object)
     time = (uint8_t)(quicken.sum.value - 1);
     wr8(OBJ_HURT_TIMER + PLAYER, time);
     quicken.value = time;
-    quicken.mark = (uint8_t)(rd8((uint16_t)(OBJ_35C0 + object)) + 1);
-    wr8((uint16_t)(OBJ_35C0 + object), quicken.mark);
+    quicken.mark = (uint8_t)(rd8((uint16_t)(OBJ_WORK_G + object)) + 1);
+    wr8((uint16_t)(OBJ_WORK_G + object), quicken.mark);
     quicken.how = QUICKEN_DONE;
     return quicken;
 }
@@ -372,19 +372,19 @@ void abi_RichterObjectQuicken(void)
  * @run 6E:C49F
  * WHAT IT DOES: While an object is charged, shows the flashing form of its frame, if it is one
  * of the four that have one, with its OBJ_SPRITE_ATTR for the flash.
- * HOW: OBJ_3568 is the charge; frames $07, $0E, $15 and $1C become $8E to $91; RichterFlashFlags
- * by OBJ_34B8 less $0E, with bit 7.
+ * HOW: OBJ_WORK_F is the charge; frames $07, $0E, $15 and $1C become $8E to $91; RichterFlashFlags
+ * by OBJ_WORK_D less $0E, with bit 7.
  * WAITS: no.
  * Entry: X object. Exit: X kept. Not charged, A 0, Z set, Y $8E. Not one of the four, A the
  * frame, N, Z and C from comparing it with $1C, Y $91. Flashed, A the flags, N and Z from them, Y
- * OBJ_34B8 less $0E, C and V from that subtract. V kept otherwise.
+ * OBJ_WORK_D less $0E, C and V from that subtract. V kept otherwise.
  */
 Flash RichterObjectFlash(uint8_t object)
 {
     Flash flash = { FLASH_NOT_CHARGED, 0, 0, 0 };
 
     flash.code = OBJECT_FLASH_FIRST;
-    if (rd8((uint16_t)(OBJ_3568 + object)) == 0)
+    if (rd8((uint16_t)(OBJ_WORK_F + object)) == 0)
         return flash;
     flash.value = rd8((uint16_t)(OBJ_FRAME + object));
     flash.how = FLASH_OTHER_FRAME;
@@ -392,7 +392,7 @@ Flash RichterObjectFlash(uint8_t object)
         flash.code = (uint8_t)(OBJECT_FLASH_FIRST + i);
         if (flash.value == flash_frames[i]) {
             wr8((uint16_t)(OBJ_FRAME + object), flash.code);
-            flash.base = rd8((uint16_t)(OBJ_34B8 + object));
+            flash.base = rd8((uint16_t)(OBJ_WORK_D + object));
             flash.value = (uint8_t)(rd8((uint16_t)(RichterFlashFlags + (uint8_t)(flash.base - OBJECT_FLASH_BASE))) |
                                     OBJECT_FLASH_BIT);
             wr8((uint16_t)(OBJ_SPRITE_ATTR + object), flash.value);
@@ -433,11 +433,11 @@ void abi_RichterObjectFlash(void)
 /*
  * @routine 01BD:4D1 RichterObjectCharge
  * @run 6E:C4D1
- * WHAT IT DOES: Charges an object from OBJ_34B8 $0C on, the first time the way it faces is newly
+ * WHAT IT DOES: Charges an object from OBJ_WORK_D $0C on, the first time the way it faces is newly
  * pressed.
- * HOW: OBJ_3568 counted up; RichterChargePads by OBJ_FACING_LEFT against zPadPressed.
+ * HOW: OBJ_WORK_F counted up; RichterChargePads by OBJ_FACING_LEFT against zPadPressed.
  * WAITS: no.
- * Entry: X object. Exit: X kept. Before $0C, A OBJ_34B8, N, Z and C from comparing it with $0C.
+ * Entry: X object. Exit: X kept. Before $0C, A OBJ_WORK_D, N, Z and C from comparing it with $0C.
  * Charged already, A the charge, N and Z from it, C set. Not pressed, A 0, Z set, C set, Y the
  * facing. Charged now, A the press, N and Z from the charge, C set, Y the facing. V kept.
  */
@@ -445,10 +445,10 @@ Charge RichterObjectCharge(uint8_t object)
 {
     Charge charge = { CHARGE_TOO_SOON, 0, 0, 0 };
 
-    charge.value = rd8((uint16_t)(OBJ_34B8 + object));
+    charge.value = rd8((uint16_t)(OBJ_WORK_D + object));
     if (charge.value < OBJECT_CHARGE_FROM)
         return charge;
-    charge.value = rd8((uint16_t)(OBJ_3568 + object));
+    charge.value = rd8((uint16_t)(OBJ_WORK_F + object));
     charge.how = CHARGE_ALREADY;
     if (charge.value != 0)
         return charge;
@@ -457,8 +457,8 @@ Charge RichterObjectCharge(uint8_t object)
     charge.how = CHARGE_NOT_PRESSED;
     if (charge.value == 0)
         return charge;
-    charge.charge = (uint8_t)(rd8((uint16_t)(OBJ_3568 + object)) + 1);
-    wr8((uint16_t)(OBJ_3568 + object), charge.charge);
+    charge.charge = (uint8_t)(rd8((uint16_t)(OBJ_WORK_F + object)) + 1);
+    wr8((uint16_t)(OBJ_WORK_F + object), charge.charge);
     charge.how = CHARGE_NOW;
     return charge;
 }
@@ -782,13 +782,13 @@ void abi_RichterObjectToPoint(void)
  * @routine 01C0:51B RichterObjectHitboxOff
  * @run 6E:DD1B
  * WHAT IT DOES: Takes an object's hitbox away.
- * HOW: OBJ_3250 cleared.
+ * HOW: OBJ_HITBOX_ON cleared.
  * WAITS: no.
  * Entry: X object. Exit: all registers and flags kept.
  */
 void RichterObjectHitboxOff(uint8_t object)
 {
-    wr8((uint16_t)(OBJ_3250 + object), 0);
+    wr8((uint16_t)(OBJ_HITBOX_ON + object), 0);
 }
 
 void abi_RichterObjectHitboxOff(void)
@@ -877,13 +877,13 @@ void abi_RichterObjectHitboxByFrame(void)
  * @routine 01C0:51F RichterObjectHitboxOn
  * @run 6E:DD1F
  * WHAT IT DOES: Marks an object as having a hitbox and gives it its frame's.
- * HOW: OBJ_3250 1; runs on into RichterObjectHitboxByFrame.
+ * HOW: OBJ_HITBOX_ON 1; runs on into RichterObjectHitboxByFrame.
  * WAITS: no.
  * Entry: X object. Exit: as RichterObjectHitboxByFrame.
  */
 Hitbox RichterObjectHitboxOn(uint8_t object)
 {
-    wr8((uint16_t)(OBJ_3250 + object), 1);
+    wr8((uint16_t)(OBJ_HITBOX_ON + object), 1);
     return RichterObjectHitboxForFrame(object);
 }
 
@@ -904,7 +904,7 @@ void abi_RichterObjectHitboxOn(void)
  * @routine 01C0:284 RichterObjectAnimationList
  * @run 6E:DA84
  * WHAT IT DOES: Points at an object's animation list and its step's entry.
- * HOW: RichterObjectAnimations by OBJ_FIELDS_2EE0 into zTemp00 and 01; the step doubled.
+ * HOW: RichterObjectAnimations by OBJ_WORK_A into zTemp00 and 01; the step doubled.
  * WAITS: no.
  * Entry: X object. Exit: A and Y twice the step, N and Z from it, C the step's bit 7. X and V
  * kept.
@@ -912,7 +912,7 @@ void abi_RichterObjectHitboxOn(void)
 static ObjectListStep object_animation_list(uint8_t object, uint16_t lists)
 {
     ObjectListStep r;
-    uint8_t doubled = (uint8_t)(RD8(OBJ->fields_2ee0[object]) << 1);
+    uint8_t doubled = (uint8_t)(RD8(OBJ->work_a[object]) << 1);
     uint8_t step;
 
     WR8(ZP->temp00, rd8((uint16_t)(lists + doubled)));
@@ -1024,13 +1024,13 @@ static AnimationStep object_read_entry(const ObjectAnimationLayout *layout, uint
  * @run 6E:DA63
  * @stop DA84
  * WHAT IT DOES: Starts an object's animation from its first step.
- * HOW: The animation into OBJ_FIELDS_2EE0, step zero, and its first entry read.
+ * HOW: The animation into OBJ_WORK_A, step zero, and its first entry read.
  * WAITS: no.
  * Entry: A animation, X object. Exit: as RichterAnimationTick. Clobbers zTemp00-01.
  */
 static AnimationStep object_set_animation(const ObjectAnimationLayout *layout, uint8_t object, uint8_t animation)
 {
-    WR8(OBJ->fields_2ee0[object], animation);
+    WR8(OBJ->work_a[object], animation);
     WR8(OBJ->scroll_band[object], 0);
     return object_read_entry(layout, object);
 }
@@ -1225,7 +1225,7 @@ enum {
 /*
  * @routine 01E1:2CB MariaObjectFallCapped
  * @run 6E:C2CB
- * WHAT IT DOES: Adds an object's own pull (OBJ_3618 and OBJ_3670) to its Y speed, held at $0700.
+ * WHAT IT DOES: Adds an object's own pull (OBJ_WORK_H and OBJ_WORK_I) to its Y speed, held at $0700.
  * HOW: A word add into OBJ_VY_LO and OBJ_VY_HI; at 7 and up the speed is set to $0700.
  * Untraced: the hold at $0700 ($C2E4); no script let one of her objects fall that fast.
  * WAITS: no.
@@ -1238,10 +1238,10 @@ Ended MariaObjectFallCapped(uint8_t object)
     uint8_t pull;
     Ended e;
 
-    pull = RD8(OBJ->f3618[object]);
+    pull = RD8(OBJ->work_h[object]);
     low = add_bytes(pull, RD8(OBJ->vy_lo[object]), false);
     WR8(OBJ->vy_lo[object], low.value);
-    pull = RD8(OBJ->f3670[object]);
+    pull = RD8(OBJ->work_i[object]);
     high = add_bytes(pull, RD8(OBJ->vy_hi[object]), low.carry);
     WR8(OBJ->vy_hi[object], high.value);
     e = ended_of_sum(high);

@@ -59,7 +59,7 @@ static uint8_t boss_y(const L8St27BossArm *r, uint8_t y_entry)
 /*
  * @routine 025B:471 BossFrameRoutines
  * @run 70:B471
- * WHAT IT DOES: One frame of the boss of overlay 025B: counts OBJ_3568 up, then runs SwingByCosineFromState0B, EnterState0BWhenFlagged, StartRandomScriptWhenFlagged, PushPlayerWhenFlagged and HitSoundThenSpawnPieces, and the code the state table names (JumpByStateTable025B545).
+ * WHAT IT DOES: One frame of the boss of overlay 025B: counts OBJ_WORK_F up, then runs SwingByCosineFromState0B, EnterState0BWhenFlagged, StartRandomScriptWhenFlagged, PushPlayerWhenFlagged and HitSoundThenSpawnPieces, and the code the state table names (JumpByStateTable025B545).
  * HOW: An INC, five calls, a call into the table's jump.
  * WAITS: no.
  * Entry: X object, Y kept for the sound. Exit: as the code the table names (boss_exit_shim).
@@ -171,7 +171,7 @@ static Ended bossb_list_regs(const L8St27BossBArm *r)
 /*
  * @routine 0B4B:556 BossFrameRoutinesB
  * @run 70:B556
- * WHAT IT DOES: One frame of the boss of overlay 0B4B: counts OBJ_3618 up, runs FaceThePlayerByStateTable, StateTableHurtFlag, EnterState0FWhenFlagged, HitBoxByFrameTable and the code the state table names (JumpByStateTable0B4B64C); then, when OBJ_3670 is set, starts the list $83 plus the frame less 1 on channel 5.
+ * WHAT IT DOES: One frame of the boss of overlay 0B4B: counts OBJ_WORK_H up, runs FaceThePlayerByStateTable, StateTableHurtFlag, EnterState0FWhenFlagged, HitBoxByFrameTable and the code the state table names (JumpByStateTable0B4B64C); then, when OBJ_WORK_I is set, starts the list $83 plus the frame less 1 on channel 5.
  * HOW: An INC, five calls, StartListChannelKind2 between a PHX and a PLX.
  * WAITS: no.
  * Entry: X object, Y kept for the sound. Exit: as the last instruction that ran (bossb_exit_shim).
@@ -180,7 +180,7 @@ L8St27BossBArm BossFrameRoutinesB(uint8_t slot, uint8_t y_entry)
 {
     L8St27BossBArm r = { 0 };
 
-    r.counted = INC8(OBJ->f3618[slot]);
+    r.counted = INC8(OBJ->work_h[slot]);
     jsr_push(0xB55C);
     r.face = l8_face_state_table_exit_shim(FaceThePlayerByStateTable(slot));
     jsr_pop();
@@ -200,7 +200,7 @@ L8St27BossBArm BossFrameRoutinesB(uint8_t slot, uint8_t y_entry)
     r.jump = JumpByStateTable0B4B64C(slot);
     abi_ended(r.jump.end);
     slot = l8_enter_framed(slot, r.jump, 0xB568);
-    r.flag = RD8(OBJ->f3670[slot]);
+    r.flag = RD8(OBJ->work_i[slot]);
     if (r.flag == 0) {
         return r;
     }
@@ -235,7 +235,7 @@ void abi_BossFrameRoutinesB(void)
 /*
  * @routine 025B:09F SpawnRowsWhenScrollAtZero
  * @run 70:B09F
- * WHAT IT DOES: Runs SetBossFixedFields and StepVerticalScrollTable; when the scroll's bytes ScrollXHi+1 and ScrollXLo+1 are both 0 it sets the game's sub-mode 5, counts slot 0's OBJ_3510 down, sets the byte at $3BF0 to 1, clears bit 0 of zField8E, spawns the stage's rows 3 and 4 (SpawnStageObjectsRows34) and goes on to SetTimerThenNextState; otherwise it sets ScrollStepXHi+1 to 1.
+ * WHAT IT DOES: Runs SetBossFixedFields and StepVerticalScrollTable; when the scroll's bytes ScrollXHi+1 and ScrollXLo+1 are both 0 it sets the game's sub-mode 5, counts slot 0's OBJ_WORK_E down, sets the byte at $3BF0 to 1, clears bit 0 of zField8E, spawns the stage's rows 3 and 4 (SpawnStageObjectsRows34) and goes on to SetTimerThenNextState; otherwise it sets ScrollStepXHi+1 to 1.
  * HOW: Two calls, an ORA, stores, RMWs, SpawnStageObjectsRows34 between a PHX and a PLX, a tail jump.
  * WAITS: no.
  * Entry: X object. Exit: as the last instruction that ran (rows_exit_shim). The byte at $3BF0 keeps its address form until it has a name.
@@ -261,7 +261,7 @@ L8St27RowsArm SpawnRowsWhenScrollAtZero(uint8_t slot)
         return r;
     }
     WR8(ZP->game_sub_mode, 5);
-    r.dec = DEC8(OBJ->f3510[0]);
+    r.dec = DEC8(OBJ->work_e[0]);
     wr8(0x3BF0, 1);
     RMW8(ZP->field8e, old, old & 0xFE);
     push8(slot);
@@ -334,7 +334,7 @@ static Ended bossc_tail(const L8St27BossCArm *r)
 /*
  * @routine 05CB:13F BossFrameRoutinesC
  * @run 70:B13F
- * WHAT IT DOES: One frame of the boss of overlay 05CB: counts OBJ_34B8 up, runs FlagThenHitsCompare, EnterState5WhenFlagged and the code the state table names (JumpByStateTable05CB1CF); then, when OBJ_35C0 and the frame are not 0, starts the list that the table at $B169 names for the frame less 1 (plus $81) on channel 5.
+ * WHAT IT DOES: One frame of the boss of overlay 05CB: counts OBJ_WORK_D up, runs FlagThenHitsCompare, EnterState5WhenFlagged and the code the state table names (JumpByStateTable05CB1CF); then, when OBJ_WORK_G and the frame are not 0, starts the list that the table at $B169 names for the frame less 1 (plus $81) on channel 5.
  * HOW: An INC, three calls, a table read, StartListChannelKind2 between a PHX and a PLX.
  * WAITS: no.
  * Entry: X object. Exit: as the last instruction that ran (bossc_exit_shim).

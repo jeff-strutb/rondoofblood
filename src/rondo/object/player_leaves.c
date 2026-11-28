@@ -970,7 +970,7 @@ void abi_LoadRecordThenFrameByKind(void)
 /*
  * @routine 0E00:092 StoreHitFromTable
  * @run 6B:9892
- * WHAT IT DOES: Gives the object's hit timer OBJ_HIT_TAKEN the byte of OBJ_3828 at the slot in Y.
+ * WHAT IT DOES: Gives the object's hit timer OBJ_HIT_TAKEN the byte of OBJ_WORK_N at the slot in Y.
  * HOW: One read, one write.
  * WAITS: no.
  * Entry: X object, Y the slot. Exit: A the byte, N and Z from it.
@@ -979,7 +979,7 @@ ObjArm StoreHitFromTable(uint8_t slot, uint8_t y)
 {
     ObjArm r = { 0 };
 
-    r.first = RD8(OBJ->f3828[y]);
+    r.first = RD8(OBJ->work_n[y]);
     WR8(OBJ->hit_taken[slot], r.first);
     return r;
 }
@@ -1027,7 +1027,7 @@ void abi_ReportHitToStage(void)
 /*
  * @routine 0720:076 ReportHitUnlessTwo
  * @run 6B:9876
- * WHAT IT DOES: Reports the hit to the stage unless the kind just stored in OBJ_38D8 is 2.
+ * WHAT IT DOES: Reports the hit to the stage unless the kind just stored in OBJ_WORK_P is 2.
  * HOW: CMP #2 on A; equal returns, otherwise goes on to ReportHitToStage.
  * WAITS: no.
  * Entry: A the kind, X object, Y the slot. Exit: equal: A and N, Z, C from the compare; otherwise as StoreHitFromTable.
@@ -1065,7 +1065,7 @@ void abi_ReportHitUnlessTwo(void)
 /*
  * @routine 0720:099 HitKindFromBit1
  * @run 6B:9899
- * WHAT IT DOES: Gives the hit slot's kind (OBJ_38D8) 1 or 2 by bit 1 of the object's OBJ_PACE, then reports the hit.
+ * WHAT IT DOES: Gives the hit slot's kind (OBJ_WORK_P) 1 or 2 by bit 1 of the object's OBJ_PACE, then reports the hit.
  * HOW: AND #2, LSR, INC, one store, then ReportHitUnlessTwo.
  * WAITS: no.
  * Entry: X object, Y the slot. Exit: as ReportHitUnlessTwo.
@@ -1076,7 +1076,7 @@ ObjArm HitKindFromBit1(uint8_t slot, uint8_t y)
     uint8_t flags = RD8(OBJ->pace[slot]);
     uint8_t kind = (uint8_t)(((flags & 2) >> 1) + 1);
 
-    WR8(OBJ->f38d8[y], kind);
+    WR8(OBJ->work_p[y], kind);
     r.sub = obj_sub(ReportHitUnlessTwo(kind, slot, y));
     r.arm = PL_BIT1_REPORTED;
     return r;
@@ -1090,8 +1090,8 @@ void abi_HitKindFromBit1(void)
 /*
  * @routine 05C0:0A5 HitKindFromBit7
  * @run 6B:98A5
- * WHAT IT DOES: Gives the hit slot's kind (OBJ_38D8) 1 or 2 by bit 7 of the object's OBJ_PACE; kind 2 also sets the
- * slot's OBJ_3828 to 5; then reports the hit.
+ * WHAT IT DOES: Gives the hit slot's kind (OBJ_WORK_P) 1 or 2 by bit 7 of the object's OBJ_PACE; kind 2 also sets the
+ * slot's OBJ_WORK_N to 5; then reports the hit.
  * HOW: AND #$80 rotated twice, AND #1, INC, one store, CMP #2; the report as ReportHitToStage. The kind 2 arm is
  * untraced (135 of 400 cases reach it and the draft stops there), written from the disc's bytes.
  * WAITS: no.
@@ -1104,10 +1104,10 @@ ObjArm HitKindFromBit7(uint8_t slot, uint8_t y)
     uint8_t kind = (uint8_t)((((flags & 0x80) ? 1 : 0)) + 1);
 
     r.first = kind;
-    WR8(OBJ->f38d8[y], kind);
+    WR8(OBJ->work_p[y], kind);
     r.arm = PL_BIT7_FIRST;
     if (kind == 2) {
-        WR8(OBJ->f3828[y], 5);
+        WR8(OBJ->work_n[y], 5);
         r.arm = PL_BIT7_SECOND_OF_TWO;
     }
     r.sub = obj_sub(ReportHitToStage(slot, y));

@@ -117,12 +117,12 @@ static StageExit run_stage_frame(Regs r)
     end.c = r.c;
     end.v = r.v;
     if (a == 0) {
-        WR8(OBJ->f3510[0], STAGE_ZERO_TIMER);
+        WR8(OBJ->work_e[0], STAGE_ZERO_TIMER);
         end.a = STAGE_ZERO_TIMER;
         end.nz = STAGE_ZERO_TIMER;
         return end;
     }
-    WR8(OBJ->f3510[0], STAGE_NONZERO_TIMER);
+    WR8(OBJ->work_e[0], STAGE_NONZERO_TIMER);
     wr8(PlayerByte3BF0, 0);
     end.a = STAGE_NONZERO_TIMER;
     end.nz = STAGE_NONZERO_TIMER;

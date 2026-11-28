@@ -126,10 +126,10 @@ void abi_SetHitboxDxFromFrame(void)
 ObjArm PhaseTimerToState1(uint8_t slot)
 {
     ObjArm r = { 0 };
-    uint8_t left = RD8(OBJ->f3720[slot]);
+    uint8_t left = RD8(OBJ->work_k[slot]);
 
     left = (uint8_t)(left - 1);
-    WR8(OBJ->f3720[slot], left);
+    WR8(OBJ->work_k[slot], left);
     if (left != 0) {
         WR8(OBJ->anim_step[slot], 0);
         WR8(OBJ->anim_timer[slot], 0);
@@ -139,7 +139,7 @@ ObjArm PhaseTimerToState1(uint8_t slot)
     }
     WR8(OBJ->state[slot], 1);
     WR8(OBJ->frame[slot], 1);
-    r.first = RD8(OBJ->f36c8[slot]);
+    r.first = RD8(OBJ->work_j[slot]);
     r.arm = S5_PH_FRAME1;
     if (r.first == 0) {
         return r;
@@ -318,7 +318,7 @@ void abi_SetHitboxFromFrameRowsIndirect(void)
 ObjArm LaunchHopByF3510(uint8_t slot)
 {
     enum { TABLE = 0xC45C };
-    uint8_t index = RD8(OBJ->f3510[slot]);
+    uint8_t index = RD8(OBJ->work_e[slot]);
 
     return hop_from_index(slot, index, TABLE, 0x36);
 }
@@ -444,7 +444,7 @@ ObjArm AnimateThenState1(uint8_t slot)
 {
     enum { LISTS = 0xBA5D };
     ObjArm r = { 0 };
-    uint8_t count = RD8(OBJ->f3618[slot]);
+    uint8_t count = RD8(OBJ->work_h[slot]);
     uint8_t exit_y;
 
     r.first = (uint8_t)((count & 1) << 1);
@@ -459,9 +459,9 @@ ObjArm AnimateThenState1(uint8_t slot)
     if (r.step != FRAME_LIST_ENDED) {
         return r;
     }
-    count = RD8(OBJ->f3618[slot]);
+    count = RD8(OBJ->work_h[slot]);
     count = (uint8_t)(count + 1);
-    WR8(OBJ->f3618[slot], count);
+    WR8(OBJ->work_h[slot], count);
     WR8(OBJ->state[slot], 1);
     r.arm = S5_AS_ENDED;
     return r;
@@ -500,9 +500,9 @@ ObjArm AnimateThenNextStep(uint8_t slot)
     ObjArm r = { 0 };
     uint8_t exit_y;
 
-    r.first = RD8(OBJ->f3670[slot]);
+    r.first = RD8(OBJ->work_i[slot]);
     r.first = (uint8_t)(r.first << 1);
-    r.second = RD8(OBJ->f36c8[slot]);
+    r.second = RD8(OBJ->work_j[slot]);
     r.third = (uint8_t)(r.first + r.second);
     exit_y = r.third;
     WR8(ZP->temp10, rd8((uint16_t)(LISTS + r.third)));
@@ -635,10 +635,10 @@ void abi_AnimateThenNextStepB(void)
 ObjArm CountdownThenFallOrBecomeType9B(uint8_t slot)
 {
     ObjArm r = { 0 };
-    uint8_t left = RD8(OBJ->f3510[slot]);
+    uint8_t left = RD8(OBJ->work_e[slot]);
 
     left = (uint8_t)(left - 1);
-    WR8(OBJ->f3510[slot], left);
+    WR8(OBJ->work_e[slot], left);
     if (left == 0) {
         r.arm = CF_BECAME;
         r.first = become_type(slot, 0x9B).first;
@@ -875,7 +875,7 @@ ObjArm NextPhaseAtRandom(uint8_t slot)
     jsr_push(0xC4BD);
     side = SideOfPlayer(slot).sides;
     jsr_pop();
-    WR8(OBJ->f3510[slot], (uint8_t)(side & 1));
+    WR8(OBJ->work_e[slot], (uint8_t)(side & 1));
     jsr_push(0xC4C5);
     random = NextRandom();
     jsr_pop();
@@ -1058,7 +1058,7 @@ ObjArm StartChargeWhenPlayerNear(uint8_t slot)
     r.random = NextRandom();
     jsr_pop();
     r.second = (uint8_t)(r.random.value & 0x7F);
-    WR8(OBJ->f36c8[slot], (uint8_t)(r.second + 0x44));
+    WR8(OBJ->work_j[slot], (uint8_t)(r.second + 0x44));
     WR8(OBJ->state[slot], 4);
     WR8(OBJ->substate[slot], 2);
     r.arm = SC_STARTED;
@@ -1155,7 +1155,7 @@ ObjArm ChooseNextMoveWhenFacingAway(uint8_t slot)
     enum { PHASES = 0xBAD5, TIMERS = 0xBAE5, PIECES = 0xBAF1 };
     ObjArm r = { 0 };
     uint8_t facing = RD8(OBJ->facing_left[slot]);
-    uint8_t count = RD8(OBJ->f3618[slot]);
+    uint8_t count = RD8(OBJ->work_h[slot]);
     uint8_t y, phase, shifted, value;
     RandomResult random;
 
@@ -1176,7 +1176,7 @@ ObjArm ChooseNextMoveWhenFacingAway(uint8_t slot)
     jsr_pop();
     y = (uint8_t)(random.value & 0x0F);
     phase = rd8((uint16_t)(PHASES + y));
-    WR8(OBJ->f3670[slot], phase);
+    WR8(OBJ->work_i[slot], phase);
     shifted = (uint8_t)(phase << 2);
     WR8(ZP->temp00, shifted);
     jsr_push(0xBAB9);
@@ -1186,11 +1186,11 @@ ObjArm ChooseNextMoveWhenFacingAway(uint8_t slot)
     r.sum = add_bytes((uint8_t)(random.value & 3), value, false);
     y = r.sum.value;
     value = rd8((uint16_t)(TIMERS + y));
-    WR8(OBJ->f3720[slot], value);
-    count = RD8(OBJ->f3618[slot]);
+    WR8(OBJ->work_k[slot], value);
+    count = RD8(OBJ->work_h[slot]);
     r.y = (uint8_t)(count & 1);
     r.fourth = rd8((uint16_t)(PIECES + r.y));
-    WR8(OBJ->f36c8[slot], r.fourth);
+    WR8(OBJ->work_j[slot], r.fourth);
     r.fifth = INC8(OBJ->substate[slot]);
     r.arm = S5_CM_PICKED;
     return r;
@@ -1229,7 +1229,7 @@ ObjArm CountTimerPairDownOrRepick(uint8_t slot)
 {
     ObjArm r = { 0 };
     uint8_t high = RD8(OBJ->life_timer[slot]);
-    uint8_t low = (uint8_t)(high | RD8(OBJ->f3510[slot]));
+    uint8_t low = (uint8_t)(high | RD8(OBJ->work_e[slot]));
     Sum sum;
 
     if (low == 0) {
@@ -1243,9 +1243,9 @@ ObjArm CountTimerPairDownOrRepick(uint8_t slot)
         return r;
     }
     r.arm = S5_CT_COUNTING;
-    low = RD8(OBJ->f3510[slot]);
+    low = RD8(OBJ->work_e[slot]);
     sum = add_bytes(low, 0xFE, true);
-    WR8(OBJ->f3510[slot], sum.value);
+    WR8(OBJ->work_e[slot], sum.value);
     high = RD8(OBJ->life_timer[slot]);
     r.sum = add_bytes(high, 0xFF, sum.carry);
     WR8(OBJ->life_timer[slot], r.sum.value);
@@ -1357,9 +1357,9 @@ ObjArm AnimateHitboxThenExpire(uint8_t slot)
     jsr_push(0xBD5A);
     r.sub = obj_sub(SetHitboxFromFrameRows(slot));
     jsr_pop();
-    r.first = RD8(OBJ->f3510[slot]);
+    r.first = RD8(OBJ->work_e[slot]);
     r.first = (uint8_t)(r.first - 1);
-    WR8(OBJ->f3510[slot], r.first);
+    WR8(OBJ->work_e[slot], r.first);
     if (r.first == 0) {
         ClearObject(slot);
     }
@@ -1405,7 +1405,7 @@ ObjArm WalkWhileFrameChangesB(uint8_t slot, uint8_t index)
     if (r.step != FRAME_CHANGED) {
         return r;
     }
-    r.first = RD8(OBJ->f3510[slot]);
+    r.first = RD8(OBJ->work_e[slot]);
     WR8(OBJ->vx_hi[slot], rd8((uint16_t)(SPEEDS + r.first)));
     jsr_push(0xC355);
     r.move = ApplyVelocityX(slot);
@@ -1450,19 +1450,19 @@ ObjArm StartThenBlinkAndExpire(uint8_t slot)
         jsr_push(0xC7A8);
         r.first = LoadObjectRecord(slot, &r.second, &r.flag);
         jsr_pop();
-        WR8(OBJ->f3510[slot], 0x10);
+        WR8(OBJ->work_e[slot], 0x10);
         return r;
     }
-    r.fourth = RD8(OBJ->f3510[slot]);
+    r.fourth = RD8(OBJ->work_e[slot]);
     r.fourth = (uint8_t)(r.fourth - 1);
-    WR8(OBJ->f3510[slot], r.fourth);
+    WR8(OBJ->work_e[slot], r.fourth);
     r.arm = S5_BE_EXPIRED;
     if (r.fourth == 0) {
         ClearObject(slot);
         return r;
     }
     WR8(OBJ->frame[slot], 0);
-    r.fifth = RD8(OBJ->f3510[slot]);
+    r.fifth = RD8(OBJ->work_e[slot]);
     r.fifth = (uint8_t)(r.fifth & 3);
     r.arm = S5_BE_SHOWN;
     if (r.fifth == 0) {
@@ -1521,7 +1521,7 @@ ObjArm LeapAwayFromPlayerTable(uint8_t slot)
     WR8(OBJ->vx_lo[slot], rd8((uint16_t)(TABLE + r.first)));
     WR8(OBJ->vy_hi[slot], 0xFB);
     WR8(OBJ->vy_lo[slot], 0x80);
-    r.second = RD8(OBJ->f3510[slot]);
+    r.second = RD8(OBJ->work_e[slot]);
     r.arm = S5_LA_STRAIGHT;
     if (r.second == 0) {
         return r;
@@ -1724,7 +1724,7 @@ ObjArm StartAndMakeNeighbour(uint8_t slot)
     jsr_push(0xC30B);
     r.fourth = StartObjectAtPlace(0x2D, slot, r.third);
     jsr_pop();
-    WR8(OBJ->f3670[slot], 1);
+    WR8(OBJ->work_i[slot], 1);
     WR8(OBJ->life_timer[slot], 0x50);
     return r;
 }
@@ -1835,7 +1835,7 @@ ObjArm StartThenAnimateAndExpire(uint8_t slot)
         timer = RD8(OBJ->life_timer[slot]);
         r.sum = add_bytes(timer, 3, false);
         WR8(OBJ->f2a10[slot], r.sum.value);
-        WR8(OBJ->f3510[slot], 0x28);
+        WR8(OBJ->work_e[slot], 0x28);
         return r;
     }
     timer = RD8(OBJ->life_timer[slot]);
@@ -1847,9 +1847,9 @@ ObjArm StartThenAnimateAndExpire(uint8_t slot)
     r.step = StepObjectFrames(slot, &exit_y);
     jsr_pop();
     r.y = exit_y;
-    r.fifth = RD8(OBJ->f3510[slot]);
+    r.fifth = RD8(OBJ->work_e[slot]);
     r.fifth = (uint8_t)(r.fifth - 1);
-    WR8(OBJ->f3510[slot], r.fifth);
+    WR8(OBJ->work_e[slot], r.fifth);
     r.arm = S5_TA_EXPIRED;
     if (r.fifth == 0) {
         ClearObject(slot);
@@ -1895,9 +1895,9 @@ ObjArm CountdownSoundThenNextState(uint8_t slot, uint8_t entry_y)
     ObjArm r = { 0 };
     uint8_t state;
 
-    r.first = RD8(OBJ->f3510[slot]);
+    r.first = RD8(OBJ->work_e[slot]);
     r.first = (uint8_t)(r.first - 1);
-    WR8(OBJ->f3510[slot], r.first);
+    WR8(OBJ->work_e[slot], r.first);
     r.arm = S5_CD_COUNTING;
     if (r.first != 0) {
         return r;
@@ -1907,7 +1907,7 @@ ObjArm CountdownSoundThenNextState(uint8_t slot, uint8_t entry_y)
     jsr_push(0xBD3E);
     r.call = SoundCommand(0x26, slot, entry_y);
     jsr_pop();
-    WR8(OBJ->f3510[slot], 0x40);
+    WR8(OBJ->work_e[slot], 0x40);
     WR8(OBJ->f3250[slot], 2);
     state = RD8(OBJ->state[slot]);
     r.second = (uint8_t)(state + 1);
@@ -1969,8 +1969,8 @@ ObjArm CountdownSoundThenFollowParent(uint8_t slot, uint8_t entry_y)
 {
     ObjArm r = { 0 };
 
-    r.first = (uint8_t)(RD8(OBJ->f3510[slot]) - 1);
-    WR8(OBJ->f3510[slot], r.first);
+    r.first = (uint8_t)(RD8(OBJ->work_e[slot]) - 1);
+    WR8(OBJ->work_e[slot], r.first);
     r.arm = S5_CF_COUNTING;
     if (r.first == 0) {
         r.sounded = true;
@@ -2027,7 +2027,7 @@ ObjArm AnimateThenNumberGroupAndLeave(uint8_t slot)
     ObjArm r = { 0 };
     uint8_t exit_y, y, held = 0, count;
 
-    r.first = (uint8_t)((RD8(OBJ->f3618[slot]) & 1) << 1);
+    r.first = (uint8_t)((RD8(OBJ->work_h[slot]) & 1) << 1);
     exit_y = r.first;
     WR8(ZP->temp10, rd8((uint16_t)(LISTS + r.first)));
     WR8(ZP->temp11, rd8((uint16_t)(LISTS + 1 + r.first)));
@@ -2039,9 +2039,9 @@ ObjArm AnimateThenNumberGroupAndLeave(uint8_t slot)
     if (r.step != FRAME_LIST_ENDED) {
         return r;
     }
-    y = RD8(OBJ->f37d0[slot]);
+    y = RD8(OBJ->work_m[slot]);
     WR8(ZP->temp00, 0);
-    held = RD8(OBJ->f3828[slot]);
+    held = RD8(OBJ->work_n[slot]);
     WR8(ZP->temp01, held);
     r.third = INC8(ZP->temp01);
     do {
@@ -2056,7 +2056,7 @@ ObjArm AnimateThenNumberGroupAndLeave(uint8_t slot)
                 count = RD8(ZP->temp00);
                 WR8(OBJ->start_arg[y], count);
                 held = RD8(ZP->temp03);
-                WR8(OBJ->f37d0[y], held);
+                WR8(OBJ->work_m[y], held);
                 count = RD8(ZP->temp00);
                 WR8(ZP->temp00, (uint8_t)(count + 1));
             }
@@ -2148,7 +2148,7 @@ ObjArm AnimateMoveThenSetUpAtRandom(uint8_t slot)
     jsr_pop();
     r.random = random;
     r.second = (uint8_t)(random.value & 0x7F);
-    WR8(OBJ->f36c8[slot], (uint8_t)(r.second + 0x18));
+    WR8(OBJ->work_j[slot], (uint8_t)(r.second + 0x18));
     WR8(OBJ->anim_step[slot], 0);
     WR8(OBJ->anim_timer[slot], 0);
     r.third = INC8(OBJ->substate[slot]);
@@ -2211,7 +2211,7 @@ ObjArm StartSidewaysAndSpawn29(uint8_t slot)
     jsr_push(0xBC1A);
     LoadObjectRecord(slot, &nz, &carry);
     jsr_pop();
-    WR8(OBJ->f3510[slot], 0x28);
+    WR8(OBJ->work_e[slot], 0x28);
     facing = RD8(OBJ->facing_left[slot]);
     if (facing != 0) {
         jsr_push(0xBC27);
@@ -2284,7 +2284,7 @@ ObjArm StartSidewaysAndSpawn29B(uint8_t slot)
     jsr_push(0xBD00);
     LoadObjectRecord(slot, &nz, &carry);
     jsr_pop();
-    WR8(OBJ->f3510[slot], 0x40);
+    WR8(OBJ->work_e[slot], 0x40);
     facing = RD8(OBJ->facing_left[slot]);
     if (facing != 0) {
         jsr_push(0xBD0D);
@@ -2366,7 +2366,7 @@ ObjArm BurstIntoEightPieces(uint8_t slot)
         index = add_bytes((uint8_t)(twice << 1), RD8(ZP->temp00), false);
         row = index.value;
         WR8(OBJ->life_timer[found_slot], rd8((uint16_t)(0xC674 + row)));
-        WR8(OBJ->f3510[found_slot], rd8((uint16_t)(0xC675 + row)));
+        WR8(OBJ->work_e[found_slot], rd8((uint16_t)(0xC675 + row)));
         WR8(OBJ->vx_hi[found_slot], rd8((uint16_t)(0xC676 + row)));
         WR8(OBJ->vx_lo[found_slot], rd8((uint16_t)(0xC677 + row)));
         WR8(OBJ->vy_hi[found_slot], rd8((uint16_t)(0xC678 + row)));
@@ -2430,10 +2430,10 @@ ObjArm StartGroupThenThrow(uint8_t slot)
     jsr_pop();
     count = RD8(OBJ->start_arg[slot]);
     if ((count & 0x80) == 0) {
-        WR8(OBJ->f37d0[slot], slot);
+        WR8(OBJ->work_m[slot], slot);
         count = RD8(OBJ->start_arg[slot]);
         sum = add_bytes(slot, count, false);
-        WR8(OBJ->f3828[slot], sum.value);
+        WR8(OBJ->work_n[slot], sum.value);
         y = (uint8_t)(slot + 1);
         WR8(ZP->temp00, 0x81);
         do {
@@ -2445,9 +2445,9 @@ ObjArm StartGroupThenThrow(uint8_t slot)
             jsr_pop();
             mark = RD8(ZP->temp00);
             WR8(OBJ->start_arg[y], mark);
-            WR8(OBJ->f37d0[y], slot);
-            value = RD8(OBJ->f3828[slot]);
-            WR8(OBJ->f3828[y], value);
+            WR8(OBJ->work_m[y], slot);
+            value = RD8(OBJ->work_n[slot]);
+            WR8(OBJ->work_n[y], value);
             INC8(ZP->temp00);
             y++;
             left = DEC8(OBJ->start_arg[slot]);

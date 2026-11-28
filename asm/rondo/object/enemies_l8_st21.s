@@ -39,7 +39,7 @@ LoadRecordSplitIntoFourAndClear:
 
 ; @routine 0F6B:0BF LoadRecordThenFollowScroll
 ; @run 70:B0BF
-; WHAT IT DOES: In state 0 loads the record and keeps the object's X in OBJ_34B8 and OBJ_3510. Later it sets its screen X to that spot less the scroll plus a quarter of the scroll (the scroll's pair of bytes shifted right 3 times), so it moves slowly against the scroll.
+; WHAT IT DOES: In state 0 loads the record and keeps the object's X in OBJ_WORK_D and OBJ_WORK_E. Later it sets its screen X to that spot less the scroll plus a quarter of the scroll (the scroll's pair of bytes shifted right 3 times), so it moves slowly against the scroll.
 ; HOW: LoadObjectRecord, two shifts through carry, two 16-bit adds and a 16-bit subtract in memory.
 ; WAITS: no.
 ; Entry: X object. Exit: as the last instruction that ran.
@@ -48,9 +48,9 @@ LoadRecordThenFollowScroll:
     bne LoadRecordThenFollowScroll_at0
     jsr VecLoadObjectRecord
     lda a:OBJ_X_LO,x
-    sta a:OBJ_34B8,x
+    sta a:OBJ_WORK_D,x
     lda a:OBJ_X_HI,x
-    sta a:OBJ_3510,x
+    sta a:OBJ_WORK_E,x
     rts
 LoadRecordThenFollowScroll_at0:
     lda a:ScrollXHiScreen
@@ -60,10 +60,10 @@ LoadRecordThenFollowScroll_at0:
     lsr a
     lsr a
     clc
-    adc a:OBJ_34B8,x
+    adc a:OBJ_WORK_D,x
     sta a:OBJ_X_LO,x
     cla
-    adc a:OBJ_3510,x
+    adc a:OBJ_WORK_E,x
     sta a:OBJ_X_HI,x
     lda a:OBJ_X_LO,x
     sec
@@ -199,7 +199,7 @@ LoadRecordThenClearAtSubStep3_at1:
 
 ; @routine 0F6B:395 SoundWhenHurtThenFlag
 ; @run 70:B395
-; WHAT IT DOES: When bit 7 of OBJ_HIT_STATUS is clear and the object has taken 5 hits plays sound $D2 and, when OBJ_HEALTH of slot $10 is below 8, sets it to 5, sets OBJ_3618 to 5 and sets bit 7 of OBJ_HIT_STATUS.
+; WHAT IT DOES: When bit 7 of OBJ_HIT_STATUS is clear and the object has taken 5 hits plays sound $D2 and, when OBJ_HEALTH of slot $10 is below 8, sets it to 5, sets OBJ_WORK_H to 5 and sets bit 7 of OBJ_HIT_STATUS.
 ; HOW: Tests, SoundCommand, stores.
 ; WAITS: no.
 ; Entry: X object, Y kept for the sound. Exit: as the last instruction that ran. The stores past the last compare ran in no script; the draft stops there.
@@ -217,7 +217,7 @@ SoundWhenHurtThenFlag:
     bcs SoundWhenHurtThenFlag_at0
     lda #$05
     sta a:$32B8
-    sta a:OBJ_3618,x
+    sta a:OBJ_WORK_H,x
     lda #$80
     ora a:OBJ_HIT_STATUS,x
     sta a:OBJ_HIT_STATUS,x
@@ -226,7 +226,7 @@ SoundWhenHurtThenFlag_at0:
 
 ; @routine 0F6B:3C0 SoundAndState6WhenFlagged
 ; @run 70:B3C0
-; WHAT IT DOES: Outside state 6: when bit 7 of OBJ_HIT_STATUS is set plays sound $D3, goes to state 6 and copies OBJ_3618 to OBJ_HEALTH; otherwise copies OBJ_HEALTH to OBJ_3618.
+; WHAT IT DOES: Outside state 6: when bit 7 of OBJ_HIT_STATUS is set plays sound $D3, goes to state 6 and copies OBJ_WORK_H to OBJ_HEALTH; otherwise copies OBJ_HEALTH to OBJ_WORK_H.
 ; HOW: Compares, SoundCommand, copies.
 ; WAITS: no.
 ; Entry: X object, Y kept for the sound. Exit: as the last instruction that ran. The flagged arm ran in no script; the draft stops there.
@@ -242,12 +242,12 @@ SoundAndState6WhenFlagged:
     lda #$06
     sta a:OBJ_STATE,x
     stz a:OBJ_SUBSTATE,x
-    stz a:OBJ_3250,x
-    lda a:OBJ_3618,x
+    stz a:OBJ_HITBOX_ON,x
+    lda a:OBJ_WORK_H,x
     sta a:OBJ_HEALTH,x
     rts
     lda a:OBJ_HEALTH,x
-    sta a:OBJ_3618,x
+    sta a:OBJ_WORK_H,x
 SoundAndState6WhenFlagged_at0:
     rts
 
@@ -298,7 +298,7 @@ ClearFourAtScreen2_at0:
 
 ; @routine 0F6B:44A MoveUpUntilY40
 ; @run 70:B44A
-; WHAT IT DOES: Moves the object along Y; once its Y low byte is below $40 sets OBJ_34B8 2 and goes to the next state.
+; WHAT IT DOES: Moves the object along Y; once its Y low byte is below $40 sets OBJ_WORK_D 2 and goes to the next state.
 ; HOW: ApplyVelocityY, a compare, a store, an INC.
 ; WAITS: no.
 ; Entry: X object. Exit: as the last instruction that ran.
@@ -308,40 +308,40 @@ MoveUpUntilY40:
     cmp #$40
     bcs MoveUpUntilY40_at0
     lda #$02
-    sta a:OBJ_34B8,x
+    sta a:OBJ_WORK_D,x
     inc a:OBJ_STATE,x
 MoveUpUntilY40_at0:
     rts
 
 ; @routine 0F6B:50B CountDownThenCopyPhase
 ; @run 70:B50B
-; WHAT IT DOES: Counts OBJ_3510 down; when it is 0 (or reaches 0) sets OBJ_SUBSTATE from OBJ_38D8.
+; WHAT IT DOES: Counts OBJ_WORK_E down; when it is 0 (or reaches 0) sets OBJ_SUBSTATE from OBJ_WORK_P.
 ; HOW: A test, a memory decrement, a copy.
 ; WAITS: no.
 ; Entry: X object. Exit: as the last instruction that ran.
 CountDownThenCopyPhase:
-    lda a:OBJ_3510,x
+    lda a:OBJ_WORK_E,x
     beq CountDownThenCopyPhase_at0
-    dec a:OBJ_3510,x
+    dec a:OBJ_WORK_E,x
     bne CountDownThenCopyPhase_at1
 CountDownThenCopyPhase_at0:
-    lda a:OBJ_38D8,x
+    lda a:OBJ_WORK_P,x
     sta a:OBJ_SUBSTATE,x
 CountDownThenCopyPhase_at1:
     rts
 
 ; @routine 0F6B:51C ResetPieceAndAdvance
 ; @run 70:B51C
-; WHAT IT DOES: Clears OBJ_3778, sets OBJ_37D0 $80 and OBJ_35C0 $E0 and goes to the next OBJ_SUBSTATE.
+; WHAT IT DOES: Clears OBJ_WORK_L, sets OBJ_WORK_M $80 and OBJ_WORK_G $E0 and goes to the next OBJ_SUBSTATE.
 ; HOW: Stores and an INC.
 ; WAITS: no.
 ; Entry: X object. Exit: A $E0, N and Z from the new OBJ_SUBSTATE.
 ResetPieceAndAdvance:
     lda #$00
-    sta a:OBJ_3778,x
+    sta a:OBJ_WORK_L,x
     lda #$80
-    sta a:OBJ_37D0,x
+    sta a:OBJ_WORK_M,x
     lda #$E0
-    sta a:OBJ_35C0,x
+    sta a:OBJ_WORK_G,x
     inc a:OBJ_SUBSTATE,x
     rts

@@ -163,7 +163,7 @@ typedef struct {
     FrameStep step;
 } Kind88Step;
 
-/* An object of kind $88 steps its animation list and keeps the frame in OBJ_3510. */
+/* An object of kind $88 steps its animation list and keeps the frame in OBJ_WORK_E. */
 Kind88Step AnimateKind88(uint8_t slot, uint8_t y);
 
 /* What StartKindFromCharacter left: the table byte, its index and the add that made it. */
@@ -173,7 +173,7 @@ typedef struct {
     Sum sum;
 } KindStart;
 
-/* An object's kind is settled, its record loaded, and OBJ_3510 set from a table by kind and character. */
+/* An object's kind is settled, its record loaded, and OBJ_WORK_E set from a table by kind and character. */
 KindStart StartKindFromCharacter(uint8_t slot);
 
 /* What ClearOnLanding did. */
@@ -181,7 +181,7 @@ typedef struct {
     bool probed;          /* the object was not rising: the floor was asked */
     bool cleared;         /* the probe said floor: the object was cleared */
     Probe probe;
-    uint8_t frame;        /* not cleared: the frame taken from OBJ_3510 */
+    uint8_t frame;        /* not cleared: the frame taken from OBJ_WORK_E */
     uint8_t state;        /* not cleared: the new state */
 } LandClear;
 

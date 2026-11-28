@@ -129,7 +129,7 @@ void abi_ThrowUpward(void)
  */
 ObjArm CountdownThenState4(uint8_t slot)
 {
-    return countdown_then_state(slot, COL(OBJ->f3510), 4);
+    return countdown_then_state(slot, COL(OBJ->work_e), 4);
 }
 
 void abi_CountdownThenState4(void)
@@ -412,7 +412,7 @@ ObjArm WalkWhileFrameChanges(uint8_t slot)
     if (r.step != FRAME_CHANGED) {
         return r;
     }
-    phase = RD8(OBJ->f3510[slot]);
+    phase = RD8(OBJ->work_e[slot]);
     WR8(OBJ->vx_hi[slot], rd8((uint16_t)(SPEEDS + phase)));
     jsr_push(0xB803);
     r.move = ApplyVelocityX(slot);
@@ -855,7 +855,7 @@ ObjArm BurstIntoSixPieces(uint8_t slot)
         value = rd8((uint16_t)(TABLE + row));
         WR8(OBJ->life_timer[found_slot], value);
         value = rd8((uint16_t)(TABLE + 1 + row));
-        WR8(OBJ->f3510[found_slot], value);
+        WR8(OBJ->work_e[found_slot], value);
         value = rd8((uint16_t)(TABLE + 2 + row));
         WR8(OBJ->vx_hi[found_slot], value);
         value = rd8((uint16_t)(TABLE + 3 + row));
@@ -907,7 +907,7 @@ void abi_BurstIntoSixPieces(void)
 ObjArm SoundEveryFourthFrameB(uint8_t slot, uint8_t entry_y)
 {
     ObjArm r = { 0 };
-    uint8_t bits = RD8(OBJ->f3618[slot]);
+    uint8_t bits = RD8(OBJ->work_h[slot]);
 
     r.first = (uint8_t)(bits & 3);
     r.arm = S4_SQ_QUIET;
@@ -1077,7 +1077,7 @@ ObjArm AnimateMoveThenSetUpNextStep(uint8_t slot, bool carry_in, uint8_t entry_y
     sum = PlayerDistanceSum(slot, animate_move_sum_carry_shim(pick, carry_in));
     jsr_pop();
     r.second = (uint8_t)(sum.value & 0x3F);
-    WR8(OBJ->f36c8[slot], (uint8_t)(r.second + 0x58));
+    WR8(OBJ->work_j[slot], (uint8_t)(r.second + 0x58));
     WR8(OBJ->anim_step[slot], 0);
     WR8(OBJ->anim_timer[slot], 0);
     r.third = INC8(OBJ->substate[slot]);
@@ -1167,7 +1167,7 @@ ObjArm ChargeWhenPlayerNear(uint8_t slot)
     sum = PlayerDistanceSum(slot, false);
     jsr_pop();
     r.third = (uint8_t)(sum.value & 0x1F);
-    WR8(OBJ->f36c8[slot], (uint8_t)(r.third + 0x48));
+    WR8(OBJ->work_j[slot], (uint8_t)(r.third + 0x48));
     WR8(OBJ->state[slot], 4);
     WR8(OBJ->substate[slot], 2);
     r.second = y;
@@ -1288,8 +1288,8 @@ ObjArm FallAnimatedThenBecomeKind9B(uint8_t slot)
         }
         return r;
     }
-    r.fourth = (uint8_t)(RD8(OBJ->f3510[slot]) - 1);
-    WR8(OBJ->f3510[slot], r.fourth);
+    r.fourth = (uint8_t)(RD8(OBJ->work_e[slot]) - 1);
+    WR8(OBJ->work_e[slot], r.fourth);
     r.arm = S4_FB_BECAME;
     if (r.fourth == 0) {
         WR8(OBJ->kind[slot], 0x9B);

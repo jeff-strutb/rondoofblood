@@ -42,7 +42,7 @@ ClearObjectExceptPlace:
     stz a:OBJ_VX_LO,x
     stz a:OBJ_VY_HI,x
     stz a:OBJ_VY_LO,x
-    stz a:OBJ_FIELDS_2EE0,x
+    stz a:OBJ_WORK_A,x
     stz a:OBJ_SCROLL_BAND,x
     stz a:OBJ_HURT_TIMER,x
     stz a:OBJ_SPRITE_FLIP,x
@@ -52,26 +52,26 @@ ClearObjectExceptPlace:
     stz a:OBJ_PACE,x
     stz a:OBJ_HIT_STATUS,x
     stz a:OBJ_HIT_REACTION,x
-    stz a:OBJ_3250,x
+    stz a:OBJ_HITBOX_ON,x
     stz a:OBJ_HEALTH,x
-    stz a:OBJ_3300,x
-    stz a:OBJ_3358,x
+    stz a:OBJ_WORK_B,x
+    stz a:OBJ_WORK_C,x
     stz a:OBJ_HIT_TAKEN,x
     stz a:OBJ_ANIM_STEP,x
     stz a:OBJ_ANIM_TIMER,x
-    stz a:OBJ_34B8,x
-    stz a:OBJ_3510,x
-    stz a:OBJ_3568,x
-    stz a:OBJ_35C0,x
-    stz a:OBJ_3618,x
-    stz a:OBJ_3670,x
-    stz a:OBJ_36C8,x
-    stz a:OBJ_3720,x
-    stz a:OBJ_3778,x
-    stz a:OBJ_37D0,x
-    stz a:OBJ_3828,x
-    stz a:OBJ_3880,x
-    stz a:OBJ_38D8,x
+    stz a:OBJ_WORK_D,x
+    stz a:OBJ_WORK_E,x
+    stz a:OBJ_WORK_F,x
+    stz a:OBJ_WORK_G,x
+    stz a:OBJ_WORK_H,x
+    stz a:OBJ_WORK_I,x
+    stz a:OBJ_WORK_J,x
+    stz a:OBJ_WORK_K,x
+    stz a:OBJ_WORK_L,x
+    stz a:OBJ_WORK_M,x
+    stz a:OBJ_WORK_N,x
+    stz a:OBJ_WORK_O,x
+    stz a:OBJ_WORK_P,x
     stz a:OBJ_HITBOX_DX,x
     stz a:OBJ_HITBOX_HALF_W,x
     stz a:OBJ_HITBOX_DY,x

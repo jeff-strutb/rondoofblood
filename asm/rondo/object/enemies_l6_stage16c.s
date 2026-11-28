@@ -27,7 +27,7 @@ LoadThenRandomPlace:
 
 ; @routine 16CC:436 StepListBC5CThenAimAtPlayer
 ; @run 70:BC36
-; WHAT IT DOES: Steps the animation list at $BC5C; when it ends the object sets OBJ_3250 to 2, takes the angle to the player as OBJ_3568, sets OBJ_3510 to $80 and OBJ_34B8 to 0 and goes on to the next state.
+; WHAT IT DOES: Steps the animation list at $BC5C; when it ends the object sets OBJ_HITBOX_ON to 2, takes the angle to the player as OBJ_WORK_F, sets OBJ_WORK_E to $80 and OBJ_WORK_D to 0 and goes on to the next state.
 ; HOW: StepObjectFrames, AngleToPlayer, stores, an INC.
 ; WAITS: no.
 ; Entry: X object, Y kept unless the step sets it. Exit: the step, or the new state's N and Z (A 0) when the list ended.
@@ -39,13 +39,13 @@ StepListBC5CThenAimAtPlayer:
     jsr VecStepObjectFrames
     bne StepListBC5CThenAimAtPlayer_at0
     lda #$02
-    sta a:OBJ_3250,x
+    sta a:OBJ_HITBOX_ON,x
     jsr VecAngleToPlayer
-    sta a:OBJ_3568,x
+    sta a:OBJ_WORK_F,x
     lda #$80
-    sta a:OBJ_3510,x
+    sta a:OBJ_WORK_E,x
     lda #$00
-    sta a:OBJ_34B8,x
+    sta a:OBJ_WORK_D,x
     inc a:OBJ_STATE,x
 StepListBC5CThenAimAtPlayer_at0:
     rts

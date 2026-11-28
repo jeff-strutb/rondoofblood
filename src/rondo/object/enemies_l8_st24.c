@@ -26,7 +26,7 @@ enum { ST24_RING_OTHER_SCREEN, ST24_RING_COUNTING, ST24_RING_STARTED };
 /*
  * @routine 025B:0CA StartChannel81OnceThenStepScrollTable
  * @run 70:B0CA
- * WHAT IT DOES: When OBJ_3670 is 0 and the game's sub-mode is not 5 sets it 1 and starts list $81 on channel 5; then runs SetBossFixedFields and StepVerticalScrollTable.
+ * WHAT IT DOES: When OBJ_WORK_I is 0 and the game's sub-mode is not 5 sets it 1 and starts list $81 on channel 5; then runs SetBossFixedFields and StepVerticalScrollTable.
  * HOW: Two tests, an INC, StartListChannelKind2 between a PHX and a PLX, a call and a tail jump.
  * WAITS: no.
  * Entry: X object. Exit: as StepVerticalScrollTable (start_channel81_exit_shim).
@@ -35,13 +35,13 @@ L8St24StartArm StartChannel81OnceThenStepScrollTable(uint8_t slot)
 {
     L8St24StartArm r = { 0 };
 
-    r.flag = RD8(OBJ->f3670[slot]);
+    r.flag = RD8(OBJ->work_i[slot]);
     r.arm = ST24_START_FLAG;
     if (r.flag == 0) {
         r.mode = RD8(ZP->game_sub_mode);
         r.arm = ST24_START_MODE;
         if (r.mode != 5) {
-            r.counted = INC8(OBJ->f3670[slot]);
+            r.counted = INC8(OBJ->work_i[slot]);
             r.x = l8_channel2(slot, 0x81, 5, 0xB0E0);
             r.arm = ST24_START_STARTED;
         }
@@ -178,7 +178,7 @@ void abi_StepListMarksThenSound74AtC8(void)
 /*
  * @routine 025B:6B1 SpinThenCountDownToState
  * @run 70:B6B1
- * WHAT IT DOES: Steps the animation list at $B6DA, sets slot 0's OBJ_3510 2 and OBJ_3568 0, runs SpinOnCircle and counts OBJ_3510 down; at zero sets OBJ_3510 $40 and OBJ_3670 2 and goes to the next state.
+ * WHAT IT DOES: Steps the animation list at $B6DA, sets slot 0's OBJ_WORK_E 2 and OBJ_WORK_F 0, runs SpinOnCircle and counts OBJ_WORK_E down; at zero sets OBJ_WORK_E $40 and OBJ_WORK_I 2 and goes to the next state.
  * HOW: StepObjectFrames, SpinOnCircle, a memory decrement, stores, an INC.
  * WAITS: no.
  * Entry: X object, Y kept unless the step sets it. Exit: as the last instruction that ran (spin_state_exit_shim).
@@ -188,18 +188,18 @@ L8St24SpinArm SpinThenCountDownToState(uint8_t slot, uint8_t y_entry)
     L8St24SpinArm r = { 0 };
 
     r.step = l8_list_step(slot, 0xB6DA, 0xB6BC, false, y_entry);
-    WR8(OBJ->f3510[0], 2);
+    WR8(OBJ->work_e[0], 2);
     WR8(OBJ->f3568[0], 0);
     jsr_push(0xB6C7);
     r.spin = SpinOnCircle(slot);
     jsr_pop();
-    r.timer = DEC8(OBJ->f3510[slot]);
+    r.timer = DEC8(OBJ->work_e[slot]);
     if (r.timer != 0) {
         r.arm = ST24_SPIN_COUNTING;
         return r;
     }
-    WR8(OBJ->f3510[slot], 0x40);
-    WR8(OBJ->f3670[slot], 2);
+    WR8(OBJ->work_e[slot], 0x40);
+    WR8(OBJ->work_i[slot], 2);
     r.state = INC8(OBJ->state[slot]);
     r.arm = ST24_SPIN_DONE;
     return r;
@@ -227,7 +227,7 @@ void abi_SpinThenCountDownToState(void)
 /*
  * @routine 025B:718 SpinThenCountDownToPhase80
  * @run 70:B718
- * WHAT IT DOES: As SpinThenCountDownToState, but at zero it sets OBJ_36C8 $80 and goes to the next state.
+ * WHAT IT DOES: As SpinThenCountDownToState, but at zero it sets OBJ_WORK_J $80 and goes to the next state.
  * HOW: StepObjectFrames, SpinOnCircle, a memory decrement, a store, an INC.
  * WAITS: no.
  * Entry: X object, Y kept unless the step sets it. Exit: as the last instruction that ran (spin_phase80_exit_shim).
@@ -237,17 +237,17 @@ L8St24SpinArm SpinThenCountDownToPhase80(uint8_t slot, uint8_t y_entry)
     L8St24SpinArm r = { 0 };
 
     r.step = l8_list_step(slot, 0xB6DA, 0xB723, false, y_entry);
-    WR8(OBJ->f3510[0], 2);
+    WR8(OBJ->work_e[0], 2);
     WR8(OBJ->f3568[0], 0);
     jsr_push(0xB72E);
     r.spin = SpinOnCircle(slot);
     jsr_pop();
-    r.timer = DEC8(OBJ->f3510[slot]);
+    r.timer = DEC8(OBJ->work_e[slot]);
     if (r.timer != 0) {
         r.arm = ST24_SPIN_COUNTING;
         return r;
     }
-    WR8(OBJ->f36c8[slot], 0x80);
+    WR8(OBJ->work_j[slot], 0x80);
     r.state = INC8(OBJ->state[slot]);
     r.arm = ST24_SPIN_DONE;
     return r;
@@ -275,7 +275,7 @@ void abi_SpinThenCountDownToPhase80(void)
 /*
  * @routine 025B:73C SpinThenCountPhaseDown
  * @run 70:B73C
- * WHAT IT DOES: Steps the animation list at $B6DA, runs SpinOnCircle, sets OBJ_3670 2 and counts OBJ_36C8 down; at zero clears the animation and OBJ_3670 and goes to the next state.
+ * WHAT IT DOES: Steps the animation list at $B6DA, runs SpinOnCircle, sets OBJ_WORK_I 2 and counts OBJ_WORK_J down; at zero clears the animation and OBJ_WORK_I and goes to the next state.
  * HOW: StepObjectFrames, SpinOnCircle, a memory decrement, stores, an INC.
  * WAITS: no.
  * Entry: X object, Y kept unless the step sets it. Exit: as the last instruction that ran (spin_phase_down_exit_shim).
@@ -288,15 +288,15 @@ L8St24SpinArm SpinThenCountPhaseDown(uint8_t slot, uint8_t y_entry)
     jsr_push(0xB74A);
     r.spin = SpinOnCircle(slot);
     jsr_pop();
-    WR8(OBJ->f3670[slot], 2);
-    r.timer = DEC8(OBJ->f36c8[slot]);
+    WR8(OBJ->work_i[slot], 2);
+    r.timer = DEC8(OBJ->work_j[slot]);
     if (r.timer != 0) {
         r.arm = ST24_SPIN_COUNTING;
         return r;
     }
     WR8(OBJ->anim_step[slot], 0);
     WR8(OBJ->anim_timer[slot], 0);
-    WR8(OBJ->f3670[slot], 0);
+    WR8(OBJ->work_i[slot], 0);
     r.state = INC8(OBJ->state[slot]);
     r.arm = ST24_SPIN_DONE;
     return r;
@@ -323,7 +323,7 @@ void abi_SpinThenCountPhaseDown(void)
 /*
  * @routine 025B:7C7 SpinThenCountWordDown
  * @run 70:B7C7
- * WHAT IT DOES: Steps the animation list at $B6DA, runs SpinOnCircle and counts the 16-bit timer OBJ_34B8:OBJ_3510 down; at zero clears OBJ_3250, goes to the next state and clears OBJ_SUBSTATE.
+ * WHAT IT DOES: Steps the animation list at $B6DA, runs SpinOnCircle and counts the 16-bit timer OBJ_WORK_D:OBJ_WORK_E down; at zero clears OBJ_HITBOX_ON, goes to the next state and clears OBJ_SUBSTATE.
  * HOW: StepObjectFrames, SpinOnCircle, a 16-bit subtract in memory, an ORA, stores, an INC.
  * WAITS: no.
  * Entry: X object, Y kept unless the step sets it. Exit: as the last instruction that ran (spin_word_exit_shim).
@@ -338,13 +338,13 @@ L8St24SpinArm SpinThenCountWordDown(uint8_t slot, uint8_t y_entry)
     jsr_push(0xB7D5);
     r.spin = SpinOnCircle(slot);
     jsr_pop();
-    low = RD8(OBJ->f3510[slot]);
+    low = RD8(OBJ->work_e[slot]);
     diff = sub_bytes(low, 1, true);
-    WR8(OBJ->f3510[slot], diff.value);
+    WR8(OBJ->work_e[slot], diff.value);
     high = RD8(OBJ->f34b8[slot]);
     r.diff = sub_bytes(high, 0, diff.carry);
     WR8(OBJ->f34b8[slot], r.diff.value);
-    again = RD8(OBJ->f3510[slot]);
+    again = RD8(OBJ->work_e[slot]);
     r.joined = (uint8_t)(r.diff.value | again);
     if (r.joined != 0) {
         r.arm = ST24_SPIN_COUNTING;
@@ -385,7 +385,7 @@ static uint8_t ring_y(const L8St24RingArm *r, uint8_t y_entry)
 /*
  * @routine 0B4B:690 CountDownThenDrawAndSpawnRing
  * @run 70:B690
- * WHAT IT DOES: When the scroll's screen byte is 2, counts OBJ_34B8 down; at zero draws tile script 0, starts the ring of pieces (StartRingOfPieces), plays sound $56, sets the scroll's X limit to $0280 and OBJ_34B8 $60 and goes to the next state.
+ * WHAT IT DOES: When the scroll's screen byte is 2, counts OBJ_WORK_D down; at zero draws tile script 0, starts the ring of pieces (StartRingOfPieces), plays sound $56, sets the scroll's X limit to $0280 and OBJ_WORK_D $60 and goes to the next state.
  * HOW: A compare, a memory decrement, DrawTileScript, StartRingOfPieces, SoundCommand, stores, an INC.
  * WAITS: no.
  * Entry: X object, Y kept for the sound. Exit: as the last instruction that ran (ring_exit_shim).

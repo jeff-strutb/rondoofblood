@@ -761,7 +761,7 @@ void abi_MariaVecFloor(void)
 /*
  * @routine 01B9:04B RichterFrame
  * @run 6D:A04B
- * WHAT IT DOES: One frame of Richter: the pad, forced while OBJ_3510 counts down; the
+ * WHAT IT DOES: One frame of Richter: the pad, forced while OBJ_WORK_E counts down; the
  * pad's overrides; a spike while pushed; the state's frame; the turn window and the item's
  * hearts; the animation's sound on a change; its hitbox.
  * HOW: The animation before and after are compared; the hitbox index comes from the table
@@ -778,16 +778,16 @@ Frame RichterFrame(uint8_t x, uint8_t y)
     uint8_t pressed;
     uint16_t hitbox;
 
-    if (rd8(OBJ_3510) != 0) {
+    if (rd8(OBJ_WORK_E) != 0) {
         uint8_t held = rd8(zPadHeld);
         uint8_t forced;
 
         wr8(zPadPrevious, held);
-        forced = rd8(OBJ_3568);
+        forced = rd8(OBJ_WORK_F);
         wr8(zPadHeld, forced);
         wr8(zPadPressed, forced);
-        frame.forced_left = (uint8_t)(rd8(OBJ_3510) - 1);
-        wr8(OBJ_3510, frame.forced_left);
+        frame.forced_left = (uint8_t)(rd8(OBJ_WORK_E) - 1);
+        wr8(OBJ_WORK_E, frame.forced_left);
     }
     if (frame.forced_left == 0) {
         wr8(PlayerByte3BF0, 0);
@@ -1204,7 +1204,7 @@ StandSound RichterStartClear(uint8_t a, uint8_t x, uint8_t y)
     RichterClearKeepPlace();
     jsr_pop();
     WR8(OBJ->hitbox_on[0], START_LIVE);
-    WR8(OBJ->f3828[0], START_LIVE);
+    WR8(OBJ->work_n[0], START_LIVE);
     WR8(OBJ->anim_timer[0], START_LIVE);
     return RichterStartStand();
 }
@@ -1760,8 +1760,8 @@ void RichterHitReact(void)
     jsr_pop();
     kind = (uint8_t)(rd8(OBJ_HIT_TAKEN) & HIT_KINDS);
     wr8(OBJ_ANIM_TIMER, rd8((uint16_t)(HitInvulnerableFrames + kind)));
-    wr8(OBJ_35C0, rd8(OBJ_STATE));
-    wr8(OBJ_3618, rd8(OBJ_SUBSTATE));
+    wr8(OBJ_WORK_G, rd8(OBJ_STATE));
+    wr8(OBJ_WORK_H, rd8(OBJ_SUBSTATE));
     wr8(OBJ_STATE, STATE_DYING);
     wr8(OBJ_SUBSTATE, 0);
     RichterStartHitScript(SCRIPT_HIT);
@@ -1956,7 +1956,7 @@ AttackStand RichterStandStep1(void)
                 st.up = RichterUpHeld();
                 jsr_pop();
                 if (st.up) {
-                    wr8(OBJ_FIELDS_2EE0, ATTACK_CROUCH_FIELD);
+                    wr8(OBJ_WORK_A, ATTACK_CROUCH_FIELD);
                     jsr_push(0xA33D);
                     st.tick = RichterAnimationTick();
                     jsr_pop();
@@ -2827,7 +2827,7 @@ AnimationStep RichterToFall(void)
     jsr_pop();
     wr8(OBJ_VY_LO, 0);
     wr8(OBJ_VY_HI, FALL_SPEED_HI);
-    wr8(OBJ_34B8, STATE_FALL_34B8);
+    wr8(OBJ_WORK_D, STATE_FALL_34B8);
     jsr_push(0xA542);
     RichterStopX();
     jsr_pop();
@@ -3213,7 +3213,7 @@ HurtAir RichterToHurtAir(uint8_t x, uint8_t y)
     hurt.lift = RichterJumpSpeed();
     jsr_pop();
     wr8(OBJ_ANIM_TIMER, HURT_TIMER);
-    wr8(OBJ_3250, 0);
+    wr8(OBJ_HITBOX_ON, 0);
     jsr_push(0xA615);
     hurt.animation = RichterSetAnimation(ANIM_HURT_AIR);
     jsr_pop();
@@ -3396,7 +3396,7 @@ void abi_RichterReactE(void)
 void RichterReact11(void)
 {
     react_slot_5(REACT_11);
-    wr8(OBJ_3250, 1);
+    wr8(OBJ_HITBOX_ON, 1);
     wr8(OBJ_ANIM_TIMER, REACT_11_TIMER);
 }
 
@@ -3691,7 +3691,7 @@ static void walk_replay_shim(const WalkStep *w)
  * crouch. Otherwise the animation steps, and the pad held his way keeps him walking; held the
  * other way with button II, he steps back; else he stands.
  * HOW: RichterReadColumns and RichterFloorCheck, again after OBJ_Y_LO is stepped down; the
- * checks as in the stand's first step. OBJ_FIELDS_2EE0 0 to walk, $32 to step back.
+ * checks as in the stand's first step. OBJ_WORK_A 0 to walk, $32 to step back.
  * WAITS: no.
  * Entry: nothing. Exit: as the transition taken, with what the checks before it left.
  */
@@ -3776,7 +3776,7 @@ WalkStep RichterStateWalk(void)
     w.facing = rd8(OBJ_FACING_LEFT);
     w.held = rd8(zPadHeld);
     if (w.held & (w.facing == FACING_RIGHT ? PAD_RIGHT : PAD_LEFT)) {
-        wr8(OBJ_FIELDS_2EE0, 0);
+        wr8(OBJ_WORK_A, 0);
         w.how = WALK_ON;
         w.speed = RichterSpeedWalk();
         return w;
@@ -3789,7 +3789,7 @@ WalkStep RichterStateWalk(void)
         w.back_facing = rd8(OBJ_FACING_LEFT);
         back = rd8(zPadHeld);
         if (back & (w.back_facing == FACING_RIGHT ? PAD_LEFT : PAD_RIGHT)) {
-            wr8(OBJ_FIELDS_2EE0, BACKSTEP_FIELD);
+            wr8(OBJ_WORK_A, BACKSTEP_FIELD);
             w.how = WALK_BACKSTEP;
             w.speed = RichterSpeedBackstep();
             return w;
@@ -4334,7 +4334,7 @@ void abi_RichterCrouchAttack(void)
  * runs.
  * WAITS: no.
  * Entry: nothing. Exit: falling, as $A9DD. Stood, as RichterAnimationTick, state 0 and
- * OBJ_FIELDS_2EE0 3. Waiting, as RichterAnimationRunning, A $A8 and N set. Down, A $0E, N and Z
+ * OBJ_WORK_A 3. Waiting, as RichterAnimationRunning, A $A8 and N set. Down, A $0E, N and Z
  * clear, the rest as RichterAnimationRunning. With what the checks before left.
  */
 CrouchStep RichterCrouchStep1(void)
@@ -4352,7 +4352,7 @@ CrouchStep RichterCrouchStep1(void)
         check_turn(&c.log, 0xA8DF);
     if (check_progress_below(&c.log, CROUCH_PROGRESS) && !check_up(&c.log, 0xA8E9)) {
         wr8(OBJ_STATE, STATE_STAND);
-        wr8(OBJ_FIELDS_2EE0, ATTACK_STAND_FIELD);
+        wr8(OBJ_WORK_A, ATTACK_STAND_FIELD);
         c.how = CROUCH_STOOD_TICK;
         c.animation = RichterAnimationTick();
         return c;
@@ -4528,7 +4528,7 @@ CrashEnd RichterEndItemCrash(void)
     end.state = rd8(OBJ_STATE);
     end.index = (uint8_t)((uint8_t)(end.state - CRASH_FIRST_STATE) >> 1);
     wr8(OBJ_FRAME, rd8((uint16_t)(RichterCrashEndFrames + end.index)));
-    wr8(OBJ_FIELDS_2EE0, rd8((uint16_t)(RichterCrashEndAnimations + end.index)));
+    wr8(OBJ_WORK_A, rd8((uint16_t)(RichterCrashEndAnimations + end.index)));
     wr8(OBJ_HURT_TIMER, 0xFF);
     wr8(OBJ_SUBSTATE, 0);
     return end;
@@ -4864,7 +4864,7 @@ void abi_RichterMoveStopped(void)
  * he is kept unhittable and the timer counts down, with a sound as it starts and another as it
  * wears off, the flashing scripts at set marks, and his hit timer and flash back to 1 at the end.
  * HOW: PlayerInvincibleTimer; zWaveCounter's low two bits pick the frame. The marks and their
- * scripts are two tables of six. OBJ_ANIM_TIMER $80 holds hits off; OBJ_3828 2 while it runs.
+ * scripts are two tables of six. OBJ_ANIM_TIMER $80 holds hits off; OBJ_WORK_N 2 while it runs.
  * WAITS: no.
  * Entry: nothing. Exit: off, A 0, Z set. Not this frame, A the frame's bits, N and Z from them.
  * Otherwise X, Y, C and V as a sound command left them, C from comparing A with $10 when the
@@ -4886,7 +4886,7 @@ static InvincibleTick invincible_tick(uint8_t x, uint8_t y, const InvincibleLayo
         return tick;
     wr8(PlayerByte3BE8, 0);
     wr8(PlayerByte3BE9, 0);
-    wr8(OBJ_3828, INVINCIBLE_FLASH);
+    wr8(OBJ_WORK_N, INVINCIBLE_FLASH);
     tick.value = (uint8_t)(rd8(zWaveCounter) & INVINCIBLE_FRAME_BITS);
     tick.how = INVINCIBLE_OFF_FRAME;
     if (tick.value != 0)
@@ -4911,7 +4911,7 @@ static InvincibleTick invincible_tick(uint8_t x, uint8_t y, const InvincibleLayo
     wr8(PlayerInvincibleTimer, tick.value);
     if (tick.value == 0) {
         wr8(OBJ_ANIM_TIMER, 1);
-        wr8(OBJ_3828, 1);
+        wr8(OBJ_WORK_N, 1);
         tick.how = INVINCIBLE_ENDED;
         return tick;
     }
@@ -5093,7 +5093,7 @@ void abi_MariaTurnOnPress(void)
  * @run 6D:A97F
  * WHAT IT DOES: Her turn in the air: in animations $0A and $14 as MariaTurnOnPress; otherwise a press against the
  * way she moves turns her and sets her air speed, counting the turn in zFieldC6.
- * HOW: OBJ_FIELDS_2EE0; the sign of OBJ_VX_HI picks the press looked for; the speed from her table at $A9C1.
+ * HOW: OBJ_WORK_A; the sign of OBJ_VX_HI picks the press looked for; the speed from her table at $A9C1.
  * Untraced: everything for a speed to the left ($A9A0 to $A9AC), and the return when she faces left while moving
  * right ($A992); no script turned her in the air that way.
  * WAITS: no.
@@ -5106,7 +5106,7 @@ EndedTst MariaAirTurn(void)
     EndedTst r;
     uint8_t animation, value, pressed;
 
-    animation = RD8(OBJ->fields_2ee0[0]);
+    animation = RD8(OBJ->work_a[0]);
     if (animation == MARIA_ANIM_TURN_A || animation == MARIA_ANIM_TURN_B) {
         r = MariaTurnOnPress();
         r.end = ended_then(ended_with_carry(ended_kept(), true), r.end);

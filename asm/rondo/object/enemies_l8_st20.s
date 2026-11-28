@@ -1,6 +1,6 @@
 ; @routine 0B4D:0A9 RecordEventWhenSlot10InState0F
 ; @run 71:C0A9
-; WHAT IT DOES: When the state of slot $10 is $0F records the object's event, takes OBJ_34B8 from the table at $C0C0 by OBJ_START_ARG and goes to the next state.
+; WHAT IT DOES: When the state of slot $10 is $0F records the object's event, takes OBJ_WORK_D from the table at $C0C0 by OBJ_START_ARG and goes to the next state.
 ; HOW: A compare, RecordObjectEvent, a table read, a store, an INC.
 ; WAITS: no.
 ; Entry: X object. Exit: as the last instruction that ran. The arm past the compare ran in no script; the draft stops there.
@@ -11,19 +11,19 @@ RecordEventWhenSlot10InState0F:
     jsr VecRecordObjectEvent
     ldy a:OBJ_START_ARG,x
     lda a:$C0C0,y
-    sta a:OBJ_34B8,x
+    sta a:OBJ_WORK_D,x
     inc a:OBJ_STATE,x
 RecordEventWhenSlot10InState0F_at0:
     rts
 
 ; @routine 0E0B:071 FaceThePlayerByStateTableB
 ; @run 70:B071
-; WHAT IT DOES: Every eighth frame of OBJ_3568, in the states the table at $B089 marks, the object takes the facing of the player's side.
+; WHAT IT DOES: Every eighth frame of OBJ_WORK_F, in the states the table at $B089 marks, the object takes the facing of the player's side.
 ; HOW: An AND, a table read by the state, SideOfPlayer, a store.
 ; WAITS: no.
 ; Entry: X object. Exit: as the last instruction that ran.
 FaceThePlayerByStateTableB:
-    lda a:OBJ_3568,x
+    lda a:OBJ_WORK_F,x
     and #$07
     bne FaceThePlayerByStateTableB_at0
     ldy a:OBJ_STATE,x
@@ -75,7 +75,7 @@ MaybeDropItemByPlayerDistance:
 
 ; @routine 0EBD:2A7 SpawnerByKindAndScreen
 ; @run 71:C2A7
-; WHAT IT DOES: In state 0 loads the record. Unless frame $54's byte is 4 it waits OBJ_34B8 down; then by OBJ_START_ARG: 0 starts an object of type $2C in a free slot (every second one from $1A) when the scroll's screen byte is 2 or 4, and waits $50 to $8F; 2 starts one of type $CB in a free slot of $30 to $3F and waits $80; otherwise, with OBJ_3568 below $80, it finds a group of four empty slots from $20 and starts four objects of type $49 there (each cleared first) numbered 3, 2, 1, 0 in OBJ_35C0 with one random number to 3 in OBJ_3670, and waits $F0.
+; WHAT IT DOES: In state 0 loads the record. Unless frame $54's byte is 4 it waits OBJ_WORK_D down; then by OBJ_START_ARG: 0 starts an object of type $2C in a free slot (every second one from $1A) when the scroll's screen byte is 2 or 4, and waits $50 to $8F; 2 starts one of type $CB in a free slot of $30 to $3F and waits $80; otherwise, with OBJ_WORK_F below $80, it finds a group of four empty slots from $20 and starts four objects of type $49 there (each cleared first) numbered 3, 2, 1, 0 in OBJ_WORK_G with one random number to 3 in OBJ_WORK_I, and waits $F0.
 ; HOW: LoadObjectRecord, searches of the slot kinds, StartObjectAtPlace, ClearObjectInY, NextRandom, FindFreeSlotFrom30.
 ; WAITS: no.
 ; Entry: X object. Exit: as the last instruction that ran. Everything past state 0 ran in no script; the draft stops there and the arms are written from the decoded bytes.
@@ -87,9 +87,9 @@ SpawnerByKindAndScreen_at0:
     lda a:$2ABC
     cmp #$04
     beq SpawnerByKindAndScreen_at1
-    lda a:OBJ_34B8,x
+    lda a:OBJ_WORK_D,x
     beq SpawnerByKindAndScreen_at2
-    dec a:OBJ_34B8,x
+    dec a:OBJ_WORK_D,x
 SpawnerByKindAndScreen_at1:
     rts
 SpawnerByKindAndScreen_at2:
@@ -118,12 +118,12 @@ SpawnerByKindAndScreen_at4:
     and #$3F
     clc
     adc #$50
-    sta a:OBJ_34B8,x
+    sta a:OBJ_WORK_D,x
     rts
 SpawnerByKindAndScreen_at3:
     cmp #$02
     beq SpawnerByKindAndScreen_at6
-    lda a:OBJ_3568,x
+    lda a:OBJ_WORK_F,x
     cmp #$80
     bcs SpawnerByKindAndScreen_at7
     ldy #$20
@@ -155,14 +155,14 @@ SpawnerByKindAndScreen_at10:
     jsr VecStartObjectAtPlace
     lda z:zTemp00
     dec a
-    sta a:OBJ_35C0,y
+    sta a:OBJ_WORK_G,y
     lda z:zTemp01
-    sta a:OBJ_3670,y
+    sta a:OBJ_WORK_I,y
     iny
     dec z:zTemp00
     bne SpawnerByKindAndScreen_at10
     lda #$F0
-    sta a:OBJ_34B8,x
+    sta a:OBJ_WORK_D,x
     rts
 SpawnerByKindAndScreen_at6:
     jsr VecFindFreeSlotFrom30
@@ -170,7 +170,7 @@ SpawnerByKindAndScreen_at6:
     lda #$CB
     jsr VecStartObjectAtPlace
     lda #$80
-    sta a:OBJ_34B8,x
+    sta a:OBJ_WORK_D,x
 SpawnerByKindAndScreen_at11:
     rts
 
@@ -224,25 +224,25 @@ StepListFacePlayerUntilNear_at0:
 
 ; @routine 0EBE:6F6 FacePlayerThenPickPhase
 ; @run 71:CEF6
-; WHAT IT DOES: Takes the facing of the player's side and sets OBJ_SUBSTATE from the table at $CF0E by the low four bits of OBJ_34B8, which then counts up.
+; WHAT IT DOES: Takes the facing of the player's side and sets OBJ_SUBSTATE from the table at $CF0E by the low four bits of OBJ_WORK_D, which then counts up.
 ; HOW: SideOfPlayer, a table read, stores, an INC.
 ; WAITS: no.
-; Entry: X object. Exit: A the table byte, Y the index, N and Z from the new OBJ_34B8.
+; Entry: X object. Exit: A the table byte, Y the index, N and Z from the new OBJ_WORK_D.
 FacePlayerThenPickPhase:
     jsr VecSideOfPlayer
     and #$01
     sta a:OBJ_FACING_LEFT,x
-    lda a:OBJ_34B8,x
+    lda a:OBJ_WORK_D,x
     and #$0F
     tay
     lda a:$CF0E,y
     sta a:OBJ_SUBSTATE,x
-    inc a:OBJ_34B8,x
+    inc a:OBJ_WORK_D,x
     rts
 
 ; @routine 0EBE:71E LeapByPlayerDistance
 ; @run 71:CF1E
-; WHAT IT DOES: When the player is $40 or more away in X clears OBJ_3568 and gives the object the speed X -$01C0, Y -$00C0; when nearer plays sound $C6, sets OBJ_3568 1 and the speed X -$00E0, Y -$0400. Goes to the next OBJ_SUBSTATE and, facing left, reverses the X speed.
+; WHAT IT DOES: When the player is $40 or more away in X clears OBJ_WORK_F and gives the object the speed X -$01C0, Y -$00C0; when nearer plays sound $C6, sets OBJ_WORK_F 1 and the speed X -$00E0, Y -$0400. Goes to the next OBJ_SUBSTATE and, facing left, reverses the X speed.
 ; HOW: DistanceXToPlayer, SoundCommand, stores, an INC, NegateVelocityX.
 ; WAITS: no.
 ; Entry: X object, Y kept for the sound. Exit: as the last instruction that ran. The near arm and the reverse ran in no script; the draft stops there.
@@ -250,7 +250,7 @@ LeapByPlayerDistance:
     jsr VecDistanceXToPlayer
     cmp #$40
     bcc LeapByPlayerDistance_at0
-    stz a:OBJ_3568,x
+    stz a:OBJ_WORK_F,x
     lda #$FE
     sta a:OBJ_VX_HI,x
     lda #$40
@@ -264,7 +264,7 @@ LeapByPlayerDistance_at0:
     lda #$C6
     jsr VecSoundCommand
     lda #$01
-    sta a:OBJ_3568,x
+    sta a:OBJ_WORK_F,x
     lda #$FF
     sta a:OBJ_VX_HI,x
     lda #$20
@@ -283,12 +283,12 @@ LeapByPlayerDistance_at2:
 
 ; @routine 0EBE:7B9 CountDownThenClearPhase
 ; @run 71:CFB9
-; WHAT IT DOES: Counts OBJ_3510 down; at zero clears OBJ_SUBSTATE.
+; WHAT IT DOES: Counts OBJ_WORK_E down; at zero clears OBJ_SUBSTATE.
 ; HOW: A memory decrement and a store.
 ; WAITS: no.
 ; Entry: X object. Exit: the decrement's N and Z. The store ran in no script; the draft stops there.
 CountDownThenClearPhase:
-    dec a:OBJ_3510,x
+    dec a:OBJ_WORK_E,x
     bne CountDownThenClearPhase_at0
     stz a:OBJ_SUBSTATE,x
 CountDownThenClearPhase_at0:
@@ -296,7 +296,7 @@ CountDownThenClearPhase_at0:
 
 ; @routine 0EBF:006 HopBetweenSidesWithBox
 ; @run 71:D006
-; WHAT IT DOES: Sets the hit box by the frame (HitBoxByFrameTableCE8F). In state 0 loads the record, picks a side at random, places the object from the table at $D0BD (X) and a random Y near $00DC, and launches it up and aside. In state 1 it steps the list at $D0B8 and moves; its X speed grows by the table at $D0C1 for its side until it changes sign, then it stops, takes the Y speed $FFC0, OBJ_34B8 $10 and goes to state 2. In later states it counts OBJ_34B8 down while it moves in Y and at zero goes back to state 1 and launches again.
+; WHAT IT DOES: Sets the hit box by the frame (HitBoxByFrameTableCE8F). In state 0 loads the record, picks a side at random, places the object from the table at $D0BD (X) and a random Y near $00DC, and launches it up and aside. In state 1 it steps the list at $D0B8 and moves; its X speed grows by the table at $D0C1 for its side until it changes sign, then it stops, takes the Y speed $FFC0, OBJ_WORK_D $10 and goes to state 2. In later states it counts OBJ_WORK_D down while it moves in Y and at zero goes back to state 1 and launches again.
 ; HOW: HitBoxByFrameTableCE8F, LoadObjectRecord, NextRandom twice, StepObjectFrames, ApplyVelocityY and X, 16-bit adds, NegateVelocityX.
 ; WAITS: no.
 ; Entry: X object, Y kept unless the step sets it. Exit: as the last instruction that ran.
@@ -367,12 +367,12 @@ HopBetweenSidesWithBox_at0:
     lda #$C0
     sta a:OBJ_VY_LO,x
     lda #$10
-    sta a:OBJ_34B8,x
+    sta a:OBJ_WORK_D,x
     inc a:OBJ_STATE,x
 HopBetweenSidesWithBox_at3:
     rts
 HopBetweenSidesWithBox_at2:
-    dec a:OBJ_34B8,x
+    dec a:OBJ_WORK_D,x
     beq HopBetweenSidesWithBox_at4
     jmp VecApplyVelocityY
 HopBetweenSidesWithBox_at4:

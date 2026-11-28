@@ -2,8 +2,8 @@
 ; @run 70:A81D
 ; @stop A855
 ; WHAT IT DOES: A piece of the scenery drawn from a tile script. In state 0 the object is cleared when the bit its OBJ_START_ARG names is set in zField8F; otherwise it loads
-; its record, takes OBJ_3510 as OBJ_START_ARG times 16, copies two bytes of the table at $AE95 into its hit box and draws the tile script the table's third byte (plus
-; OBJ_34B8) names. In later states TilePieceInRange072A.
+; its record, takes OBJ_WORK_E as OBJ_START_ARG times 16, copies two bytes of the table at $AE95 into its hit box and draws the tile script the table's third byte (plus
+; OBJ_WORK_D) names. In later states TilePieceInRange072A.
 ; HOW: BitMaskFromIndex, ClearObject, LoadObjectRecord, DrawTileScript.
 ; WAITS: no.
 ; Entry: X object. Exit: as the draw, as ClearObject, or as TilePieceInRange072A.
@@ -22,7 +22,7 @@ TilePieceObject072A_at0:
     asl a
     asl a
     asl a
-    sta a:OBJ_3510,x
+    sta a:OBJ_WORK_E,x
     tay
     lda a:$AE95,y
     sta a:OBJ_HITBOX_HALF_W,x
@@ -30,7 +30,7 @@ TilePieceObject072A_at0:
     sta a:OBJ_HITBOX_HALF_H,x
     lda a:$AE97,y
     clc
-    adc a:OBJ_34B8,x
+    adc a:OBJ_WORK_D,x
     cly
     jsr VecDrawTileScript
     rts
@@ -81,21 +81,21 @@ TilePieceInRange072A_at0:
 ; @routine 072A:082 DrawTilePiece072A
 ; @run 70:A882
 ; @stop A8A8
-; WHAT IT DOES: Draws the object's tile script (the item the table at $AE97 gives by OBJ_3510, plus OBJ_34B8), then looks in the table at $AEA4 (the row $AE98 gives
-; by OBJ_3510, plus OBJ_HIT_TAKEN) and goes on to the code at $A8A8 when the entry is not zero, else to the return at $A8ED (072A:0ED).
+; WHAT IT DOES: Draws the object's tile script (the item the table at $AE97 gives by OBJ_WORK_E, plus OBJ_WORK_D), then looks in the table at $AEA4 (the row $AE98 gives
+; by OBJ_WORK_E, plus OBJ_HIT_TAKEN) and goes on to the code at $A8A8 when the entry is not zero, else to the return at $A8ED (072A:0ED).
 ; HOW: DrawTileScript, a table read (bank 70), then a tail jump into the original bytes at $A8A8 (never run in a script).
 ; WAITS: no.
 ; Entry: X object. Exit: entry zero: as the table read; else the jump's.
 DrawTilePiece072A:
-    ldy a:OBJ_3510,x
+    ldy a:OBJ_WORK_E,x
     lda a:$AE97,y
     clc
-    adc a:OBJ_34B8,x
+    adc a:OBJ_WORK_D,x
     cly
     jsr VecDrawTileScript
     lda a:OBJ_HIT_TAKEN,x
     sta z:zTemp00
-    ldy a:OBJ_3510,x
+    ldy a:OBJ_WORK_E,x
     lda a:$AE98,y
     asl a
     asl a
@@ -643,7 +643,7 @@ FallingDebris_at1:
 ; WAITS: no.
 ; Entry: X object. Exit: A the Y speed's low byte, Y 0, N and Z of the last table copy.
 RunDriftObject:
-    inc a:OBJ_34B8,x
+    inc a:OBJ_WORK_D,x
     jsr RaiseStateOnFlag
     jsr FlashByHeight
     jsr FaceByVelocityAndCatch
@@ -724,9 +724,9 @@ FlashByHeight_at0:
 
 ; @routine 072B:3DB FaceByVelocityAndCatch
 ; @run 70:B3DB
-; WHAT IT DOES: The object faces the way it moves (facing is the X speed's sign bit turned round) and its OBJ_SPRITE_FLIP is cleared; it is then set to $80 when the stage's flag word (OBJ_3828 of slot
+; WHAT IT DOES: The object faces the way it moves (facing is the X speed's sign bit turned round) and its OBJ_SPRITE_FLIP is cleared; it is then set to $80 when the stage's flag word (OBJ_WORK_N of slot
 ; $10) has the bit the Y speed's direction names (1 for falling, 2 for rising), the object is on the first screen row and its Y low byte is from $74 to $AF.
-; HOW: Shifts through carry for the sign bits, an AND with the byte at $3838 (OBJ_3828 slot $10), compares.
+; HOW: Shifts through carry for the sign bits, an AND with the byte at $3838 (OBJ_WORK_N slot $10), compares.
 ; WAITS: no.
 ; Entry: X object. Exit: the last AND, compare or load; C bit 6 of the Y speed.
 FaceByVelocityAndCatch:
@@ -819,7 +819,7 @@ StartPieceChain_at1:
     lda #$25
     jsr VecStartObjectAtPlace
     lda z:zTemp01
-    sta a:OBJ_34B8,y
+    sta a:OBJ_WORK_D,y
     iny
     inc z:zTemp01
     dec z:zTemp00
@@ -850,7 +850,7 @@ StepThenMusicAgain:
     rts
 StepThenMusicAgain_at0:
     lda #$02
-    sta a:OBJ_3250,x
+    sta a:OBJ_HITBOX_ON,x
     rmb3 z:zField8E
     rmb4 z:zField8E
     jsr VecCdPlayAgain
@@ -867,9 +867,9 @@ StepThenMusicAgain_at1:
 
 ; @routine 072C:053 StartPieceStreamA
 ; @run 70:B853
-; WHAT IT DOES: Starts a stream of pieces from one of two sides: sound $88, OBJ_3670 1, OBJ_3828 2, frame $10;
-; the side (OBJ_37D0) is a random bit and picks the start position from a table at $B894 (four bytes a side);
-; then StartPieceChain, OBJ_3778 0 and the next OBJ_SUBSTATE state.
+; WHAT IT DOES: Starts a stream of pieces from one of two sides: sound $88, OBJ_WORK_I 1, OBJ_WORK_N 2, frame $10;
+; the side (OBJ_WORK_M) is a random bit and picks the start position from a table at $B894 (four bytes a side);
+; then StartPieceChain, OBJ_WORK_L 0 and the next OBJ_SUBSTATE state.
 ; HOW: SoundCommand, NextRandom, tables read from the disc (bank 70).
 ; WAITS: no.
 ; Entry: X object. Exit: N and Z from the new state, C 1 from the chain's loop, V as the random's add left it.
@@ -877,14 +877,14 @@ StartPieceStreamA:
     lda #$88
     jsr VecSoundCommand
     lda #$01
-    sta a:OBJ_3670,x
+    sta a:OBJ_WORK_I,x
     lda #$02
-    sta a:OBJ_3828,x
+    sta a:OBJ_WORK_N,x
     lda #$10
     sta a:OBJ_FRAME,x
     jsr VecNextRandom
     and #$01
-    sta a:OBJ_37D0,x
+    sta a:OBJ_WORK_M,x
     asl a
     asl a
     tay
@@ -897,14 +897,14 @@ StartPieceStreamA:
     lda a:$B896,y
     sta a:OBJ_Y_LO,x
     jsr StartPieceChain
-    stz a:OBJ_3778,x
+    stz a:OBJ_WORK_L,x
     inc a:OBJ_SUBSTATE,x
     rts
 
 ; @routine 072C:09C OrbitingObject
 ; @run 70:B89C
 ; WHAT IT DOES: An object that circles: it shifts the others (ShiftObjectsX), sets its speed from its angle
-; (OBJ_3778) with a length of $0400, adds a drift word from the table at $B8E3 by its side (OBJ_37D0),
+; (OBJ_WORK_L) with a length of $0400, adds a drift word from the table at $B8E3 by its side (OBJ_WORK_M),
 ; moves, turns its angle on by a byte from the table at $B8E7, and when its X high byte reaches $FE or 2
 ; it clears its OBJ_SUBSTATE flag.
 ; HOW: SetVelocityFromAngle, ApplyVelocity, tables from the disc (bank 70).
@@ -916,9 +916,9 @@ OrbitingObject:
     stz z:zTemp00
     lda #$04
     sta z:zTemp01
-    lda a:OBJ_3778,x
+    lda a:OBJ_WORK_L,x
     jsr VecSetVelocityFromAngle
-    lda a:OBJ_37D0,x
+    lda a:OBJ_WORK_M,x
     asl a
     tay
     lda a:OBJ_VX_LO,x
@@ -929,11 +929,11 @@ OrbitingObject:
     adc a:$B8E4,y
     sta a:OBJ_VX_HI,x
     jsr VecApplyVelocity
-    ldy a:OBJ_37D0,x
-    lda a:OBJ_3778,x
+    ldy a:OBJ_WORK_M,x
+    lda a:OBJ_WORK_L,x
     clc
     adc a:$B8E7,y
-    sta a:OBJ_3778,x
+    sta a:OBJ_WORK_L,x
     lda a:OBJ_X_HI,x
     cmp #$FE
     beq OrbitingObject_at0
@@ -947,16 +947,16 @@ OrbitingObject_at0:
 ; @routine 072C:0E9 ShiftObjectsX
 ; @run 70:B8E9
 ; WHAT IT DOES: On every second frame of the object's life timer, moves every object slot from $10 to $26
-; along X by a signed 16-bit step from the table at $B912, picked by the object's OBJ_37D0 (0 or 1).
+; along X by a signed 16-bit step from the table at $B912, picked by the object's OBJ_WORK_M (0 or 1).
 ; HOW: The table index is kept in X while the loop runs (X is pushed and pulled).
 ; WAITS: no.
 ; Entry: X object. Exit: odd timer: A 1, N 0, Z 0; else A the last high byte, Y $27, C 1, N and Z from X, V
 ; from the last add.
 ShiftObjectsX:
-    lda a:OBJ_34B8,x
+    lda a:OBJ_WORK_D,x
     and #$01
     bne ShiftObjectsX_at0
-    lda a:OBJ_37D0,x
+    lda a:OBJ_WORK_M,x
     asl a
     phx
     tax
@@ -978,7 +978,7 @@ ShiftObjectsX_at0:
 
 ; @routine 072C:116 StartPieceStreamB
 ; @run 70:B916
-; WHAT IT DOES: Starts a stream of pieces from the top: OBJ_3828 2, sound $89, animation reset, X 0 with a
+; WHAT IT DOES: Starts a stream of pieces from the top: OBJ_WORK_N 2, sound $89, animation reset, X 0 with a
 ; random low byte, Y $0110, StartPieceChain, then random X and Y speeds from tables at $B970 and $B978 (two
 ; bytes each, four of them) and the next OBJ_SUBSTATE state; when the object is on the player's left
 ; (SideOfPlayer bit 0) its X speed is reversed.
@@ -988,7 +988,7 @@ ShiftObjectsX_at0:
 ; reversal when made, else C from the side and V from the last random.
 StartPieceStreamB:
     lda #$02
-    sta a:OBJ_3828,x
+    sta a:OBJ_WORK_N,x
     lda #$89
     jsr VecSoundCommand
     stz a:OBJ_ANIM_STEP,x
@@ -1072,7 +1072,7 @@ HitboxByVerticalDirection:
     and #$01
     tay
     lda a:$B9CD,y
-    sta a:OBJ_3250,x
+    sta a:OBJ_HITBOX_ON,x
     rts
 
 ; @routine 072C:1CF LiftObjectsBySlowFraction
@@ -1103,19 +1103,19 @@ LiftObjectsBySlowFraction_at0:
 
 ; @routine 072C:1F0 StartPieceStreamC
 ; @run 70:B9F0
-; WHAT IT DOES: Starts a stream of pieces from the bottom: OBJ_3828 3, OBJ_3510 0, a random side (OBJ_37D0)
+; WHAT IT DOES: Starts a stream of pieces from the bottom: OBJ_WORK_N 3, OBJ_WORK_E 0, a random side (OBJ_WORK_M)
 ; picks X from the table at $BA3E and the X speed from $BA40; Y is $0110; StartPieceChain; Y speed $F7;
-; frame $80, animation reset, OBJ_3670 2, OBJ_36C8 $30 and the next OBJ_SUBSTATE state.
+; frame $80, animation reset, OBJ_WORK_I 2, OBJ_WORK_J $30 and the next OBJ_SUBSTATE state.
 ; HOW: NextRandom, tables from the disc (bank 70).
 ; WAITS: no.
 ; Entry: X object. Exit: N and Z from the new state, C 1 from the chain's loop, V as the random's add left it.
 StartPieceStreamC:
     lda #$03
-    sta a:OBJ_3828,x
-    stz a:OBJ_3510,x
+    sta a:OBJ_WORK_N,x
+    stz a:OBJ_WORK_E,x
     jsr VecNextRandom
     and #$01
-    sta a:OBJ_37D0,x
+    sta a:OBJ_WORK_M,x
     tay
     lda a:RichterItemAttacks+6,y
     sta a:OBJ_X_LO,x
@@ -1125,7 +1125,7 @@ StartPieceStreamC:
     lda #$10
     sta a:OBJ_Y_LO,x
     jsr StartPieceChain
-    ldy a:OBJ_37D0,x
+    ldy a:OBJ_WORK_M,x
     lda a:RichterItemAttacks+8,y
     sta a:OBJ_VX_HI,x
     lda #$F7
@@ -1135,17 +1135,17 @@ StartPieceStreamC:
     stz a:OBJ_ANIM_STEP,x
     stz a:OBJ_ANIM_TIMER,x
     lda #$02
-    sta a:OBJ_3670,x
+    sta a:OBJ_WORK_I,x
     lda #$30
-    sta a:OBJ_36C8,x
+    sta a:OBJ_WORK_J,x
     inc a:OBJ_SUBSTATE,x
     rts
 
 ; @routine 072C:242 AccelerateAndSway
 ; @run 70:BA42
 ; WHAT IT DOES: A thing that falls and sways: its Y speed gains $002C, it moves, its X speed gains a drift
-; word from the table at $BA7C by its side (OBJ_37D0); when its counter OBJ_36C8 runs out it takes
-; OBJ_3670 3 and moves on one OBJ_SUBSTATE state.
+; word from the table at $BA7C by its side (OBJ_WORK_M); when its counter OBJ_WORK_J runs out it takes
+; OBJ_WORK_I 3 and moves on one OBJ_SUBSTATE state.
 ; HOW: Adds, ApplyVelocity, DEC of the counter.
 ; WAITS: no.
 ; Entry: X object. Exit: counter not zero: N and Z from it, C and V from the X speed's add; zero: A 3, N and Z
@@ -1159,7 +1159,7 @@ AccelerateAndSway:
     adc #$00
     sta a:OBJ_VY_HI,x
     jsr VecApplyVelocity
-    lda a:OBJ_37D0,x
+    lda a:OBJ_WORK_M,x
     asl a
     tay
     lda a:OBJ_VX_LO,x
@@ -1169,17 +1169,17 @@ AccelerateAndSway:
     lda a:OBJ_VX_HI,x
     adc a:$BA7D,y
     sta a:OBJ_VX_HI,x
-    dec a:OBJ_36C8,x
+    dec a:OBJ_WORK_J,x
     bne AccelerateAndSway_at0
     lda #$03
-    sta a:OBJ_3670,x
+    sta a:OBJ_WORK_I,x
     inc a:OBJ_SUBSTATE,x
 AccelerateAndSway_at0:
     rts
 
 ; @routine 072C:280 StepThenCount
 ; @run 70:BA80
-; WHAT IT DOES: Steps the animation list at $BA96; when the list ends, sets the counter OBJ_36C8 to $80 and
+; WHAT IT DOES: Steps the animation list at $BA96; when the list ends, sets the counter OBJ_WORK_J to $80 and
 ; moves on one OBJ_SUBSTATE state.
 ; HOW: StepObjectFrames, then the stores.
 ; WAITS: no.
@@ -1192,7 +1192,7 @@ StepThenCount:
     jsr VecStepObjectFrames
     bne StepThenCount_at0
     lda #$80
-    sta a:OBJ_36C8,x
+    sta a:OBJ_WORK_J,x
     inc a:OBJ_SUBSTATE,x
 StepThenCount_at0:
     rts
@@ -1201,8 +1201,8 @@ StepThenCount_at0:
 ; @run 70:BA9F
 ; WHAT IT DOES: An object that sheds pieces while it plays its animation (list $BAE6): when the list ends it
 ; moves on one OBJ_SUBSTATE state; otherwise, every fourth frame of its life timer, once its animation step is
-; $10 or more, on frame $13 and while OBJ_3510 is under 4, it starts an object of kind $26 at its place in the
-; first free slot from $20, copies its facing and gives it the count OBJ_3510, which then goes up one.
+; $10 or more, on frame $13 and while OBJ_WORK_E is under 4, it starts an object of kind $26 at its place in the
+; first free slot from $20, copies its facing and gives it the count OBJ_WORK_E, which then goes up one.
 ; HOW: StepObjectFrames, FindFreeSlotFrom20, StartObjectAtPlace.
 ; Untraced: one byte.
 ; WAITS: no.
@@ -1214,7 +1214,7 @@ StepPieceEmitter:
     sta z:zTemp11
     jsr VecStepObjectFrames
     beq StepPieceEmitter_at0
-    lda a:OBJ_34B8,x
+    lda a:OBJ_WORK_D,x
     and #$03
     bne StepPieceEmitter_at1
     lda a:OBJ_ANIM_STEP,x
@@ -1223,7 +1223,7 @@ StepPieceEmitter:
     lda a:OBJ_FRAME,x
     cmp #$13
     bne StepPieceEmitter_at1
-    lda a:OBJ_3510,x
+    lda a:OBJ_WORK_E,x
     cmp #$04
     bcs StepPieceEmitter_at1
     jsr VecFindFreeSlotFrom20
@@ -1232,9 +1232,9 @@ StepPieceEmitter:
     jsr VecStartObjectAtPlace
     lda a:OBJ_FACING_LEFT,x
     sta a:OBJ_FACING_LEFT,y
-    lda a:OBJ_3510,x
-    sta a:OBJ_34B8,y
-    inc a:OBJ_3510,x
+    lda a:OBJ_WORK_E,x
+    sta a:OBJ_WORK_D,y
+    inc a:OBJ_WORK_E,x
     rts
 StepPieceEmitter_at0:
     inc a:OBJ_SUBSTATE,x
@@ -1243,7 +1243,7 @@ StepPieceEmitter_at1:
 
 ; @routine 072C:329 StepThenStop
 ; @run 70:BB29
-; WHAT IT DOES: Steps the animation list at $BB45; when the list ends, sets OBJ_3670 to 4, stops the Y
+; WHAT IT DOES: Steps the animation list at $BB45; when the list ends, sets OBJ_WORK_I to 4, stops the Y
 ; speed and moves on one OBJ_SUBSTATE state.
 ; HOW: StepObjectFrames, then the stores.
 ; WAITS: no.
@@ -1257,7 +1257,7 @@ StepThenStop:
     jsr VecStepObjectFrames
     bne StepThenStop_at0
     lda #$04
-    sta a:OBJ_3670,x
+    sta a:OBJ_WORK_I,x
     stz a:OBJ_VY_HI,x
     stz a:OBJ_VY_LO,x
     inc a:OBJ_SUBSTATE,x
@@ -1282,7 +1282,7 @@ FallUntilLevel2_at0:
 
 ; @routine 072C:5AB JumpByStageStep
 ; @run 70:BDAB
-; WHAT IT DOES: Goes to the code a table at $BDBD names for the stage's step counter OBJ_3670 slot $10.
+; WHAT IT DOES: Goes to the code a table at $BDBD names for the stage's step counter OBJ_WORK_I slot $10.
 ; HOW: The table's two bytes go to zTemp00-01 and the code is jumped through them.
 ; WAITS: no.
 ; Entry: nothing. Exit: as the code jumped to; A the high byte, Y the doubled step.
@@ -1312,7 +1312,7 @@ SetHitboxThenFollowPath:
 ; WAITS: no.
 ; Entry: X object, Y the sound driver's. Exit: as ShowByVelocity, over the move's.
 FollowPathAndShow:
-    ldy a:OBJ_34B8,x
+    ldy a:OBJ_WORK_D,x
     lda a:$BE24,y
     clc
     adc #$04
@@ -1336,7 +1336,7 @@ FollowPathAndShow:
 ; Entry: X object, Y the sound driver's. Exit: see the wrapper.
 ShowByVelocity:
     jsr BurstAtHeightE0
-    ldy a:OBJ_34B8,x
+    ldy a:OBJ_WORK_D,x
     lda a:$BE39,y
     sta a:OBJ_FRAME,x
     sec
@@ -1385,7 +1385,7 @@ BurstAtHeightE0_at0:
 ; WAITS: no.
 ; Entry: X object, Y the sound driver's. Exit: as FollowPathAndShow.
 FollowPathB:
-    ldy a:OBJ_34B8,x
+    ldy a:OBJ_WORK_D,x
     lda a:$BE99,y
     clc
     adc #$04
@@ -1419,7 +1419,7 @@ StopVerticalSpeed:
 ; Entry: X object, Y the sound driver's. Exit: see the wrapper.
 StartDriftingPiece:
     jsr VecLoadObjectRecord
-    lda a:OBJ_34B8,x
+    lda a:OBJ_WORK_D,x
     asl a
     tay
     lda a:$BFA3,y
@@ -1489,7 +1489,7 @@ StepFallAfterFour:
     lda a:OBJ_ANIM_STEP,x
     cmp #$04
     bcc StepFallAfterFour_at0
-    stz a:OBJ_3250,x
+    stz a:OBJ_HITBOX_ON,x
     jsr VecApplyGravity
     jsr VecApplyVelocity
 StepFallAfterFour_at0:
@@ -1524,20 +1524,20 @@ StartScriptsAndLists_at0:
 ; @run 70:A882
 ; @stop A8A8
 ; WHAT IT DOES: DrawTilePiece072A in the overlay at sector 025A: draws the object's tile script (the item $AE9D gives by
-; OBJ_3510, plus OBJ_34B8), then looks in $AE9A at the row $AE9E gives plus OBJ_HIT_TAKEN and goes on to $A8A8 or $A8ED.
+; OBJ_WORK_E, plus OBJ_WORK_D), then looks in $AE9A at the row $AE9E gives plus OBJ_HIT_TAKEN and goes on to $A8A8 or $A8ED.
 ; HOW: draw_tile_piece_at with this overlay's tables.
 ; WAITS: no.
 ; Entry: X object. Exit: as DrawTilePiece072A.
 DrawTilePiece025A:
-    ldy a:OBJ_3510,x
+    ldy a:OBJ_WORK_E,x
     lda a:PieceRecords025A+2,y
     clc
-    adc a:OBJ_34B8,x
+    adc a:OBJ_WORK_D,x
     cly
     jsr VecDrawTileScript
     lda a:OBJ_HIT_TAKEN,x
     sta z:zTemp00
-    ldy a:OBJ_3510,x
+    ldy a:OBJ_WORK_E,x
     lda a:PieceRecords025A+3,y
     asl a
     asl a
@@ -1553,20 +1553,20 @@ DrawTilePiece025A:
 ; @run 70:A882
 ; @stop A8A8
 ; WHAT IT DOES: DrawTilePiece072A in the overlay at sector 051A: draws the object's tile script (the item $B081 gives by
-; OBJ_3510, plus OBJ_34B8), then looks in $B0DE at the row $B082 gives plus OBJ_HIT_TAKEN and goes on to $A8A8 or $A8ED.
+; OBJ_WORK_E, plus OBJ_WORK_D), then looks in $B0DE at the row $B082 gives plus OBJ_HIT_TAKEN and goes on to $A8A8 or $A8ED.
 ; HOW: draw_tile_piece_at with this overlay's tables.
 ; WAITS: no.
 ; Entry: X object. Exit: as DrawTilePiece072A.
 DrawTilePiece051A:
-    ldy a:OBJ_3510,x
+    ldy a:OBJ_WORK_E,x
     lda a:PieceRecords051A+2,y
     clc
-    adc a:OBJ_34B8,x
+    adc a:OBJ_WORK_D,x
     cly
     jsr VecDrawTileScript
     lda a:OBJ_HIT_TAKEN,x
     sta z:zTemp00
-    ldy a:OBJ_3510,x
+    ldy a:OBJ_WORK_E,x
     lda a:PieceRecords051A+3,y
     asl a
     asl a
@@ -1582,20 +1582,20 @@ DrawTilePiece051A:
 ; @run 70:A882
 ; @stop A8A8
 ; WHAT IT DOES: DrawTilePiece072A in the overlay at sector 05CA: draws the object's tile script (the item $AE63 gives by
-; OBJ_3510, plus OBJ_34B8), then looks in $AE70 at the row $AE64 gives plus OBJ_HIT_TAKEN and goes on to $A8A8 or $A8ED.
+; OBJ_WORK_E, plus OBJ_WORK_D), then looks in $AE70 at the row $AE64 gives plus OBJ_HIT_TAKEN and goes on to $A8A8 or $A8ED.
 ; HOW: draw_tile_piece_at with this overlay's tables.
 ; WAITS: no.
 ; Entry: X object. Exit: as DrawTilePiece072A.
 DrawTilePiece05CA:
-    ldy a:OBJ_3510,x
+    ldy a:OBJ_WORK_E,x
     lda a:PieceRecords05CA+2,y
     clc
-    adc a:OBJ_34B8,x
+    adc a:OBJ_WORK_D,x
     cly
     jsr VecDrawTileScript
     lda a:OBJ_HIT_TAKEN,x
     sta z:zTemp00
-    ldy a:OBJ_3510,x
+    ldy a:OBJ_WORK_E,x
     lda a:PieceRecords05CA+3,y
     asl a
     asl a
@@ -1611,20 +1611,20 @@ DrawTilePiece05CA:
 ; @run 70:A882
 ; @stop A8A8
 ; WHAT IT DOES: DrawTilePiece072A in the overlay at sector 07DA: draws the object's tile script (the item $D39D gives by
-; OBJ_3510, plus OBJ_34B8), then looks in $D3CA at the row $D39E gives plus OBJ_HIT_TAKEN and goes on to $A8A8 or $A8ED.
+; OBJ_WORK_E, plus OBJ_WORK_D), then looks in $D3CA at the row $D39E gives plus OBJ_HIT_TAKEN and goes on to $A8A8 or $A8ED.
 ; HOW: draw_tile_piece_at with this overlay's tables.
 ; WAITS: no.
 ; Entry: X object. Exit: as DrawTilePiece072A.
 DrawTilePiece07DA:
-    ldy a:OBJ_3510,x
+    ldy a:OBJ_WORK_E,x
     lda a:PieceRecords07DA+2,y
     clc
-    adc a:OBJ_34B8,x
+    adc a:OBJ_WORK_D,x
     cly
     jsr VecDrawTileScript
     lda a:OBJ_HIT_TAKEN,x
     sta z:zTemp00
-    ldy a:OBJ_3510,x
+    ldy a:OBJ_WORK_E,x
     lda a:PieceRecords07DA+3,y
     asl a
     asl a
@@ -1640,20 +1640,20 @@ DrawTilePiece07DA:
 ; @run 70:A882
 ; @stop A8A8
 ; WHAT IT DOES: DrawTilePiece072A in the overlay at sector 088A: draws the object's tile script (the item $C224 gives by
-; OBJ_3510, plus OBJ_34B8), then looks in $C231 at the row $C225 gives plus OBJ_HIT_TAKEN and goes on to $A8A8 or $A8ED.
+; OBJ_WORK_E, plus OBJ_WORK_D), then looks in $C231 at the row $C225 gives plus OBJ_HIT_TAKEN and goes on to $A8A8 or $A8ED.
 ; HOW: draw_tile_piece_at with this overlay's tables.
 ; WAITS: no.
 ; Entry: X object. Exit: as DrawTilePiece072A.
 DrawTilePiece088A:
-    ldy a:OBJ_3510,x
+    ldy a:OBJ_WORK_E,x
     lda a:PieceRecords088A+2,y
     clc
-    adc a:OBJ_34B8,x
+    adc a:OBJ_WORK_D,x
     cly
     jsr VecDrawTileScript
     lda a:OBJ_HIT_TAKEN,x
     sta z:zTemp00
-    ldy a:OBJ_3510,x
+    ldy a:OBJ_WORK_E,x
     lda a:PieceRecords088A+3,y
     asl a
     asl a
@@ -1669,20 +1669,20 @@ DrawTilePiece088A:
 ; @run 70:A882
 ; @stop A8A8
 ; WHAT IT DOES: DrawTilePiece072A in the overlay at sector 093A: draws the object's tile script (the item $B3AA gives by
-; OBJ_3510, plus OBJ_34B8), then looks in $B3B7 at the row $B3AB gives plus OBJ_HIT_TAKEN and goes on to $A8A8 or $A8ED.
+; OBJ_WORK_E, plus OBJ_WORK_D), then looks in $B3B7 at the row $B3AB gives plus OBJ_HIT_TAKEN and goes on to $A8A8 or $A8ED.
 ; HOW: draw_tile_piece_at with this overlay's tables.
 ; WAITS: no.
 ; Entry: X object. Exit: as DrawTilePiece072A.
 DrawTilePiece093A:
-    ldy a:OBJ_3510,x
+    ldy a:OBJ_WORK_E,x
     lda a:PieceRecords093A+2,y
     clc
-    adc a:OBJ_34B8,x
+    adc a:OBJ_WORK_D,x
     cly
     jsr VecDrawTileScript
     lda a:OBJ_HIT_TAKEN,x
     sta z:zTemp00
-    ldy a:OBJ_3510,x
+    ldy a:OBJ_WORK_E,x
     lda a:PieceRecords093A+3,y
     asl a
     asl a
@@ -1698,20 +1698,20 @@ DrawTilePiece093A:
 ; @run 70:A882
 ; @stop A8A8
 ; WHAT IT DOES: DrawTilePiece072A in the overlay at sector 09EA: draws the object's tile script (the item $BCE4 gives by
-; OBJ_3510, plus OBJ_34B8), then looks in $BCF1 at the row $BCE5 gives plus OBJ_HIT_TAKEN and goes on to $A8A8 or $A8ED.
+; OBJ_WORK_E, plus OBJ_WORK_D), then looks in $BCF1 at the row $BCE5 gives plus OBJ_HIT_TAKEN and goes on to $A8A8 or $A8ED.
 ; HOW: draw_tile_piece_at with this overlay's tables.
 ; WAITS: no.
 ; Entry: X object. Exit: as DrawTilePiece072A.
 DrawTilePiece09EA:
-    ldy a:OBJ_3510,x
+    ldy a:OBJ_WORK_E,x
     lda a:PieceRecords09EA+2,y
     clc
-    adc a:OBJ_34B8,x
+    adc a:OBJ_WORK_D,x
     cly
     jsr VecDrawTileScript
     lda a:OBJ_HIT_TAKEN,x
     sta z:zTemp00
-    ldy a:OBJ_3510,x
+    ldy a:OBJ_WORK_E,x
     lda a:PieceRecords09EA+3,y
     asl a
     asl a
@@ -1727,20 +1727,20 @@ DrawTilePiece09EA:
 ; @run 70:A882
 ; @stop A8A8
 ; WHAT IT DOES: DrawTilePiece072A in the overlay at sector 0A9A: draws the object's tile script (the item $B67A gives by
-; OBJ_3510, plus OBJ_34B8), then looks in $B6C7 at the row $B67B gives plus OBJ_HIT_TAKEN and goes on to $A8A8 or $A8ED.
+; OBJ_WORK_E, plus OBJ_WORK_D), then looks in $B6C7 at the row $B67B gives plus OBJ_HIT_TAKEN and goes on to $A8A8 or $A8ED.
 ; HOW: draw_tile_piece_at with this overlay's tables.
 ; WAITS: no.
 ; Entry: X object. Exit: as DrawTilePiece072A.
 DrawTilePiece0A9A:
-    ldy a:OBJ_3510,x
+    ldy a:OBJ_WORK_E,x
     lda a:PieceRecords0A9A+2,y
     clc
-    adc a:OBJ_34B8,x
+    adc a:OBJ_WORK_D,x
     cly
     jsr VecDrawTileScript
     lda a:OBJ_HIT_TAKEN,x
     sta z:zTemp00
-    ldy a:OBJ_3510,x
+    ldy a:OBJ_WORK_E,x
     lda a:PieceRecords0A9A+3,y
     asl a
     asl a
@@ -1756,20 +1756,20 @@ DrawTilePiece0A9A:
 ; @run 70:A882
 ; @stop A8A8
 ; WHAT IT DOES: DrawTilePiece072A in the overlay at sector 0B4A: draws the object's tile script (the item $B371 gives by
-; OBJ_3510, plus OBJ_34B8), then looks in $B36E at the row $B372 gives plus OBJ_HIT_TAKEN and goes on to $A8A8 or $A8ED.
+; OBJ_WORK_E, plus OBJ_WORK_D), then looks in $B36E at the row $B372 gives plus OBJ_HIT_TAKEN and goes on to $A8A8 or $A8ED.
 ; HOW: draw_tile_piece_at with this overlay's tables.
 ; WAITS: no.
 ; Entry: X object. Exit: as DrawTilePiece072A.
 DrawTilePiece0B4A:
-    ldy a:OBJ_3510,x
+    ldy a:OBJ_WORK_E,x
     lda a:PieceRecords0B4A+2,y
     clc
-    adc a:OBJ_34B8,x
+    adc a:OBJ_WORK_D,x
     cly
     jsr VecDrawTileScript
     lda a:OBJ_HIT_TAKEN,x
     sta z:zTemp00
-    ldy a:OBJ_3510,x
+    ldy a:OBJ_WORK_E,x
     lda a:PieceRecords0B4A+3,y
     asl a
     asl a
@@ -1785,20 +1785,20 @@ DrawTilePiece0B4A:
 ; @run 70:A882
 ; @stop A8A8
 ; WHAT IT DOES: DrawTilePiece072A in the overlay at sector 0BFA: draws the object's tile script (the item $B039 gives by
-; OBJ_3510, plus OBJ_34B8), then looks in $B0A6 at the row $B03A gives plus OBJ_HIT_TAKEN and goes on to $A8A8 or $A8ED.
+; OBJ_WORK_E, plus OBJ_WORK_D), then looks in $B0A6 at the row $B03A gives plus OBJ_HIT_TAKEN and goes on to $A8A8 or $A8ED.
 ; HOW: draw_tile_piece_at with this overlay's tables.
 ; WAITS: no.
 ; Entry: X object. Exit: as DrawTilePiece072A.
 DrawTilePiece0BFA:
-    ldy a:OBJ_3510,x
+    ldy a:OBJ_WORK_E,x
     lda a:PieceRecords0BFA+2,y
     clc
-    adc a:OBJ_34B8,x
+    adc a:OBJ_WORK_D,x
     cly
     jsr VecDrawTileScript
     lda a:OBJ_HIT_TAKEN,x
     sta z:zTemp00
-    ldy a:OBJ_3510,x
+    ldy a:OBJ_WORK_E,x
     lda a:PieceRecords0BFA+3,y
     asl a
     asl a
@@ -1814,20 +1814,20 @@ DrawTilePiece0BFA:
 ; @run 70:A882
 ; @stop A8A8
 ; WHAT IT DOES: DrawTilePiece072A in the overlay at sector 0CAA: draws the object's tile script (the item $AE9F gives by
-; OBJ_3510, plus OBJ_34B8), then looks in $AEBC at the row $AEA0 gives plus OBJ_HIT_TAKEN and goes on to $A8A8 or $A8ED.
+; OBJ_WORK_E, plus OBJ_WORK_D), then looks in $AEBC at the row $AEA0 gives plus OBJ_HIT_TAKEN and goes on to $A8A8 or $A8ED.
 ; HOW: draw_tile_piece_at with this overlay's tables.
 ; WAITS: no.
 ; Entry: X object. Exit: as DrawTilePiece072A.
 DrawTilePiece0CAA:
-    ldy a:OBJ_3510,x
+    ldy a:OBJ_WORK_E,x
     lda a:PieceRecords0CAA+2,y
     clc
-    adc a:OBJ_34B8,x
+    adc a:OBJ_WORK_D,x
     cly
     jsr VecDrawTileScript
     lda a:OBJ_HIT_TAKEN,x
     sta z:zTemp00
-    ldy a:OBJ_3510,x
+    ldy a:OBJ_WORK_E,x
     lda a:PieceRecords0CAA+3,y
     asl a
     asl a
@@ -1843,20 +1843,20 @@ DrawTilePiece0CAA:
 ; @run 70:A882
 ; @stop A8A8
 ; WHAT IT DOES: DrawTilePiece072A in the overlay at sector 0D5A: draws the object's tile script (the item $B01E gives by
-; OBJ_3510, plus OBJ_34B8), then looks in $B07B at the row $B01F gives plus OBJ_HIT_TAKEN and goes on to $A8A8 or $A8ED.
+; OBJ_WORK_E, plus OBJ_WORK_D), then looks in $B07B at the row $B01F gives plus OBJ_HIT_TAKEN and goes on to $A8A8 or $A8ED.
 ; HOW: draw_tile_piece_at with this overlay's tables.
 ; WAITS: no.
 ; Entry: X object. Exit: as DrawTilePiece072A.
 DrawTilePiece0D5A:
-    ldy a:OBJ_3510,x
+    ldy a:OBJ_WORK_E,x
     lda a:PieceRecords0D5A+2,y
     clc
-    adc a:OBJ_34B8,x
+    adc a:OBJ_WORK_D,x
     cly
     jsr VecDrawTileScript
     lda a:OBJ_HIT_TAKEN,x
     sta z:zTemp00
-    ldy a:OBJ_3510,x
+    ldy a:OBJ_WORK_E,x
     lda a:PieceRecords0D5A+3,y
     asl a
     asl a
@@ -1872,20 +1872,20 @@ DrawTilePiece0D5A:
 ; @run 70:A882
 ; @stop A8A8
 ; WHAT IT DOES: DrawTilePiece072A in the overlay at sector 0E0A: draws the object's tile script (the item $AEF6 gives by
-; OBJ_3510, plus OBJ_34B8), then looks in $AF03 at the row $AEF7 gives plus OBJ_HIT_TAKEN and goes on to $A8A8 or $A8ED.
+; OBJ_WORK_E, plus OBJ_WORK_D), then looks in $AF03 at the row $AEF7 gives plus OBJ_HIT_TAKEN and goes on to $A8A8 or $A8ED.
 ; HOW: draw_tile_piece_at with this overlay's tables.
 ; WAITS: no.
 ; Entry: X object. Exit: as DrawTilePiece072A.
 DrawTilePiece0E0A:
-    ldy a:OBJ_3510,x
+    ldy a:OBJ_WORK_E,x
     lda a:PieceRecords0E0A+2,y
     clc
-    adc a:OBJ_34B8,x
+    adc a:OBJ_WORK_D,x
     cly
     jsr VecDrawTileScript
     lda a:OBJ_HIT_TAKEN,x
     sta z:zTemp00
-    ldy a:OBJ_3510,x
+    ldy a:OBJ_WORK_E,x
     lda a:PieceRecords0E0A+3,y
     asl a
     asl a
@@ -1901,20 +1901,20 @@ DrawTilePiece0E0A:
 ; @run 70:A882
 ; @stop A8A8
 ; WHAT IT DOES: DrawTilePiece072A in the overlay at sector 0EBA: draws the object's tile script (the item $AF1F gives by
-; OBJ_3510, plus OBJ_34B8), then looks in $AF3C at the row $AF20 gives plus OBJ_HIT_TAKEN and goes on to $A8A8 or $A8ED.
+; OBJ_WORK_E, plus OBJ_WORK_D), then looks in $AF3C at the row $AF20 gives plus OBJ_HIT_TAKEN and goes on to $A8A8 or $A8ED.
 ; HOW: draw_tile_piece_at with this overlay's tables.
 ; WAITS: no.
 ; Entry: X object. Exit: as DrawTilePiece072A.
 DrawTilePiece0EBA:
-    ldy a:OBJ_3510,x
+    ldy a:OBJ_WORK_E,x
     lda a:PieceRecords0EBA+2,y
     clc
-    adc a:OBJ_34B8,x
+    adc a:OBJ_WORK_D,x
     cly
     jsr VecDrawTileScript
     lda a:OBJ_HIT_TAKEN,x
     sta z:zTemp00
-    ldy a:OBJ_3510,x
+    ldy a:OBJ_WORK_E,x
     lda a:PieceRecords0EBA+3,y
     asl a
     asl a
@@ -1930,20 +1930,20 @@ DrawTilePiece0EBA:
 ; @run 70:A882
 ; @stop A8A8
 ; WHAT IT DOES: DrawTilePiece072A in the overlay at sector 0F6A: draws the object's tile script (the item $ADBF gives by
-; OBJ_3510, plus OBJ_34B8), then looks in $ADBC at the row $ADC0 gives plus OBJ_HIT_TAKEN and goes on to $A8A8 or $A8ED.
+; OBJ_WORK_E, plus OBJ_WORK_D), then looks in $ADBC at the row $ADC0 gives plus OBJ_HIT_TAKEN and goes on to $A8A8 or $A8ED.
 ; HOW: draw_tile_piece_at with this overlay's tables.
 ; WAITS: no.
 ; Entry: X object. Exit: as DrawTilePiece072A.
 DrawTilePiece0F6A:
-    ldy a:OBJ_3510,x
+    ldy a:OBJ_WORK_E,x
     lda a:PieceRecords0F6A+2,y
     clc
-    adc a:OBJ_34B8,x
+    adc a:OBJ_WORK_D,x
     cly
     jsr VecDrawTileScript
     lda a:OBJ_HIT_TAKEN,x
     sta z:zTemp00
-    ldy a:OBJ_3510,x
+    ldy a:OBJ_WORK_E,x
     lda a:PieceRecords0F6A+3,y
     asl a
     asl a
@@ -1959,20 +1959,20 @@ DrawTilePiece0F6A:
 ; @run 70:A882
 ; @stop A8A8
 ; WHAT IT DOES: DrawTilePiece072A in the overlay at sector 101A: draws the object's tile script (the item $B019 gives by
-; OBJ_3510, plus OBJ_34B8), then looks in $B046 at the row $B01A gives plus OBJ_HIT_TAKEN and goes on to $A8A8 or $A8ED.
+; OBJ_WORK_E, plus OBJ_WORK_D), then looks in $B046 at the row $B01A gives plus OBJ_HIT_TAKEN and goes on to $A8A8 or $A8ED.
 ; HOW: draw_tile_piece_at with this overlay's tables.
 ; WAITS: no.
 ; Entry: X object. Exit: as DrawTilePiece072A.
 DrawTilePiece101A:
-    ldy a:OBJ_3510,x
+    ldy a:OBJ_WORK_E,x
     lda a:PieceRecords101A+2,y
     clc
-    adc a:OBJ_34B8,x
+    adc a:OBJ_WORK_D,x
     cly
     jsr VecDrawTileScript
     lda a:OBJ_HIT_TAKEN,x
     sta z:zTemp00
-    ldy a:OBJ_3510,x
+    ldy a:OBJ_WORK_E,x
     lda a:PieceRecords101A+3,y
     asl a
     asl a
@@ -1988,20 +1988,20 @@ DrawTilePiece101A:
 ; @run 70:A882
 ; @stop A8A8
 ; WHAT IT DOES: DrawTilePiece072A in the overlay at sector 10CA: draws the object's tile script (the item $AEF6 gives by
-; OBJ_3510, plus OBJ_34B8), then looks in $AF03 at the row $AEF7 gives plus OBJ_HIT_TAKEN and goes on to $A8A8 or $A8ED.
+; OBJ_WORK_E, plus OBJ_WORK_D), then looks in $AF03 at the row $AEF7 gives plus OBJ_HIT_TAKEN and goes on to $A8A8 or $A8ED.
 ; HOW: draw_tile_piece_at with this overlay's tables.
 ; WAITS: no.
 ; Entry: X object. Exit: as DrawTilePiece072A.
 DrawTilePiece10CA:
-    ldy a:OBJ_3510,x
+    ldy a:OBJ_WORK_E,x
     lda a:PieceRecords10CA+2,y
     clc
-    adc a:OBJ_34B8,x
+    adc a:OBJ_WORK_D,x
     cly
     jsr VecDrawTileScript
     lda a:OBJ_HIT_TAKEN,x
     sta z:zTemp00
-    ldy a:OBJ_3510,x
+    ldy a:OBJ_WORK_E,x
     lda a:PieceRecords10CA+3,y
     asl a
     asl a
@@ -2017,20 +2017,20 @@ DrawTilePiece10CA:
 ; @run 70:A882
 ; @stop A8A8
 ; WHAT IT DOES: DrawTilePiece072A in the overlay at sector 117A: draws the object's tile script (the item $B075 gives by
-; OBJ_3510, plus OBJ_34B8), then looks in $B0B2 at the row $B076 gives plus OBJ_HIT_TAKEN and goes on to $A8A8 or $A8ED.
+; OBJ_WORK_E, plus OBJ_WORK_D), then looks in $B0B2 at the row $B076 gives plus OBJ_HIT_TAKEN and goes on to $A8A8 or $A8ED.
 ; HOW: draw_tile_piece_at with this overlay's tables.
 ; WAITS: no.
 ; Entry: X object. Exit: as DrawTilePiece072A.
 DrawTilePiece117A:
-    ldy a:OBJ_3510,x
+    ldy a:OBJ_WORK_E,x
     lda a:PieceRecords117A+2,y
     clc
-    adc a:OBJ_34B8,x
+    adc a:OBJ_WORK_D,x
     cly
     jsr VecDrawTileScript
     lda a:OBJ_HIT_TAKEN,x
     sta z:zTemp00
-    ldy a:OBJ_3510,x
+    ldy a:OBJ_WORK_E,x
     lda a:PieceRecords117A+3,y
     asl a
     asl a
@@ -2046,20 +2046,20 @@ DrawTilePiece117A:
 ; @run 70:A882
 ; @stop A8A8
 ; WHAT IT DOES: DrawTilePiece072A in the overlay at sector 12DA: draws the object's tile script (the item $AEE1 gives by
-; OBJ_3510, plus OBJ_34B8), then looks in $AEFE at the row $AEE2 gives plus OBJ_HIT_TAKEN and goes on to $A8A8 or $A8ED.
+; OBJ_WORK_E, plus OBJ_WORK_D), then looks in $AEFE at the row $AEE2 gives plus OBJ_HIT_TAKEN and goes on to $A8A8 or $A8ED.
 ; HOW: draw_tile_piece_at with this overlay's tables.
 ; WAITS: no.
 ; Entry: X object. Exit: as DrawTilePiece072A.
 DrawTilePiece12DA:
-    ldy a:OBJ_3510,x
+    ldy a:OBJ_WORK_E,x
     lda a:PieceRecords12DA+2,y
     clc
-    adc a:OBJ_34B8,x
+    adc a:OBJ_WORK_D,x
     cly
     jsr VecDrawTileScript
     lda a:OBJ_HIT_TAKEN,x
     sta z:zTemp00
-    ldy a:OBJ_3510,x
+    ldy a:OBJ_WORK_E,x
     lda a:PieceRecords12DA+3,y
     asl a
     asl a
@@ -2075,20 +2075,20 @@ DrawTilePiece12DA:
 ; @run 70:A882
 ; @stop A8A8
 ; WHAT IT DOES: DrawTilePiece072A in the overlay at sector 13FA: draws the object's tile script (the item $AEA9 gives by
-; OBJ_3510, plus OBJ_34B8), then looks in $AEC6 at the row $AEAA gives plus OBJ_HIT_TAKEN and goes on to $A8A8 or $A8ED.
+; OBJ_WORK_E, plus OBJ_WORK_D), then looks in $AEC6 at the row $AEAA gives plus OBJ_HIT_TAKEN and goes on to $A8A8 or $A8ED.
 ; HOW: draw_tile_piece_at with this overlay's tables.
 ; WAITS: no.
 ; Entry: X object. Exit: as DrawTilePiece072A.
 DrawTilePiece13FA:
-    ldy a:OBJ_3510,x
+    ldy a:OBJ_WORK_E,x
     lda a:PieceRecords13FA+2,y
     clc
-    adc a:OBJ_34B8,x
+    adc a:OBJ_WORK_D,x
     cly
     jsr VecDrawTileScript
     lda a:OBJ_HIT_TAKEN,x
     sta z:zTemp00
-    ldy a:OBJ_3510,x
+    ldy a:OBJ_WORK_E,x
     lda a:PieceRecords13FA+3,y
     asl a
     asl a
@@ -2104,20 +2104,20 @@ DrawTilePiece13FA:
 ; @run 70:A882
 ; @stop A8A8
 ; WHAT IT DOES: DrawTilePiece072A in the overlay at sector 161A: draws the object's tile script (the item $B0A5 gives by
-; OBJ_3510, plus OBJ_34B8), then looks in $B0F2 at the row $B0A6 gives plus OBJ_HIT_TAKEN and goes on to $A8A8 or $A8ED.
+; OBJ_WORK_E, plus OBJ_WORK_D), then looks in $B0F2 at the row $B0A6 gives plus OBJ_HIT_TAKEN and goes on to $A8A8 or $A8ED.
 ; HOW: draw_tile_piece_at with this overlay's tables.
 ; WAITS: no.
 ; Entry: X object. Exit: as DrawTilePiece072A.
 DrawTilePiece161A:
-    ldy a:OBJ_3510,x
+    ldy a:OBJ_WORK_E,x
     lda a:PieceRecords161A+2,y
     clc
-    adc a:OBJ_34B8,x
+    adc a:OBJ_WORK_D,x
     cly
     jsr VecDrawTileScript
     lda a:OBJ_HIT_TAKEN,x
     sta z:zTemp00
-    ldy a:OBJ_3510,x
+    ldy a:OBJ_WORK_E,x
     lda a:PieceRecords161A+3,y
     asl a
     asl a
@@ -2133,20 +2133,20 @@ DrawTilePiece161A:
 ; @run 70:A882
 ; @stop A8A8
 ; WHAT IT DOES: DrawTilePiece072A in the overlay at sector 16CA: draws the object's tile script (the item $AE7F gives by
-; OBJ_3510, plus OBJ_34B8), then looks in $AEBC at the row $AE80 gives plus OBJ_HIT_TAKEN and goes on to $A8A8 or $A8ED.
+; OBJ_WORK_E, plus OBJ_WORK_D), then looks in $AEBC at the row $AE80 gives plus OBJ_HIT_TAKEN and goes on to $A8A8 or $A8ED.
 ; HOW: draw_tile_piece_at with this overlay's tables.
 ; WAITS: no.
 ; Entry: X object. Exit: as DrawTilePiece072A.
 DrawTilePiece16CA:
-    ldy a:OBJ_3510,x
+    ldy a:OBJ_WORK_E,x
     lda a:PieceRecords16CA+2,y
     clc
-    adc a:OBJ_34B8,x
+    adc a:OBJ_WORK_D,x
     cly
     jsr VecDrawTileScript
     lda a:OBJ_HIT_TAKEN,x
     sta z:zTemp00
-    ldy a:OBJ_3510,x
+    ldy a:OBJ_WORK_E,x
     lda a:PieceRecords16CA+3,y
     asl a
     asl a
@@ -2162,20 +2162,20 @@ DrawTilePiece16CA:
 ; @run 70:A882
 ; @stop A8A8
 ; WHAT IT DOES: DrawTilePiece072A in the overlay at sector 18DA: draws the object's tile script (the item $AE87 gives by
-; OBJ_3510, plus OBJ_34B8), then looks in $AEC4 at the row $AE88 gives plus OBJ_HIT_TAKEN and goes on to $A8A8 or $A8ED.
+; OBJ_WORK_E, plus OBJ_WORK_D), then looks in $AEC4 at the row $AE88 gives plus OBJ_HIT_TAKEN and goes on to $A8A8 or $A8ED.
 ; HOW: draw_tile_piece_at with this overlay's tables.
 ; WAITS: no.
 ; Entry: X object. Exit: as DrawTilePiece072A.
 DrawTilePiece18DA:
-    ldy a:OBJ_3510,x
+    ldy a:OBJ_WORK_E,x
     lda a:PieceRecords18DA+2,y
     clc
-    adc a:OBJ_34B8,x
+    adc a:OBJ_WORK_D,x
     cly
     jsr VecDrawTileScript
     lda a:OBJ_HIT_TAKEN,x
     sta z:zTemp00
-    ldy a:OBJ_3510,x
+    ldy a:OBJ_WORK_E,x
     lda a:PieceRecords18DA+3,y
     asl a
     asl a

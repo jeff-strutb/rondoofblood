@@ -131,7 +131,7 @@ static StageExit step_stage_ending(uint8_t x, uint8_t y)
         }
         INC8(OBJ->angle_lo[OBJECT_X]);
     }
-    m = DEC8(OBJ->f3510[OBJECT_Y]);
+    m = DEC8(OBJ->work_e[OBJECT_Y]);
     if (m == 0) {
         m = INC8(OBJ->life_timer[OBJECT_Y]);
         y = RD8(OBJ->life_timer[OBJECT_Y]);
@@ -153,11 +153,11 @@ static StageExit step_stage_ending(uint8_t x, uint8_t y)
         a = carry ? 0x80 : 0;
         WR8(OBJ->vy_lo[OBJECT_Y], a);
         a = rd8((uint16_t)(TIMER_TABLE + y));
-        WR8(OBJ->f3510[OBJECT_Y], a);
+        WR8(OBJ->work_e[OBJECT_Y], a);
     }
     a = RD8(OBJ->life_timer[OBJECT_Y]);
     if (a == LAST_STEP) {
-        a = RD8(OBJ->f3510[OBJECT_Y]);
+        a = RD8(OBJ->work_e[OBJECT_Y]);
         if (a == BLEND_KEEP) {
             WR8(OBJ->frame[OBJECT_X], 0);
         }
@@ -166,7 +166,7 @@ static StageExit step_stage_ending(uint8_t x, uint8_t y)
     jsr_push(VELOCITY_Y_RETURN);
     move = ApplyVelocityY(OBJECT_Y);
     jsr_pop();
-    m = DEC8(OBJ->f3510[OBJECT_X]);
+    m = DEC8(OBJ->work_e[OBJECT_X]);
     if (m == 0) {
         INC8(OBJ->life_timer[OBJECT_X]);
         y = RD8(OBJ->life_timer[OBJECT_X]);
@@ -179,7 +179,7 @@ static StageExit step_stage_ending(uint8_t x, uint8_t y)
         a = carry ? 0x80 : 0;
         WR8(OBJ->vx_lo[OBJECT_X], a);
         a = rd8((uint16_t)(TIMER_TABLE + y));
-        WR8(OBJ->f3510[OBJECT_X], a);
+        WR8(OBJ->work_e[OBJECT_X], a);
     }
     jsr_push(VELOCITY_X_RETURN);
     move = ApplyVelocityX(OBJECT_X);

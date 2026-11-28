@@ -208,8 +208,8 @@ ShiftObjectsByScrollChange_at0:
 ; WAITS: no.
 ; Entry: A the cursor value. Exit: as SetCursorTargets.
 SetCursorValue:
-    sta a:OBJ_34B8
-    sta a:OBJ_34B8+1
+    sta a:OBJ_WORK_D
+    sta a:OBJ_WORK_D+1
     jmp SetCursorTargets
 
 ; @routine 00C4:473 CursorMoveByPad
@@ -233,7 +233,7 @@ CursorMoveByPad:
     beq CursorMoveByPad_at0
     and #$40
     bne CursorMoveByPad_at1
-    lda a:OBJ_34B8
+    lda a:OBJ_WORK_D
     dec a
     cmp a:$9CBE,y
     bne CursorMoveByPad_at2
@@ -241,7 +241,7 @@ CursorMoveByPad:
     dec a
     bra CursorMoveByPad_at2
 CursorMoveByPad_at1:
-    lda a:OBJ_34B8
+    lda a:OBJ_WORK_D
     inc a
     cmp a:$9CC4,y
     bne CursorMoveByPad_at2
@@ -249,7 +249,7 @@ CursorMoveByPad_at1:
     inc a
 CursorMoveByPad_at2:
     jsr SetCursorValue
-    lda a:OBJ_34B8
+    lda a:OBJ_WORK_D
     cmp #$14
     bne CursorMoveByPad_at3
     phy
@@ -260,7 +260,7 @@ CursorMoveByPad_at2:
     lsr a
     bcc CursorMoveByPad
 CursorMoveByPad_at3:
-    lda a:OBJ_34B8
+    lda a:OBJ_WORK_D
     cmp #$15
     bne CursorMoveByPad_at0
     lda a:$7DDB
@@ -298,7 +298,7 @@ PlaceCursorObject:
     txa
     lsr a
     pla
-    sta a:OBJ_34B8,x
+    sta a:OBJ_WORK_D,x
     rol a
     asl a
     tay
@@ -324,7 +324,7 @@ GlideCursorObjects:
 ; WHAT IT DOES: Moves a cursor object a quarter of the way to its target each frame, and
 ; stops it there; shows its picture frame while it is moving, or the frame that turns with the
 ; tick once it has arrived.
-; HOW: If OBJ->f3510 says it is moving, the speed on each axis is set to half the distance to the
+; HOW: If OBJ->work_e says it is moving, the speed on each axis is set to half the distance to the
 ; target (a 9-bit difference rotated down, its sign flipped), halved again by
 ; HalveObjectVelocity, and ApplyVelocity moves it. The picture frame comes from a table by
 ; whether it is below $B0 and whether the object is 3 or 4; when both places match the target
@@ -333,9 +333,9 @@ GlideCursorObjects:
 ; Entry: X the object. Exit: A, N, Z and C as the frame turn or its compare leaves them (V from
 ; the move when it moved); Y the table index when it moved; X kept.
 GlideCursorObject:
-    lda a:OBJ_3510,x
+    lda a:OBJ_WORK_E,x
     beq GlideCursorObject_at0
-    lda a:OBJ_3568,x
+    lda a:OBJ_WORK_F,x
     sec
     sbc a:OBJ_X_LO,x
     ror a
@@ -343,7 +343,7 @@ GlideCursorObject:
     sta a:OBJ_VX_HI,x
     stz a:OBJ_VX_LO,x
     ror a:OBJ_VX_LO,x
-    lda a:OBJ_35C0,x
+    lda a:OBJ_WORK_G,x
     sec
     sbc a:OBJ_Y_LO,x
     ror a
@@ -363,12 +363,12 @@ GlideCursorObject:
     lda a:$9D55,y
     sta a:OBJ_FRAME,x
     lda a:OBJ_X_LO,x
-    cmp a:OBJ_3568,x
+    cmp a:OBJ_WORK_F,x
     bne GlideCursorObject_at0
     lda a:OBJ_Y_LO,x
-    cmp a:OBJ_35C0,x
+    cmp a:OBJ_WORK_G,x
     bne GlideCursorObject_at0
-    stz a:OBJ_3510,x
+    stz a:OBJ_WORK_E,x
 GlideCursorObject_at0:
     lda a:OBJ_FRAME,x
     dec a
@@ -400,14 +400,14 @@ JitterCursorObjects:
 ; WAITS: no.
 ; Entry: X the object. Exit: as ObjectFrameFromTick; V from the move when it moved; X kept.
 JitterCursorObject:
-    lda a:OBJ_3510,x
+    lda a:OBJ_WORK_E,x
     beq JitterCursorObject_at0
     jsr VecNextRandom
     and #$0F
     sec
     sbc #$08
     clc
-    adc a:OBJ_3568,x
+    adc a:OBJ_WORK_F,x
     sec
     sbc a:OBJ_X_LO,x
     ror a
@@ -420,7 +420,7 @@ JitterCursorObject:
     sec
     sbc #$08
     clc
-    adc a:OBJ_35C0,x
+    adc a:OBJ_WORK_G,x
     sec
     sbc a:OBJ_Y_LO,x
     ror a
@@ -431,12 +431,12 @@ JitterCursorObject:
     jsr HalveObjectVelocity
     jsr VecApplyVelocity
     lda a:OBJ_X_LO,x
-    cmp a:OBJ_3568,x
+    cmp a:OBJ_WORK_F,x
     bne JitterCursorObject_at0
     lda a:OBJ_Y_LO,x
-    cmp a:OBJ_35C0,x
+    cmp a:OBJ_WORK_G,x
     bne JitterCursorObject_at0
-    stz a:OBJ_3510,x
+    stz a:OBJ_WORK_E,x
 JitterCursorObject_at0:
     jmp ObjectFrameFromTick
 
@@ -457,23 +457,23 @@ SetCursorTargets:
 ; read from a table of places, one pair for each value and each of the two cursors.
 ; HOW: The object's cursor value (OBJ->f34b8) doubled with the object's low bit under it, doubled
 ; again, is the table index; the pair at that index goes to the object's target (X and Y) and
-; the object is marked as on its way (OBJ->f3510 is 1).
+; the object is marked as on its way (OBJ->work_e is 1).
 ; WAITS: no.
 ; Entry: X the cursor object (0 or 1). Exit: A 1, N and Z clear, C bit 6 of the cursor value, Y
 ; the table index. X kept.
 SetCursorTarget:
     txa
     lsr a
-    lda a:OBJ_34B8,x
+    lda a:OBJ_WORK_D,x
     rol a
     asl a
     tay
     lda a:$AD1F,y
-    sta a:OBJ_3568,x
+    sta a:OBJ_WORK_F,x
     lda a:$AD20,y
-    sta a:OBJ_35C0,x
+    sta a:OBJ_WORK_G,x
     lda #$01
-    sta a:OBJ_3510,x
+    sta a:OBJ_WORK_E,x
     rts
 
 ; @routine 00C4:5D4 HalveObjectVelocity
@@ -596,7 +596,7 @@ ClearVramBlock_at0:
 ; WAITS: no.
 ; Entry: X the object. Exit: as the handler chosen.
 GlyphPassByStep:
-    lda a:OBJ_35C0,x
+    lda a:OBJ_WORK_G,x
     and #$03
     asl a
     tay
@@ -634,11 +634,11 @@ OverlayGlyphPass:
 ; Entry: X the object. Exit: A the last high byte written, X kept (N and Z from it), C set, Y the
 ; object's kind doubled, V from SetGlyphVramPlace.
 OverlayGlyphRows:
-    ldy a:OBJ_35C0,x
+    ldy a:OBJ_WORK_G,x
     lda a:$A18F,y
     jsr SetGlyphVramPlace
     jsr OrBufferIntoVramLow
-    ldy a:OBJ_35C0,x
+    ldy a:OBJ_WORK_G,x
     lda a:$A18F,y
     inc a
     jsr SetGlyphVramPlace
@@ -707,7 +707,7 @@ OverlayGlyphPassBoth:
 ; Entry: X the object. Exit: A the last high byte written, X kept (N and Z from it), C set, Y the
 ; object's kind doubled, V from SetGlyphVramPlace.
 OverlayGlyphRowsBoth:
-    ldy a:OBJ_35C0,x
+    ldy a:OBJ_WORK_G,x
     lda a:$A18F,y
     jsr SetGlyphVramPlace
     phx
@@ -805,12 +805,12 @@ SetGlyphVramPlace:
 ; Entry: X the object. Exit: A the counter shifted right, X kept, C the counter's bit 0, N and Z
 ; from the counter after the decrement (from the new state when it reached zero).
 GlideObjectUp:
-    lda a:OBJ_35C0,x
+    lda a:OBJ_WORK_G,x
     lsr a
     bcs GlideObjectUp_at0
     dec a:OBJ_Y_LO,x
 GlideObjectUp_at0:
-    dec a:OBJ_35C0,x
+    dec a:OBJ_WORK_G,x
     bne GlideObjectUp_at1
     inc a:OBJ_STATE,x
 GlideObjectUp_at1:
@@ -827,12 +827,12 @@ GlideObjectUp_at1:
 ; Entry: X the object. Exit: A the counter shifted right, X kept, C the counter's bit 0, N and Z
 ; from the counter after the decrement, Y kept.
 GlideObjectDown:
-    lda a:OBJ_35C0,x
+    lda a:OBJ_WORK_G,x
     lsr a
     bcs GlideObjectDown_at0
     inc a:OBJ_Y_LO,x
 GlideObjectDown_at0:
-    dec a:OBJ_35C0,x
+    dec a:OBJ_WORK_G,x
     bne $A214
     jmp VecClearObject
 

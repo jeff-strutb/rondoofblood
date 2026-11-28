@@ -115,7 +115,7 @@ E0A2,abs,BiosExSatclr,ex_satclr: clears the sprite table; called once at start
 2DD8,abs,OBJ_VX_LO,object X velocity low
 2E30,abs,OBJ_VY_HI,object Y velocity high
 2E88,abs,OBJ_VY_LO,object Y velocity low
-2EE0,abs,OBJ_FIELDS_2EE0,first of the object fields cleared together
+2EE0,abs,OBJ_WORK_A,a work byte of the object: what it holds is its kind's (a timer, an index, a speed, a step); each area names its use
 2F38,abs,OBJ_SCROLL_BAND,bits 0 to 6 the scroll-speed band the object moves with (ScrollSpeedX and Y by it, RunObjects); bit 7 records an event when told to
 3098,abs,OBJ_EVENT_ID,event this object records
 2F90,abs,OBJ_HURT_TIMER,frames the object is held after a damaging hit (ObjectHit sets it from a table by the hit); RunObjects counts it down and skips the object meanwhile unless OBJ_PACE bit 2
@@ -125,26 +125,26 @@ E0A2,abs,BiosExSatclr,ex_satclr: clears the sprite table; called once at start
 3148,abs,OBJ_PACE,how the object runs when the player's time-slowing mode is on: bits 3 and 4 its skip pattern in mode 1, bits 5 and 6 in mode 2 (RunObjects); bit 2 it runs on while hurt
 31A0,abs,OBJ_HIT_STATUS,bit 7 the object is dead; bits 5 and 6 the player's two attack marks this frame, cleared by ObjectHit
 31F8,abs,OBJ_HIT_REACTION,what a hit does: bits 0 and 1 the flash frames left (ObjectHit), bits 2 to 4 the item it may drop (DropItemWhenHit), bits 5 to 7 the sound it plays (PlayHitSound)
-3250,abs,OBJ_3250,object field not yet identified
+3250,abs,OBJ_HITBOX_ON,whether the object is hit-tested: 0 no hitbox; bit 7 it is tested against the first hit list, else the last (HitTestObject); 2, set by some kinds as they leave, is not settled
 32A8,abs,OBJ_HEALTH,the object's health: damage takes from it (ObjectHit, HitDamage); negative, it has none
-3300,abs,OBJ_3300,object field not yet identified
-3358,abs,OBJ_3358,object field not yet identified
+3300,abs,OBJ_WORK_B,a work byte of the object: what it holds is its kind's (a timer, an index, a speed, a step); each area names its use
+3358,abs,OBJ_WORK_C,a work byte of the object: what it holds is its kind's (a timer, an index, a speed, a step); each area names its use
 33B0,abs,OBJ_HIT_TAKEN,the hit the object has taken this frame; 5 or more is a damaging hit
 3408,abs,OBJ_ANIM_STEP,the step in the object's frame list; cleared with the timer when a list starts
 3460,abs,OBJ_ANIM_TIMER,frames left on the object's current animation step
-34B8,abs,OBJ_34B8,object field not yet identified
-3510,abs,OBJ_3510,object field not yet identified
-3568,abs,OBJ_3568,object field not yet identified
-35C0,abs,OBJ_35C0,object field not yet identified
-3618,abs,OBJ_3618,object field not yet identified
-3670,abs,OBJ_3670,object field not yet identified
-36C8,abs,OBJ_36C8,object field not yet identified
-3720,abs,OBJ_3720,object field not yet identified
-3778,abs,OBJ_3778,object field not yet identified
-37D0,abs,OBJ_37D0,object field not yet identified
-3828,abs,OBJ_3828,object field not yet identified
-3880,abs,OBJ_3880,object field not yet identified
-38D8,abs,OBJ_38D8,object field not yet identified
+34B8,abs,OBJ_WORK_D,a work byte of the object: what it holds is its kind's (a timer, an index, a speed, a step); each area names its use
+3510,abs,OBJ_WORK_E,a work byte of the object: what it holds is its kind's (a timer, an index, a speed, a step); each area names its use
+3568,abs,OBJ_WORK_F,a work byte of the object: what it holds is its kind's (a timer, an index, a speed, a step); each area names its use
+35C0,abs,OBJ_WORK_G,a work byte of the object: what it holds is its kind's (a timer, an index, a speed, a step); each area names its use
+3618,abs,OBJ_WORK_H,a work byte of the object: what it holds is its kind's (a timer, an index, a speed, a step); each area names its use
+3670,abs,OBJ_WORK_I,a work byte of the object: what it holds is its kind's (a timer, an index, a speed, a step); each area names its use
+36C8,abs,OBJ_WORK_J,a work byte of the object: what it holds is its kind's (a timer, an index, a speed, a step); each area names its use
+3720,abs,OBJ_WORK_K,a work byte of the object: what it holds is its kind's (a timer, an index, a speed, a step); each area names its use
+3778,abs,OBJ_WORK_L,a work byte of the object: what it holds is its kind's (a timer, an index, a speed, a step); each area names its use
+37D0,abs,OBJ_WORK_M,a work byte of the object: what it holds is its kind's (a timer, an index, a speed, a step); each area names its use
+3828,abs,OBJ_WORK_N,a work byte of the object: what it holds is its kind's (a timer, an index, a speed, a step); each area names its use
+3880,abs,OBJ_WORK_O,a work byte of the object: what it holds is its kind's (a timer, an index, a speed, a step); each area names its use
+38D8,abs,OBJ_WORK_P,a work byte of the object: what it holds is its kind's (a timer, an index, a speed, a step); each area names its use
 3930,abs,OBJ_HITBOX_DX,the hitbox's centre, X offset from the object
 3988,abs,OBJ_HITBOX_HALF_W,the hitbox's half width; 0 with the half height: no hitbox
 39E0,abs,OBJ_HITBOX_DY,the hitbox's centre, Y offset from the object

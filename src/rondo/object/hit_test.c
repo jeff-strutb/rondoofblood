@@ -1,4 +1,5 @@
 /* The overlay's hit test: an object's hitbox against the sixteen slots of the other side, and what a hit does. */
+#include <stddef.h>
 #include "machine.h"
 #include "access.h"
 #include "routines.h"
@@ -175,17 +176,10 @@ static StageExit loaded_handler_shim(uint16_t handler, uint8_t a, uint8_t x, uin
  * records the object in its slot, and its kind (StageVar f3828) picks the handler from the
  * overlay's table.
  */
-/* A group's two handlers that have C: their run addresses, which the jump table names, and their C. */
-typedef struct {
-    uint16_t store, report;
-    StageExit (*store_c)(uint8_t x, uint8_t y);
-    StageExit (*report_c)(uint8_t x, uint8_t y);
-} HitHandlers;
-
 static const HitHandlers handlers_024f = { HANDLER_STORE_A, HANDLER_REPORT_A, HitStoreHandler, HitReportHandler };
 static const HitHandlers handlers_05bf = { HANDLER_STORE_B, HANDLER_REPORT_B, HitStoreHandlerLong, HitReportHandlerLong };
 
-static StageExit hit_test(uint8_t x, uint16_t table, const HitHandlers *handlers)
+StageExit HitTestObjectAt(uint8_t x, uint16_t table, const HitHandlers *handlers)
 {
     uint8_t a;
     uint8_t m;
@@ -330,7 +324,7 @@ static StageExit hit_test(uint8_t x, uint16_t table, const HitHandlers *handlers
     WR8(ZP->temp01, a);
     y = RD8(ZP->hit_slot);
     handler = RD16_LH2(ZP->temp00, ZP->temp01);
-    if (handler == handlers->store || handler == handlers->report) {
+    if (handlers != NULL && (handler == handlers->store || handler == handlers->report)) {
         StageExit done = handler == handlers->store ? handlers->store_c(x, y) : handlers->report_c(x, y);
 
         done.y = y;
@@ -357,7 +351,7 @@ static StageExit hit_test(uint8_t x, uint16_t table, const HitHandlers *handlers
  */
 StageExit HitTestObject(uint8_t x)
 {
-    return hit_test(x, TABLE_A, &handlers_024f);
+    return HitTestObjectAt(x, TABLE_A, &handlers_024f);
 }
 
 void abi_HitTestObject(void)
@@ -377,7 +371,7 @@ void abi_HitTestObject(void)
  */
 StageExit HitTestObjectLong(uint8_t x)
 {
-    return hit_test(x, TABLE_B, &handlers_05bf);
+    return HitTestObjectAt(x, TABLE_B, &handlers_05bf);
 }
 
 void abi_HitTestObjectLong(void)
@@ -397,7 +391,7 @@ void abi_HitTestObjectLong(void)
  */
 StageExit HitTestObjectLongB(uint8_t x)
 {
-    return hit_test(x, TABLE_B, &handlers_05bf);
+    return HitTestObjectAt(x, TABLE_B, &handlers_05bf);
 }
 
 void abi_HitTestObjectLongB(void)

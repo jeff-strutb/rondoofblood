@@ -257,6 +257,15 @@ StageExit HitStoreHandler(uint8_t x, uint8_t y);
 StageExit HitReportHandler(uint8_t x, uint8_t y);
 StageExit HitStoreHandlerLong(uint8_t x, uint8_t y);
 StageExit HitReportHandlerLong(uint8_t x, uint8_t y);
+/* A build's two hit handlers that have C: their run addresses, which its jump table names, and their C. A handler
+ * the table names that is neither, or every handler when handlers is NULL, goes to the routine loaded at its address. */
+typedef struct {
+    uint16_t store, report;
+    StageExit (*store_c)(uint8_t x, uint8_t y);
+    StageExit (*report_c)(uint8_t x, uint8_t y);
+} HitHandlers;
+/* The hit test's body (hit_test.c) for a build with its jump table at table. */
+StageExit HitTestObjectAt(uint8_t x, uint16_t table, const HitHandlers *handlers);
 StageExit HitTestAllObjects(uint8_t x);
 StageExit HitTestAllObjectsLong(uint8_t x);
 

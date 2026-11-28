@@ -1708,10 +1708,11 @@ SubStepPickupErase0B4B2A5_at0:
 
 ; @routine 0B4D:19E ErodePattern0B4D19E
 ; @run 71:C19E
-; WHAT IT DOES: Erodes pattern X of the eight in the table behind it.
-; HOW: The address from the table at $C1AF into zBiosCl-Ch, then ErodeVramWords0B4D1BD.
+; WHAT IT DOES: Of the 64 VRAM words from zBiosCl-Ch on, ANDs every fourth one, from the row zTemp00 names, with
+; zTemp01 (low byte) and zTemp02 (high byte); a copy of DissolveWords0E0A260.
+; HOW: For each such word, the write and read addresses set to it, then read, masked and written back.
 ; WAITS: no.
-; Entry: X the pattern (0 to 7). Exit: as the erosion; X kept, Y twice X.
+; Entry: zBiosCl-Ch the address, zTemp00-02 the row and masks. Exit: zBiosCl-Ch 64 on; Y kept.
 ErodePattern0B4D19EPatterns = $C1AF ; the VRAM addresses of the eight patterns
 ErodePattern0B4D19E:
     txa

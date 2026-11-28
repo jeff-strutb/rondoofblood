@@ -38,7 +38,7 @@ static HandlerExit exit_with(uint8_t y, Sum sum)
 }
 
 /* A step by a table on the column: the table's byte for the column is added to the row. */
-static HandlerExit step_by_column(uint16_t table)
+HandlerExit TileStepAt(uint16_t table)
 {
     uint8_t column = RD8(ZP->temp00);
     uint8_t step = rd8((uint16_t)(table + column));
@@ -91,7 +91,7 @@ static HandlerExit nudge_row(void)
  */
 HandlerExit TileStepC(void)
 {
-    return step_by_column(TileStepsC);
+    return TileStepAt(TileStepsC);
 }
 
 /*
@@ -184,7 +184,7 @@ HandlerExit TileNudgeA(void)
  */
 HandlerExit TileStepD(void)
 {
-    return step_by_column(TileStepsD);
+    return TileStepAt(TileStepsD);
 }
 
 /*

@@ -124,6 +124,28 @@ CameraMode0D:
     stz a:ScrollYOffset
     rts
 
+; @routine 0255:54A CameraMode00KeepY
+; @run 6F:A54A
+; WHAT IT DOES: Camera mode 0 with entry 0's scroll Y and screen row kept as they were.
+; HOW: ScrollYLo, ScrollYHi and ScrollYHiScreen of entry 0 pushed, CameraMode00, pulled back in turn.
+; WAITS: no.
+; Entry: nothing. Exit: A entry 0's ScrollYLo, N and Z from it; X, Y, C and V as CameraMode00 left them.
+CameraMode00KeepY:
+    lda a:ScrollYLo
+    pha
+    lda a:ScrollYHi
+    pha
+    lda a:ScrollYHiScreen
+    pha
+    jsr CameraMode00
+    pla
+    sta a:ScrollYHiScreen
+    pla
+    sta a:ScrollYHi
+    pla
+    sta a:ScrollYLo
+    rts
+
 ; @routine 0255:623 CameraMode0C
 ; @run 6F:A623
 ; WHAT IT DOES: Camera mode $0C: entry 0 in columns of eight blocks at scroll Y 0, then the parallax.
@@ -262,6 +284,48 @@ CameraMode00:
     bsr ScreenMapAtEntry
     sta a:CameraScreenByte
     jmp ColumnDue
+
+; @routine 0255:6AF CameraMode01
+; @run 6F:A6AF
+; WHAT IT DOES: Camera modes 1 and $18: entry 0 moves along Y by its step, the map byte of its screen is kept, and
+; the row it crosses is drawn.
+; HOW: AdvanceScrollY of entry 0; ScreenMapAtEntry into CameraScreenByte; the tail JMP to RowDueAt with the step's
+; sign in Y.
+; WAITS: no.
+; Entry: nothing. Exit: as RowDueAt, X 0.
+CameraMode01:
+    clx
+    bsr AdvanceScrollY
+    bsr ScreenMapAtEntry
+    sta a:CameraScreenByte
+    jmp RowDueAt
+
+; @routine 0255:6BA CameraMode02
+; @run 6F:A6BA
+; WHAT IT DOES: Camera mode 2: entry 0 moves along X and along Y, the map byte of its screen is kept, and the column
+; and then the row it crosses are drawn, each by the sign of its step.
+; HOW: AdvanceScrollX, AdvanceScrollY, ScreenMapAtEntry into CameraScreenByte; the X step's sign (two ROLs) for
+; ColumnDue, the Y step's for the tail JMP to RowDueAt.
+; WAITS: no.
+; Entry: nothing. Exit: as RowDueAt, X 0.
+CameraMode02:
+    clx
+    bsr AdvanceScrollX
+    bsr AdvanceScrollY
+    bsr ScreenMapAtEntry
+    sta a:CameraScreenByte
+    lda a:ScrollStepXHi,x
+    rol a
+    rol a
+    and #$01
+    tay
+    jsr ColumnDue
+    lda a:ScrollStepYHi,x
+    rol a
+    rol a
+    and #$01
+    tay
+    jmp RowDueAt
 
 ; @routine 0255:6DA ScreenMapAtEntry
 ; @run 6F:A6DA

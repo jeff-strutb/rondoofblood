@@ -104,7 +104,7 @@ StageSubStepDeath_at0:
 ; @routine 024D:2A2 StageSubStepFadeOut
 ; @run 6B:82A2
 ; WHAT IT DOES: Sub-step to the fade: sub-mode 4 from its first step, zField89 cleared, the scroll stopped.
-; HOW: Stores, then the tail JMP to StageScrollSpeedsOff.
+; HOW: Stores, then the tail JMP to $80C5 (StageScrollSpeedsOff here), the C of the routine loaded there.
 ; WAITS: no.
 ; Entry: X and Y the caller's. Exit: as StageScrollSpeedsOff.
 StageSubStepFadeOut:
@@ -117,7 +117,7 @@ StageSubStepFadeOut:
 ; @routine 024D:2AD StageSubStepFadeOutLate
 ; @run 6B:82AD
 ; WHAT IT DOES: Sub-step to the fade at its step 5: sub-mode 4, zField80 5, zField89 cleared, the scroll stopped.
-; HOW: Stores, then the tail JMP to StageScrollSpeedsOff.
+; HOW: Stores, then the tail JMP to $80C5 (StageScrollSpeedsOff here), the C of the routine loaded there.
 ; WAITS: no.
 ; Entry: X and Y the caller's. Exit: as StageScrollSpeedsOff.
 StageSubStepFadeOutLate:

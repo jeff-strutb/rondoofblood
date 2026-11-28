@@ -20,7 +20,7 @@
 ; Entry: X the entry, Y the offset's index. Exit: A as the last block copy left it ($10), N 0, Z 1 (the count's
 ; decrement), C and V from the copy, Y the last block's index, X kept.
 DrawBlockColumn:
-    lda a:Scroll3E66,x
+    lda a:ScrollColumnBlocks,x
     and #$7F
     sta z:zTemp08
     jsr ScrollXPlusOffset
@@ -28,15 +28,15 @@ DrawBlockColumn:
     sta z:zTemp06
     lda a:ScrollYHiScreen,x
     sta z:zTemp07
-    lda a:Scroll3E66,x
+    lda a:ScrollColumnBlocks,x
     bpl DrawBlockColumn_at0
     ldy #$01
     lda a:ScrollYLo,x
     clc
-    adc a:$A780,y
+    adc a:LayerPlaceOffsetsLo,y
     sta z:zTemp06
     lda a:ScrollYHiScreen,x
-    adc a:$A782,y
+    adc a:LayerPlaceOffsetsHi,y
     and #$0F
     sta z:zTemp07
 DrawBlockColumn_at0:
@@ -125,3 +125,119 @@ BlockIndexForPlace:
     and #$38
     ora z:zTemp00
     tay
+
+; @routine 0256:0B4 RowDueUp
+; @run 6F:A8B4
+; WHAT IT DOES: For an entry moving up: when one less than its scroll Y and one less than its band's have bit 5
+; different, it crossed a row, which is drawn.
+; HOW: The two values less one in zTemp09 and A, EOR, AND #$20; the BNE and BRA to DrawBlockRow.
+; WAITS: no.
+; Entry: X the entry, Y its index for DrawBlockRow. Exit: not crossed: A 0, N 0, Z 1, X, Y, C and V kept; else as
+; DrawBlockRow.
+RowDueUp:
+    lda a:ScrollBgyLo,x
+    dec a
+    sta z:zTemp09
+    lda a:ScrollYLo,x
+    dec a
+    eor z:zTemp09
+    and #$20
+    bne RowDueUp_at0
+    rts
+RowDueUp_at0:
+    bra DrawBlockRow
+
+; @routine 0256:0C7 RowDueAt
+; @run 6F:A8C7
+; WHAT IT DOES: Draws the row an entry has crossed, if it has: moving up (Y zero) as RowDueUp; else when its scroll Y
+; and its band's differ in bit 5.
+; HOW: TYA; EOR of the two, AND #$20; the BNE into DrawBlockRow.
+; WAITS: no.
+; Entry: X the entry, Y 0 moving up, 1 moving down. Exit: not crossed: A 0, N 0, Z 1, X, Y, C and V kept; else as
+; DrawBlockRow.
+RowDueAt:
+    tya
+    beq RowDueUp
+    lda a:ScrollYLo,x
+    eor a:ScrollBgyLo,x
+    and #$20
+    bne DrawBlockRow
+    rts
+
+; @routine 0256:0D5 DrawBlockRow
+; @run 6F:A8D5
+; WHAT IT DOES: Draws a row of a layer's tile blocks for scroll entry X: as many blocks as entry 0's ScrollColumnBlocks'
+; low seven bits, from the place the entry has reached (its scroll Y plus the overlay's offset of word Y, and its
+; scroll X, plus the offset at $A781 and $A783 when that byte's bit 7 is set), across the screen and on into the next.
+; HOW: The count in zTemp08; ScrollYPlusOffset; BlockIndexForPlace for the first block; each block from the table at
+; zTemp04 by Y goes to CopyTileBlockToVram with the VRAM address zTemp10-11 kept on the stack across it and moved four
+; words on (within $40); Y steps by one, with BitmapBitShifted for the bank bit, and past each eighth the next screen's
+; map byte selects the tables again. Each JSR goes to the routine loaded at its address.
+; WAITS: no.
+; Entry: X the entry, Y the offset's index. Exit: A zTemp10's new value, N 0, Z 1 (the count's DEC), C and V from its
+; add, Y the last block's index, X kept.
+DrawBlockRow:
+    lda a:ScrollColumnBlocks
+    and #$7F
+    sta z:zTemp08
+    jsr ScrollYPlusOffset
+    lda a:ScrollXLo,x
+    sta z:zTemp02
+    lda a:ScrollXHiScreen,x
+    sta z:zTemp03
+    lda a:ScrollColumnBlocks
+    bpl DrawBlockRow_at0
+    ldy #$01
+    lda a:ScrollXLo,x
+    clc
+    adc a:LayerPlaceOffsetsLo,y
+    sta z:zTemp02
+    lda a:ScrollXHiScreen,x
+    adc a:LayerPlaceOffsetsHi,y
+    and #$0F
+    sta z:zTemp03
+DrawBlockRow_at0:
+    jsr BlockIndexForPlace
+DrawBlockRow_at3:
+    phy
+    lda z:zTemp10
+    pha
+    lda z:zTemp11
+    pha
+    lda (zTemp04),y
+    jsr CopyTileBlockToVram
+    pla
+    sta z:zTemp11
+    pla
+    clc
+    adc #$04
+    and #$3F
+    sta z:zTemp10
+    ply
+    dec z:zTemp08
+    bne DrawBlockRow_at1
+    rts
+DrawBlockRow_at1:
+    iny
+    tya
+    and #$07
+    beq DrawBlockRow_at2
+    jsr BitmapBitShifted
+    bra DrawBlockRow_at3
+DrawBlockRow_at2:
+    lda z:zTemp03
+    inc a
+    and #$0F
+    sta z:zTemp03
+    sta z:zTemp00
+    lda z:zTemp07
+    jsr ScreenMapAt
+    jsr SelectBlockTablesA
+    lda z:zTemp06
+    lsr a
+    lsr a
+    and #$38
+    tay
+    jsr BitmapBitShifted
+    jmp DrawBlockRow_at3
+

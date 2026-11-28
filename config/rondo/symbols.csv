@@ -873,3 +873,6 @@ D2,zp,zFieldD2,cleared when her item crash starts; her crash phases wait on it; 
 C6BD,abs,MariaSlotPlaces,her companions' places beside her: X and Y offset pairs (MariaObjectPlaceByState)
 C6D1,abs,MariaSlotPlaceByState,the first pair in MariaSlotPlaces by her state (MariaObjectPlaceByState)
 D3D1,abs,MariaFrameByPlayerFrame,an object's frame by her frame less $53 (MariaObjectFrameByPlayerFrame)
+A77E,abs,LayerPlaceOffsetsLoAlt,the place offsets' low bytes ScrollXPlusOffset takes when ScrollOffsetSwitch is set, by the index word (0 ahead, 1 behind)
+A780,abs,LayerPlaceOffsetsLo,the place offsets' low bytes by the index word (0 ahead, 1 behind): ScrollXPlusOffset, ScrollYPlusOffset, and DrawBlockColumn and DrawBlockRow for a ScrollColumnBlocks with bit 7
+A782,abs,LayerPlaceOffsetsHi,the place offsets' high bytes by the index word, for LayerPlaceOffsetsLo and LayerPlaceOffsetsLoAlt

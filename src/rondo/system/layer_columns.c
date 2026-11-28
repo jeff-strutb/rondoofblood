@@ -40,7 +40,7 @@ static const struct {
  * whatever is mapped there). */
 enum {
     SCROLL_X_OFFSET_RUN = 0xA75C, BLOCK_COPY_RUN = 0xA000, SCREEN_MAP_RUN = 0xA6E2, BITMAP_BIT_RUN = 0xA878,
-    BLOCK_INDEX_RUN = 0xA83D
+    BLOCK_INDEX_RUN = 0xA83D, SCROLL_Y_OFFSET_RUN = 0xA892
 };
 
 static bool resident_is(uint16_t run, uint32_t disc)
@@ -380,4 +380,239 @@ void abi_DrawBlockColumn(void)
     abi_nz(0);
     abi_flag(P_C, r.carry);
     abi_flag(P_V, r.overflow);
+}
+
+/* The registers a row's draw leaves: A, the value N and Z come from, C, V and Y; X is kept. */
+typedef struct {
+    uint8_t a, nz, y;
+    bool c, v;
+} RowRegs;
+
+/* The JSR $A892, the place along Y plus the offset: the C of the routine loaded there, with the registers it is called
+ * with; it leaves zTemp06-07 and A, N, Z, C, V from its last add, X and Y kept. */
+static RowRegs y_offset(uint16_t ret, CallRegs r)
+{
+    RowRegs out;
+
+    call_regs_shim(r);
+    call_routine(ret, SCROLL_Y_OFFSET_RUN);
+    out.a = cpu_a_shim();
+    out.nz = out.a;
+    out.y = cpu_y_shim();
+    out.c = cpu_carry_shim();
+    out.v = cpu_overflow_shim();
+    return out;
+}
+
+/* The JSR $A000 that copies a block: the overlay's CopyTileBlockToVram when it is resident, the routine loaded there
+ * otherwise. V as it leaves it. */
+static bool block_copy(uint16_t ret, CallRegs r)
+{
+    bool overflow;
+
+    if (resident_is(BLOCK_COPY_RUN, DISC(0x0255, 0x000))) {
+        jsr_push(ret);
+        overflow = CopyTileBlockToVram(r.a, r.c);
+        jsr_pop();
+        return overflow;
+    }
+    call_regs_shim(r);
+    call_routine(ret, BLOCK_COPY_RUN);
+    return cpu_overflow_shim();
+}
+
+/*
+ * @routine 0256:0D5 DrawBlockRow
+ * @run 6F:A8D5
+ * WHAT IT DOES: Draws a row of a layer's tile blocks for scroll entry X: as many blocks as entry 0's ScrollColumnBlocks'
+ * low seven bits, from the place the entry has reached (its scroll Y plus the overlay's offset of word Y, and its
+ * scroll X, plus the offset at $A781 and $A783 when that byte's bit 7 is set), across the screen and on into the next.
+ * HOW: The count in zTemp08; ScrollYPlusOffset; BlockIndexForPlace for the first block; each block from the table at
+ * zTemp04 by Y goes to CopyTileBlockToVram with the VRAM address zTemp10-11 kept on the stack across it and moved four
+ * words on (within $40); Y steps by one, with BitmapBitShifted for the bank bit, and past each eighth the next screen's
+ * map byte selects the tables again. Each JSR goes to the routine loaded at its address.
+ * WAITS: no.
+ * Entry: X the entry, Y the offset's index. Exit: A zTemp10's new value, N 0, Z 1 (the count's DEC), C and V from its
+ * add, Y the last block's index, X kept.
+ */
+RowEnd DrawBlockRow(uint8_t entry, uint8_t index, bool entry_carry, bool entry_overflow)
+{
+    RowEnd r = { 0 };
+    CallRegs regs;
+    RowRegs place;
+    uint8_t value, count, y, block, saved_lo, saved_hi, screen;
+    BlockIndex first;
+    BitmapBit bit;
+    bool carry, overflow;
+    Sum sum;
+
+    value = RD8(SCROLLE->column_blocks[0]);
+    count = (uint8_t)(value & 0x7F);
+    WR8(ZP->temp08, count);
+    regs = (CallRegs){ count, entry, index, count, entry_carry, entry_overflow };
+    place = y_offset(0xA8DF, regs);
+    value = RD8(SCROLL->x_lo[entry]);
+    WR8(ZP->temp02, value);
+    value = RD8(SCROLLE->x_hi_screen[entry]);
+    WR8(ZP->temp03, value);
+    y = place.y;
+    carry = place.c;
+    overflow = place.v;
+    value = RD8(SCROLLE->column_blocks[0]);
+    if ((value & 0x80) != 0) {
+        y = 1;
+        value = RD8(SCROLL->x_lo[entry]);
+        sum = add_bytes(value, rd8((uint16_t)(COLUMN_Y_OFFSETS + y)), false);
+        WR8(ZP->temp02, sum.value);
+        value = RD8(SCROLLE->x_hi_screen[entry]);
+        sum = add_bytes(value, rd8((uint16_t)(COLUMN_Y_OFFSETS + 2 + y)), sum.carry);
+        value = (uint8_t)(sum.value & SCREEN_ROWS_MASK);
+        WR8(ZP->temp03, value);
+        carry = sum.carry;
+        overflow = sum.overflow;
+    }
+    regs = (CallRegs){ value, entry, y, value, carry, overflow };
+    first = block_index(0xA906, regs);
+    bit = first.bit;
+    overflow = first.overflow;
+    y = bit.y;
+    for (;;) {
+        push8(y);
+        saved_lo = RD8(ZP->temp10);
+        push8(saved_lo);
+        saved_hi = RD8(ZP->temp11);
+        push8(saved_hi);
+        block = RD8_PTR_Y(ZP->temp04, y);
+        regs = (CallRegs){ block, entry, y, block, bit.carry, overflow };
+        (void)block_copy(0xA912, regs);
+        saved_hi = pull8();
+        WR8(ZP->temp11, saved_hi);
+        saved_lo = pull8();
+        sum = add_bytes(saved_lo, 0x04, false);
+        value = (uint8_t)(sum.value & 0x3F);
+        WR8(ZP->temp10, value);
+        carry = sum.carry;
+        overflow = sum.overflow;
+        y = pull8();
+        if (DEC8(ZP->temp08) == 0) {
+            r.a = value;
+            r.y = y;
+            r.carry = carry;
+            r.overflow = overflow;
+            return r;
+        }
+        y++;
+        if ((y & 0x07) != 0) {
+            regs = (CallRegs){ (uint8_t)(y & 0x07), entry, y, (uint8_t)(y & 0x07), carry, overflow };
+            bit = bitmap_bit(0xA92C, regs);
+            y = bit.y;
+            continue;
+        }
+        screen = RD8(ZP->temp03);
+        screen = (uint8_t)((screen + 1) & SCREEN_ROWS_MASK);
+        WR8(ZP->temp03, screen);
+        WR8(ZP->temp00, screen);
+        value = RD8(ZP->temp07);
+        regs = (CallRegs){ value, entry, y, value, carry, overflow };
+        value = screen_map(0xA93C, regs, &carry, &overflow);
+        regs = (CallRegs){ value, entry, y, value, carry, overflow };
+        overflow = block_tables(0xA93F, regs);
+        value = RD8(ZP->temp06);
+        carry = (value & 0x02) != 0;               /* the second LSR's bit out */
+        y = (uint8_t)((value >> 2) & 0x38);
+        regs = (CallRegs){ y, entry, y, y, carry, overflow };
+        bit = bitmap_bit(0xA949, regs);
+        y = bit.y;
+    }
+}
+
+void abi_DrawBlockRow(void)
+{
+    RowEnd r = DrawBlockRow(cpu.x, cpu.y, (cpu.p & P_C) != 0, (cpu.p & P_V) != 0);
+
+    cpu.a = r.a;
+    cpu.y = r.y;
+    abi_nz(0);
+    abi_flag(P_C, r.carry);
+    abi_flag(P_V, r.overflow);
+}
+
+/*
+ * @routine 0256:0B4 RowDueUp
+ * @run 6F:A8B4
+ * WHAT IT DOES: For an entry moving up: when one less than its scroll Y and one less than its band's have bit 5
+ * different, it crossed a row, which is drawn.
+ * HOW: The two values less one in zTemp09 and A, EOR, AND #$20; the BNE and BRA to DrawBlockRow.
+ * WAITS: no.
+ * Entry: X the entry, Y its index for DrawBlockRow. Exit: not crossed: A 0, N 0, Z 1, X, Y, C and V kept; else as
+ * DrawBlockRow.
+ */
+RowDue RowDueUp(uint8_t entry, uint8_t index, bool carry, bool overflow)
+{
+    RowDue r = { 0 };
+    uint8_t band, wanted;
+
+    band = (uint8_t)(RD8(BANDS->bgy_lo[entry]) - 1);
+    WR8(ZP->temp09, band);
+    wanted = (uint8_t)(RD8(SCROLL->y_lo[entry]) - 1);
+    r.masked = (uint8_t)((wanted ^ RD8(ZP->temp09)) & 0x20);
+    if (r.masked == 0) {
+        return r;
+    }
+    r.drawn = true;
+    r.row = DrawBlockRow(entry, index, carry, overflow);
+    return r;
+}
+
+/* What a row check leaves, for the wrappers: A 0 and Z when nothing was drawn, else DrawBlockRow's. */
+static void row_due_exit_shim(RowDue r)
+{
+    if (!r.drawn) {
+        cpu.a = r.masked;
+        abi_nz(r.masked);
+        return;
+    }
+    cpu.a = r.row.a;
+    cpu.y = r.row.y;
+    abi_nz(0);
+    abi_flag(P_C, r.row.carry);
+    abi_flag(P_V, r.row.overflow);
+}
+
+void abi_RowDueUp(void)
+{
+    row_due_exit_shim(RowDueUp(cpu.x, cpu.y, (cpu.p & P_C) != 0, (cpu.p & P_V) != 0));
+}
+
+/*
+ * @routine 0256:0C7 RowDueAt
+ * @run 6F:A8C7
+ * WHAT IT DOES: Draws the row an entry has crossed, if it has: moving up (Y zero) as RowDueUp; else when its scroll Y
+ * and its band's differ in bit 5.
+ * HOW: TYA; EOR of the two, AND #$20; the BNE into DrawBlockRow.
+ * WAITS: no.
+ * Entry: X the entry, Y 0 moving up, 1 moving down. Exit: not crossed: A 0, N 0, Z 1, X, Y, C and V kept; else as
+ * DrawBlockRow.
+ */
+RowDue RowDueAt(uint8_t entry, uint8_t index, bool carry, bool overflow)
+{
+    RowDue r = { 0 };
+    uint8_t wanted;
+
+    if (index == 0) {
+        return RowDueUp(entry, index, carry, overflow);
+    }
+    wanted = RD8(SCROLL->y_lo[entry]);
+    r.masked = (uint8_t)((wanted ^ RD8(BANDS->bgy_lo[entry])) & 0x20);
+    if (r.masked == 0) {
+        return r;
+    }
+    r.drawn = true;
+    r.row = DrawBlockRow(entry, index, carry, overflow);
+    return r;
+}
+
+void abi_RowDueAt(void)
+{
+    row_due_exit_shim(RowDueAt(cpu.x, cpu.y, (cpu.p & P_C) != 0, (cpu.p & P_V) != 0));
 }

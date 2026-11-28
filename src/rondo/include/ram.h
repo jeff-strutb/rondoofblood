@@ -859,5 +859,8 @@
 #define MariaSlotPlaces 0xC6BD /* her companions' places beside her: X and Y offset pairs (MariaObjectPlaceByState) */
 #define MariaSlotPlaceByState 0xC6D1 /* the first pair in MariaSlotPlaces by her state (MariaObjectPlaceByState) */
 #define MariaFrameByPlayerFrame 0xD3D1 /* an object's frame by her frame less $53 (MariaObjectFrameByPlayerFrame) */
+#define LayerPlaceOffsetsLoAlt 0xA77E /* the place offsets' low bytes ScrollXPlusOffset takes when ScrollOffsetSwitch is set, by the index word (0 ahead, 1 behind) */
+#define LayerPlaceOffsetsLo 0xA780 /* the place offsets' low bytes by the index word (0 ahead, 1 behind): ScrollXPlusOffset, ScrollYPlusOffset, and DrawBlockColumn and DrawBlockRow for a ScrollColumnBlocks with bit 7 */
+#define LayerPlaceOffsetsHi 0xA782 /* the place offsets' high bytes by the index word, for LayerPlaceOffsetsLo and LayerPlaceOffsetsLoAlt */
 
 #endif

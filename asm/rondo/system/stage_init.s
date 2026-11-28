@@ -70,7 +70,7 @@ InitStageB:
     sta z:zBiosAh
 InitStageB_at0:
     tai KernelZeros,ScrollXFrac,$0030
-    tai KernelZeros,Scroll3E66,$0088
+    tai KernelZeros,ScrollColumnBlocks,$0088
     stz a:OBJ_SPRITE_FLIP
     lda z:zField8E
     pha
@@ -83,7 +83,7 @@ InitStageB_at0:
     lda a:EffectSecondSetUp,y
     beq ScriptPlaceTitleObjectB
     tai KernelZeros,ScrollXFrac,$0030
-    tai KernelZeros,Scroll3E66,$0088
+    tai KernelZeros,ScrollColumnBlocks,$0088
     lda z:zField8E
     pha
     bsr LoadStageEntryR
@@ -91,7 +91,7 @@ InitStageB_at0:
     sta z:zField8E
     jsr $AD41
     tai KernelZeros,ScrollXFrac,$0030
-    tai KernelZeros,Scroll3E66,$0088
+    tai KernelZeros,ScrollColumnBlocks,$0088
 
 ; @routine 12CE:0EC InitStageC
 ; @run 6B:88EC
@@ -117,7 +117,7 @@ InitStageC:
     sta z:zBiosAh
 InitStageC_at0:
     tai KernelZeros,ScrollXFrac,$0030
-    tai KernelZeros,Scroll3E66,$0088
+    tai KernelZeros,ScrollColumnBlocks,$0088
     stz a:OBJ_SPRITE_FLIP
     lda z:zField8E
     pha
@@ -130,7 +130,7 @@ InitStageC_at0:
     lda a:EffectSecondSetUp,y
     beq ScriptPlaceTitleObjectB
     tai KernelZeros,ScrollXFrac,$0030
-    tai KernelZeros,Scroll3E66,$0088
+    tai KernelZeros,ScrollColumnBlocks,$0088
     lda z:zField8E
     pha
     bsr LoadStageEntryT
@@ -138,4 +138,4 @@ InitStageC_at0:
     sta z:zField8E
     jsr $AD3A
     tai KernelZeros,ScrollXFrac,$0030
-    tai KernelZeros,Scroll3E66,$0088
+    tai KernelZeros,ScrollColumnBlocks,$0088

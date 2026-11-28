@@ -281,16 +281,16 @@ ScrollXPlusOffset:
     beq ScrollXPlusOffset_at0
     lda a:ScrollXLo,x
     clc
-    adc a:$A77E,y
+    adc a:LayerPlaceOffsetsLoAlt,y
     bra ScrollXPlusOffset_at1
 ScrollXPlusOffset_at0:
     lda a:ScrollXLo,x
     clc
-    adc a:$A780,y
+    adc a:LayerPlaceOffsetsLo,y
 ScrollXPlusOffset_at1:
     sta z:zTemp02
     lda a:ScrollXHiScreen,x
-    adc a:$A782,y
+    adc a:LayerPlaceOffsetsHi,y
     and #$0F
     sta z:zTemp03
     rts
@@ -357,16 +357,16 @@ ScrollYPlusOffset:
     beq ScrollYPlusOffset_at0
     lda a:ScrollYLo,x
     clc
-    adc a:$A77E,y
+    adc a:LayerPlaceOffsetsLoAlt,y
     bra ScrollYPlusOffset_at1
 ScrollYPlusOffset_at0:
     lda a:ScrollYLo,x
     clc
-    adc a:$A780,y
+    adc a:LayerPlaceOffsetsLo,y
 ScrollYPlusOffset_at1:
     sta z:zTemp06
     lda a:ScrollYHiScreen,x
-    adc a:$A782,y
+    adc a:LayerPlaceOffsetsHi,y
     and #$0F
     sta z:zTemp07
     rts

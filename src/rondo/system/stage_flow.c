@@ -21,7 +21,7 @@ ObjArm MapOverlayBank7(void);                       /* object/player_leaves.c */
 enum {
     PAD_RUN = 0x08, FIELD8E_SOUND = 0x08, FIELD8E_KEEP_CD = 0x10, FIELD8E_NO_FADE = 0x18,
     FADE_TYPE_OUT = 0x0C, FADE_TYPE_NONE = 0x00, FADE_RESTART = 2, PAUSED_HELD = 0x02, PAUSED_LOCK = 0x03,
-    SUB_MODE_PLAY = 2, SUB_MODE_FADE = 4, SUB_MODE_TALLY = 6, FADE_STEP_LATE = 5, TALLY_WAIT = 0x40
+    SCROLL_SPEEDS_OFF_RUN = 0x80C5, SUB_MODE_PLAY = 2, SUB_MODE_FADE = 4, SUB_MODE_TALLY = 6, FADE_STEP_LATE = 5, TALLY_WAIT = 0x40
 };
 
 #define loaded regs_loaded
@@ -32,6 +32,15 @@ static Regs tail_to(Regs r, uint16_t site, uint16_t run)
 {
     stage_regs_load_shim(r);
     run_routine_from(site, run);
+    return stage_regs_from_cpu_shim(r);
+}
+
+/* A JSR to the routine loaded at run: the registers as they stand, and what it leaves. The overlays holding these
+ * sub-steps differ at $80C5 (10BD and 12CD jump to $A3F0, the others to $A067), so the call goes to the one loaded. */
+static Regs call_to(Regs r, uint16_t ret, uint16_t run)
+{
+    stage_regs_load_shim(r);
+    call_routine(ret, run);
     return stage_regs_from_cpu_shim(r);
 }
 
@@ -217,10 +226,7 @@ static Regs sub_step_start(Regs r, uint8_t sub_mode, uint16_t ret)
     WR8(ZP->game_sub_mode, sub_mode);
     WR8(ZP->field80, 0);
     WR8(ZP->field89, 0);
-    jsr_push(ret);
-    r = StageScrollSpeedsOff(r);
-    jsr_pop();
-    return r;
+    return call_to(r, ret, SCROLL_SPEEDS_OFF_RUN);
 }
 
 /* With the time-slowing mode set it is cleared and the fade runs again from 2, by the tail JMP to StageFadeTimer. */
@@ -265,7 +271,7 @@ void abi_StageSubStepDeath(void)
  * @routine 024D:2A2 StageSubStepFadeOut
  * @run 6B:82A2
  * WHAT IT DOES: Sub-step to the fade: sub-mode 4 from its first step, zField89 cleared, the scroll stopped.
- * HOW: Stores, then the tail JMP to StageScrollSpeedsOff.
+ * HOW: Stores, then the tail JMP to $80C5 (StageScrollSpeedsOff here), the C of the routine loaded there.
  * WAITS: no.
  * Entry: X and Y the caller's. Exit: as StageScrollSpeedsOff.
  */
@@ -275,7 +281,7 @@ StageRegs StageSubStepFadeOut(StageRegs r)
     WR8(ZP->game_sub_mode, SUB_MODE_FADE);
     WR8(ZP->field80, 0);
     WR8(ZP->field89, 0);
-    return StageScrollSpeedsOff(r);
+    return tail_to(r, 0x82AA, SCROLL_SPEEDS_OFF_RUN);
 }
 
 void abi_StageSubStepFadeOut(void)
@@ -287,7 +293,7 @@ void abi_StageSubStepFadeOut(void)
  * @routine 024D:2AD StageSubStepFadeOutLate
  * @run 6B:82AD
  * WHAT IT DOES: Sub-step to the fade at its step 5: sub-mode 4, zField80 5, zField89 cleared, the scroll stopped.
- * HOW: Stores, then the tail JMP to StageScrollSpeedsOff.
+ * HOW: Stores, then the tail JMP to $80C5 (StageScrollSpeedsOff here), the C of the routine loaded there.
  * WAITS: no.
  * Entry: X and Y the caller's. Exit: as StageScrollSpeedsOff.
  */
@@ -298,7 +304,7 @@ StageRegs StageSubStepFadeOutLate(StageRegs r)
     r = loaded(r, FADE_STEP_LATE);
     WR8(ZP->field80, FADE_STEP_LATE);
     WR8(ZP->field89, 0);
-    return StageScrollSpeedsOff(r);
+    return tail_to(r, 0x82B7, SCROLL_SPEEDS_OFF_RUN);
 }
 
 void abi_StageSubStepFadeOutLate(void)

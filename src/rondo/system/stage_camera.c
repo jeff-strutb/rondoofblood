@@ -582,3 +582,139 @@ void abi_CameraMode1B(void)
 {
     stage_regs_load_shim(CameraMode1B(regs_entry_shim()));
 }
+
+/* JSR or tail JMP to AdvanceScrollY: as advanced_x along Y. */
+static Regs advance_y(Regs r, uint8_t entry, uint16_t ret)
+{
+    r.x = entry;
+    jsr_push(ret);
+    r = advanced_x(r, AdvanceScrollY(entry));
+    jsr_pop();
+    return r;
+}
+
+/* RowDueAt by JSR (ret) or by the tail JMP (ret 0): the registers it leaves laid over r. */
+static Regs row_due(Regs r, uint16_t ret)
+{
+    RowDue due;
+
+    if (ret != 0) {
+        jsr_push(ret);
+    }
+    due = RowDueAt(r.x, r.y, r.c, r.v);
+    if (ret != 0) {
+        jsr_pop();
+    }
+    if (!due.drawn) {
+        return regs_loaded(r, due.masked);
+    }
+    r.a = due.row.a;
+    r.nz = 0;
+    r.y = due.row.y;
+    r.c = due.row.carry;
+    r.v = due.row.overflow;
+    return r;
+}
+
+/* LDA step,X; ROL; ROL; AND #1; TAY: Y the step's sign, C its bit 6, A and N, Z from the sign. */
+static Regs sign_of(Regs r, uint8_t step)
+{
+    bool c_in = r.c;
+    uint8_t rotated = (uint8_t)((step << 2) | (c_in ? 0x02 : 0) | (step >> 7));
+
+    r.c = (step & 0x40) != 0;
+    r = regs_loaded(r, (uint8_t)(rotated & 0x01));
+    r.y = r.a;
+    return r;
+}
+
+/*
+ * @routine 0255:6AF CameraMode01
+ * @run 6F:A6AF
+ * WHAT IT DOES: Camera modes 1 and $18: entry 0 moves along Y by its step, the map byte of its screen is kept, and
+ * the row it crosses is drawn.
+ * HOW: AdvanceScrollY of entry 0; ScreenMapAtEntry into CameraScreenByte; the tail JMP to RowDueAt with the step's
+ * sign in Y.
+ * WAITS: no.
+ * Entry: nothing. Exit: as RowDueAt, X 0.
+ */
+StageRegs CameraMode01(StageRegs r)
+{
+    r = advance_y(r, 0, 0xA6B2);
+    jsr_push(0xA6B4);
+    r = ScreenMapAtEntry(r);
+    jsr_pop();
+    wr8(CameraScreenByte, r.a);
+    return row_due(r, 0);
+}
+
+void abi_CameraMode01(void)
+{
+    stage_regs_load_shim(CameraMode01(regs_entry_shim()));
+}
+
+/*
+ * @routine 0255:6BA CameraMode02
+ * @run 6F:A6BA
+ * WHAT IT DOES: Camera mode 2: entry 0 moves along X and along Y, the map byte of its screen is kept, and the column
+ * and then the row it crosses are drawn, each by the sign of its step.
+ * HOW: AdvanceScrollX, AdvanceScrollY, ScreenMapAtEntry into CameraScreenByte; the X step's sign (two ROLs) for
+ * ColumnDue, the Y step's for the tail JMP to RowDueAt.
+ * WAITS: no.
+ * Entry: nothing. Exit: as RowDueAt, X 0.
+ */
+StageRegs CameraMode02(StageRegs r)
+{
+    r = advance_x(r, 0, 0xA6BD);
+    r = advance_y(r, 0, 0xA6BF);
+    jsr_push(0xA6C1);
+    r = ScreenMapAtEntry(r);
+    jsr_pop();
+    wr8(CameraScreenByte, r.a);
+    r = sign_of(r, RD8(SCROLLE->step_x_hi[r.x]));
+    jsr_push(0xA6CF);
+    r = ColumnDue(r);
+    jsr_pop();
+    r = sign_of(r, RD8(SCROLLE->step_y_hi[r.x]));
+    return row_due(r, 0);
+}
+
+void abi_CameraMode02(void)
+{
+    stage_regs_load_shim(CameraMode02(regs_entry_shim()));
+}
+
+/*
+ * @routine 0255:54A CameraMode00KeepY
+ * @run 6F:A54A
+ * WHAT IT DOES: Camera mode 0 with entry 0's scroll Y and screen row kept as they were.
+ * HOW: ScrollYLo, ScrollYHi and ScrollYHiScreen of entry 0 pushed, CameraMode00, pulled back in turn.
+ * WAITS: no.
+ * Entry: nothing. Exit: A entry 0's ScrollYLo, N and Z from it; X, Y, C and V as CameraMode00 left them.
+ */
+StageRegs CameraMode00KeepY(StageRegs r)
+{
+    uint8_t value;
+
+    value = RD8(SCROLL->y_lo[0]);
+    push8(value);
+    value = RD8(SCROLL->y_hi[0]);
+    push8(value);
+    value = RD8(SCROLLE->y_hi_screen[0]);
+    push8(value);
+    jsr_push(0xA559);
+    r = CameraMode00(r);
+    jsr_pop();
+    value = pull8();
+    WR8(SCROLLE->y_hi_screen[0], value);
+    value = pull8();
+    WR8(SCROLL->y_hi[0], value);
+    value = pull8();
+    WR8(SCROLL->y_lo[0], value);
+    return regs_loaded(r, value);
+}
+
+void abi_CameraMode00KeepY(void)
+{
+    stage_regs_load_shim(CameraMode00KeepY(regs_entry_shim()));
+}

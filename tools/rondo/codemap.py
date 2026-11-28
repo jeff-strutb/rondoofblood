@@ -772,6 +772,14 @@ def follow_all(disc, mems):
                 m.call(d, 0x8006, St(mpr), "scene overlay entry $8006")
         m.drain()
         maps[key] = m
+    for key, mem, mpr, targets in unloaded_programs(disc, mems):
+        m = Map(disc, mem, key)
+        for t in targets:
+            d, _ = m.place(t, mpr)
+            if d is not None:
+                m.call(d, t, St(mpr), "unloaded program's jump table")
+        m.drain()
+        maps[key] = m
     for m in maps.values():
         m.kstarts = m.kept()
         m.kentries = {(k[0], k[1]) for k in m.keep}
@@ -814,6 +822,150 @@ def copies(disc, maps, code):
     return out
 
 
+RANCHOR = 12                    # bytes, none of them an absolute operand, that start a relocated copy
+ABS_MODES = ("abs", "abx", "aby", "ind", "iax")
+
+
+def relocated(disc, maps, code, exact):
+    """Stretches the map did not reach that hold reached code moved to another address: the same instructions,
+    every absolute operand equal or, where it points into the moved code's own window, shifted by one constant
+    (the difference of the two load addresses). {copy offset: (source offset, shift)}; the copy's run address is
+    the source's plus the shift. Exact copies (shift 0) are left to copies()."""
+    buf = disc.buf
+    start = {}                                      # every reached instruction start -> its run address and length
+    for m in maps.values():
+        for d, runs in m.kstarts.items():
+            if d not in start:
+                pc = min(runs)
+                start[d] = (pc, disc.decode(d, pc)[0])
+    operand = set()                                 # bytes that are absolute operands of reached instructions
+    for d, (pc, n) in start.items():
+        if disc.decode(d, pc)[2] in ABS_MODES:
+            operand.update((d + 1, d + 2))
+    idx = {}
+    srt = sorted(code)
+    for i, p in enumerate(srt):
+        if i + RANCHOR <= len(srt) and srt[i + RANCHOR - 1] == p + RANCHOR - 1 and not any(
+                p + k in operand for k in range(RANCHOR)):
+            k = buf[p:p + RANCHOR]
+            if len(set(k)) >= 4:
+                idx.setdefault(k, p)
+    owner = {}                                      # byte of reached code -> the start of its instruction
+    for d, (pc, n) in start.items():
+        for k in range(n):
+            owner.setdefault(d + k, d)
+    out = {}
+    q, end = 0, len(buf) - RANCHOR
+    while q < end:
+        if q in code or q in exact or q in out:
+            q += 1
+            continue
+        p = idx.get(buf[q:q + RANCHOR])
+        if p is None or p not in owner:
+            q += 1
+            continue
+        s0 = owner[p]                               # align on the source's instruction start
+        qs = q - (p - s0)
+        got, shift = extend(disc, start, s0, qs, code, exact)
+        if got and shift:
+            for qq, pp in got:
+                out.setdefault(qq, (pp, shift))
+            q = max(qq for qq, _ in got) + 1
+        else:
+            q += 1
+    return out
+
+
+def extend(disc, start, s0, q0, code, exact):
+    """From source instruction s0 and copy offset q0, forward while each instruction matches: the bytes paired
+    [(copy, source)] and the one shift every moved operand agrees on (None: none moved)."""
+    buf = disc.buf
+    win = start[s0][0] >> 13
+    shift, got, p, q = None, [], s0, q0
+    while p in start and q + 3 < len(buf) and q not in code and q not in exact:
+        pc, n = start[p]
+        if buf[q] != buf[p]:
+            break
+        mode = disc.decode(p, pc)[2]
+        ok = True
+        if mode in ABS_MODES:
+            wp = buf[p + 1] | buf[p + 2] << 8
+            wq = buf[q + 1] | buf[q + 2] << 8
+            if wp != wq:
+                if wp >> 13 != win:                 # an operand outside the code's own window must not move
+                    ok = False
+                elif shift is None:
+                    shift = (wq - wp) & 0xFFFF
+                elif (wq - wp) & 0xFFFF != shift:
+                    ok = False
+        elif buf[q + 1:q + n] != buf[p + 1:p + n]:
+            ok = False
+        if not ok:
+            break
+        got += [(q + k, p + k) for k in range(n)]
+        p, q = p + n, q + n
+    if shift is not None and (shift & 0x1FFF) == 0 and len(got) >= RANCHOR:
+        return got, shift                           # a move of whole banks: the copy runs in another window
+    if shift is not None and len(got) >= RANCHOR:
+        return got, shift
+    return [], None
+
+
+# ------------------------------------------------------------------------- code in regions nothing loads
+
+PSEUDO = 0xE0                   # bank numbers for unloaded programs: above the card's RAM, never mapped by the game
+
+
+def jump_table(buf, d, limit):
+    """The window a jump table at disc offset d runs in: JMP abs at 0, 3, 6 ... (JMP $0000, an empty slot, allowed)
+    with every target in one window and within limit bytes of the table; None when there is none."""
+    targets = []
+    for off in range(0, 48, 3):
+        if buf[d + off] != 0x4C:
+            break
+        t = buf[d + off + 1] | buf[d + off + 2] << 8
+        if t:
+            targets.append(t)
+    if len(targets) < 2:
+        return None, []
+    w = targets[0] >> 13
+    if not 2 <= w <= 6 or any(t >> 13 not in range(w, 7) or (t - (w << 13)) >= limit for t in targets):
+        return None, []
+    return w, targets
+
+
+def unloaded_programs(disc, mems):
+    """Programs on the disc that no read loads, each from a sector that opens with its own jump table: a memory of
+    the kernel with the program mapped from that table's window on, as far as the run of unloaded sectors goes.
+    [(name, Mem, MPRs, [entry runs])]"""
+    buf = disc.buf
+    loaded = set()
+    for _, mem in mems.all():
+        for a in mem.b.values():
+            loaded.update(x // SECTOR for x in a if x >= 0)
+    nsec = len(buf) // SECTOR
+    out = []
+    taken = set()
+    for sec in range(nsec):
+        if sec in loaded or sec in taken:
+            continue
+        run = 0
+        while sec + run < nsec and sec + run not in loaded and run < 12:
+            run += 1
+        w, targets = jump_table(buf, sec * SECTOR, run * SECTOR)
+        if w is None:
+            continue
+        mem = Mem(mems.kernel)
+        mpr = list(mems.kernel_mpr)
+        nb = min(7 - w, (run * SECTOR + BANK - 1) // BANK)
+        for k in range(nb):
+            mpr[w + k] = PSEUDO + len(out) * 4 + k
+        mem.load(sec, run, w << 13, mpr)
+        taken.update(range(sec, sec + run))
+        out.append((f"unloaded{sec:04X}", mem, tuple(mpr), targets))
+    return out
+
+
 # ------------------------------------------------------------------------------------------- filed
 
 TAG = re.compile(r"@routine\s+([0-9A-F]{4}):([0-9A-F]{3})\s+(\w+)")
@@ -848,7 +1000,14 @@ def check(disc, mems, maps, cps=None):
     for m in maps.values():
         for d, runs in m.kstarts.items():
             starts_.setdefault(d, set()).update(runs)
+    rel = getattr(check, "rel", {})
     for f in filed():
+        r = rel.get(f["disc"])
+        if r is not None and r[0] in starts_:
+            run = (min(starts_[r[0]]) + r[1]) & 0xFFFF
+            res[("in no load: " if f["disc"] not in loaded else "") + ("a relocated copy at its run address" if
+                run == f["run"] else "a relocated copy at another run address")] += 1
+            continue
         src = (cps or {}).get(f["disc"])
         cp = None
         if src is not None and src in starts_:
@@ -858,6 +1017,13 @@ def check(disc, mems, maps, cps=None):
             continue
         if cp:
             res[("in no load: " if f["disc"] not in loaded else "") + "an exact copy, at another run address"] += 1
+            continue
+        pre = "" if f["disc"] in loaded else "in no load: "
+        if (f["disc"], f["run"]) in entries:
+            res[pre + "found: an entry at its run address"] += 1
+            continue
+        if f["run"] in starts.get(f["disc"], ()):
+            res[pre + "found: an instruction at its run address, not an entry"] += 1
             continue
         if f["disc"] not in loaded:
             res["in no load, no copy"] += 1
@@ -1076,6 +1242,9 @@ def main():
     print("targets not placed:", dict(unp))
     cps = copies(disc, maps, code)
     print(f"bytes elsewhere on the disc that copy reached code: {len(cps):,}")
+    rel = relocated(disc, maps, code, cps)
+    print(f"bytes that copy reached code moved to another address: {len(rel):,}")
+    check.rel = rel
     if "--progress" in sys.argv[1:]:
         rows, order = progress(disc, mems, maps, cps)
         total = write_progress(rows, order)

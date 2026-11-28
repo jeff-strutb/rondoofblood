@@ -48,6 +48,7 @@ StepSlots54And55ThenMask0A8F_at3:
 
 ; @routine 0A8F:066 MaskVramRowsByLevel0A8F
 ; @run 6B:9066
+; @stop 90B1
 ; WHAT IT DOES: From the level in A (folded down when $20 or more) sets the mask's depth (multiplier high, $10 less
 ; the low four bits) and picks one of four runs of VRAM rows; for each row takes a random number and masks the row
 ; (Stage 06's $8000 overlay).
@@ -89,7 +90,7 @@ MaskVramRowsByLevel0A8F_at0:
     sta z:zProduct0
 MaskVramRowsByLevel0A8F_at3:
     jsr VecNextRandom
-    bsr MaskVramRowRandom0A8F
+    bsr MaskVramRowsRandom
     lda z:zTemp10
     clc
     adc z:zProduct0
@@ -99,76 +100,6 @@ MaskVramRowsByLevel0A8F_at3:
 MaskVramRowsByLevel0A8F_at2:
     dec z:zTemp12
     bne MaskVramRowsByLevel0A8F_at3
-    rts
-
-; @routine 0A8F:0B1 MaskVramRowRandom0A8F
-; @run 6B:90B1
-; WHAT IT DOES: Reads the $40 VRAM words at zTemp10:zTemp11 into the stage's mask buffer, clears them all when the
-; depth (multiplier high) is $10 or more or else masks them with random bits row by row, and writes them back
-; (Stage 06's $8000 overlay).
-; HOW: SetVramAddresses, a read loop, MaskStageRowCopy and MaskStageRow over the rows, a write loop.
-; WAITS: no.
-; Entry: zTemp10:zTemp11 the VRAM address; multiplier high the depth. Exit: A, X, Y and the flags as its last
-; instruction or call left them.
-MaskVramRowRandom0A8F:
-    ldx z:zTemp10
-    ldy z:zTemp11
-    jsr SetVramAddresses
-    ldx #$80
-MaskVramRowRandom0A8F_at0:
-    lda a:VDC_DATA_LO
-    sta a:StageMaskBuffer-1,x
-    lda a:VDC_DATA_HI
-    sta a:StageMaskBuffer-2,x
-    dex
-    dex
-    bne MaskVramRowRandom0A8F_at0
-    ldy z:zTransposeRowsLeft
-    cpy #$10
-    bcc MaskVramRowRandom0A8F_at1
-    ldx #$7F
-MaskVramRowRandom0A8F_at2:
-    stz a:StageMaskBuffer,x
-    dex
-    bpl MaskVramRowRandom0A8F_at2
-    jmp MaskVramRowRandom0A8F_at3
-MaskVramRowRandom0A8F_at1:
-    dey
-    beq MaskVramRowRandom0A8F_at4
-    clx
-MaskVramRowRandom0A8F_at5:
-    lda z:zRandom2
-    sec
-    ror a
-    ora z:zRandom2
-    sta z:zTemp00
-    jsr MaskStageRowCopy
-    inx
-    inx
-    dey
-    bne MaskVramRowRandom0A8F_at5
-MaskVramRowRandom0A8F_at4:
-    ldy z:zTransposeRowsLeft
-    clx
-MaskVramRowRandom0A8F_at6:
-    lda z:zRandom2
-    ora z:zRandom3
-    sta z:zTemp00
-    jsr MaskStageRow
-    inx
-    inx
-    dey
-    bne MaskVramRowRandom0A8F_at6
-MaskVramRowRandom0A8F_at3:
-    ldx #$80
-MaskVramRowRandom0A8F_at7:
-    lda a:StageMaskBuffer-1,x
-    sta a:VDC_DATA_LO
-    lda a:StageMaskBuffer-2,x
-    sta a:VDC_DATA_HI
-    dex
-    dex
-    bne MaskVramRowRandom0A8F_at7
     rts
 
 ; @routine 0A9A:6C4 SpawnKind2AWhenRoom0A9A
@@ -1800,6 +1731,7 @@ RunStateUnlessSlowed0A9EStates = $CC64 ; the routine address per state
 RunStateUnlessSlowed0A9E:
     jsr ContactBox14By20_0A9E
     jsr State4WhenHitBit7_0A9E
+RunStateUnlessSlowed0A9E_at1:
     jsr SkipFrameWhenSlowed0A9E
     bcc RunStateUnlessSlowed0A9E_at0
     rts

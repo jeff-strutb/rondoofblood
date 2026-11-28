@@ -8,8 +8,6 @@ void StepSlots54And55ThenMask0A8F(void);
 void abi_StepSlots54And55ThenMask0A8F(void);
 void MaskVramRowsByLevel0A8F(void);
 void abi_MaskVramRowsByLevel0A8F(void);
-void MaskVramRowRandom0A8F(void);
-void abi_MaskVramRowRandom0A8F(void);
 void SpawnKind2AWhenRoom0A9A(uint8_t slot);
 void abi_SpawnKind2AWhenRoom0A9A(void);
 void PlaceAndStartSixKind2B0A9A(void);

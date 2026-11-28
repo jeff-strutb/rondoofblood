@@ -82,6 +82,7 @@ void abi_StepSlots54And55ThenMask0A8F(void)
 /*
  * @routine 0A8F:066 MaskVramRowsByLevel0A8F
  * @run 6B:9066
+ * @stop 90B1
  * WHAT IT DOES: From the level in A (folded down when $20 or more) sets the mask's depth (multiplier high, $10 less
  * the low four bits) and picks one of four runs of VRAM rows; for each row takes a random number and masks the row
  * (Stage 06's $8000 overlay).
@@ -130,9 +131,7 @@ void MaskVramRowsByLevel0A8F(void)
         jsr_push(0x909F);
         random_exit_shim(NextRandom());
         jsr_pop();
-        jsr_push(0x90A1);
-        MaskVramRowRandom0A8F();
-        jsr_pop();
+        call_routine(0x90A1, 0x90B1);
         op_lda(RD8(ZP->temp10));
         op_clc();
         op_adc(RD8(ZP->product.lo));
@@ -147,83 +146,6 @@ void MaskVramRowsByLevel0A8F(void)
 void abi_MaskVramRowsByLevel0A8F(void)
 {
     MaskVramRowsByLevel0A8F();
-}
-
-/*
- * @routine 0A8F:0B1 MaskVramRowRandom0A8F
- * @run 6B:90B1
- * WHAT IT DOES: Reads the $40 VRAM words at zTemp10:zTemp11 into the stage's mask buffer, clears them all when the
- * depth (multiplier high) is $10 or more or else masks them with random bits row by row, and writes them back
- * (Stage 06's $8000 overlay).
- * HOW: SetVramAddresses, a read loop, MaskStageRowCopy and MaskStageRow over the rows, a write loop.
- * WAITS: no.
- * Entry: zTemp10:zTemp11 the VRAM address; multiplier high the depth. Exit: A, X, Y and the flags as its last
- * instruction or call left them.
- */
-void MaskVramRowRandom0A8F(void)
-{
-    op_ldx(RD8(ZP->temp10));
-    op_ldy(RD8(ZP->temp11));
-    call_routine(0x90B8, 0x937D);
-    op_ldx(0x80);
-    do {
-        op_lda(RD8(VDC->data_lo));
-        wr8((uint16_t)(COL(STAGEWORK->mask_buffer) - 1 + cpu.x), cpu.a);
-        op_lda(RD8(VDC->data_hi));
-        wr8((uint16_t)(COL(STAGEWORK->mask_buffer) - 2 + cpu.x), cpu.a);
-        op_dex();
-        op_dex();
-    } while (!flag_z());
-    op_ldy(RD8(ZP->multiplier.hi));
-    op_cpy(0x10);
-    if (flag_c()) {
-        op_ldx(0x7F);
-        do {
-            WR8(STAGEWORK->mask_buffer[cpu.x], 0);
-            op_dex();
-        } while (!flag_n());
-    } else {
-        op_dey();
-        if (!flag_z()) {
-            op_clx();
-            do {
-                op_lda(RD8(ZP->random2));
-                op_sec();
-                cpu.a = f_ror(cpu.a);
-                op_ora(RD8(ZP->random2));
-                WR8(ZP->temp00, cpu.a);
-                call_routine(0x90EA, 0x9113);
-                op_inx();
-                op_inx();
-                op_dey();
-            } while (!flag_z());
-        }
-        op_ldy(RD8(ZP->multiplier.hi));
-        op_clx();
-        do {
-            op_lda(RD8(ZP->random2));
-            op_ora(RD8(ZP->random3));
-            WR8(ZP->temp00, cpu.a);
-            call_routine(0x90FB, 0x912E);
-            op_inx();
-            op_inx();
-            op_dey();
-        } while (!flag_z());
-    }
-    op_ldx(0x80);
-    do {
-        op_lda(rd8((uint16_t)(COL(STAGEWORK->mask_buffer) - 1 + cpu.x)));
-        WR8(VDC->data_lo, cpu.a);
-        op_lda(rd8((uint16_t)(COL(STAGEWORK->mask_buffer) - 2 + cpu.x)));
-        WR8(VDC->data_hi, cpu.a);
-        op_dex();
-        op_dex();
-    } while (!flag_z());
-}
-
-void abi_MaskVramRowRandom0A8F(void)
-{
-    MaskVramRowRandom0A8F();
 }
 
 /*

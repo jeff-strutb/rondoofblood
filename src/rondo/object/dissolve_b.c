@@ -40,7 +40,7 @@ static void add(uint8_t value, bool carry_in)
 }
 
 /* The 64 VRAM words from zBiosCl-Ch on: every fourth one, from the row zTemp00 names, ANDed with zTemp01-02. */
-static void dissolve_words(uint16_t at)
+void DissolveWordsAt(uint16_t at)
 {
     push8(cpu.y);
     cpu.y = 0;
@@ -188,7 +188,7 @@ void abi_DissolveMask(void)
  */
 void DissolveWords0E0A260(void)
 {
-    dissolve_words(0xAA60);
+    DissolveWordsAt(0xAA60);
 }
 
 void abi_DissolveWords0E0A260(void)
@@ -229,7 +229,7 @@ void abi_DissolveStep0E0B7ED(void)
  */
 void DissolveWords10CA29D(void)
 {
-    dissolve_words(0xAA9D);
+    DissolveWordsAt(0xAA9D);
 }
 
 void abi_DissolveWords10CA29D(void)
@@ -289,7 +289,7 @@ void abi_DissolveStep10CC5E1(void)
  */
 void DissolveWords12DA365(void)
 {
-    dissolve_words(0xAB65);
+    DissolveWordsAt(0xAB65);
 }
 
 void abi_DissolveWords12DA365(void)
@@ -349,7 +349,7 @@ void abi_DissolveStep12DE65E(void)
  */
 void DissolveWords13FA365(void)
 {
-    dissolve_words(0xAB65);
+    DissolveWordsAt(0xAB65);
 }
 
 void abi_DissolveWords13FA365(void)
@@ -409,7 +409,7 @@ void abi_DissolveStep13FC0EA(void)
  */
 void DissolveWords16CA260(void)
 {
-    dissolve_words(0xAA60);
+    DissolveWordsAt(0xAA60);
 }
 
 void abi_DissolveWords16CA260(void)

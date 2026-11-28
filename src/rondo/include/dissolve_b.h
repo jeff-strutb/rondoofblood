@@ -10,6 +10,9 @@
 #include "enemy_objects.h"
 #include "stage_enemies_l7.h"
 
+/* The body of the DissolveWords copies, run at `at`. */
+void DissolveWordsAt(uint16_t at);
+
 void DissolveMask(void);
 void abi_DissolveMask(void);
 void DissolveWords0E0A260(void);

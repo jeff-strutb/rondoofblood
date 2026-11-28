@@ -11,6 +11,7 @@
 #include "common_objects.h"
 #include "enemy_objects.h"
 #include "stage_enemies_l7.h"
+#include "dissolve_b.h"
 #include "pickup_b.h"
 
 /*
@@ -3374,16 +3375,15 @@ void abi_SubStepPickupErase18DB08A(void)
 /*
  * @routine 05CC:09F ErodeVramWords05CC09F
  * @run 70:B89F
- * WHAT IT DOES: Erodes 64 words of VRAM from the address in zBiosCl-Ch: each word's low byte is shifted left and
- * its high byte right.
- * HOW: For each word, the write and read addresses set to it, then read and written back.
+ * WHAT IT DOES: Of the 64 VRAM words from zBiosCl-Ch on, ANDs every fourth one, from the row zTemp00 names, with
+ * zTemp01 (low byte) and zTemp02 (high byte); a copy of DissolveWords0E0A260.
+ * HOW: For each such word, the write and read addresses set to it, then read, masked and written back.
  * WAITS: no.
- * Entry: zBiosCl-Ch the address (zBiosCl steps through the 64 words). Exit: A the last word's new high byte, C 1,
- * N and Z from Y restored; X, Y and V kept.
+ * Entry: zBiosCl-Ch the address, zTemp00-02 the row and masks. Exit: zBiosCl-Ch 64 on; Y kept.
  */
 void ErodeVramWords05CC09F(void)
 {
-    erode_words(0xB89F);
+    DissolveWordsAt(0xB89F);
 }
 
 void abi_ErodeVramWords05CC09F(void)

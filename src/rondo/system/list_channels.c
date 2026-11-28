@@ -1,8 +1,8 @@
 /*
  * RunListChannel ($8018 to $8132) in the overlays a scene loads: the same code as the census versions
  * (menu/list_channels_census.c) but for kind 3's table of copy lists, so each runs RunListChannelBody with its
- * own table. Seven versions; the overlays at 0111 and 13F1 hold the same bytes as 00C5 and 12D1 and are not filed
- * again. AddToListWord's bytes at $8133 are its own routine (layers.c), hence @stop 8133.
+ * own table. Seven versions; the overlays at 0111 and 13F1 hold the same bytes as 00C5 and 12D1 (0111's copy is filed in
+ * menu/front_end_copies.c). AddToListWord's bytes at $8133 are its own routine (layers.c), hence @stop 8133.
  */
 #include "machine.h"
 #include "ram.h"

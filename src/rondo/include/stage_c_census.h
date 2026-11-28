@@ -386,4 +386,8 @@ void abi_ClearVramRows031F(void);
 
 StageRegs StageFadeStart3CDAt(StageRegs r, uint16_t at);
 
+/* A build of the wait at the boss's door: where it runs, the two routines it calls, and the bytes it tests and sets. */
+typedef struct { uint16_t at, frame, overlay, ready, busy, timer; } BossDoorBuild;
+StageRegs StageBossWaitDoor3CDAt(StageRegs r, const BossDoorBuild *build);
+
 #endif

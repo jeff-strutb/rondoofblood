@@ -2330,6 +2330,11 @@ void abi_StageBossScrollToDoor3CD(void)
     regs_exit_shim(StageBossScrollToDoor3CD(regs_entry_shim()));
 }
 
+/* 03CD's wait at the boss's door. */
+static const BossDoorBuild boss_door_3cd = {
+    0x85E3, 0x803E, 0x899E, ADDR_OF8(OBJ->substate[58]), ADDR_OF8(OBJ->anim_step[2]), ADDR_OF8(OBJ->work_c[0])
+};
+
 /*
  * @routine 03CD:5E3 StageBossWaitDoor3CD
  * @run 6B:85E3
@@ -2350,19 +2355,25 @@ void abi_StageBossScrollToDoor3CD(void)
  */
 StageRegs StageBossWaitDoor3CD(StageRegs r)
 {
-    CALL(0x85E6, StageFrameA0093CD(r));
-    CALL(0x85E9, StageOverlayFrame3CD(r));
-    r = loaded(r, RD8(OBJ->substate[58]));
+    return StageBossWaitDoor3CDAt(r, &boss_door_3cd);
+}
+
+/* StageBossWaitDoor3CD's body, for its builds elsewhere. */
+StageRegs StageBossWaitDoor3CDAt(StageRegs r, const BossDoorBuild *build)
+{
+    r = resident_call(r, (uint16_t)(build->at + 3), build->frame);
+    r = resident_call(r, (uint16_t)(build->at + 6), build->overlay);
+    r = loaded(r, rd8(build->ready));
     r = compared(r, 0x04);
     if (r.nz != 0) {
         return r;
     }
-    r = loaded(r, RD8(OBJ->anim_step[2]));
+    r = loaded(r, rd8(build->busy));
     if (r.a != 0) {
         return r;
     }
     r = loaded(r, 0x20);
-    WR8(OBJ->work_c[0], 0x20);
+    wr8(build->timer, 0x20);
     r.nz = (uint8_t)(rd8(SUB3_STEP) + 1);
     wr8(SUB3_STEP, r.nz);
     return r;

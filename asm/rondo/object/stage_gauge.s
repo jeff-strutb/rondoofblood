@@ -123,3 +123,113 @@ SetGaugeAddress_at0:
     tay
     jsr SetVramAddressesLong
     rts
+
+; @routine 024E:483 GaugeTimerCheckB
+; @run 6B:8C83
+; @stop 8C8B
+; WHAT IT DOES: While the life timer of slot 85 is zero, the gauge steps (GaugeStepB); else the flash at $8D25.
+; HOW: The shared body with the VRAM routines at $937D, $9392 and $93A1.
+; WAITS: no.
+; Entry: nothing. Exit: as the step or the flash taken.
+GaugeTimerCheckB:
+    lda a:BossGaugeEnding
+    beq GaugeStepB
+    jmp BossGaugeFlash
+
+; @routine 024E:48B GaugeStepB
+; @run 6B:8C8B
+; @stop 8CB7
+; WHAT IT DOES: Moves the gauge one step towards its target, as GaugeStep with the VRAM routines at $937D to $93A1.
+; HOW: The shared body with the VRAM routines at $937D, $9392 and $93A1.
+; WAITS: no.
+; Entry: nothing. Exit: as GaugeStep.
+GaugeStepB:
+    lda a:OBJ_HEALTH+16
+    bmi GaugeStepB_at0
+    cmp a:BossGaugeShown
+    beq GaugeStepUpB_at0
+    bcs GaugeStepUpB
+    bsr SetGaugeAddressB
+    ldx #$0F
+    ldy #$FF
+    jsr AndVramData
+    dec a:BossGaugeShown
+    rts
+GaugeStepB_at0:
+    pha
+    stz a:OBJ_HEALTH+16
+    bsr GaugeTimerCheckB
+    pla
+    sta a:OBJ_HEALTH+16
+    ldy a:BossGaugeShown
+    bne GaugeStepUpB_at0
+    sta a:BossGaugeEnding
+    rts
+
+; @routine 024E:4B7 GaugeStepUpB
+; @run 6B:8CB7
+; @stop 8CC4
+; WHAT IT DOES: Grows the gauge one, as GaugeStepUp with the VRAM routines at $937D to $93A1.
+; HOW: The shared body with the VRAM routines at $937D, $9392 and $93A1.
+; WAITS: no.
+; Entry: nothing. Exit: as GaugeStepUp.
+GaugeStepUpB:
+    inc a:BossGaugeShown
+    bsr SetGaugeAddressB
+    ldx #$F0
+    ldy #$00
+    jsr OrVramData
+GaugeStepUpB_at0:
+    rts
+
+; @routine 024E:4C4 SetGaugeAddressB
+; @run 6B:8CC4
+; WHAT IT DOES: Points the VDC at the gauge's cell for its value, as SetGaugeAddress with the VRAM routine at $937D.
+; HOW: The shared body with the VRAM routines at $937D, $9392 and $93A1.
+; WAITS: no.
+; Entry: nothing. Exit: as SetGaugeAddress.
+SetGaugeAddressB:
+    lda a:BossGaugeShown
+    beq GaugeStepUpB_at0
+    stz z:zTemp08
+    stz z:zTemp09
+    cmp #$3F
+    bcc SetGaugeAddressB_at0
+    lda #$C0
+    sta z:zTemp08
+    inc z:zTemp09
+SetGaugeAddressB_at0:
+    lda #$5E
+    sec
+    sbc a:BossGaugeShown
+    pha
+    and #$0F
+    clc
+    adc #$40
+    sta z:zTemp00
+    pla
+    and #$F0
+    stz z:zTemp01
+    asl a
+    rol z:zTemp01
+    asl a
+    rol z:zTemp01
+    asl a
+    rol z:zTemp01
+    clc
+    adc z:zTemp00
+    sta z:zTemp00
+    lda z:zTemp01
+    adc #$7D
+    sta z:zTemp01
+    lda z:zTemp08
+    clc
+    adc z:zTemp00
+    tax
+    lda z:zTemp09
+    adc z:zTemp01
+    tay
+    jsr SetVramAddresses
+SetGaugeAddressB_ret:
+    rts
+

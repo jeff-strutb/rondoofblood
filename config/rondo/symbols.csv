@@ -1060,3 +1060,8 @@ B4B3,abs,MariaHurtThrowKinds,by the state she was hit in: 0 on the ground, 1 in 
 B4C4,abs,MariaThrowSpeedsX,X speed words of a kind 3 throw by OBJ_KNOCK_RIGHT: $FD80, $0280 (MariaHurtKindThree)
 B56A,abs,MariaThrownLandSpeedsX,X speed words as a throw lands, by OBJ_KNOCK_RIGHT: $FE00, $0200 (MariaHurtThrown)
 B653,abs,MariaKnockSpeeds,X speed words of the knock by OBJ_KNOCK_RIGHT: $FF00, $0100 (MariaKnockSpeedX)
+2742,abs,BossGaugeShown,the value the boss's gauge is drawn at (SetGaugeAddress); the same byte as Field2742
+350D,abs,BossGaugeEnding,slot 85's OBJ_WORK_D: not zero, the gauge's timer check goes on to its flash
+35BD,abs,BossFlashStep,slot 85's OBJ_WORK_F: the boss gauge flash's step, picking its mask pattern
+8D0D,abs,BossFlashAddresses,the boss gauge flash's VRAM cells, a word each
+8D1D,abs,BossFlashMasks,the boss gauge flash's mask patterns by its step's low three bits

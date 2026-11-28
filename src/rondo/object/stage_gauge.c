@@ -12,6 +12,16 @@ enum {
     UP_RETURN = 0x8CC3, OTHER_RUN = 0x8D25, DOWN_X = 0x0F, DOWN_Y = 0xFF, UP_X = 0xF0, UP_Y = 0x00
 };
 
+/* The VRAM routines a gauge draws through: the overlays holding the same gauge differ only in these. */
+typedef struct {
+    void (*point)(uint8_t lo, uint8_t hi);
+    uint8_t (*clear_bits)(uint8_t lo_mask, uint8_t hi_mask);
+    uint8_t (*set_bits)(uint8_t lo_mask, uint8_t hi_mask);
+} GaugeVram;
+
+static const GaugeVram VRAM_AT_968F = { SetVramAddressesLong, AndVramDataLong, OrVramDataLong };
+static const GaugeVram VRAM_AT_937D = { SetVramAddresses, AndVramData, OrVramData };
+
 /* The parts of an exit the later one sets win over the earlier. */
 static StageExit merge_exit(StageExit before, StageExit after)
 {
@@ -46,7 +56,7 @@ static StageExit merge_exit(StageExit before, StageExit after)
  * Entry: nothing. Exit: A 2, X and Y the address, N 0, Z 0, C and V from the high add; with a zero
  * value A 0 and the rest kept.
  */
-StageExit SetGaugeAddress(void)
+static StageExit set_gauge_address(const GaugeVram *vram)
 {
     StageExit end = { 0, 0, 0, false, false, 0, 0 };
     uint8_t a = RD8(LEVEL->field2742);
@@ -99,7 +109,7 @@ StageExit SetGaugeAddress(void)
     high = RD8(ZP->temp01);
     row = add_bytes(m, high, offset.carry);
     jsr_push(SET_RETURN);
-    SetVramAddressesLong(offset.value, row.value);
+    vram->point(offset.value, row.value);
     jsr_pop();
     end.a = 2;
     end.nz = 2;
@@ -109,6 +119,11 @@ StageExit SetGaugeAddress(void)
     end.v = row.overflow;
     end.set = EXIT_X | EXIT_Y | EXIT_C | EXIT_V;
     return end;
+}
+
+StageExit SetGaugeAddress(void)
+{
+    return set_gauge_address(&VRAM_AT_968F);
 }
 
 void abi_SetGaugeAddress(void)
@@ -125,7 +140,7 @@ void abi_SetGaugeAddress(void)
  * WAITS: no.
  * Entry: nothing. Exit: A the high byte written, N and Z from it, X $F0, Y 0.
  */
-StageExit GaugeStepUp(void)
+static StageExit gauge_step_up(const GaugeVram *vram)
 {
     StageExit end = { 0, UP_X, UP_Y, false, false, 0, EXIT_X | EXIT_Y };
     StageExit address;
@@ -133,18 +148,23 @@ StageExit GaugeStepUp(void)
 
     INC8(LEVEL->field2742);
     jsr_push(UP_ADDRESS_RETURN);
-    address = SetGaugeAddress();
+    address = set_gauge_address(vram);
     jsr_pop();
     end = merge_exit(end, address);
     end.x = UP_X;
     end.y = UP_Y;
     end.set |= EXIT_X | EXIT_Y;
     jsr_push(UP_RETURN);
-    a = OrVramDataLong(UP_X, UP_Y);
+    a = vram->set_bits(UP_X, UP_Y);
     jsr_pop();
     end.a = a;
     end.nz = a;
     return end;
+}
+
+StageExit GaugeStepUp(void)
+{
+    return gauge_step_up(&VRAM_AT_968F);
 }
 
 void abi_GaugeStepUp(void)
@@ -152,7 +172,7 @@ void abi_GaugeStepUp(void)
     stage_exit_shim(GaugeStepUp());
 }
 
-static StageExit gauge_timer_check(StageExit held);
+static StageExit gauge_timer_check(StageExit held, const GaugeVram *vram);
 
 /*
  * @routine 05BE:48B GaugeStep
@@ -166,7 +186,7 @@ static StageExit gauge_timer_check(StageExit held);
  * WAITS: no.
  * Entry: nothing. Exit: as the step taken.
  */
-StageExit GaugeStep(void)
+static StageExit gauge_step(const GaugeVram *vram)
 {
     StageExit end = { 0, 0, 0, false, false, 0, 0 };
     StageExit address;
@@ -178,7 +198,7 @@ StageExit GaugeStep(void)
         push8(a);
         WR8(OBJ->health[TARGET_SLOT], 0);
         jsr_push(TIMER_RETURN);
-        end = gauge_timer_check(end);
+        end = gauge_timer_check(end, vram);
         jsr_pop();
         a = pull8();
         WR8(OBJ->health[TARGET_SLOT], a);
@@ -201,14 +221,14 @@ StageExit GaugeStep(void)
         return end;
     }
     if (a >= m) {
-        return merge_exit(end, GaugeStepUp());
+        return merge_exit(end, gauge_step_up(vram));
     }
     jsr_push(DOWN_ADDRESS_RETURN);
-    address = SetGaugeAddress();
+    address = set_gauge_address(vram);
     jsr_pop();
     end = merge_exit(end, address);
     jsr_push(DOWN_RETURN);
-    a = AndVramDataLong(DOWN_X, DOWN_Y);
+    a = vram->clear_bits(DOWN_X, DOWN_Y);
     jsr_pop();
     end.a = a;
     end.x = DOWN_X;
@@ -218,12 +238,17 @@ StageExit GaugeStep(void)
     return end;
 }
 
+StageExit GaugeStep(void)
+{
+    return gauge_step(&VRAM_AT_968F);
+}
+
 void abi_GaugeStep(void)
 {
     stage_exit_shim(GaugeStep());
 }
 
-/* The code the stage runs on after its timer says to, which has no C: it gets A and the flags. */
+/* The flash the gauge's timer check goes on to at $8D25, the C of the routine loaded there: it gets A and the flags. */
 static StageExit other_stage_code_shim(uint8_t a, StageExit held)
 {
     StageExit done = { 0, 0, 0, false, false, 0, EXIT_CPU };
@@ -242,17 +267,17 @@ static StageExit other_stage_code_shim(uint8_t a, StageExit held)
     if ((held.set & EXIT_V) != 0) {
         abi_flag(P_V, held.v);
     }
-    call_original(OTHER_RUN);
+    run_routine_from(0x8C88, OTHER_RUN);
     return done;
 }
 
 /* From the timer on: when the life timer of slot 85 is zero, the gauge steps; otherwise the stage's other code runs. */
-static StageExit gauge_timer_check(StageExit held)
+static StageExit gauge_timer_check(StageExit held, const GaugeVram *vram)
 {
     uint8_t a = RD8(OBJ->life_timer[OBJECT_SLOT]);
 
     if (a == 0) {
-        return GaugeStep();
+        return gauge_step(vram);
     }
     return other_stage_code_shim(a, held);
 }
@@ -289,10 +314,89 @@ StageExit RunStageGauge(void)
     }
     m = a;
     (void)m;
-    return merge_exit(end, gauge_timer_check(end));
+    return merge_exit(end, gauge_timer_check(end, &VRAM_AT_968F));
 }
 
 void abi_RunStageGauge(void)
 {
     stage_exit_shim(RunStageGauge());
+}
+
+/*
+ * @routine 024E:4C4 SetGaugeAddressB
+ * @run 6B:8CC4
+ * WHAT IT DOES: Points the VDC at the gauge's cell for its value, as SetGaugeAddress with the VRAM routine at $937D.
+ * HOW: The shared body with the VRAM routines at $937D, $9392 and $93A1.
+ * WAITS: no.
+ * Entry: nothing. Exit: as SetGaugeAddress.
+ */
+StageExit SetGaugeAddressB(void)
+{
+    return set_gauge_address(&VRAM_AT_937D);
+}
+
+void abi_SetGaugeAddressB(void)
+{
+    stage_exit_shim(SetGaugeAddressB());
+}
+
+/*
+ * @routine 024E:4B7 GaugeStepUpB
+ * @run 6B:8CB7
+ * @stop 8CC4
+ * WHAT IT DOES: Grows the gauge one, as GaugeStepUp with the VRAM routines at $937D to $93A1.
+ * HOW: The shared body with the VRAM routines at $937D, $9392 and $93A1.
+ * WAITS: no.
+ * Entry: nothing. Exit: as GaugeStepUp.
+ */
+StageExit GaugeStepUpB(void)
+{
+    return gauge_step_up(&VRAM_AT_937D);
+}
+
+void abi_GaugeStepUpB(void)
+{
+    stage_exit_shim(GaugeStepUpB());
+}
+
+/*
+ * @routine 024E:48B GaugeStepB
+ * @run 6B:8C8B
+ * @stop 8CB7
+ * WHAT IT DOES: Moves the gauge one step towards its target, as GaugeStep with the VRAM routines at $937D to $93A1.
+ * HOW: The shared body with the VRAM routines at $937D, $9392 and $93A1.
+ * WAITS: no.
+ * Entry: nothing. Exit: as GaugeStep.
+ */
+StageExit GaugeStepB(void)
+{
+    return gauge_step(&VRAM_AT_937D);
+}
+
+void abi_GaugeStepB(void)
+{
+    stage_exit_shim(GaugeStepB());
+}
+
+/*
+ * @routine 024E:483 GaugeTimerCheckB
+ * @run 6B:8C83
+ * @stop 8C8B
+ * WHAT IT DOES: While the life timer of slot 85 is zero, the gauge steps (GaugeStepB); else the flash at $8D25.
+ * HOW: LDA and the two jumps, each to the C of the routine loaded there: the overlays holding these bytes differ in
+ * the step at $8C8B and the flash's callees.
+ * WAITS: no.
+ * Entry: nothing. Exit: as the step or the flash taken.
+ */
+void abi_GaugeTimerCheckB(void)
+{
+    uint8_t left = RD8(OBJ->life_timer[OBJECT_SLOT]);
+
+    cpu.a = left;
+    abi_nz(left);
+    if (left == 0) {
+        run_routine_from(0x8C86, 0x8C8B);
+        return;
+    }
+    run_routine_from(0x8C88, OTHER_RUN);
 }

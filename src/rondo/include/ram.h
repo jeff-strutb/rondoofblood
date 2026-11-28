@@ -1046,5 +1046,10 @@
 #define MariaThrowSpeedsX 0xB4C4 /* X speed words of a kind 3 throw by OBJ_KNOCK_RIGHT: $FD80, $0280 (MariaHurtKindThree) */
 #define MariaThrownLandSpeedsX 0xB56A /* X speed words as a throw lands, by OBJ_KNOCK_RIGHT: $FE00, $0200 (MariaHurtThrown) */
 #define MariaKnockSpeeds 0xB653 /* X speed words of the knock by OBJ_KNOCK_RIGHT: $FF00, $0100 (MariaKnockSpeedX) */
+#define BossGaugeShown 0x2742 /* the value the boss's gauge is drawn at (SetGaugeAddress); the same byte as Field2742 */
+#define BossGaugeEnding 0x350D /* slot 85's OBJ_WORK_D: not zero, the gauge's timer check goes on to its flash */
+#define BossFlashStep 0x35BD /* slot 85's OBJ_WORK_F: the boss gauge flash's step, picking its mask pattern */
+#define BossFlashAddresses 0x8D0D /* the boss gauge flash's VRAM cells, a word each */
+#define BossFlashMasks 0x8D1D /* the boss gauge flash's mask patterns by its step's low three bits */
 
 #endif

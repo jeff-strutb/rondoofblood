@@ -3539,6 +3539,12 @@ void abi_StageOverlayFrame3CD(void)
  */
 StageRegs StageLevelStart3CD(StageRegs r)
 {
+    return StageLevelStart3CDAt(r, &route_3cd);
+}
+
+/* StageLevelStart3CD's body, for the builds of it with their own tables. */
+StageRegs StageLevelStart3CDAt(StageRegs r, const StageRouteBuild *build)
+{
     uint8_t stage, index;
 
     r = vector_call(r, 0x89B5, abi_VecClearEnemySlots);
@@ -3548,13 +3554,13 @@ StageRegs StageLevelStart3CD(StageRegs r)
     r.c = (stage & 0x40) != 0;
     r = loaded(r, index);
     r.y = index;
-    r = loaded(r, rd8((uint16_t)(0x9E21 + r.y)));
+    r = loaded(r, rd8((uint16_t)(build->levels + r.y)));
     WR8(LEVEL->level_stream.lo, r.a);
-    r = loaded(r, rd8((uint16_t)(0x9E22 + r.y)));
+    r = loaded(r, rd8((uint16_t)(build->levels + 1 + r.y)));
     WR8(LEVEL->level_stream.hi, r.a);
-    r = loaded(r, rd8((uint16_t)(0x9E23 + r.y)));
+    r = loaded(r, rd8((uint16_t)(build->levels + 2 + r.y)));
     WR8(LEVEL->level_axis, r.a);
-    r = loaded(r, rd8((uint16_t)(0x9E24 + r.y)));
+    r = loaded(r, rd8((uint16_t)(build->levels + 3 + r.y)));
     if (r.a != 0) {
         push8(r.y);
         for (r.y = 0; r.y < 0x20; r.y++) {

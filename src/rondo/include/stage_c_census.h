@@ -312,5 +312,6 @@ StageRegs StageRouteSetUpA3CDAt(StageRegs r, const StageRouteBuild *build);
 StageRegs StageRouteSetUpB3CDAt(StageRegs r, const StageRouteBuild *build);
 StageRegs StageLoadScreen3CDAt(StageRegs r, const StageRouteBuild *build);
 StageRegs StageResetScroll3CDAt(StageRegs r, const StageRouteBuild *build);
+StageRegs StageLevelStart3CDAt(StageRegs r, const StageRouteBuild *build);
 
 #endif

@@ -199,4 +199,7 @@ void abi_StageShowStartFrame026D(void);
 StageRegs StageClearedWaitScroll026D(StageRegs r);
 void abi_StageClearedWaitScroll026D(void);
 
+StageRegs StageClearedScrollOn026D(StageRegs r);
+void abi_StageClearedScrollOn026D(void);
+
 #endif

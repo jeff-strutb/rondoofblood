@@ -118,4 +118,9 @@ StageRegs StageShowStartFrameAt(StageRegs r, uint16_t at, uint16_t frames);
  * and step the address it goes to. */
 StageRegs StageClearedWaitScrollAt(StageRegs r, uint16_t ret, uint16_t step);
 
+
+/* system/stage_flow.c: StageClearedScrollOn (024D:695) with ret the address after its JSR to StepScrollAndRunObjects
+ * and step the address it goes to. */
+StageRegs StageClearedScrollOnAt(StageRegs r, uint16_t ret, uint16_t step);
+
 #endif

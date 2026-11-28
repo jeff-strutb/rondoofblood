@@ -2471,3 +2471,17 @@ StageClearedWaitScroll026D:
     inc z:zField85
 StageClearedWaitScroll026D_at0:
     rts
+
+; @routine 026D:65F StageClearedScrollOn026D
+; @run 6B:865F
+; WHAT IT DOES: A cleared stage's step: the scroll and the objects run, zField8C's bit 7 is cleared and the next step comes (as
+; StageClearedScrollOn, 024D:695). Programs 031D, 043D, 064D, 10DD, 122D, 1A2D, 1B8D and 1CED hold the same bytes.
+; HOW: StepScrollAndRunObjects026E; RMB7 of zField8C; INC zField85.
+; WAITS: as StepScrollAndRunObjects026E.
+; Entry: X the caller's. Exit: N and Z from zField85's INC; A, X, Y, C and V as the objects left them.
+; Nothing the game does loads this program (codemap.unloaded_programs), so nothing is known to reach it.
+StageClearedScrollOn026D:
+    jsr StepScrollAndRunObjects026E
+    rmb7 z:zField8C
+    inc z:zField85
+    rts

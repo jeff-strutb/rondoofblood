@@ -494,7 +494,14 @@ void abi_StageSectionNext(void)
  */
 StageRegs StageClearedScrollOn(StageRegs r)
 {
-    r = step_and_run_objects(r, 0x8698, 0x8A4F);
+    return StageClearedScrollOnAt(r, 0x8698, 0x8A4F);
+}
+
+/* StageClearedScrollOn's body, ret the address after its JSR to StepScrollAndRunObjects and step where it goes: the
+ * builds of the overlay that hold these instructions at another address (stage_programs_census.c) pass their own. */
+StageRegs StageClearedScrollOnAt(StageRegs r, uint16_t ret, uint16_t step)
+{
+    r = step_and_run_objects(r, ret, step);
     RMW8(ZP->field8c, old, old & 0x7F);
     r.nz = INC8(ZP->field85);
     return r;

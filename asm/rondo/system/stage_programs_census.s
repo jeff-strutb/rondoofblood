@@ -2301,3 +2301,22 @@ StageFallPose026D:
     jsr MariaVecSetAnimation
     jsr MariaVecAnimationSound
     bra StageFallRightLand026D_at0
+
+; @routine 026D:374 StageFallRightDone026D
+; @run 6B:8374
+; WHAT IT DOES: The last step of the fall to the right: the stage set up again and the player walked on by pad $20 (as
+; StageFallRightDone, 024D:39C). Programs 031D, 043D, 064D, 10DD, 122D, 1A2D, 1B8D and 1CED hold the same bytes.
+; HOW: JSR InitStage026E; sub-mode 1, zField8C cleared; $20 frames of pad $20.
+; WAITS: where InitStage026E waits.
+; Entry: nothing. Exit: A $20, N and Z from it; X, Y, C and V as InitStage026E left them.
+; Nothing the game does loads this program (codemap.unloaded_programs), so nothing is known to reach it.
+StageFallRightDone026D:
+    jsr InitStage026E
+    lda #$01
+    sta z:zGameSubMode
+    stz z:zField8C
+    lda #$20
+    sta a:OBJ_PAD_FORCE_FRAMES
+    lda #$20
+    sta a:OBJ_PAD_FORCED
+    rts

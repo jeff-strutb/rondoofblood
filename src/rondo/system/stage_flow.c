@@ -617,10 +617,11 @@ void abi_StageForcedWalkB(void)
     stage_regs_load_shim(StageForcedWalkB(entry_shim()));
 }
 
-/* The forced-pad ends of the fall starts: InitStage, sub-mode 1, zField8C cleared, $20 frames of the pad `pad`. */
-static Regs fall_start_done(Regs r, uint16_t init_ret, uint8_t pad)
+/* The forced-pad ends of the fall starts: InitStage (at init, by the JSR returning to init_ret), sub-mode 1, zField8C
+ * cleared, $20 frames of the pad `pad`. */
+static Regs fall_start_done(Regs r, uint16_t init_ret, uint8_t pad, uint16_t init)
 {
-    r = call_to(r, init_ret, 0x88EC);
+    r = call_to(r, init_ret, init);
     r = loaded(r, 0x01);
     WR8(ZP->game_sub_mode, 0x01);
     WR8(ZP->field8c, 0);
@@ -641,7 +642,14 @@ static Regs fall_start_done(Regs r, uint16_t init_ret, uint8_t pad)
  */
 StageRegs StageFallRightDone(StageRegs r)
 {
-    return fall_start_done(r, 0x839F, 0x20);
+    return StageFallRightDoneAt(r, 0x839F, 0x88EC);
+}
+
+/* StageFallRightDone's body, init_ret the address after its JSR to InitStage and init where it goes: the builds of the
+ * overlay that hold these instructions at other addresses (stage_programs_census.c) pass their own. */
+StageRegs StageFallRightDoneAt(StageRegs r, uint16_t init_ret, uint16_t init)
+{
+    return fall_start_done(r, init_ret, 0x20, init);
 }
 
 void abi_StageFallRightDone(void)
@@ -659,7 +667,7 @@ void abi_StageFallRightDone(void)
  */
 StageRegs StageFallLeftDone(StageRegs r)
 {
-    return fall_start_done(r, 0x83EF, 0x80);
+    return fall_start_done(r, 0x83EF, 0x80, 0x88EC);
 }
 
 void abi_StageFallLeftDone(void)

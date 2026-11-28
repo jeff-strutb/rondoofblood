@@ -943,5 +943,10 @@
 #define OBJ_FLY_PHASE 0x3670 /* the dropped flyer's use of $3670: 0 flying, 4 once it turns back */
 #define OBJ_SPAWN_HELD 0x37D0 /* the flyer's use of OBJ_WORK_M: not zero, it drops no new pickup */
 #define OBJ_CHILD_ORDER 0x3568 /* what the flyer tells the pickup in slot $50 through its OBJ_WORK_F: 1 new, 2 again */
+#define OBJ_FALL_LO 0x3618 /* an object's use of OBJ_WORK_H: the low byte of what MariaObjectFallCapped and RichterObjectFallCapped add to its Y speed each frame */
+#define OBJ_FALL_HI 0x3670 /* an object's use of OBJ_WORK_I: the high byte of OBJ_FALL_LO's acceleration */
+#define MariaAttackStates 0xC773 /* the states of her attack's object, four words: start, fly, fall, return (MariaAttackObject) */
+#define MariaAttackAngles 0xC823 /* the angle her attack's object turns back on, by its facing (MariaAttackFall) */
+#define MariaItem5States 0xC8E5 /* the states of item 5, four words (MariaItem5) */
 
 #endif

@@ -575,3 +575,5 @@ alias,ObjectTable,flyer_wait,work_e,OBJ_FLYER_WAIT
 alias,ObjectTable,spawn_held,work_m,OBJ_SPAWN_HELD
 alias,ObjectTable,child_order,work_f,OBJ_CHILD_ORDER
 alias,ObjectTable,fly_phase,work_i,OBJ_FLY_PHASE
+alias,ObjectTable,fall_lo,work_h,OBJ_FALL_LO
+alias,ObjectTable,fall_hi,work_i,OBJ_FALL_HI

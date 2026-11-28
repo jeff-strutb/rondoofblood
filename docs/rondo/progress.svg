@@ -1,12 +1,12 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="760" height="990" viewBox="0 0 760 990" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif">
 <rect width="760" height="990" fill="#ffffff"/>
-<text x="16" y="28" font-size="17" font-weight="600" fill="#24292f">Rondo of Blood: M1 46.5%  M2 24.2%</text>
-<text x="16" y="48" font-size="12" fill="#57606a">307,249 B of distinct code found so far, every copy counted once. Dark: M2. Light: M1 only. Grey: to do.</text>
+<text x="16" y="28" font-size="17" font-weight="600" fill="#24292f">Rondo of Blood: M1 47.0%  M2 24.7%</text>
+<text x="16" y="48" font-size="12" fill="#57606a">308,461 B of distinct code found so far, every copy counted once. Dark: M2. Light: M1 only. Grey: to do.</text>
 <text x="182" y="82" font-size="12" text-anchor="end" fill="#24292f" font-weight="600">Whole game</text>
 <rect x="190" y="70" width="480" height="16" rx="3" fill="#e6e9ed"/>
-<rect x="190" y="70" width="223.2" height="16" rx="3" fill="#8cb4f5"/>
-<rect x="190" y="70" width="116.4" height="16" rx="3" fill="#1f6feb"/>
-<text x="678" y="82" font-size="11" fill="#57606a">46% of 300.0 KB</text>
+<rect x="190" y="70" width="225.5" height="16" rx="3" fill="#8cb4f5"/>
+<rect x="190" y="70" width="118.7" height="16" rx="3" fill="#1f6feb"/>
+<text x="678" y="82" font-size="11" fill="#57606a">47% of 301.2 KB</text>
 <text x="182" y="110" font-size="12" text-anchor="end" fill="#24292f">Boot</text>
 <rect x="190" y="98" width="480" height="16" rx="3" fill="#e6e9ed"/>
 <rect x="190" y="98" width="480.0" height="16" rx="3" fill="#8cb4f5"/>
@@ -29,19 +29,19 @@
 <text x="678" y="176" font-size="11" fill="#57606a">61% of 12.2 KB</text>
 <text x="182" y="198" font-size="12" text-anchor="end" fill="#24292f">Maria</text>
 <rect x="190" y="186" width="480" height="16" rx="3" fill="#e6e9ed"/>
-<rect x="190" y="186" width="182.7" height="16" rx="3" fill="#8cb4f5"/>
-<rect x="190" y="186" width="151.0" height="16" rx="3" fill="#1f6feb"/>
-<text x="678" y="198" font-size="11" fill="#57606a">38% of 12.5 KB</text>
+<rect x="190" y="186" width="195.8" height="16" rx="3" fill="#8cb4f5"/>
+<rect x="190" y="186" width="164.1" height="16" rx="3" fill="#1f6feb"/>
+<text x="678" y="198" font-size="11" fill="#57606a">41% of 12.5 KB</text>
 <text x="182" y="220" font-size="12" text-anchor="end" fill="#24292f">Title and system</text>
 <rect x="190" y="208" width="480" height="16" rx="3" fill="#e6e9ed"/>
-<rect x="190" y="208" width="476.0" height="16" rx="3" fill="#8cb4f5"/>
-<rect x="190" y="208" width="285.6" height="16" rx="3" fill="#1f6feb"/>
-<text x="678" y="220" font-size="11" fill="#57606a">99% of 9.1 KB</text>
+<rect x="190" y="208" width="480.0" height="16" rx="3" fill="#8cb4f5"/>
+<rect x="190" y="208" width="298.2" height="16" rx="3" fill="#1f6feb"/>
+<text x="678" y="220" font-size="11" fill="#57606a">100% of 10.3 KB</text>
 <text x="182" y="242" font-size="12" text-anchor="end" fill="#24292f">Stage 00</text>
 <rect x="190" y="230" width="480" height="16" rx="3" fill="#e6e9ed"/>
-<rect x="190" y="230" width="391.0" height="16" rx="3" fill="#8cb4f5"/>
-<rect x="190" y="230" width="212.8" height="16" rx="3" fill="#1f6feb"/>
-<text x="678" y="242" font-size="11" fill="#57606a">81% of 14.8 KB</text>
+<rect x="190" y="230" width="404.7" height="16" rx="3" fill="#8cb4f5"/>
+<rect x="190" y="230" width="226.5" height="16" rx="3" fill="#1f6feb"/>
+<text x="678" y="242" font-size="11" fill="#57606a">84% of 14.8 KB</text>
 <text x="182" y="264" font-size="12" text-anchor="end" fill="#24292f">Stage 02</text>
 <rect x="190" y="252" width="480" height="16" rx="3" fill="#e6e9ed"/>
 <rect x="190" y="252" width="141.1" height="16" rx="3" fill="#8cb4f5"/>

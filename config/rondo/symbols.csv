@@ -957,3 +957,8 @@ AD16,abs,MariaFallDriftSpeeds,her X speed when the fall's drift delay ends, by f
 3670,abs,OBJ_FLY_PHASE,the dropped flyer's use of $3670: 0 flying, 4 once it turns back
 37D0,abs,OBJ_SPAWN_HELD,the flyer's use of OBJ_WORK_M: not zero, it drops no new pickup
 3568,abs,OBJ_CHILD_ORDER,what the flyer tells the pickup in slot $50 through its OBJ_WORK_F: 1 new, 2 again
+3618,abs,OBJ_FALL_LO,an object's use of OBJ_WORK_H: the low byte of what MariaObjectFallCapped and RichterObjectFallCapped add to its Y speed each frame
+3670,abs,OBJ_FALL_HI,an object's use of OBJ_WORK_I: the high byte of OBJ_FALL_LO's acceleration
+C773,abs,MariaAttackStates,the states of her attack's object, four words: start, fly, fall, return (MariaAttackObject)
+C823,abs,MariaAttackAngles,the angle her attack's object turns back on, by its facing (MariaAttackFall)
+C8E5,abs,MariaItem5States,the states of item 5, four words (MariaItem5)

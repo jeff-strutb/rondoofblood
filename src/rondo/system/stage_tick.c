@@ -4,6 +4,7 @@
 #include "routines.h"
 #include "ram.h"
 #include "stage_map.h"
+#include "stage_regs.h"
 
 enum {
     FRAME_SLOT = 86, FRAME_SLOT_NEXT = 87, PAUSED_BIT1 = 0x02, CHARACTER_STAGE_A = 0x0D, CHARACTER_STAGE_B = 0x11,
@@ -60,6 +61,13 @@ static StageExit original_tail_shim(StageExit end, uint16_t tail_run)
  */
 StageExit StageScriptByWave(void)
 {
+    return StageScriptByWaveAt(WAVE_SCRIPTS);
+}
+
+/* StageScriptByWave's body with its table of eight script numbers: the builds of the overlay that hold these
+ * instructions at another address (stage_programs_census.c) pass their own. */
+StageExit StageScriptByWaveAt(uint16_t scripts)
+{
     StageExit end = { 0, 0, 0, true, false, 0, EXIT_X | EXIT_C };
     uint8_t wave = RD8(ZP->wave_counter);
     uint8_t x = (uint8_t)(wave & 0x07);
@@ -69,7 +77,7 @@ StageExit StageScriptByWave(void)
 
     ready = rd8(RichterItemReady);
     x = (uint8_t)(x & ready);
-    script = rd8((uint16_t)(WAVE_SCRIPTS + x));
+    script = rd8((uint16_t)(scripts + x));
     shown = RD8(STAGEVARS->state_3566[1]);
     end.a = script;
     end.x = x;

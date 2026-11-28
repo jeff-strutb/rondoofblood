@@ -133,4 +133,8 @@ StageRegs StageWalkOutScrollAt(StageRegs r, uint16_t at, uint16_t scroll_steps, 
 /* system/stage_steps.c: StageStopAndStep (024D:68C) run at `at`, with where its two calls go. */
 StageRegs StageStopAndStepAt(StageRegs r, uint16_t at, uint16_t scroll_off, uint16_t step);
 
+
+/* system/stage_tick.c: StageScriptByWave (024E:422) with its table of eight script numbers. */
+StageExit StageScriptByWaveAt(uint16_t scripts);
+
 #endif

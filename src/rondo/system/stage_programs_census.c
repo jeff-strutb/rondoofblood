@@ -2077,3 +2077,24 @@ void abi_StageStopAndStep026D(void)
 {
     stage_regs_load_shim(StageStopAndStep026D(stage_regs_entry_shim()));
 }
+
+/*
+ * @routine 026E:3D8 StageScriptByWave026E
+ * @run 6B:8BD8
+ * WHAT IT DOES: Starts the stage's script in slot 1 that the wave counter names, when it is not the one already shown (as
+ * StageScriptByWave, 024E:422). Programs 031E, 043E, 064E, 10DE, 122E, 1A2E, 1B8E and 1CEE hold the same bytes.
+ * HOW: StageScriptByWaveAt (stage_tick.c), the body of 024E:422, with this program's table of scripts at $8BF1.
+ * WAITS: no.
+ * Entry: nothing. Exit: unchanged script: A the script, X the table index, Z 1, C 1; else as StartScriptSlotKind4 with
+ * X 1, C as the compare left it.
+ * Nothing the game does loads this program (codemap.unloaded_programs), so nothing is known to reach it.
+ */
+StageExit StageScriptByWave026E(void)
+{
+    return StageScriptByWaveAt(0x8BF1);
+}
+
+void abi_StageScriptByWave026E(void)
+{
+    stage_exit_shim(StageScriptByWave026E());
+}

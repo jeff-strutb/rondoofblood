@@ -2542,3 +2542,28 @@ StageStopAndStep026D:
     jsr StepScrollAndRunObjects026E
     inc z:zField85
     rts
+
+; @routine 026E:3D8 StageScriptByWave026E
+; @run 6B:8BD8
+; WHAT IT DOES: Starts the stage's script in slot 1 that the wave counter names, when it is not the one already shown (as
+; StageScriptByWave, 024E:422). Programs 031E, 043E, 064E, 10DE, 122E, 1A2E, 1B8E and 1CEE hold the same bytes.
+; HOW: The counter's low three bits, masked with RichterItemReady, index WaveScripts026E; when the one found differs from
+; StageVar3566's second byte, it goes there and StartScriptSlotKind4 starts it in slot 1.
+; WAITS: no.
+; Entry: nothing. Exit: unchanged script: A the script, X the table index, Z 1, C 1; else as StartScriptSlotKind4 with
+; X 1, C as the compare left it.
+; Nothing the game does loads this program (codemap.unloaded_programs), so nothing is known to reach it.
+WaveScripts026E = $8BF1 ; the eight script numbers by wave, in the 026D programs
+StageScriptByWave026E:
+    lda z:zWaveCounter
+    and #$07
+    and a:RichterItemReady
+    tax
+    lda a:WaveScripts026E,x
+    cmp a:StageVar3566+1
+    beq StageScriptByWave026E_at0
+    sta a:StageVar3566+1
+    ldx #$01
+    jmp VecStartScriptSlotKind4
+StageScriptByWave026E_at0:
+    rts

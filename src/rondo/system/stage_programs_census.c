@@ -1924,3 +1924,26 @@ void abi_StageFallRight026D(void)
 {
     stage_regs_load_shim(StageFallRight026D(stage_regs_entry_shim()));
 }
+
+/*
+ * @routine 026D:388 StageFallLeft026D
+ * @run 6B:8388
+ * @stop 83A8
+ * WHAT IT DOES: The fall to the left: the second step StageFallLeftLand026D, the third StageFallLeftDone026D; the first, with
+ * the object in slot $50 of kind $30, counts the step on twice, else sets the player's speed -$0140, poses him
+ * (StageFallPose026D) and runs into StageFallLeftLand026D (as StageFallLeft, 024D:3B0). Programs 031D, 043D, 064D, 10DD, 122D, 1A2D, 1B8D and 1CED hold the same bytes.
+ * HOW: StageFallLeftAt (stage_flow.c), the body of 024D:3B0, with this program's steps; its BSR and BRA go to
+ * StageFallStepNext's bytes at $83C1, whose C is StageFallStepNext's.
+ * WAITS: as the step taken.
+ * Entry: nothing. Exit: as the step taken.
+ * Nothing the game does loads this program (codemap.unloaded_programs), so nothing is known to reach it.
+ */
+StageRegs StageFallLeft026D(StageRegs r)
+{
+    return StageFallLeftAt(r, StageFallLeftLand026D, StageFallLeftDone026D, StageFallPose026D, 0x8399, 0x83A8);
+}
+
+void abi_StageFallLeft026D(void)
+{
+    stage_regs_load_shim(StageFallLeft026D(stage_regs_entry_shim()));
+}

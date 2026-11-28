@@ -2382,3 +2382,31 @@ StageFallRight026D:
     sta a:OBJ_VX_LO
     lda #$01
     sta a:OBJ_VX_HI
+
+; @routine 026D:388 StageFallLeft026D
+; @run 6B:8388
+; WHAT IT DOES: The fall to the left: the second step StageFallLeftLand026D, the third StageFallLeftDone026D; the first, with
+; the object in slot $50 of kind $30, counts the step on twice, else sets the player's speed -$0140, poses him
+; (StageFallPose026D) and runs into StageFallLeftLand026D (as StageFallLeft, 024D:3B0). Programs 031D, 043D, 064D, 10DD, 122D, 1A2D, 1B8D and 1CED hold the same bytes.
+; HOW: zFallStep decremented twice; OBJ_KIND of slot $50; BSR and BRA to StageFallStepNext's bytes; JSR
+; StageFallPose026D.
+; WAITS: as the step taken.
+; Entry: nothing. Exit: as the step taken.
+; Nothing the game does loads this program (codemap.unloaded_programs), so nothing is known to reach it.
+StageFallLeft026D:
+    lda z:zFallStep
+    dec a
+    beq StageFallLeftLand026D
+    dec a
+    beq StageFallLeftDone026D
+    lda a:OBJ_KIND+80
+    cmp #$30
+    bne StageFallLeft026D_at0
+    bsr StageFallStepNext_026D
+    bra StageFallStepNext_026D
+StageFallLeft026D_at0:
+    lda #$C0
+    sta a:OBJ_VX_LO
+    lda #$FE
+    sta a:OBJ_VX_HI
+    jsr StageFallPose026D

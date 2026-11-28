@@ -99,4 +99,9 @@ StageRegs StageFallLeftLandAt(StageRegs r, uint16_t at);
 StageRegs StageFallRightAt(StageRegs r, StageRegs (*land)(StageRegs), StageRegs (*done)(StageRegs),
                            StageRegs (*pose)(StageRegs));
 
+
+/* system/stage_flow.c: StageFallLeft (024D:3B0) with the steps it goes on into and its two calls' return addresses. */
+StageRegs StageFallLeftAt(StageRegs r, StageRegs (*land)(StageRegs), StageRegs (*done)(StageRegs),
+                          StageRegs (*pose)(StageRegs), uint16_t step_ret, uint16_t pose_ret);
+
 #endif

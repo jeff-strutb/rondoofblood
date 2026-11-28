@@ -804,7 +804,8 @@ StageRegs StageFallRight(StageRegs r)
 
 /* StageFallRight's body, with the C of the steps it branches or runs into (land, done, pose): the builds of the overlay
  * that hold these instructions at another address (stage_programs_census.c) pass their own. */
-StageRegs StageFallRightAt(StageRegs r, StageRegs (*land)(StageRegs), StageRegs (*done)(StageRegs), StageRegs (*pose)(StageRegs))
+StageRegs StageFallRightAt(StageRegs r, StageRegs (*land)(StageRegs), StageRegs (*done)(StageRegs),
+                           StageRegs (*pose)(StageRegs))
 {
     r = loaded(r, RD8(ZP->fall_step));
     r = loaded(r, (uint8_t)(r.a - 1));
@@ -840,19 +841,28 @@ void abi_StageFallRight(void)
  */
 StageRegs StageFallLeft(StageRegs r)
 {
+    return StageFallLeftAt(r, StageFallLeftLand, StageFallLeftDone, StageFallPose, 0x83C1, 0x83D0);
+}
+
+/* StageFallLeft's body, with the C of the steps it branches, calls or runs into (land, done, pose) and the return
+ * addresses of its BSR to StageFallStepNext (step_ret) and its JSR to the pose (pose_ret): the builds of the overlay that
+ * hold these instructions at another address (stage_programs_census.c) pass their own. */
+StageRegs StageFallLeftAt(StageRegs r, StageRegs (*land)(StageRegs), StageRegs (*done)(StageRegs),
+                          StageRegs (*pose)(StageRegs), uint16_t step_ret, uint16_t pose_ret)
+{
     r = loaded(r, RD8(ZP->fall_step));
     r = loaded(r, (uint8_t)(r.a - 1));
     if (r.a == 0) {
-        return StageFallLeftLand(r);
+        return land(r);
     }
     r = loaded(r, (uint8_t)(r.a - 1));
     if (r.a == 0) {
-        return StageFallLeftDone(r);
+        return done(r);
     }
     r = loaded(r, RD8(OBJ->kind[0x50]));
     r = regs_compared(r, r.a, 0x30);
     if (r.a == 0x30) {
-        jsr_push(0x83C1);
+        jsr_push(step_ret);
         r = StageFallStepNext(r);
         jsr_pop();
         return StageFallStepNext(r);
@@ -861,10 +871,10 @@ StageRegs StageFallLeft(StageRegs r)
     WR8(OBJ->vx_lo[0], 0xC0);
     r = loaded(r, 0xFE);
     WR8(OBJ->vx_hi[0], 0xFE);
-    jsr_push(0x83D0);
-    r = StageFallPose(r);
+    jsr_push(pose_ret);
+    r = pose(r);
     jsr_pop();
-    return StageFallLeftLand(r);
+    return land(r);
 }
 
 void abi_StageFallLeft(void)

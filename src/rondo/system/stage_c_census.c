@@ -5483,7 +5483,8 @@ void abi_StageSubModeTally3CD(void)
 
 /* 03CD's tally screen. */
 static const TallyBuild tally_3cd = {
-    TALLY_CELLS, 0x93A9, ADDR_OF8(OBJ->work_b[16]), ADDR_OF8(OBJ->work_b[13]), ADDR_OF8(OBJ->frame[51]), 0x46, true,
+    TALLY_CELLS, 0x93A9, ADDR_OF8(OBJ->work_b[16]), ADDR_OF8(OBJ->work_b[13]), ADDR_OF8(OBJ->frame[51]),
+    0x9175, 0x922A, 0x9390, 0x46, true,
     StageDrawPiece3CD, StageClearWords3CD, SetVramWriteAddress3CD, SetVramAddresses3CD
 };
 
@@ -5616,7 +5617,7 @@ StageRegs TallyBoard3CDAt(StageRegs r, uint16_t at, const TallyBuild *build)
     r.c = true;
     r.nz = 0;
     CALL(at + 0x4A, TallyNext152D(r));
-    return TallyDigits3CDAt(r, (uint16_t)(at + 0x4A), build);
+    return TallyDigits3CDAt(r, build->digits_run, build);
 }
 
 void abi_TallyBoard3CD(void)
@@ -5772,7 +5773,7 @@ StageRegs TallyReveal3CDAt(StageRegs r, uint16_t at, const TallyBuild *build)
     r = loaded(r, cell);
     r = compared(r, 0x0A);
     if (r.c) {
-        return TallyCell3CDAt(r, (uint16_t)(at + 0x8D - shift), build);
+        return TallyCell3CDAt(r, build->cell_run, build);
     }
     WR8(ZP->temp08, 0);
     old = RD8(ZP->temp08);
@@ -6233,11 +6234,11 @@ StageRegs TallyHealth3CD(StageRegs r)
 StageRegs TallyHealth3CDAt(StageRegs r, uint16_t at, const TallyBuild *build)
 {
     r = map_stage_banks_call(r, at + 0x3);
-    CALL(at + 0x6, TallyDigits3CDAt(r, (uint16_t)(at - 0x1E1), build));
+    CALL(at + 0x6, TallyDigits3CDAt(r, build->digits_run, build));
     r.x = 0x12;
     r.nz = 0x12;
-    CALL(at + 0xA, TallyDigitCell3CDAt(r, (uint16_t)(at + 0x3A), build));
-    return tally_count_cells(r, RD8(ZP->player_health), 0x0A, 0x11, 0x54, (uint16_t)(at + 0x3A), build);
+    CALL(at + 0xA, TallyDigitCell3CDAt(r, build->digit_cell_run, build));
+    return tally_count_cells(r, RD8(ZP->player_health), 0x0A, 0x11, 0x54, build->digit_cell_run, build);
 }
 
 void abi_TallyHealth3CD(void)
@@ -6273,11 +6274,11 @@ StageRegs TallyHearts3CD(StageRegs r)
 StageRegs TallyHearts3CDAt(StageRegs r, uint16_t at, const TallyBuild *build)
 {
     r = map_stage_banks_call(r, at + 0x3);
-    CALL(at + 0x6, TallyDigits3CDAt(r, (uint16_t)(at - 0x1FE), build));
+    CALL(at + 0x6, TallyDigits3CDAt(r, build->digits_run, build));
     r.x = 0x22;
     r.nz = 0x22;
-    CALL(at + 0xA, TallyDigitCell3CDAt(r, (uint16_t)(at + 0x1D), build));
-    return tally_count_cells(r, RD8(ZP->field94), 0x10, 0x21, 0x55, (uint16_t)(at + 0x1D), build);
+    CALL(at + 0xA, TallyDigitCell3CDAt(r, build->digit_cell_run, build));
+    return tally_count_cells(r, RD8(ZP->field94), 0x10, 0x21, 0x55, build->digit_cell_run, build);
 }
 
 void abi_TallyHearts3CD(void)
@@ -6319,7 +6320,7 @@ StageRegs TallyDigitCell3CDAt(StageRegs r, uint16_t at, const TallyBuild *build)
         r = loaded(r, rd8((uint16_t)(build->cells + r.x)));
         WR8(ZP->temp00, r.a);
         r = loaded(r, r.x);
-        CALL(at + 0xA, TallyCell3CDAt(r, (uint16_t)(at - 0x166), build));
+        CALL(at + 0xA, TallyCell3CDAt(r, build->cell_run, build));
         r.x = pull8();
         r.nz = r.x;
         value = rd8((uint16_t)(build->cells + r.x));

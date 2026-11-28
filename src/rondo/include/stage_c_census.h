@@ -324,6 +324,7 @@ StageRegs StageProbeAgain3CDAt(StageRegs r, const StageRouteBuild *build);
  * its own routines. */
 typedef struct {
     uint16_t cells, cell_source, wait, health_kept, full_frame;
+    uint16_t digits_run, cell_run, digit_cell_run; /* where its digits, cell and digit cell routines run */
     uint8_t start_sound;
     bool reveal_pauses;
     StageRegs (*draw_piece)(StageRegs r);

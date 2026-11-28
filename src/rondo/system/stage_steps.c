@@ -133,11 +133,17 @@ void abi_StageWaitThenStepTwo(void)
  */
 StageRegs StagePauseCdThenStock(StageRegs r)
 {
+    return StagePauseCdThenStockAt(r, 0x87F3);
+}
+
+/* StagePauseCdThenStock's body, for the copies of it that run at another address (at). */
+StageRegs StagePauseCdThenStockAt(StageRegs r, uint16_t at)
+{
     do {
         CdPause paused;
 
         stage_regs_load_shim(r);
-        jsr_push(0x87F6);
+        jsr_push((uint16_t)(at + 3));
         paused = vec_cd_pause(r.x);
         jsr_pop();
         cd_pause_exit_shim(paused);

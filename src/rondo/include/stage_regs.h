@@ -200,4 +200,6 @@ StageRegs StageDemoPadRecordAt(StageRegs r, uint16_t at);
 
 StageRegs StageHitReportTopAt(StageRegs r, uint8_t side_two_power);
 
+StageRegs StagePauseCdThenStockAt(StageRegs r, uint16_t at);
+
 #endif

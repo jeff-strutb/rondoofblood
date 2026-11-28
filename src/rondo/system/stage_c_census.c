@@ -2426,6 +2426,12 @@ void abi_StageBossWalkOut3CD(void)
  */
 StageRegs StageNextRouteStage3CD(StageRegs r)
 {
+    return StageNextRouteStage3CDAt(r, &route_3cd);
+}
+
+/* StageNextRouteStage3CD's body, for the builds of it with their own tables. */
+StageRegs StageNextRouteStage3CDAt(StageRegs r, const StageRouteBuild *build)
+{
     r = loaded(r, 0x02);
     WR8(ZP->display_delay, 0x02);
     WR8(OBJ->work_b[16], 0);
@@ -2434,7 +2440,7 @@ StageRegs StageNextRouteStage3CD(StageRegs r)
     r.nz = INC8(ZP->field82);
     r = loaded(r, RD8(ZP->field82));
     r.y = r.a;
-    r = loaded(r, rd8((uint16_t)(0x9D60 + r.y)));
+    r = loaded(r, rd8((uint16_t)(build->next_stage + r.y)));
     WR8(ZP->field83, r.a);
     r.a = 0;
     wr8(SUB3_STEP_TABLE, 0);

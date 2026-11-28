@@ -137,4 +137,8 @@ StageRegs StageStopAndStepAt(StageRegs r, uint16_t at, uint16_t scroll_off, uint
 /* system/stage_tick.c: StageScriptByWave (024E:422) with its table of eight script numbers. */
 StageExit StageScriptByWaveAt(uint16_t scripts);
 
+
+/* object/stage_boss_flash.c: BossFlashMaskCell (024E:564) run at `at`, with its two VRAM calls' targets and its masks. */
+StageRegs BossFlashMaskCellAt(StageRegs r, uint16_t at, uint16_t point, uint16_t and_bits, uint16_t masks);
+
 #endif

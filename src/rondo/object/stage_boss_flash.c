@@ -32,17 +32,25 @@ static Regs call_to(Regs r, uint16_t ret, uint16_t run)
  */
 StageRegs BossFlashMaskCell(StageRegs r)
 {
+    return BossFlashMaskCellAt(r, 0x8D64, 0x937D, 0x9392, BossFlashMasks);
+}
+
+/* BossFlashMaskCell's body, at the address it runs at (its JSRs return to at + 3, + $0E and + $1B), with where its
+ * VRAM address and AND calls go and its table of masks: the builds of the overlay that hold these instructions at
+ * another address (stage_programs_census.c) pass their own. */
+StageRegs BossFlashMaskCellAt(StageRegs r, uint16_t at, uint16_t point, uint16_t and_bits, uint16_t masks)
+{
     RandomResult random;
     uint8_t step, value;
 
-    r = call_to(r, 0x8D67, 0x937D);
+    r = call_to(r, (uint16_t)(at + 3), point);
     r.x = PASS_WORDS;
     r.nz = PASS_WORDS;
     do {
         step = (uint8_t)(rd8(BossFlashStep) & 0x07);
         r.y = step;
         r = regs_loaded(r, step);
-        jsr_push(0x8D72);
+        jsr_push((uint16_t)(at + 0x0E));
         random = NextRandom();
         jsr_pop();
         stage_regs_load_shim(r);
@@ -50,13 +58,13 @@ StageRegs BossFlashMaskCell(StageRegs r)
         r = stage_regs_from_cpu_shim(r);
         value = (uint8_t)(r.a | RD8(ZP->random2));
         value = (uint8_t)(value | RD8(ZP->random1));
-        value = (uint8_t)(value | rd8((uint16_t)(BossFlashMasks + r.y)));
+        value = (uint8_t)(value | rd8((uint16_t)(masks + r.y)));
         r = regs_loaded(r, value);
         push8(r.x);
         r.x = value;
         r.y = value;
         r.nz = value;
-        r = call_to(r, 0x8D7F, 0x9392);
+        r = call_to(r, (uint16_t)(at + 0x1B), and_bits);
         r.x = pull8();
         r.x--;
         r.nz = r.x;

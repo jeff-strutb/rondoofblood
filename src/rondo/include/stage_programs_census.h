@@ -211,4 +211,7 @@ void abi_StageStopAndStep026D(void);
 StageExit StageScriptByWave026E(void);
 void abi_StageScriptByWave026E(void);
 
+StageRegs BossFlashMaskCell026E(StageRegs r);
+void abi_BossFlashMaskCell026E(void);
+
 #endif

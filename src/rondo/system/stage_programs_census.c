@@ -2098,3 +2098,25 @@ void abi_StageScriptByWave026E(void)
 {
     stage_exit_shim(StageScriptByWave026E());
 }
+
+/*
+ * @routine 026E:51A BossFlashMaskCell026E
+ * @run 6B:8D1A
+ * WHAT IT DOES: Masks one cell of VRAM, $40 words, with random bits and a pattern by the flash's step (as BossFlashMaskCell,
+ * 024E:564). Programs 064E, 122E, 1A2E, 1B8E and 1CEE hold the same bytes.
+ * HOW: BossFlashMaskCellAt (stage_boss_flash.c), the body of 024E:564, at $8D1A with this program's table of masks at
+ * $8CD3; its JSR to $933B is the C of the routine loaded there (SetVramAddresses026F), and its JSR to $9350 goes to
+ * AndVramData's bytes (024F:392), the C of the routine loaded there.
+ * WAITS: no.
+ * Entry: X and Y the address. Exit: X 0, N 0, Z 1; A, Y, C and V as the last AndVramData left them.
+ * Nothing the game does loads this program (codemap.unloaded_programs), so nothing is known to reach it.
+ */
+StageRegs BossFlashMaskCell026E(StageRegs r)
+{
+    return BossFlashMaskCellAt(r, 0x8D1A, 0x933B, 0x9350, 0x8CD3);
+}
+
+void abi_BossFlashMaskCell026E(void)
+{
+    stage_regs_load_shim(BossFlashMaskCell026E(stage_regs_entry_shim()));
+}

@@ -4018,3 +4018,1481 @@ HitTestAllObjects031F_at0:
     bcs HitTestAllObjects031F_at1
     plx
     rts
+
+; @routine 026F:6A1 TerrainTileRead026F
+; @run 6B:96A1
+; WHAT IT DOES: The terrain tile read of the stage programs (as TerrainTileRead, 050F:67F), with this program's
+; handler table at $973C. Programs 064F, 122F, 1A2F, 1B8F, 1CEF hold the same bytes.
+; HOW: TerrainTileRead's code at $96A1.
+; WAITS: no.
+; Entry: zTemp00-01 X, zTemp02-03 Y. Exit: as TerrainTileRead.
+; Nothing the game does loads this program (codemap.unloaded_programs), so nothing is known to reach it.
+TileHandlers026F = $973C ; the handlers for attributes $80-$9B, a word each
+TerrainTileRead026F:
+    lda z:zTemp00
+    clc
+    adc a:ScrollXLo
+    sta z:zTemp04
+    lda z:zTemp01
+    adc a:ScrollXHi
+    and #$01
+    lsr a
+    lda z:zTemp04
+    ror a
+    lsr a
+    lsr a
+    and #$3F
+    sta z:zTemp05
+    lda z:zTemp04
+    and #$07
+    sta z:zTemp00
+    lda z:zTemp02
+    clc
+    adc a:ScrollYLo
+    sta z:zTemp06
+    lda z:zTemp03
+    adc a:ScrollYHi
+    and #$01
+    sta z:zTemp07
+    lda z:zTemp06
+    asl a
+    rol z:zTemp07
+    asl a
+    rol z:zTemp07
+    asl a
+    rol z:zTemp07
+    and #$C0
+    clc
+    adc z:zTemp05
+    sta z:zTemp05
+    lda z:zTemp06
+    and #$07
+    sta z:zTemp02
+    lda z:zTemp05
+    sta z:zTemp06
+    jsr VecSelectVramReadAddress
+    lda z:zTemp05
+    sta a:VDC_DATA_LO
+    lda z:zTemp07
+    sta a:VDC_DATA_HI
+    jsr VecSelectVramData
+    lda a:VDC_DATA_LO
+    sta z:zTemp08
+    lda a:VDC_DATA_HI
+    and #$07
+    sta z:zTemp09
+    tay
+    lda a:SaveBuffer,y
+    bmi TerrainTileRead026F_at0
+    lda z:zTemp08
+    clc
+    adc #$00
+    sta z:zTemp08
+    lda a:SaveBuffer,y
+    adc #$7D
+    sta z:zTemp09
+    lda (zTemp08)
+    bmi TerrainTileRead026F_at1
+    rts
+TerrainTileRead026F_at0:
+    lda #$00
+    rts
+TerrainTileRead026F_at1:
+    cmp #$9C
+    bcs TerrainTileRead026F_at0+2
+    pha
+    sbc #$7F
+    asl a
+    tay
+    lda a:TileHandlers026F,y
+    sta z:zTemp04
+    lda a:TileHandlers026F+1,y
+    sta z:zTemp05
+    pla
+    jmp (zTemp04+ZeroPage)
+
+; @routine 026F:5CD TerrainLookup026F
+; @run 6B:95CD
+; WHAT IT DOES: Reads the terrain at the four columns of a probe around an object (as TerrainLookupB, 024F:5AB), from
+; this program's probe table at $D2BB.
+; HOW: TerrainLookupB's code with this program's table, reading with the read at $96A1.
+; WAITS: no.
+; Entry: A probe, X object. Exit: as TerrainLookupB.
+; Nothing the game does loads this program (codemap.unloaded_programs), so nothing is known to reach it.
+ProbeTable026F = $D2BB ; the probe table: a pointer to each probe's four columns of offsets
+TerrainLookup026F:
+    asl a
+    tay
+    lda a:ProbeTable026F,y
+    sta z:zTemp0C
+    lda a:ProbeTable026F+1,y
+    sta z:zTemp0D
+    cly
+    sty z:zTemp0A
+TerrainLookup026F_at1:
+    lda (zTemp0C),y
+    clc
+    adc a:OBJ_X_LO,x
+    sta z:zTemp00
+    iny
+    php
+    lda (zTemp0C),y
+    cmp #$80
+    beq TerrainLookup026F_at0
+    plp
+    adc a:OBJ_X_HI,x
+    sta z:zTemp01
+    iny
+    lda (zTemp0C),y
+    clc
+    adc a:OBJ_Y_LO,x
+    sta z:zTemp02
+    iny
+    lda (zTemp0C),y
+    adc a:OBJ_Y_HI,x
+    sta z:zTemp03
+    iny
+    phy
+    jsr TerrainTileRead026F
+TerrainLookup026F_at2:
+    ldy z:zTemp0A
+    sta a:TileHit,y
+    lda z:zTemp00
+    sta a:TileDepthX,y
+    lda z:zTemp02
+    sta a:TileDepthY,y
+    inc z:zTemp0A
+    ply
+    lda z:zTemp0A
+    cmp #$04
+    bne TerrainLookup026F_at1
+    rts
+TerrainLookup026F_at0:
+    plp
+    iny
+    iny
+    iny
+    phy
+    stz z:zTemp00
+    stz z:zTemp02
+    cla
+    bra TerrainLookup026F_at2
+
+; @routine 026F:62D TerrainLookupAlt026F
+; @run 6B:962D
+; WHAT IT DOES: TerrainLookup026F, then a second look at each column that found floor (as TerrainLookupAltB, 024F:60B).
+; HOW: TerrainLookupAltB's code with this program's table.
+; WAITS: no.
+; Entry and exit: as TerrainLookup026F.
+; Nothing the game does loads this program (codemap.unloaded_programs), so nothing is known to reach it.
+TerrainLookupAlt026F:
+    pha
+    jsr TerrainLookup026F
+    pla
+    asl a
+    tay
+    lda a:ProbeTable026F,y
+    sta z:zTemp0C
+    lda a:ProbeTable026F+1,y
+    sta z:zTemp0D
+    cly
+    sty z:zTemp0A
+TerrainLookupAlt026F_at2:
+    phy
+    ldy z:zTemp0A
+    lda a:TileHit,y
+    ply
+    and #$A1
+    bmi TerrainLookupAlt026F_at0
+    beq TerrainLookupAlt026F_at0
+    lda (zTemp0C),y
+    clc
+    adc a:OBJ_X_LO,x
+    sta z:zTemp00
+    iny
+    lda (zTemp0C),y
+    adc a:OBJ_X_HI,x
+    sta z:zTemp01
+    iny
+    lda (zTemp0C),y
+    clc
+    adc a:OBJ_Y_LO,x
+    sta z:zTemp02
+    iny
+    lda (zTemp0C),y
+    adc a:OBJ_Y_HI,x
+    sta z:zTemp03
+    iny
+    lda #$F8
+    clc
+    adc z:zTemp02
+    sta z:zTemp02
+    lda #$FF
+    adc z:zTemp02
+    sta z:zTemp02
+    phy
+    jsr TerrainTileRead026F
+    ldy z:zTemp0A
+    and #$01
+    beq TerrainLookupAlt026F_at1
+    ldy z:zTemp0A
+    lda a:TileHit,y
+    and #$5E
+    sta a:TileHit,y
+TerrainLookupAlt026F_at1:
+    ply
+TerrainLookupAlt026F_at3:
+    inc z:zTemp0A
+    lda z:zTemp0A
+    cmp #$04
+    bne TerrainLookupAlt026F_at2
+    rts
+TerrainLookupAlt026F_at0:
+    iny
+    iny
+    iny
+    iny
+    bra TerrainLookupAlt026F_at3
+
+; @routine 064F:5CD TerrainLookup064F
+; @run 6B:95CD
+; WHAT IT DOES: Reads the terrain at the four columns of a probe around an object (as TerrainLookupB, 024F:5AB), from
+; this program's probe table at $B63B.
+; HOW: TerrainLookupB's code with this program's table, reading with the read at $96A1.
+; WAITS: no.
+; Entry: A probe, X object. Exit: as TerrainLookupB.
+; Nothing the game does loads this program (codemap.unloaded_programs), so nothing is known to reach it.
+ProbeTable064F = $B63B ; the probe table: a pointer to each probe's four columns of offsets
+TileRead064F = $96A1 ; TerrainTileRead026F's bytes in this program
+TerrainLookup064F:
+    asl a
+    tay
+    lda a:ProbeTable064F,y
+    sta z:zTemp0C
+    lda a:ProbeTable064F+1,y
+    sta z:zTemp0D
+    cly
+    sty z:zTemp0A
+TerrainLookup064F_at1:
+    lda (zTemp0C),y
+    clc
+    adc a:OBJ_X_LO,x
+    sta z:zTemp00
+    iny
+    php
+    lda (zTemp0C),y
+    cmp #$80
+    beq TerrainLookup064F_at0
+    plp
+    adc a:OBJ_X_HI,x
+    sta z:zTemp01
+    iny
+    lda (zTemp0C),y
+    clc
+    adc a:OBJ_Y_LO,x
+    sta z:zTemp02
+    iny
+    lda (zTemp0C),y
+    adc a:OBJ_Y_HI,x
+    sta z:zTemp03
+    iny
+    phy
+    jsr TileRead064F
+TerrainLookup064F_at2:
+    ldy z:zTemp0A
+    sta a:TileHit,y
+    lda z:zTemp00
+    sta a:TileDepthX,y
+    lda z:zTemp02
+    sta a:TileDepthY,y
+    inc z:zTemp0A
+    ply
+    lda z:zTemp0A
+    cmp #$04
+    bne TerrainLookup064F_at1
+    rts
+TerrainLookup064F_at0:
+    plp
+    iny
+    iny
+    iny
+    phy
+    stz z:zTemp00
+    stz z:zTemp02
+    cla
+    bra TerrainLookup064F_at2
+
+; @routine 064F:62D TerrainLookupAlt064F
+; @run 6B:962D
+; WHAT IT DOES: TerrainLookup064F, then a second look at each column that found floor (as TerrainLookupAltB, 024F:60B).
+; HOW: TerrainLookupAltB's code with this program's table.
+; WAITS: no.
+; Entry and exit: as TerrainLookup064F.
+; Nothing the game does loads this program (codemap.unloaded_programs), so nothing is known to reach it.
+TerrainLookupAlt064F:
+    pha
+    jsr TerrainLookup064F
+    pla
+    asl a
+    tay
+    lda a:ProbeTable064F,y
+    sta z:zTemp0C
+    lda a:ProbeTable064F+1,y
+    sta z:zTemp0D
+    cly
+    sty z:zTemp0A
+TerrainLookupAlt064F_at2:
+    phy
+    ldy z:zTemp0A
+    lda a:TileHit,y
+    ply
+    and #$A1
+    bmi TerrainLookupAlt064F_at0
+    beq TerrainLookupAlt064F_at0
+    lda (zTemp0C),y
+    clc
+    adc a:OBJ_X_LO,x
+    sta z:zTemp00
+    iny
+    lda (zTemp0C),y
+    adc a:OBJ_X_HI,x
+    sta z:zTemp01
+    iny
+    lda (zTemp0C),y
+    clc
+    adc a:OBJ_Y_LO,x
+    sta z:zTemp02
+    iny
+    lda (zTemp0C),y
+    adc a:OBJ_Y_HI,x
+    sta z:zTemp03
+    iny
+    lda #$F8
+    clc
+    adc z:zTemp02
+    sta z:zTemp02
+    lda #$FF
+    adc z:zTemp02
+    sta z:zTemp02
+    phy
+    jsr TileRead064F
+    ldy z:zTemp0A
+    and #$01
+    beq TerrainLookupAlt064F_at1
+    ldy z:zTemp0A
+    lda a:TileHit,y
+    and #$5E
+    sta a:TileHit,y
+TerrainLookupAlt064F_at1:
+    ply
+TerrainLookupAlt064F_at3:
+    inc z:zTemp0A
+    lda z:zTemp0A
+    cmp #$04
+    bne TerrainLookupAlt064F_at2
+    rts
+TerrainLookupAlt064F_at0:
+    iny
+    iny
+    iny
+    iny
+    bra TerrainLookupAlt064F_at3
+
+; @routine 122F:5CD TerrainLookup122F
+; @run 6B:95CD
+; WHAT IT DOES: Reads the terrain at the four columns of a probe around an object (as TerrainLookupB, 024F:5AB), from
+; this program's probe table at $D4C4.
+; HOW: TerrainLookupB's code with this program's table, reading with the read at $96A1.
+; WAITS: no.
+; Entry: A probe, X object. Exit: as TerrainLookupB.
+; Nothing the game does loads this program (codemap.unloaded_programs), so nothing is known to reach it.
+ProbeTable122F = $D4C4 ; the probe table: a pointer to each probe's four columns of offsets
+TileRead122F = $96A1 ; TerrainTileRead026F's bytes in this program
+TerrainLookup122F:
+    asl a
+    tay
+    lda a:ProbeTable122F,y
+    sta z:zTemp0C
+    lda a:ProbeTable122F+1,y
+    sta z:zTemp0D
+    cly
+    sty z:zTemp0A
+TerrainLookup122F_at1:
+    lda (zTemp0C),y
+    clc
+    adc a:OBJ_X_LO,x
+    sta z:zTemp00
+    iny
+    php
+    lda (zTemp0C),y
+    cmp #$80
+    beq TerrainLookup122F_at0
+    plp
+    adc a:OBJ_X_HI,x
+    sta z:zTemp01
+    iny
+    lda (zTemp0C),y
+    clc
+    adc a:OBJ_Y_LO,x
+    sta z:zTemp02
+    iny
+    lda (zTemp0C),y
+    adc a:OBJ_Y_HI,x
+    sta z:zTemp03
+    iny
+    phy
+    jsr TileRead122F
+TerrainLookup122F_at2:
+    ldy z:zTemp0A
+    sta a:TileHit,y
+    lda z:zTemp00
+    sta a:TileDepthX,y
+    lda z:zTemp02
+    sta a:TileDepthY,y
+    inc z:zTemp0A
+    ply
+    lda z:zTemp0A
+    cmp #$04
+    bne TerrainLookup122F_at1
+    rts
+TerrainLookup122F_at0:
+    plp
+    iny
+    iny
+    iny
+    phy
+    stz z:zTemp00
+    stz z:zTemp02
+    cla
+    bra TerrainLookup122F_at2
+
+; @routine 122F:62D TerrainLookupAlt122F
+; @run 6B:962D
+; WHAT IT DOES: TerrainLookup122F, then a second look at each column that found floor (as TerrainLookupAltB, 024F:60B).
+; HOW: TerrainLookupAltB's code with this program's table.
+; WAITS: no.
+; Entry and exit: as TerrainLookup122F.
+; Nothing the game does loads this program (codemap.unloaded_programs), so nothing is known to reach it.
+TerrainLookupAlt122F:
+    pha
+    jsr TerrainLookup122F
+    pla
+    asl a
+    tay
+    lda a:ProbeTable122F,y
+    sta z:zTemp0C
+    lda a:ProbeTable122F+1,y
+    sta z:zTemp0D
+    cly
+    sty z:zTemp0A
+TerrainLookupAlt122F_at2:
+    phy
+    ldy z:zTemp0A
+    lda a:TileHit,y
+    ply
+    and #$A1
+    bmi TerrainLookupAlt122F_at0
+    beq TerrainLookupAlt122F_at0
+    lda (zTemp0C),y
+    clc
+    adc a:OBJ_X_LO,x
+    sta z:zTemp00
+    iny
+    lda (zTemp0C),y
+    adc a:OBJ_X_HI,x
+    sta z:zTemp01
+    iny
+    lda (zTemp0C),y
+    clc
+    adc a:OBJ_Y_LO,x
+    sta z:zTemp02
+    iny
+    lda (zTemp0C),y
+    adc a:OBJ_Y_HI,x
+    sta z:zTemp03
+    iny
+    lda #$F8
+    clc
+    adc z:zTemp02
+    sta z:zTemp02
+    lda #$FF
+    adc z:zTemp02
+    sta z:zTemp02
+    phy
+    jsr TileRead122F
+    ldy z:zTemp0A
+    and #$01
+    beq TerrainLookupAlt122F_at1
+    ldy z:zTemp0A
+    lda a:TileHit,y
+    and #$5E
+    sta a:TileHit,y
+TerrainLookupAlt122F_at1:
+    ply
+TerrainLookupAlt122F_at3:
+    inc z:zTemp0A
+    lda z:zTemp0A
+    cmp #$04
+    bne TerrainLookupAlt122F_at2
+    rts
+TerrainLookupAlt122F_at0:
+    iny
+    iny
+    iny
+    iny
+    bra TerrainLookupAlt122F_at3
+
+; @routine 1A2F:5CD TerrainLookup1A2F
+; @run 6B:95CD
+; WHAT IT DOES: Reads the terrain at the four columns of a probe around an object (as TerrainLookupB, 024F:5AB), from
+; this program's probe table at $BCDF.
+; HOW: TerrainLookupB's code with this program's table, reading with the read at $96A1.
+; WAITS: no.
+; Entry: A probe, X object. Exit: as TerrainLookupB.
+; Nothing the game does loads this program (codemap.unloaded_programs), so nothing is known to reach it.
+ProbeTable1A2F = $BCDF ; the probe table: a pointer to each probe's four columns of offsets
+TileRead1A2F = $96A1 ; TerrainTileRead026F's bytes in this program
+TerrainLookup1A2F:
+    asl a
+    tay
+    lda a:ProbeTable1A2F,y
+    sta z:zTemp0C
+    lda a:ProbeTable1A2F+1,y
+    sta z:zTemp0D
+    cly
+    sty z:zTemp0A
+TerrainLookup1A2F_at1:
+    lda (zTemp0C),y
+    clc
+    adc a:OBJ_X_LO,x
+    sta z:zTemp00
+    iny
+    php
+    lda (zTemp0C),y
+    cmp #$80
+    beq TerrainLookup1A2F_at0
+    plp
+    adc a:OBJ_X_HI,x
+    sta z:zTemp01
+    iny
+    lda (zTemp0C),y
+    clc
+    adc a:OBJ_Y_LO,x
+    sta z:zTemp02
+    iny
+    lda (zTemp0C),y
+    adc a:OBJ_Y_HI,x
+    sta z:zTemp03
+    iny
+    phy
+    jsr TileRead1A2F
+TerrainLookup1A2F_at2:
+    ldy z:zTemp0A
+    sta a:TileHit,y
+    lda z:zTemp00
+    sta a:TileDepthX,y
+    lda z:zTemp02
+    sta a:TileDepthY,y
+    inc z:zTemp0A
+    ply
+    lda z:zTemp0A
+    cmp #$04
+    bne TerrainLookup1A2F_at1
+    rts
+TerrainLookup1A2F_at0:
+    plp
+    iny
+    iny
+    iny
+    phy
+    stz z:zTemp00
+    stz z:zTemp02
+    cla
+    bra TerrainLookup1A2F_at2
+
+; @routine 1A2F:62D TerrainLookupAlt1A2F
+; @run 6B:962D
+; WHAT IT DOES: TerrainLookup1A2F, then a second look at each column that found floor (as TerrainLookupAltB, 024F:60B).
+; HOW: TerrainLookupAltB's code with this program's table.
+; WAITS: no.
+; Entry and exit: as TerrainLookup1A2F.
+; Nothing the game does loads this program (codemap.unloaded_programs), so nothing is known to reach it.
+TerrainLookupAlt1A2F:
+    pha
+    jsr TerrainLookup1A2F
+    pla
+    asl a
+    tay
+    lda a:ProbeTable1A2F,y
+    sta z:zTemp0C
+    lda a:ProbeTable1A2F+1,y
+    sta z:zTemp0D
+    cly
+    sty z:zTemp0A
+TerrainLookupAlt1A2F_at2:
+    phy
+    ldy z:zTemp0A
+    lda a:TileHit,y
+    ply
+    and #$A1
+    bmi TerrainLookupAlt1A2F_at0
+    beq TerrainLookupAlt1A2F_at0
+    lda (zTemp0C),y
+    clc
+    adc a:OBJ_X_LO,x
+    sta z:zTemp00
+    iny
+    lda (zTemp0C),y
+    adc a:OBJ_X_HI,x
+    sta z:zTemp01
+    iny
+    lda (zTemp0C),y
+    clc
+    adc a:OBJ_Y_LO,x
+    sta z:zTemp02
+    iny
+    lda (zTemp0C),y
+    adc a:OBJ_Y_HI,x
+    sta z:zTemp03
+    iny
+    lda #$F8
+    clc
+    adc z:zTemp02
+    sta z:zTemp02
+    lda #$FF
+    adc z:zTemp02
+    sta z:zTemp02
+    phy
+    jsr TileRead1A2F
+    ldy z:zTemp0A
+    and #$01
+    beq TerrainLookupAlt1A2F_at1
+    ldy z:zTemp0A
+    lda a:TileHit,y
+    and #$5E
+    sta a:TileHit,y
+TerrainLookupAlt1A2F_at1:
+    ply
+TerrainLookupAlt1A2F_at3:
+    inc z:zTemp0A
+    lda z:zTemp0A
+    cmp #$04
+    bne TerrainLookupAlt1A2F_at2
+    rts
+TerrainLookupAlt1A2F_at0:
+    iny
+    iny
+    iny
+    iny
+    bra TerrainLookupAlt1A2F_at3
+
+; @routine 1B8F:5CD TerrainLookup1B8F
+; @run 6B:95CD
+; WHAT IT DOES: Reads the terrain at the four columns of a probe around an object (as TerrainLookupB, 024F:5AB), from
+; this program's probe table at $D85F.
+; HOW: TerrainLookupB's code with this program's table, reading with the read at $96A1.
+; WAITS: no.
+; Entry: A probe, X object. Exit: as TerrainLookupB.
+; Nothing the game does loads this program (codemap.unloaded_programs), so nothing is known to reach it.
+ProbeTable1B8F = $D85F ; the probe table: a pointer to each probe's four columns of offsets
+TileRead1B8F = $96A1 ; TerrainTileRead026F's bytes in this program
+TerrainLookup1B8F:
+    asl a
+    tay
+    lda a:ProbeTable1B8F,y
+    sta z:zTemp0C
+    lda a:ProbeTable1B8F+1,y
+    sta z:zTemp0D
+    cly
+    sty z:zTemp0A
+TerrainLookup1B8F_at1:
+    lda (zTemp0C),y
+    clc
+    adc a:OBJ_X_LO,x
+    sta z:zTemp00
+    iny
+    php
+    lda (zTemp0C),y
+    cmp #$80
+    beq TerrainLookup1B8F_at0
+    plp
+    adc a:OBJ_X_HI,x
+    sta z:zTemp01
+    iny
+    lda (zTemp0C),y
+    clc
+    adc a:OBJ_Y_LO,x
+    sta z:zTemp02
+    iny
+    lda (zTemp0C),y
+    adc a:OBJ_Y_HI,x
+    sta z:zTemp03
+    iny
+    phy
+    jsr TileRead1B8F
+TerrainLookup1B8F_at2:
+    ldy z:zTemp0A
+    sta a:TileHit,y
+    lda z:zTemp00
+    sta a:TileDepthX,y
+    lda z:zTemp02
+    sta a:TileDepthY,y
+    inc z:zTemp0A
+    ply
+    lda z:zTemp0A
+    cmp #$04
+    bne TerrainLookup1B8F_at1
+    rts
+TerrainLookup1B8F_at0:
+    plp
+    iny
+    iny
+    iny
+    phy
+    stz z:zTemp00
+    stz z:zTemp02
+    cla
+    bra TerrainLookup1B8F_at2
+
+; @routine 1B8F:62D TerrainLookupAlt1B8F
+; @run 6B:962D
+; WHAT IT DOES: TerrainLookup1B8F, then a second look at each column that found floor (as TerrainLookupAltB, 024F:60B).
+; HOW: TerrainLookupAltB's code with this program's table.
+; WAITS: no.
+; Entry and exit: as TerrainLookup1B8F.
+; Nothing the game does loads this program (codemap.unloaded_programs), so nothing is known to reach it.
+TerrainLookupAlt1B8F:
+    pha
+    jsr TerrainLookup1B8F
+    pla
+    asl a
+    tay
+    lda a:ProbeTable1B8F,y
+    sta z:zTemp0C
+    lda a:ProbeTable1B8F+1,y
+    sta z:zTemp0D
+    cly
+    sty z:zTemp0A
+TerrainLookupAlt1B8F_at2:
+    phy
+    ldy z:zTemp0A
+    lda a:TileHit,y
+    ply
+    and #$A1
+    bmi TerrainLookupAlt1B8F_at0
+    beq TerrainLookupAlt1B8F_at0
+    lda (zTemp0C),y
+    clc
+    adc a:OBJ_X_LO,x
+    sta z:zTemp00
+    iny
+    lda (zTemp0C),y
+    adc a:OBJ_X_HI,x
+    sta z:zTemp01
+    iny
+    lda (zTemp0C),y
+    clc
+    adc a:OBJ_Y_LO,x
+    sta z:zTemp02
+    iny
+    lda (zTemp0C),y
+    adc a:OBJ_Y_HI,x
+    sta z:zTemp03
+    iny
+    lda #$F8
+    clc
+    adc z:zTemp02
+    sta z:zTemp02
+    lda #$FF
+    adc z:zTemp02
+    sta z:zTemp02
+    phy
+    jsr TileRead1B8F
+    ldy z:zTemp0A
+    and #$01
+    beq TerrainLookupAlt1B8F_at1
+    ldy z:zTemp0A
+    lda a:TileHit,y
+    and #$5E
+    sta a:TileHit,y
+TerrainLookupAlt1B8F_at1:
+    ply
+TerrainLookupAlt1B8F_at3:
+    inc z:zTemp0A
+    lda z:zTemp0A
+    cmp #$04
+    bne TerrainLookupAlt1B8F_at2
+    rts
+TerrainLookupAlt1B8F_at0:
+    iny
+    iny
+    iny
+    iny
+    bra TerrainLookupAlt1B8F_at3
+
+; @routine 1CEF:5CD TerrainLookup1CEF
+; @run 6B:95CD
+; WHAT IT DOES: Reads the terrain at the four columns of a probe around an object (as TerrainLookupB, 024F:5AB), from
+; this program's probe table at $DA45.
+; HOW: TerrainLookupB's code with this program's table, reading with the read at $96A1.
+; WAITS: no.
+; Entry: A probe, X object. Exit: as TerrainLookupB.
+; Nothing the game does loads this program (codemap.unloaded_programs), so nothing is known to reach it.
+ProbeTable1CEF = $DA45 ; the probe table: a pointer to each probe's four columns of offsets
+TileRead1CEF = $96A1 ; TerrainTileRead026F's bytes in this program
+TerrainLookup1CEF:
+    asl a
+    tay
+    lda a:ProbeTable1CEF,y
+    sta z:zTemp0C
+    lda a:ProbeTable1CEF+1,y
+    sta z:zTemp0D
+    cly
+    sty z:zTemp0A
+TerrainLookup1CEF_at1:
+    lda (zTemp0C),y
+    clc
+    adc a:OBJ_X_LO,x
+    sta z:zTemp00
+    iny
+    php
+    lda (zTemp0C),y
+    cmp #$80
+    beq TerrainLookup1CEF_at0
+    plp
+    adc a:OBJ_X_HI,x
+    sta z:zTemp01
+    iny
+    lda (zTemp0C),y
+    clc
+    adc a:OBJ_Y_LO,x
+    sta z:zTemp02
+    iny
+    lda (zTemp0C),y
+    adc a:OBJ_Y_HI,x
+    sta z:zTemp03
+    iny
+    phy
+    jsr TileRead1CEF
+TerrainLookup1CEF_at2:
+    ldy z:zTemp0A
+    sta a:TileHit,y
+    lda z:zTemp00
+    sta a:TileDepthX,y
+    lda z:zTemp02
+    sta a:TileDepthY,y
+    inc z:zTemp0A
+    ply
+    lda z:zTemp0A
+    cmp #$04
+    bne TerrainLookup1CEF_at1
+    rts
+TerrainLookup1CEF_at0:
+    plp
+    iny
+    iny
+    iny
+    phy
+    stz z:zTemp00
+    stz z:zTemp02
+    cla
+    bra TerrainLookup1CEF_at2
+
+; @routine 1CEF:62D TerrainLookupAlt1CEF
+; @run 6B:962D
+; WHAT IT DOES: TerrainLookup1CEF, then a second look at each column that found floor (as TerrainLookupAltB, 024F:60B).
+; HOW: TerrainLookupAltB's code with this program's table.
+; WAITS: no.
+; Entry and exit: as TerrainLookup1CEF.
+; Nothing the game does loads this program (codemap.unloaded_programs), so nothing is known to reach it.
+TerrainLookupAlt1CEF:
+    pha
+    jsr TerrainLookup1CEF
+    pla
+    asl a
+    tay
+    lda a:ProbeTable1CEF,y
+    sta z:zTemp0C
+    lda a:ProbeTable1CEF+1,y
+    sta z:zTemp0D
+    cly
+    sty z:zTemp0A
+TerrainLookupAlt1CEF_at2:
+    phy
+    ldy z:zTemp0A
+    lda a:TileHit,y
+    ply
+    and #$A1
+    bmi TerrainLookupAlt1CEF_at0
+    beq TerrainLookupAlt1CEF_at0
+    lda (zTemp0C),y
+    clc
+    adc a:OBJ_X_LO,x
+    sta z:zTemp00
+    iny
+    lda (zTemp0C),y
+    adc a:OBJ_X_HI,x
+    sta z:zTemp01
+    iny
+    lda (zTemp0C),y
+    clc
+    adc a:OBJ_Y_LO,x
+    sta z:zTemp02
+    iny
+    lda (zTemp0C),y
+    adc a:OBJ_Y_HI,x
+    sta z:zTemp03
+    iny
+    lda #$F8
+    clc
+    adc z:zTemp02
+    sta z:zTemp02
+    lda #$FF
+    adc z:zTemp02
+    sta z:zTemp02
+    phy
+    jsr TileRead1CEF
+    ldy z:zTemp0A
+    and #$01
+    beq TerrainLookupAlt1CEF_at1
+    ldy z:zTemp0A
+    lda a:TileHit,y
+    and #$5E
+    sta a:TileHit,y
+TerrainLookupAlt1CEF_at1:
+    ply
+TerrainLookupAlt1CEF_at3:
+    inc z:zTemp0A
+    lda z:zTemp0A
+    cmp #$04
+    bne TerrainLookupAlt1CEF_at2
+    rts
+TerrainLookupAlt1CEF_at0:
+    iny
+    iny
+    iny
+    iny
+    bra TerrainLookupAlt1CEF_at3
+
+; @routine 0320:123 TerrainTileRead0320
+; @run 6B:9923
+; WHAT IT DOES: The terrain tile read of the stage programs (as TerrainTileRead, 050F:67F), with this program's
+; handler table at $99BE. Programs 0440, 10E0 hold the same bytes.
+; HOW: TerrainTileRead's code at $9923.
+; WAITS: no.
+; Entry: zTemp00-01 X, zTemp02-03 Y. Exit: as TerrainTileRead.
+; Nothing the game does loads this program (codemap.unloaded_programs), so nothing is known to reach it.
+TileHandlers0320 = $99BE ; the handlers for attributes $80-$9B, a word each
+TerrainTileRead0320:
+    lda z:zTemp00
+    clc
+    adc a:ScrollXLo
+    sta z:zTemp04
+    lda z:zTemp01
+    adc a:ScrollXHi
+    and #$01
+    lsr a
+    lda z:zTemp04
+    ror a
+    lsr a
+    lsr a
+    and #$3F
+    sta z:zTemp05
+    lda z:zTemp04
+    and #$07
+    sta z:zTemp00
+    lda z:zTemp02
+    clc
+    adc a:ScrollYLo
+    sta z:zTemp06
+    lda z:zTemp03
+    adc a:ScrollYHi
+    and #$01
+    sta z:zTemp07
+    lda z:zTemp06
+    asl a
+    rol z:zTemp07
+    asl a
+    rol z:zTemp07
+    asl a
+    rol z:zTemp07
+    and #$C0
+    clc
+    adc z:zTemp05
+    sta z:zTemp05
+    lda z:zTemp06
+    and #$07
+    sta z:zTemp02
+    lda z:zTemp05
+    sta z:zTemp06
+    jsr VecSelectVramReadAddress
+    lda z:zTemp05
+    sta a:VDC_DATA_LO
+    lda z:zTemp07
+    sta a:VDC_DATA_HI
+    jsr VecSelectVramData
+    lda a:VDC_DATA_LO
+    sta z:zTemp08
+    lda a:VDC_DATA_HI
+    and #$07
+    sta z:zTemp09
+    tay
+    lda a:SaveBuffer,y
+    bmi TerrainTileRead0320_at0
+    lda z:zTemp08
+    clc
+    adc #$00
+    sta z:zTemp08
+    lda a:SaveBuffer,y
+    adc #$7D
+    sta z:zTemp09
+    lda (zTemp08)
+    bmi TerrainTileRead0320_at1
+    rts
+TerrainTileRead0320_at0:
+    lda #$00
+    rts
+TerrainTileRead0320_at1:
+    cmp #$9C
+    bcs TerrainTileRead0320_at0+2
+    pha
+    sbc #$7F
+    asl a
+    tay
+    lda a:TileHandlers0320,y
+    sta z:zTemp04
+    lda a:TileHandlers0320+1,y
+    sta z:zTemp05
+    pla
+    jmp (zTemp04+ZeroPage)
+
+; @routine 0320:04F TerrainLookup0320
+; @run 6B:984F
+; WHAT IT DOES: Reads the terrain at the four columns of a probe around an object (as TerrainLookupB, 024F:5AB), from
+; this program's probe table at $BDF5.
+; HOW: TerrainLookupB's code with this program's table, reading with the read at $9923.
+; WAITS: no.
+; Entry: A probe, X object. Exit: as TerrainLookupB.
+; Nothing the game does loads this program (codemap.unloaded_programs), so nothing is known to reach it.
+ProbeTable0320 = $BDF5 ; the probe table: a pointer to each probe's four columns of offsets
+TerrainLookup0320:
+    asl a
+    tay
+    lda a:ProbeTable0320,y
+    sta z:zTemp0C
+    lda a:ProbeTable0320+1,y
+    sta z:zTemp0D
+    cly
+    sty z:zTemp0A
+TerrainLookup0320_at1:
+    lda (zTemp0C),y
+    clc
+    adc a:OBJ_X_LO,x
+    sta z:zTemp00
+    iny
+    php
+    lda (zTemp0C),y
+    cmp #$80
+    beq TerrainLookup0320_at0
+    plp
+    adc a:OBJ_X_HI,x
+    sta z:zTemp01
+    iny
+    lda (zTemp0C),y
+    clc
+    adc a:OBJ_Y_LO,x
+    sta z:zTemp02
+    iny
+    lda (zTemp0C),y
+    adc a:OBJ_Y_HI,x
+    sta z:zTemp03
+    iny
+    phy
+    jsr TerrainTileRead0320
+TerrainLookup0320_at2:
+    ldy z:zTemp0A
+    sta a:TileHit,y
+    lda z:zTemp00
+    sta a:TileDepthX,y
+    lda z:zTemp02
+    sta a:TileDepthY,y
+    inc z:zTemp0A
+    ply
+    lda z:zTemp0A
+    cmp #$04
+    bne TerrainLookup0320_at1
+    rts
+TerrainLookup0320_at0:
+    plp
+    iny
+    iny
+    iny
+    phy
+    stz z:zTemp00
+    stz z:zTemp02
+    cla
+    bra TerrainLookup0320_at2
+
+; @routine 0320:0AF TerrainLookupAlt0320
+; @run 6B:98AF
+; WHAT IT DOES: TerrainLookup0320, then a second look at each column that found floor (as TerrainLookupAltB, 024F:60B).
+; HOW: TerrainLookupAltB's code with this program's table.
+; WAITS: no.
+; Entry and exit: as TerrainLookup0320.
+; Nothing the game does loads this program (codemap.unloaded_programs), so nothing is known to reach it.
+TerrainLookupAlt0320:
+    pha
+    jsr TerrainLookup0320
+    pla
+    asl a
+    tay
+    lda a:ProbeTable0320,y
+    sta z:zTemp0C
+    lda a:ProbeTable0320+1,y
+    sta z:zTemp0D
+    cly
+    sty z:zTemp0A
+TerrainLookupAlt0320_at2:
+    phy
+    ldy z:zTemp0A
+    lda a:TileHit,y
+    ply
+    and #$A1
+    bmi TerrainLookupAlt0320_at0
+    beq TerrainLookupAlt0320_at0
+    lda (zTemp0C),y
+    clc
+    adc a:OBJ_X_LO,x
+    sta z:zTemp00
+    iny
+    lda (zTemp0C),y
+    adc a:OBJ_X_HI,x
+    sta z:zTemp01
+    iny
+    lda (zTemp0C),y
+    clc
+    adc a:OBJ_Y_LO,x
+    sta z:zTemp02
+    iny
+    lda (zTemp0C),y
+    adc a:OBJ_Y_HI,x
+    sta z:zTemp03
+    iny
+    lda #$F8
+    clc
+    adc z:zTemp02
+    sta z:zTemp02
+    lda #$FF
+    adc z:zTemp02
+    sta z:zTemp02
+    phy
+    jsr TerrainTileRead0320
+    ldy z:zTemp0A
+    and #$01
+    beq TerrainLookupAlt0320_at1
+    ldy z:zTemp0A
+    lda a:TileHit,y
+    and #$5E
+    sta a:TileHit,y
+TerrainLookupAlt0320_at1:
+    ply
+TerrainLookupAlt0320_at3:
+    inc z:zTemp0A
+    lda z:zTemp0A
+    cmp #$04
+    bne TerrainLookupAlt0320_at2
+    rts
+TerrainLookupAlt0320_at0:
+    iny
+    iny
+    iny
+    iny
+    bra TerrainLookupAlt0320_at3
+
+; @routine 0440:04F TerrainLookup0440
+; @run 6B:984F
+; WHAT IT DOES: Reads the terrain at the four columns of a probe around an object (as TerrainLookupB, 024F:5AB), from
+; this program's probe table at $C1C6.
+; HOW: TerrainLookupB's code with this program's table, reading with the read at $9923.
+; WAITS: no.
+; Entry: A probe, X object. Exit: as TerrainLookupB.
+; Nothing the game does loads this program (codemap.unloaded_programs), so nothing is known to reach it.
+ProbeTable0440 = $C1C6 ; the probe table: a pointer to each probe's four columns of offsets
+TileRead0440 = $9923 ; TerrainTileRead0320's bytes in this program
+TerrainLookup0440:
+    asl a
+    tay
+    lda a:ProbeTable0440,y
+    sta z:zTemp0C
+    lda a:ProbeTable0440+1,y
+    sta z:zTemp0D
+    cly
+    sty z:zTemp0A
+TerrainLookup0440_at1:
+    lda (zTemp0C),y
+    clc
+    adc a:OBJ_X_LO,x
+    sta z:zTemp00
+    iny
+    php
+    lda (zTemp0C),y
+    cmp #$80
+    beq TerrainLookup0440_at0
+    plp
+    adc a:OBJ_X_HI,x
+    sta z:zTemp01
+    iny
+    lda (zTemp0C),y
+    clc
+    adc a:OBJ_Y_LO,x
+    sta z:zTemp02
+    iny
+    lda (zTemp0C),y
+    adc a:OBJ_Y_HI,x
+    sta z:zTemp03
+    iny
+    phy
+    jsr TileRead0440
+TerrainLookup0440_at2:
+    ldy z:zTemp0A
+    sta a:TileHit,y
+    lda z:zTemp00
+    sta a:TileDepthX,y
+    lda z:zTemp02
+    sta a:TileDepthY,y
+    inc z:zTemp0A
+    ply
+    lda z:zTemp0A
+    cmp #$04
+    bne TerrainLookup0440_at1
+    rts
+TerrainLookup0440_at0:
+    plp
+    iny
+    iny
+    iny
+    phy
+    stz z:zTemp00
+    stz z:zTemp02
+    cla
+    bra TerrainLookup0440_at2
+
+; @routine 0440:0AF TerrainLookupAlt0440
+; @run 6B:98AF
+; WHAT IT DOES: TerrainLookup0440, then a second look at each column that found floor (as TerrainLookupAltB, 024F:60B).
+; HOW: TerrainLookupAltB's code with this program's table.
+; WAITS: no.
+; Entry and exit: as TerrainLookup0440.
+; Nothing the game does loads this program (codemap.unloaded_programs), so nothing is known to reach it.
+TerrainLookupAlt0440:
+    pha
+    jsr TerrainLookup0440
+    pla
+    asl a
+    tay
+    lda a:ProbeTable0440,y
+    sta z:zTemp0C
+    lda a:ProbeTable0440+1,y
+    sta z:zTemp0D
+    cly
+    sty z:zTemp0A
+TerrainLookupAlt0440_at2:
+    phy
+    ldy z:zTemp0A
+    lda a:TileHit,y
+    ply
+    and #$A1
+    bmi TerrainLookupAlt0440_at0
+    beq TerrainLookupAlt0440_at0
+    lda (zTemp0C),y
+    clc
+    adc a:OBJ_X_LO,x
+    sta z:zTemp00
+    iny
+    lda (zTemp0C),y
+    adc a:OBJ_X_HI,x
+    sta z:zTemp01
+    iny
+    lda (zTemp0C),y
+    clc
+    adc a:OBJ_Y_LO,x
+    sta z:zTemp02
+    iny
+    lda (zTemp0C),y
+    adc a:OBJ_Y_HI,x
+    sta z:zTemp03
+    iny
+    lda #$F8
+    clc
+    adc z:zTemp02
+    sta z:zTemp02
+    lda #$FF
+    adc z:zTemp02
+    sta z:zTemp02
+    phy
+    jsr TileRead0440
+    ldy z:zTemp0A
+    and #$01
+    beq TerrainLookupAlt0440_at1
+    ldy z:zTemp0A
+    lda a:TileHit,y
+    and #$5E
+    sta a:TileHit,y
+TerrainLookupAlt0440_at1:
+    ply
+TerrainLookupAlt0440_at3:
+    inc z:zTemp0A
+    lda z:zTemp0A
+    cmp #$04
+    bne TerrainLookupAlt0440_at2
+    rts
+TerrainLookupAlt0440_at0:
+    iny
+    iny
+    iny
+    iny
+    bra TerrainLookupAlt0440_at3
+
+; @routine 10E0:04F TerrainLookup10E0
+; @run 6B:984F
+; WHAT IT DOES: Reads the terrain at the four columns of a probe around an object (as TerrainLookupB, 024F:5AB), from
+; this program's probe table at $C55F.
+; HOW: TerrainLookupB's code with this program's table, reading with the read at $9923.
+; WAITS: no.
+; Entry: A probe, X object. Exit: as TerrainLookupB.
+; Nothing the game does loads this program (codemap.unloaded_programs), so nothing is known to reach it.
+ProbeTable10E0 = $C55F ; the probe table: a pointer to each probe's four columns of offsets
+TileRead10E0 = $9923 ; TerrainTileRead0320's bytes in this program
+TerrainLookup10E0:
+    asl a
+    tay
+    lda a:ProbeTable10E0,y
+    sta z:zTemp0C
+    lda a:ProbeTable10E0+1,y
+    sta z:zTemp0D
+    cly
+    sty z:zTemp0A
+TerrainLookup10E0_at1:
+    lda (zTemp0C),y
+    clc
+    adc a:OBJ_X_LO,x
+    sta z:zTemp00
+    iny
+    php
+    lda (zTemp0C),y
+    cmp #$80
+    beq TerrainLookup10E0_at0
+    plp
+    adc a:OBJ_X_HI,x
+    sta z:zTemp01
+    iny
+    lda (zTemp0C),y
+    clc
+    adc a:OBJ_Y_LO,x
+    sta z:zTemp02
+    iny
+    lda (zTemp0C),y
+    adc a:OBJ_Y_HI,x
+    sta z:zTemp03
+    iny
+    phy
+    jsr TileRead10E0
+TerrainLookup10E0_at2:
+    ldy z:zTemp0A
+    sta a:TileHit,y
+    lda z:zTemp00
+    sta a:TileDepthX,y
+    lda z:zTemp02
+    sta a:TileDepthY,y
+    inc z:zTemp0A
+    ply
+    lda z:zTemp0A
+    cmp #$04
+    bne TerrainLookup10E0_at1
+    rts
+TerrainLookup10E0_at0:
+    plp
+    iny
+    iny
+    iny
+    phy
+    stz z:zTemp00
+    stz z:zTemp02
+    cla
+    bra TerrainLookup10E0_at2
+
+; @routine 10E0:0AF TerrainLookupAlt10E0
+; @run 6B:98AF
+; WHAT IT DOES: TerrainLookup10E0, then a second look at each column that found floor (as TerrainLookupAltB, 024F:60B).
+; HOW: TerrainLookupAltB's code with this program's table.
+; WAITS: no.
+; Entry and exit: as TerrainLookup10E0.
+; Nothing the game does loads this program (codemap.unloaded_programs), so nothing is known to reach it.
+TerrainLookupAlt10E0:
+    pha
+    jsr TerrainLookup10E0
+    pla
+    asl a
+    tay
+    lda a:ProbeTable10E0,y
+    sta z:zTemp0C
+    lda a:ProbeTable10E0+1,y
+    sta z:zTemp0D
+    cly
+    sty z:zTemp0A
+TerrainLookupAlt10E0_at2:
+    phy
+    ldy z:zTemp0A
+    lda a:TileHit,y
+    ply
+    and #$A1
+    bmi TerrainLookupAlt10E0_at0
+    beq TerrainLookupAlt10E0_at0
+    lda (zTemp0C),y
+    clc
+    adc a:OBJ_X_LO,x
+    sta z:zTemp00
+    iny
+    lda (zTemp0C),y
+    adc a:OBJ_X_HI,x
+    sta z:zTemp01
+    iny
+    lda (zTemp0C),y
+    clc
+    adc a:OBJ_Y_LO,x
+    sta z:zTemp02
+    iny
+    lda (zTemp0C),y
+    adc a:OBJ_Y_HI,x
+    sta z:zTemp03
+    iny
+    lda #$F8
+    clc
+    adc z:zTemp02
+    sta z:zTemp02
+    lda #$FF
+    adc z:zTemp02
+    sta z:zTemp02
+    phy
+    jsr TileRead10E0
+    ldy z:zTemp0A
+    and #$01
+    beq TerrainLookupAlt10E0_at1
+    ldy z:zTemp0A
+    lda a:TileHit,y
+    and #$5E
+    sta a:TileHit,y
+TerrainLookupAlt10E0_at1:
+    ply
+TerrainLookupAlt10E0_at3:
+    inc z:zTemp0A
+    lda z:zTemp0A
+    cmp #$04
+    bne TerrainLookupAlt10E0_at2
+    rts
+TerrainLookupAlt10E0_at0:
+    iny
+    iny
+    iny
+    iny
+    bra TerrainLookupAlt10E0_at3

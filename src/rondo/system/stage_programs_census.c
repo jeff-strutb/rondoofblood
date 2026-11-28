@@ -2856,3 +2856,477 @@ void abi_HitTestAllObjects031F(void)
 {
     stage_exit_shim(HitTestAllObjects031F(cpu.x));
 }
+
+/*
+ * @routine 026F:6A1 TerrainTileRead026F
+ * @run 6B:96A1
+ * WHAT IT DOES: The terrain tile read of the stage programs (as TerrainTileRead, 050F:67F): the attribute of the
+ * background tile at a point, 0 if its page has none, and for the attributes $80-$9B the answer of the handler this
+ * program's table at $973C names. Programs 064F, 122F, 1A2F, 1B8F, 1CEF hold the same bytes.
+ * HOW: TerrainTileReadAt (terrain.c), the body of 050F:67F, with its JSRs' returns $96F0 and $96FD,
+ * the table at $973C, and every handler going to the routine loaded at its address.
+ * WAITS: no.
+ * Entry: zTemp00-01 X, zTemp02-03 Y. Exit: as TerrainTileRead.
+ * Nothing the game does loads this program (codemap.unloaded_programs), so nothing is known to reach it.
+ */
+TileRead TerrainTileRead026F(void)
+{
+    const TileReadBuild build = { 0x96F0, 0x96FD, 0x973C, NULL };
+
+    return TerrainTileReadAt(&build);
+}
+
+void abi_TerrainTileRead026F(void)
+{
+    terrain_read_exit_shim(TerrainTileRead026F());
+}
+
+/* The JSR to the read loaded at $96A1: its answer in A, the rest as it leaves the machine. */
+static TileRead loaded_tile_read_96a1(void)
+{
+    TileRead read = { TILE_BY_ORIGINAL, 0, 0, 0, 0, 0, { false, 0, false, false, false } };
+
+    routine_at(0x96A1)();
+    read.attribute = cpu.a;
+    return read;
+}
+
+static const LookupGroup lookup_group_026f = { 0x9608, 0x9631, 0x9681, loaded_tile_read_96a1 };
+
+/* The JSR to the lookup loaded at $95CD: what it leaves is the machine's, its last read the routine's. */
+static LookupEnd loaded_lookup_95cd(uint8_t probe, uint8_t object)
+{
+    LookupEnd end = { false, false, 0, 0, true, { TILE_BY_ORIGINAL, 0, 0, 0, 0, 0, { false, 0, false, false, false } }, 0 };
+
+    cpu.a = probe;
+    cpu.x = object;
+    routine_at(0x95CD)();
+    end.last.attribute = cpu.a;
+    return end;
+}
+
+/*
+ * @routine 026F:5CD TerrainLookup026F
+ * @run 6B:95CD
+ * WHAT IT DOES: Reads the terrain at the four columns of a probe around an object (as TerrainLookupB, 024F:5AB): the
+ * attribute, and how far into the tile, for each, from this program's probe table at $D2BB.
+ * HOW: terrain_lookup_columns (terrain.c), the body of 024F:5AB, with the table at $D2BB, the read loaded at
+ * $96A1 and its JSR's return $9608.
+ * WAITS: no.
+ * Entry: A probe, X object. Exit: as TerrainLookupB.
+ * Nothing the game does loads this program (codemap.unloaded_programs), so nothing is known to reach it.
+ */
+LookupEnd TerrainLookup026F(uint8_t probe, uint8_t object)
+{
+    return terrain_lookup_columns(probe, object, 0xD2BB, &lookup_group_026f);
+}
+
+void abi_TerrainLookup026F(void)
+{
+    lookup_exit_shim(TerrainLookup026F(cpu.a, cpu.x));
+}
+
+/*
+ * @routine 026F:62D TerrainLookupAlt026F
+ * @run 6B:962D
+ * WHAT IT DOES: The lookup at $95CD, then a second look at each column that found floor (as TerrainLookupAltB,
+ * 024F:60B), from this program's probe table at $D2BB.
+ * HOW: terrain_lookup_alt_columns (terrain.c), the body of 024F:60B, with the table at $D2BB, the lookup loaded at
+ * $95CD and the read loaded at $96A1, and its JSRs' returns $9631 and $9681.
+ * WAITS: no.
+ * Entry and exit: as TerrainLookup026F.
+ * Nothing the game does loads this program (codemap.unloaded_programs), so nothing is known to reach it.
+ */
+LookupEnd TerrainLookupAlt026F(uint8_t probe, uint8_t object)
+{
+    return terrain_lookup_alt_columns(probe, object, 0xD2BB, &lookup_group_026f, loaded_lookup_95cd);
+}
+
+void abi_TerrainLookupAlt026F(void)
+{
+    lookup_exit_shim(TerrainLookupAlt026F(cpu.a, cpu.x));
+}
+
+/*
+ * @routine 064F:5CD TerrainLookup064F
+ * @run 6B:95CD
+ * WHAT IT DOES: Reads the terrain at the four columns of a probe around an object (as TerrainLookupB, 024F:5AB): the
+ * attribute, and how far into the tile, for each, from this program's probe table at $B63B.
+ * HOW: terrain_lookup_columns (terrain.c), the body of 024F:5AB, with the table at $B63B, the read loaded at
+ * $96A1 and its JSR's return $9608.
+ * WAITS: no.
+ * Entry: A probe, X object. Exit: as TerrainLookupB.
+ * Nothing the game does loads this program (codemap.unloaded_programs), so nothing is known to reach it.
+ */
+LookupEnd TerrainLookup064F(uint8_t probe, uint8_t object)
+{
+    return terrain_lookup_columns(probe, object, 0xB63B, &lookup_group_026f);
+}
+
+void abi_TerrainLookup064F(void)
+{
+    lookup_exit_shim(TerrainLookup064F(cpu.a, cpu.x));
+}
+
+/*
+ * @routine 064F:62D TerrainLookupAlt064F
+ * @run 6B:962D
+ * WHAT IT DOES: The lookup at $95CD, then a second look at each column that found floor (as TerrainLookupAltB,
+ * 024F:60B), from this program's probe table at $B63B.
+ * HOW: terrain_lookup_alt_columns (terrain.c), the body of 024F:60B, with the table at $B63B, the lookup loaded at
+ * $95CD and the read loaded at $96A1, and its JSRs' returns $9631 and $9681.
+ * WAITS: no.
+ * Entry and exit: as TerrainLookup064F.
+ * Nothing the game does loads this program (codemap.unloaded_programs), so nothing is known to reach it.
+ */
+LookupEnd TerrainLookupAlt064F(uint8_t probe, uint8_t object)
+{
+    return terrain_lookup_alt_columns(probe, object, 0xB63B, &lookup_group_026f, loaded_lookup_95cd);
+}
+
+void abi_TerrainLookupAlt064F(void)
+{
+    lookup_exit_shim(TerrainLookupAlt064F(cpu.a, cpu.x));
+}
+
+/*
+ * @routine 122F:5CD TerrainLookup122F
+ * @run 6B:95CD
+ * WHAT IT DOES: Reads the terrain at the four columns of a probe around an object (as TerrainLookupB, 024F:5AB): the
+ * attribute, and how far into the tile, for each, from this program's probe table at $D4C4.
+ * HOW: terrain_lookup_columns (terrain.c), the body of 024F:5AB, with the table at $D4C4, the read loaded at
+ * $96A1 and its JSR's return $9608.
+ * WAITS: no.
+ * Entry: A probe, X object. Exit: as TerrainLookupB.
+ * Nothing the game does loads this program (codemap.unloaded_programs), so nothing is known to reach it.
+ */
+LookupEnd TerrainLookup122F(uint8_t probe, uint8_t object)
+{
+    return terrain_lookup_columns(probe, object, 0xD4C4, &lookup_group_026f);
+}
+
+void abi_TerrainLookup122F(void)
+{
+    lookup_exit_shim(TerrainLookup122F(cpu.a, cpu.x));
+}
+
+/*
+ * @routine 122F:62D TerrainLookupAlt122F
+ * @run 6B:962D
+ * WHAT IT DOES: The lookup at $95CD, then a second look at each column that found floor (as TerrainLookupAltB,
+ * 024F:60B), from this program's probe table at $D4C4.
+ * HOW: terrain_lookup_alt_columns (terrain.c), the body of 024F:60B, with the table at $D4C4, the lookup loaded at
+ * $95CD and the read loaded at $96A1, and its JSRs' returns $9631 and $9681.
+ * WAITS: no.
+ * Entry and exit: as TerrainLookup122F.
+ * Nothing the game does loads this program (codemap.unloaded_programs), so nothing is known to reach it.
+ */
+LookupEnd TerrainLookupAlt122F(uint8_t probe, uint8_t object)
+{
+    return terrain_lookup_alt_columns(probe, object, 0xD4C4, &lookup_group_026f, loaded_lookup_95cd);
+}
+
+void abi_TerrainLookupAlt122F(void)
+{
+    lookup_exit_shim(TerrainLookupAlt122F(cpu.a, cpu.x));
+}
+
+/*
+ * @routine 1A2F:5CD TerrainLookup1A2F
+ * @run 6B:95CD
+ * WHAT IT DOES: Reads the terrain at the four columns of a probe around an object (as TerrainLookupB, 024F:5AB): the
+ * attribute, and how far into the tile, for each, from this program's probe table at $BCDF.
+ * HOW: terrain_lookup_columns (terrain.c), the body of 024F:5AB, with the table at $BCDF, the read loaded at
+ * $96A1 and its JSR's return $9608.
+ * WAITS: no.
+ * Entry: A probe, X object. Exit: as TerrainLookupB.
+ * Nothing the game does loads this program (codemap.unloaded_programs), so nothing is known to reach it.
+ */
+LookupEnd TerrainLookup1A2F(uint8_t probe, uint8_t object)
+{
+    return terrain_lookup_columns(probe, object, 0xBCDF, &lookup_group_026f);
+}
+
+void abi_TerrainLookup1A2F(void)
+{
+    lookup_exit_shim(TerrainLookup1A2F(cpu.a, cpu.x));
+}
+
+/*
+ * @routine 1A2F:62D TerrainLookupAlt1A2F
+ * @run 6B:962D
+ * WHAT IT DOES: The lookup at $95CD, then a second look at each column that found floor (as TerrainLookupAltB,
+ * 024F:60B), from this program's probe table at $BCDF.
+ * HOW: terrain_lookup_alt_columns (terrain.c), the body of 024F:60B, with the table at $BCDF, the lookup loaded at
+ * $95CD and the read loaded at $96A1, and its JSRs' returns $9631 and $9681.
+ * WAITS: no.
+ * Entry and exit: as TerrainLookup1A2F.
+ * Nothing the game does loads this program (codemap.unloaded_programs), so nothing is known to reach it.
+ */
+LookupEnd TerrainLookupAlt1A2F(uint8_t probe, uint8_t object)
+{
+    return terrain_lookup_alt_columns(probe, object, 0xBCDF, &lookup_group_026f, loaded_lookup_95cd);
+}
+
+void abi_TerrainLookupAlt1A2F(void)
+{
+    lookup_exit_shim(TerrainLookupAlt1A2F(cpu.a, cpu.x));
+}
+
+/*
+ * @routine 1B8F:5CD TerrainLookup1B8F
+ * @run 6B:95CD
+ * WHAT IT DOES: Reads the terrain at the four columns of a probe around an object (as TerrainLookupB, 024F:5AB): the
+ * attribute, and how far into the tile, for each, from this program's probe table at $D85F.
+ * HOW: terrain_lookup_columns (terrain.c), the body of 024F:5AB, with the table at $D85F, the read loaded at
+ * $96A1 and its JSR's return $9608.
+ * WAITS: no.
+ * Entry: A probe, X object. Exit: as TerrainLookupB.
+ * Nothing the game does loads this program (codemap.unloaded_programs), so nothing is known to reach it.
+ */
+LookupEnd TerrainLookup1B8F(uint8_t probe, uint8_t object)
+{
+    return terrain_lookup_columns(probe, object, 0xD85F, &lookup_group_026f);
+}
+
+void abi_TerrainLookup1B8F(void)
+{
+    lookup_exit_shim(TerrainLookup1B8F(cpu.a, cpu.x));
+}
+
+/*
+ * @routine 1B8F:62D TerrainLookupAlt1B8F
+ * @run 6B:962D
+ * WHAT IT DOES: The lookup at $95CD, then a second look at each column that found floor (as TerrainLookupAltB,
+ * 024F:60B), from this program's probe table at $D85F.
+ * HOW: terrain_lookup_alt_columns (terrain.c), the body of 024F:60B, with the table at $D85F, the lookup loaded at
+ * $95CD and the read loaded at $96A1, and its JSRs' returns $9631 and $9681.
+ * WAITS: no.
+ * Entry and exit: as TerrainLookup1B8F.
+ * Nothing the game does loads this program (codemap.unloaded_programs), so nothing is known to reach it.
+ */
+LookupEnd TerrainLookupAlt1B8F(uint8_t probe, uint8_t object)
+{
+    return terrain_lookup_alt_columns(probe, object, 0xD85F, &lookup_group_026f, loaded_lookup_95cd);
+}
+
+void abi_TerrainLookupAlt1B8F(void)
+{
+    lookup_exit_shim(TerrainLookupAlt1B8F(cpu.a, cpu.x));
+}
+
+/*
+ * @routine 1CEF:5CD TerrainLookup1CEF
+ * @run 6B:95CD
+ * WHAT IT DOES: Reads the terrain at the four columns of a probe around an object (as TerrainLookupB, 024F:5AB): the
+ * attribute, and how far into the tile, for each, from this program's probe table at $DA45.
+ * HOW: terrain_lookup_columns (terrain.c), the body of 024F:5AB, with the table at $DA45, the read loaded at
+ * $96A1 and its JSR's return $9608.
+ * WAITS: no.
+ * Entry: A probe, X object. Exit: as TerrainLookupB.
+ * Nothing the game does loads this program (codemap.unloaded_programs), so nothing is known to reach it.
+ */
+LookupEnd TerrainLookup1CEF(uint8_t probe, uint8_t object)
+{
+    return terrain_lookup_columns(probe, object, 0xDA45, &lookup_group_026f);
+}
+
+void abi_TerrainLookup1CEF(void)
+{
+    lookup_exit_shim(TerrainLookup1CEF(cpu.a, cpu.x));
+}
+
+/*
+ * @routine 1CEF:62D TerrainLookupAlt1CEF
+ * @run 6B:962D
+ * WHAT IT DOES: The lookup at $95CD, then a second look at each column that found floor (as TerrainLookupAltB,
+ * 024F:60B), from this program's probe table at $DA45.
+ * HOW: terrain_lookup_alt_columns (terrain.c), the body of 024F:60B, with the table at $DA45, the lookup loaded at
+ * $95CD and the read loaded at $96A1, and its JSRs' returns $9631 and $9681.
+ * WAITS: no.
+ * Entry and exit: as TerrainLookup1CEF.
+ * Nothing the game does loads this program (codemap.unloaded_programs), so nothing is known to reach it.
+ */
+LookupEnd TerrainLookupAlt1CEF(uint8_t probe, uint8_t object)
+{
+    return terrain_lookup_alt_columns(probe, object, 0xDA45, &lookup_group_026f, loaded_lookup_95cd);
+}
+
+void abi_TerrainLookupAlt1CEF(void)
+{
+    lookup_exit_shim(TerrainLookupAlt1CEF(cpu.a, cpu.x));
+}
+
+/*
+ * @routine 0320:123 TerrainTileRead0320
+ * @run 6B:9923
+ * WHAT IT DOES: The terrain tile read of the stage programs (as TerrainTileRead, 050F:67F): the attribute of the
+ * background tile at a point, 0 if its page has none, and for the attributes $80-$9B the answer of the handler this
+ * program's table at $99BE names. Programs 0440, 10E0 hold the same bytes.
+ * HOW: TerrainTileReadAt (terrain.c), the body of 050F:67F, with its JSRs' returns $9972 and $997F,
+ * the table at $99BE, and every handler going to the routine loaded at its address.
+ * WAITS: no.
+ * Entry: zTemp00-01 X, zTemp02-03 Y. Exit: as TerrainTileRead.
+ * Nothing the game does loads this program (codemap.unloaded_programs), so nothing is known to reach it.
+ */
+TileRead TerrainTileRead0320(void)
+{
+    const TileReadBuild build = { 0x9972, 0x997F, 0x99BE, NULL };
+
+    return TerrainTileReadAt(&build);
+}
+
+void abi_TerrainTileRead0320(void)
+{
+    terrain_read_exit_shim(TerrainTileRead0320());
+}
+
+/* The JSR to the read loaded at $9923: its answer in A, the rest as it leaves the machine. */
+static TileRead loaded_tile_read_9923(void)
+{
+    TileRead read = { TILE_BY_ORIGINAL, 0, 0, 0, 0, 0, { false, 0, false, false, false } };
+
+    routine_at(0x9923)();
+    read.attribute = cpu.a;
+    return read;
+}
+
+static const LookupGroup lookup_group_0320 = { 0x988A, 0x98B3, 0x9903, loaded_tile_read_9923 };
+
+/* The JSR to the lookup loaded at $984F: what it leaves is the machine's, its last read the routine's. */
+static LookupEnd loaded_lookup_984f(uint8_t probe, uint8_t object)
+{
+    LookupEnd end = { false, false, 0, 0, true, { TILE_BY_ORIGINAL, 0, 0, 0, 0, 0, { false, 0, false, false, false } }, 0 };
+
+    cpu.a = probe;
+    cpu.x = object;
+    routine_at(0x984F)();
+    end.last.attribute = cpu.a;
+    return end;
+}
+
+/*
+ * @routine 0320:04F TerrainLookup0320
+ * @run 6B:984F
+ * WHAT IT DOES: Reads the terrain at the four columns of a probe around an object (as TerrainLookupB, 024F:5AB): the
+ * attribute, and how far into the tile, for each, from this program's probe table at $BDF5.
+ * HOW: terrain_lookup_columns (terrain.c), the body of 024F:5AB, with the table at $BDF5, the read loaded at
+ * $9923 and its JSR's return $988A.
+ * WAITS: no.
+ * Entry: A probe, X object. Exit: as TerrainLookupB.
+ * Nothing the game does loads this program (codemap.unloaded_programs), so nothing is known to reach it.
+ */
+LookupEnd TerrainLookup0320(uint8_t probe, uint8_t object)
+{
+    return terrain_lookup_columns(probe, object, 0xBDF5, &lookup_group_0320);
+}
+
+void abi_TerrainLookup0320(void)
+{
+    lookup_exit_shim(TerrainLookup0320(cpu.a, cpu.x));
+}
+
+/*
+ * @routine 0320:0AF TerrainLookupAlt0320
+ * @run 6B:98AF
+ * WHAT IT DOES: The lookup at $984F, then a second look at each column that found floor (as TerrainLookupAltB,
+ * 024F:60B), from this program's probe table at $BDF5.
+ * HOW: terrain_lookup_alt_columns (terrain.c), the body of 024F:60B, with the table at $BDF5, the lookup loaded at
+ * $984F and the read loaded at $9923, and its JSRs' returns $98B3 and $9903.
+ * WAITS: no.
+ * Entry and exit: as TerrainLookup0320.
+ * Nothing the game does loads this program (codemap.unloaded_programs), so nothing is known to reach it.
+ */
+LookupEnd TerrainLookupAlt0320(uint8_t probe, uint8_t object)
+{
+    return terrain_lookup_alt_columns(probe, object, 0xBDF5, &lookup_group_0320, loaded_lookup_984f);
+}
+
+void abi_TerrainLookupAlt0320(void)
+{
+    lookup_exit_shim(TerrainLookupAlt0320(cpu.a, cpu.x));
+}
+
+/*
+ * @routine 0440:04F TerrainLookup0440
+ * @run 6B:984F
+ * WHAT IT DOES: Reads the terrain at the four columns of a probe around an object (as TerrainLookupB, 024F:5AB): the
+ * attribute, and how far into the tile, for each, from this program's probe table at $C1C6.
+ * HOW: terrain_lookup_columns (terrain.c), the body of 024F:5AB, with the table at $C1C6, the read loaded at
+ * $9923 and its JSR's return $988A.
+ * WAITS: no.
+ * Entry: A probe, X object. Exit: as TerrainLookupB.
+ * Nothing the game does loads this program (codemap.unloaded_programs), so nothing is known to reach it.
+ */
+LookupEnd TerrainLookup0440(uint8_t probe, uint8_t object)
+{
+    return terrain_lookup_columns(probe, object, 0xC1C6, &lookup_group_0320);
+}
+
+void abi_TerrainLookup0440(void)
+{
+    lookup_exit_shim(TerrainLookup0440(cpu.a, cpu.x));
+}
+
+/*
+ * @routine 0440:0AF TerrainLookupAlt0440
+ * @run 6B:98AF
+ * WHAT IT DOES: The lookup at $984F, then a second look at each column that found floor (as TerrainLookupAltB,
+ * 024F:60B), from this program's probe table at $C1C6.
+ * HOW: terrain_lookup_alt_columns (terrain.c), the body of 024F:60B, with the table at $C1C6, the lookup loaded at
+ * $984F and the read loaded at $9923, and its JSRs' returns $98B3 and $9903.
+ * WAITS: no.
+ * Entry and exit: as TerrainLookup0440.
+ * Nothing the game does loads this program (codemap.unloaded_programs), so nothing is known to reach it.
+ */
+LookupEnd TerrainLookupAlt0440(uint8_t probe, uint8_t object)
+{
+    return terrain_lookup_alt_columns(probe, object, 0xC1C6, &lookup_group_0320, loaded_lookup_984f);
+}
+
+void abi_TerrainLookupAlt0440(void)
+{
+    lookup_exit_shim(TerrainLookupAlt0440(cpu.a, cpu.x));
+}
+
+/*
+ * @routine 10E0:04F TerrainLookup10E0
+ * @run 6B:984F
+ * WHAT IT DOES: Reads the terrain at the four columns of a probe around an object (as TerrainLookupB, 024F:5AB): the
+ * attribute, and how far into the tile, for each, from this program's probe table at $C55F.
+ * HOW: terrain_lookup_columns (terrain.c), the body of 024F:5AB, with the table at $C55F, the read loaded at
+ * $9923 and its JSR's return $988A.
+ * WAITS: no.
+ * Entry: A probe, X object. Exit: as TerrainLookupB.
+ * Nothing the game does loads this program (codemap.unloaded_programs), so nothing is known to reach it.
+ */
+LookupEnd TerrainLookup10E0(uint8_t probe, uint8_t object)
+{
+    return terrain_lookup_columns(probe, object, 0xC55F, &lookup_group_0320);
+}
+
+void abi_TerrainLookup10E0(void)
+{
+    lookup_exit_shim(TerrainLookup10E0(cpu.a, cpu.x));
+}
+
+/*
+ * @routine 10E0:0AF TerrainLookupAlt10E0
+ * @run 6B:98AF
+ * WHAT IT DOES: The lookup at $984F, then a second look at each column that found floor (as TerrainLookupAltB,
+ * 024F:60B), from this program's probe table at $C55F.
+ * HOW: terrain_lookup_alt_columns (terrain.c), the body of 024F:60B, with the table at $C55F, the lookup loaded at
+ * $984F and the read loaded at $9923, and its JSRs' returns $98B3 and $9903.
+ * WAITS: no.
+ * Entry and exit: as TerrainLookup10E0.
+ * Nothing the game does loads this program (codemap.unloaded_programs), so nothing is known to reach it.
+ */
+LookupEnd TerrainLookupAlt10E0(uint8_t probe, uint8_t object)
+{
+    return terrain_lookup_alt_columns(probe, object, 0xC55F, &lookup_group_0320, loaded_lookup_984f);
+}
+
+void abi_TerrainLookupAlt10E0(void)
+{
+    lookup_exit_shim(TerrainLookupAlt10E0(cpu.a, cpu.x));
+}

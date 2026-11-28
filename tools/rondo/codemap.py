@@ -1118,6 +1118,24 @@ def check(disc, mems, maps, cps=None):
 ORIGINAL = re.compile(r"\b(call_orig|call_orig_framed|call_original_at|hand_over|leave_original|untraced)\(([^;]*)\)\s*;")
 
 
+def needs_origin(disc, d, run, n):
+    """True when a body's behaviour depends on where it runs: it makes a JSR or BSR (the return address pushed is its
+    run address's), or an absolute operand of it points inside itself. Byte-identical code at another run address is
+    the same routine only when this is False (or when the finished C takes the origin, which a routine filed at that
+    place shows)."""
+    off = 0
+    while off < n:
+        ln, name, mode, ops, target = disc.decode(d + off, run + off)
+        if name in ("jsr", "bsr"):
+            return True
+        if mode in ABS_MODES and run <= ops[0] < run + n:
+            return True
+        if mode == "blk" and any(run <= o < run + n for o in ops[:2]):
+            return True
+        off += ln
+    return False
+
+
 def runs_game_code(body):
     """The C calls original game code: a call_orig and the like whose target is not a System Card entry (a
     CARD_ name or an address from $E000), which the game reaches through the card's interface by design."""
@@ -1226,7 +1244,12 @@ def progress(disc, mems, maps, cps):
     where any copy of it is done."""
     buf = disc.buf
     import asmbuild
-    pieces = {p["disc"]: p["end"] for p in asmbuild.filed_pieces(buf)}
+    filed_ = asmbuild.filed_pieces(buf)
+    pieces = {p["disc"]: p["end"] for p in filed_}
+    runs_at = {p["disc"]: p["run"] for p in filed_}      # where each body runs: filed routines, then the map's
+    for m in maps.values():
+        for d, runs in m.kstarts.items():
+            runs_at.setdefault(d, min(runs))
     import ccheck
     import tempfile
     from concurrent.futures import ThreadPoolExecutor
@@ -1249,8 +1272,13 @@ def progress(disc, mems, maps, cps):
             code.update(range(d, d + disc.decode(d, next(iter(runs)))[0]))
     done1, done2 = set(), set()
     for d, n in pieces.items():
+        # a routine filed on a byte copy counts on its source, unless it runs elsewhere and its C depends on where
+        # it runs (needs_origin): then it is a routine of its own, done when its own C is
+        s0 = cps.get(d)
+        own_origin = (s0 is not None and runs_at.get(s0) is not None and runs_at[s0] != runs_at[d]
+                      and needs_origin(disc, d, runs_at[d], n))
         for q in range(d, d + n):
-            src = cps.get(q)
+            src = None if own_origin else cps.get(q)
             if src is None:
                 code.add(q)                     # a filed routine is code, unless it is a copy of code counted already
             if finished.get(d):
@@ -1270,14 +1298,19 @@ def progress(disc, mems, maps, cps):
                 e += ln[e]
             if e > key[0]:
                 bodies[key[0]] = max(bodies.get(key[0], 0), e - key[0])
+            runs_at.setdefault(key[0], key[1])
+    # bodies are one routine when their bytes are the same and, if their C depends on where they run
+    # (needs_origin), they run at the same address
     groups = collections.defaultdict(list)
     for d, n in bodies.items():
-        groups[buf[d:d + n]].append(d)
+        r = runs_at.get(d)
+        at = r if r is not None and needs_origin(disc, d, r, n) else None
+        groups[(buf[d:d + n], at)].append(d)
     own = set()
-    for k, ds in groups.items():
+    for (k, _), ds in groups.items():
         own.update(range(min(ds), min(ds) + len(k)))
     canon = {}
-    for k, ds in groups.items():
+    for (k, _), ds in groups.items():
         f = min(ds)
         for d in ds:
             if d != f:
@@ -1373,6 +1406,8 @@ def todo(disc, mems, maps):
             if end == d:
                 continue
             k = buf[d:end]
+            if needs_origin(disc, d, pc, end - d):     # its C depends on where it runs: one routine per run address
+                k = (k, pc)
             if k in seen.values():
                 seen[d] = k
                 continue

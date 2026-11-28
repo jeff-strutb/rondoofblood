@@ -2832,3 +2832,971 @@ void abi_FileMenuListLeave(void)
 
     menu_regs_shim(&r);
 }
+
+/* Tables of the slot list pages, indexed by the chosen item (1 to 7). */
+#define LIST_BY_ITEM 0x9964                 /* the list a page starts, 0: by the slot's first byte */
+#define KIND_BY_ITEM 0x9A30                 /* 0: a slot (items 1 to 3); 1 or 2 otherwise */
+#define PICTURE_BY_CHARACTER 0x9A38         /* object $34's frame by the character */
+#define CURSOR_BY_ITEM 0x9AFF               /* the cursor value a page returns to */
+#define SLOT_NOT_FULL 0x7DDB                /* set when the slot chosen has no bit 2 in its byte $01 */
+
+/*
+ * @routine 00C4:13D FileMenuSlideStart
+ * @run 6B:993D
+ * WHAT IT DOES: The first step of the page that slides the screen on: starts the item's list (LIST_BY_ITEM; where that
+ * is 0, list $13 when the slot has data and $12 when not), keeps the scroll's high byte plus one as the target, puts
+ * the cursor on item 0 and goes on.
+ * HOW: LIST_BY_ITEM, the slot's first byte shifted right; StartListChannel0Kind2; SetCursorValue; JitterCursorObjects;
+ * MenuStepAdvance.
+ * WAITS: no.
+ * Entry: from MenuStepDispatch. Exit: as MenuStepAdvance.
+ */
+MenuRegs FileMenuSlideStart(MenuRegs r)
+{
+    uint8_t chosen, list, offset, scroll;
+
+    chosen = rd8(MenuChosenItem);
+    ry(&r, chosen);
+    list = rd8((uint16_t)(LIST_BY_ITEM + chosen));
+    ra(&r, list);
+    if (list == 0) {
+        offset = rd8((uint16_t)(SLOT_OFFSETS_BY_NUMBER + chosen));
+        rx(&r, offset);
+        rc(&r, (rd8((uint16_t)(SaveBuffer + offset)) & 0x01) != 0);
+        list = r.c ? 0x13 : 0x12;
+        ra(&r, list);
+    }
+    jsr_push(0x9954);
+    (void)StartListChannel0Kind2(list);
+    jsr_pop();
+    ra(&r, 2);
+    rx(&r, 0);
+    rnz(&r, 2);
+    scroll = (uint8_t)(RD8(SCROLL->x_hi[0]) + 1);
+    ra(&r, scroll);
+    wr8(SCROLL_TARGET, scroll);
+    ra_keep(&r, 0);
+    jsr_push(0x995F);
+    r_cursor(&r, SetCursorValue(0));
+    jsr_pop();
+    jsr_push(0x9962);
+    r_glide(&r, JitterCursorObjects(), 1);
+    jsr_pop();
+    ra(&r, MenuStepAdvance());
+    return r;
+}
+
+void abi_FileMenuSlideStart(void)
+{
+    MenuRegs r = FileMenuSlideStart(menu_regs_cpu());
+
+    menu_regs_shim(&r);
+}
+
+/*
+ * @routine 00C4:16C FileMenuSlideDraw
+ * @run 6B:996C
+ * WHAT IT DOES: Draws the next screen of the chosen item off to the side: item 7 the copy rows, items 4 to 6 their list
+ * ($14 to $16) and the used slots' rows, items 1 to 3 the slot (its number made zSaveSlot): list $1C when its byte $01
+ * has no bit 2, its details, name and percentage; then the item's objects (list 3 or 5 for a slot with and without
+ * data, or the item's kind), and the slot's character picture and marks. The scroll's step is cleared and the step
+ * goes on.
+ * HOW: StartListChannel0Kind2, DrawUsedSlotRows, DrawSlotRows, DrawSlotDetails, DrawCursorRowDigit, DrawSlotName,
+ * DrawSlotPercent, PlaceObjectList; the object frames of $2B and $2F to $34 and the start arguments of $33 and $34.
+ * WAITS: no.
+ * Entry: from MenuStepDispatch. Exit: as MenuStepAdvance.
+ */
+MenuRegs FileMenuSlideDraw(MenuRegs r)
+{
+    uint8_t chosen, list, offset, bits, slot, row, kind, character, byte;
+
+    wr8(SLOT_NOT_FULL, 0);
+    chosen = rd8(MenuChosenItem);
+    ra(&r, chosen);
+    rcmp(&r, chosen, 0x07);
+    if (chosen == 0x07) {
+        ra_keep(&r, 0);
+        jsr_push(0x9989);
+        r = DrawSlotRows(r, 0);
+        jsr_pop();
+    } else {
+        rcmp(&r, chosen, 0x04);
+        if (chosen >= 0x04) {
+            rc(&r, false);
+            list = radd(&r, chosen, 0x10);
+            jsr_push(0x9980);
+            (void)StartListChannel0Kind2(list);
+            jsr_pop();
+            ra(&r, 2);
+            rx(&r, 0);
+            rnz(&r, 2);
+            jsr_push(0x9983);
+            r = DrawUsedSlotRows(r);
+            jsr_pop();
+        } else {
+            chosen = rd8(MenuChosenItem);
+            slot = (uint8_t)(chosen - 1);
+            ry(&r, slot);
+            offset = rd8((uint16_t)(SLOT_OFFSETS + slot));
+            rx(&r, offset);
+            bits = (uint8_t)(rd8((uint16_t)(SaveBuffer + 1 + offset)) & 0x04);
+            ra(&r, bits);
+            if (bits == 0) {
+                ra(&r, 0x1C);
+                jsr_push(0x999E);
+                (void)StartListChannel0Kind2(0x1C);
+                jsr_pop();
+                ra(&r, 2);
+                rx(&r, 0);
+                rnz(&r, 2);
+                byte = (uint8_t)(rd8(SLOT_NOT_FULL) + 1);
+                wr8(SLOT_NOT_FULL, byte);
+                rnz(&r, byte);
+            }
+        }
+    }
+    chosen = rd8(MenuChosenItem);
+    ra(&r, chosen);
+    rcmp(&r, chosen, 0x04);
+    if (chosen < 0x04) {
+        chosen = rd8(MenuChosenItem);
+        slot = (uint8_t)(chosen - 1);
+        ra(&r, slot);
+        WR8(ZP->save_slot, slot);
+        jsr_push(0x99B1);
+        rexit(&r, DrawSlotDetails());
+        jsr_pop();
+        jsr_push(0x99B4);
+        r_arith(&r, DrawCursorRowDigit());
+        jsr_pop();
+        slot = RD8(ZP->save_slot);
+        rc(&r, false);
+        row = radd(&r, slot, 0x06);
+        jsr_push(0x99BC);
+        rexit(&r, DrawSlotName(row, r.x));
+        jsr_pop();
+        slot = RD8(ZP->save_slot);
+        rc(&r, false);
+        row = radd(&r, slot, 0x06);
+        jsr_push(0x99C4);
+        rexit(&r, DrawSlotPercent(row, r.x));
+        jsr_pop();
+    }
+    chosen = rd8(MenuChosenItem);
+    ry(&r, chosen);
+    kind = rd8((uint16_t)(KIND_BY_ITEM + chosen));
+    ra(&r, kind);
+    if (kind == 0) {
+        offset = rd8((uint16_t)(SLOT_OFFSETS_BY_NUMBER + chosen));
+        rx(&r, offset);
+        rc(&r, (rd8((uint16_t)(SaveBuffer + offset)) & 0x01) != 0);
+        kind = r.c ? 3 : 5;
+        ra(&r, kind);
+    }
+    jsr_push(0x99DC);
+    rexit(&r, PlaceObjectList(kind));
+    jsr_pop();
+    byte = rd8(SLOT_NOT_FULL);
+    ra(&r, byte);
+    if (byte != 0) {
+        WR8(OBJ->frame[0x2B], 0);
+    }
+    chosen = rd8(MenuChosenItem);
+    ry(&r, chosen);
+    kind = rd8((uint16_t)(KIND_BY_ITEM + chosen));
+    ra(&r, kind);
+    if (kind == 0) {
+        character = rd8((uint16_t)(SLOT_CHARACTER_BY_NUMBER + chosen));
+        WR8(OBJ->start_arg[0x33], character);
+        WR8(OBJ->work_d[0x33], character);
+        rx(&r, character);
+        push8(character);
+        offset = rd8((uint16_t)(SLOT_OFFSETS_BY_NUMBER + chosen));
+        byte = rd8((uint16_t)(SaveBuffer + offset));
+        rx(&r, pull8());
+        ra(&r, (uint8_t)(byte >> 1));
+        rc(&r, (byte & 0x01) != 0);
+        if (byte & 0x01) {
+            byte = rd8((uint16_t)(PICTURE_BY_CHARACTER + r.x));
+            ra(&r, byte);
+            WR8(OBJ->frame[0x34], byte);
+        }
+        offset = rd8((uint16_t)(SLOT_OFFSETS_BY_NUMBER + chosen));
+        rx(&r, offset);
+        byte = rd8((uint16_t)(SaveBuffer + offset));
+        rc(&r, (byte & 0x01) != 0);
+        byte >>= 1;
+        ra(&r, byte);
+        if (!r.c) {
+            WR8(OBJ->frame[0x31], 0);
+        }
+        rc(&r, (byte & 0x01) != 0);
+        byte >>= 1;
+        ra(&r, byte);
+        if (!r.c) {
+            WR8(OBJ->frame[0x32], 0);
+        }
+        rc(&r, (byte & 0x01) != 0);
+        byte >>= 1;
+        ra(&r, byte);
+        if (!r.c) {
+            WR8(OBJ->frame[0x2F], 0);
+        }
+        rc(&r, (byte & 0x01) != 0);
+        byte >>= 1;
+        ra(&r, byte);
+        if (!r.c) {
+            WR8(OBJ->frame[0x30], 0);
+        }
+    }
+    WR8(SCROLLE->step_x_lo[0], 0);
+    WR8(SCROLLE->step_x_hi[0], 0);
+    jsr_push(0x9A2E);
+    r_glide(&r, JitterCursorObjects(), 1);
+    jsr_pop();
+    ra(&r, MenuStepAdvance());
+    return r;
+}
+
+void abi_FileMenuSlideDraw(void)
+{
+    MenuRegs r = FileMenuSlideDraw(menu_regs_cpu());
+
+    menu_regs_shim(&r);
+}
+
+/* ShiftObjectsByScrollChange: A and V from its last sum, X $40, Z and C set, N clear. */
+static void r_shift(MenuRegs *r, ArithExit e)
+{
+    r_arith(r, e);
+    r->x = 0x40;
+    r->set |= REG_X;
+}
+
+/* The scroll's step along X grown by $40, or shrunk by $40 with the high byte counted up on a borrow too ($9A45 and
+ * $9A55; the same bytes at $9B72 and $9B82). */
+static void scroll_step_ramp(MenuRegs *r, bool shrink)
+{
+    uint8_t low, sum;
+
+    low = RD8(SCROLLE->step_x_lo[0]);
+    if (!shrink) {
+        sum = (uint8_t)(low + 0x40);
+        ra(r, sum);
+        rc(r, low > 0xBF);
+        rv(r, ((low ^ sum) & (0x40 ^ sum) & 0x80) != 0);
+        WR8(SCROLLE->step_x_lo[0], sum);
+        if (r->c) {
+            rnz(r, INC8(SCROLLE->step_x_hi[0]));
+        }
+        return;
+    }
+    (void)rsub(r, low, 0x40);
+    WR8(SCROLLE->step_x_lo[0], r->a);
+    if (!r->c) {
+        rnz(r, INC8(SCROLLE->step_x_hi[0]));
+    }
+}
+
+/* ADC with the carry as it stands. */
+static uint8_t radc(MenuRegs *r, uint8_t a, uint8_t value)
+{
+    unsigned sum = (unsigned)a + value + (r->c ? 1u : 0u);
+
+    ra(r, (uint8_t)sum);
+    rc(r, sum > 0xFF);
+    rv(r, ((a ^ sum) & (value ^ sum) & 0x80) != 0);
+    return (uint8_t)sum;
+}
+
+/*
+ * @routine 00C4:23A FileMenuSlideLeft
+ * @run 6B:9A3A
+ * WHAT IT DOES: Slides the screen to the next page a frame: the step along X ramps by $40 a frame (up while the
+ * scroll's middle byte is positive, down after), the 24-bit scroll moves by it, and at the target page the scroll's low
+ * bytes are zeroed and the step goes on. The objects move with the scroll.
+ * HOW: AnimateCharacterChoice, JitterCursorObjects; the ramp; SCROLL x_frac, x_lo and x_hi added (x_lo and x_hi kept
+ * in the speed bytes); x_hi compared with SCROLL_TARGET; ShiftObjectsByScrollChange; MenuStepAdvance.
+ * WAITS: no.
+ * Entry: from MenuStepDispatch. Exit: not there: N, Z and C from the compare with the target; there: as
+ * MenuStepAdvance.
+ */
+MenuRegs FileMenuSlideLeft(MenuRegs r)
+{
+    uint8_t low, middle, high;
+
+    jsr_push(0x9A3D);
+    r = AnimateCharacterChoice(r);
+    jsr_pop();
+    jsr_push(0x9A40);
+    r_glide(&r, JitterCursorObjects(), 1);
+    jsr_pop();
+    middle = RD8(SCROLL->x_lo[0]);
+    ra(&r, middle);
+    scroll_step_ramp(&r, (middle & 0x80) != 0);
+    low = RD8(SCROLL->x_frac[0]);
+    rc(&r, false);
+    low = radd(&r, low, RD8(SCROLLE->step_x_lo[0]));
+    WR8(SCROLL->x_frac[0], low);
+    middle = RD8(SCROLL->x_lo[0]);
+    WR8(SCROLLE->speed_x[0], middle);
+    middle = radc(&r, middle, RD8(SCROLLE->step_x_hi[0]));
+    WR8(SCROLL->x_lo[0], middle);
+    high = RD8(SCROLL->x_hi[0]);
+    WR8(SCROLLE->speed_y[0], high);
+    high = radc(&r, high, 0);
+    WR8(SCROLL->x_hi[0], high);
+    rcmp(&r, high, rd8(SCROLL_TARGET));
+    if (r.nz == 0) {
+        WR8(SCROLL->x_lo[0], 0);
+        WR8(SCROLL->x_frac[0], 0);
+    }
+    jsr_push(0x9A92);
+    r_shift(&r, ShiftObjectsByScrollChange());
+    jsr_pop();
+    high = RD8(SCROLL->x_hi[0]);
+    ra(&r, high);
+    rcmp(&r, high, rd8(SCROLL_TARGET));
+    if (r.nz != 0) {
+        return r;
+    }
+    ra(&r, MenuStepAdvance());
+    return r;
+}
+
+void abi_FileMenuSlideLeft(void)
+{
+    MenuRegs r = FileMenuSlideLeft(menu_regs_cpu());
+
+    menu_regs_shim(&r);
+}
+
+/*
+ * @routine 00C4:2F0 FileMenuReturnPage
+ * @run 6B:9AF0
+ * WHAT IT DOES: Goes to the page an item returns to: page 7 for the slots (items 1 to 3), else the page the item less
+ * one.
+ * HOW: JitterCursorObjects, MenuChosenItem compared with 4, DEC, SetMenuPage.
+ * WAITS: no.
+ * Entry: nothing. Exit: A 0, N and Z from the page, C from the compare; the rest as JitterCursorObjects leaves them.
+ */
+MenuRegs FileMenuReturnPage(MenuRegs r)
+{
+    uint8_t chosen, page;
+
+    jsr_push(0x9AF3);
+    r_glide(&r, JitterCursorObjects(), 1);
+    jsr_pop();
+    chosen = rd8(MenuChosenItem);
+    rcmp(&r, chosen, 0x04);
+    if (chosen < 0x04) {
+        chosen = 8;
+    }
+    page = (uint8_t)(chosen - 1);
+    SetMenuPage(page);
+    ra(&r, 0);
+    rnz(&r, page);
+    return r;
+}
+
+void abi_FileMenuReturnPage(void)
+{
+    MenuRegs r = FileMenuReturnPage(menu_regs_cpu());
+
+    menu_regs_shim(&r);
+}
+
+/*
+ * @routine 00C4:29E FileMenuSlideEnd
+ * @run 6B:9A9E
+ * WHAT IT DOES: After the slide: puts the cursor where the item's page has it (CURSOR_BY_ITEM; for value $13 as it is,
+ * else moved down to the first slot with data, or for item 4 to the first empty one) and goes to the item's page.
+ * HOW: AnimateCharacterChoice; the table; EventBitTest on slots 1 and 2, counted in zTemp00; SetCursorValue; runs into
+ * FileMenuReturnPage.
+ * WAITS: no.
+ * Entry: from MenuStepDispatch. Exit: as FileMenuReturnPage.
+ */
+MenuRegs FileMenuSlideEnd(MenuRegs r)
+{
+    uint8_t chosen, value, slot;
+    bool want_empty;
+
+    jsr_push(0x9AA1);
+    r = AnimateCharacterChoice(r);
+    jsr_pop();
+    chosen = rd8(MenuChosenItem);
+    ry(&r, chosen);
+    value = rd8((uint16_t)(CURSOR_BY_ITEM + chosen));
+    ra(&r, value);
+    rcmp(&r, value, 0x13);
+    if (value != 0x13) {
+        rcmp(&r, chosen, 0x04);
+        want_empty = chosen == 0x04;
+        ra(&r, 1);
+        WR8(ZP->temp00, 1);
+        jsr_push(want_empty ? 0x9AD6 : 0x9AB6);
+        r_event(&r, EventBitTest(1));
+        jsr_pop();
+        if ((r.nz == 0) != want_empty) {
+            rnz(&r, INC8(ZP->temp00));
+            slot = RD8(ZP->temp00);
+            ra(&r, slot);
+            jsr_push(want_empty ? 0x9ADF : 0x9ABF);
+            r_event(&r, EventBitTest(slot));
+            jsr_pop();
+            if ((r.nz == 0) != want_empty) {
+                rnz(&r, INC8(ZP->temp00));
+            }
+        }
+        chosen = rd8(MenuChosenItem);
+        ry(&r, chosen);
+        value = (uint8_t)(rd8((uint16_t)(CURSOR_BY_ITEM + chosen)) - 1);
+        ra(&r, value);
+        rc(&r, false);
+        value = radd(&r, value, RD8(ZP->temp00));
+    }
+    jsr_push(0x9AF0);
+    r_cursor(&r, SetCursorValue(value));
+    jsr_pop();
+    return FileMenuReturnPage(r);
+}
+
+void abi_FileMenuSlideEnd(void)
+{
+    MenuRegs r = FileMenuSlideEnd(menu_regs_cpu());
+
+    menu_regs_shim(&r);
+}
+
+/*
+ * @routine 00C4:312 FileMenuBackStart
+ * @run 6B:9B12
+ * WHAT IT DOES: Leaves a slot page without sliding: list $0F, the cursor on item $17 or $16 by the first mark flag
+ * (slots), or on the selected slot plus 8, and the item's page.
+ * HOW: StartListChannel0Kind2; SetCursorValue; a tail jump to FileMenuReturnPage.
+ * WAITS: no.
+ * Entry: from MenuStepDispatch. Exit: as FileMenuReturnPage.
+ */
+MenuRegs FileMenuBackStart(MenuRegs r)
+{
+    uint8_t chosen, flag, value;
+
+    ra(&r, 0x0F);
+    jsr_push(0x9B17);
+    (void)StartListChannel0Kind2(0x0F);
+    jsr_pop();
+    ra(&r, 2);
+    rx(&r, 0);
+    rnz(&r, 2);
+    chosen = rd8(MenuChosenItem);
+    ra(&r, chosen);
+    rcmp(&r, chosen, 0x04);
+    if (chosen < 0x04) {
+        flag = rd8(SLOT_MARK - 1);
+        value = flag != 0 ? 0x16 : 0x17;
+        ra(&r, value);
+    } else {
+        value = rd8(MenuSelectedSlot);
+        rc(&r, false);
+        value = radd(&r, value, 0x08);
+    }
+    jsr_push(0x9B34);
+    r_cursor(&r, SetCursorValue(value));
+    jsr_pop();
+    return FileMenuReturnPage(r);
+}
+
+void abi_FileMenuBackStart(void)
+{
+    MenuRegs r = FileMenuBackStart(menu_regs_cpu());
+
+    menu_regs_shim(&r);
+}
+
+#define SCROLL_TRAVEL_FRAC 0x7DFE           /* the distance slid back, 24 bits */
+#define SCROLL_TRAVEL_LO 0x7DFD
+#define SCROLL_TRAVEL_HI 0x7DFC
+
+/*
+ * @routine 00C4:348 FileMenuSlideBackStart
+ * @run 6B:9B48
+ * WHAT IT DOES: Starts the slide back: the scroll's step and the distance travelled cleared, the target the page the
+ * scroll is on, the cursor on item 0, and the step goes on.
+ * HOW: Five STZ, SCROLL x_hi to SCROLL_TARGET, SetCursorValue, JitterCursorObjects, MenuStepAdvance.
+ * WAITS: no.
+ * Entry: from MenuStepDispatch. Exit: as MenuStepAdvance.
+ */
+MenuRegs FileMenuSlideBackStart(MenuRegs r)
+{
+    uint8_t high;
+
+    WR8(SCROLLE->step_x_lo[0], 0);
+    WR8(SCROLLE->step_x_hi[0], 0);
+    wr8(SCROLL_TRAVEL_FRAC, 0);
+    wr8(SCROLL_TRAVEL_LO, 0);
+    wr8(SCROLL_TRAVEL_HI, 0);
+    high = RD8(SCROLL->x_hi[0]);
+    wr8(SCROLL_TARGET, high);
+    ra_keep(&r, 0);
+    jsr_push(0x9B61);
+    r_cursor(&r, SetCursorValue(0));
+    jsr_pop();
+    jsr_push(0x9B64);
+    r_glide(&r, JitterCursorObjects(), 1);
+    jsr_pop();
+    ra(&r, MenuStepAdvance());
+    return r;
+}
+
+void abi_FileMenuSlideBackStart(void)
+{
+    MenuRegs r = FileMenuSlideBackStart(menu_regs_cpu());
+
+    menu_regs_shim(&r);
+}
+
+/*
+ * @routine 00C4:367 FileMenuSlideBack
+ * @run 6B:9B67
+ * WHAT IT DOES: Slides the screen back a page a frame: the step ramps by $40 (up while the distance's middle byte is
+ * positive, down after) and adds to the 24-bit distance, cleared to a whole page once it reaches one; the scroll is the
+ * target less the distance; at a whole page the step goes on. The objects move with the scroll.
+ * HOW: AnimateCharacterChoice, JitterCursorObjects; the ramp; the distance; SCROLL x_lo and x_hi kept in the speed
+ * bytes; the scroll as a subtraction; ShiftObjectsByScrollChange; MenuStepAdvance when the distance's high byte is set.
+ * WAITS: no.
+ * Entry: from MenuStepDispatch. Exit: not there: A 0, Z set; there: as MenuStepAdvance.
+ */
+MenuRegs FileMenuSlideBack(MenuRegs r)
+{
+    uint8_t middle, value, high;
+
+    jsr_push(0x9B6A);
+    r = AnimateCharacterChoice(r);
+    jsr_pop();
+    jsr_push(0x9B6D);
+    r_glide(&r, JitterCursorObjects(), 1);
+    jsr_pop();
+    middle = rd8(SCROLL_TRAVEL_LO);
+    ra(&r, middle);
+    scroll_step_ramp(&r, (middle & 0x80) != 0);
+    value = rd8(SCROLL_TRAVEL_FRAC);
+    rc(&r, false);
+    value = radd(&r, value, RD8(SCROLLE->step_x_lo[0]));
+    wr8(SCROLL_TRAVEL_FRAC, value);
+    value = rd8(SCROLL_TRAVEL_LO);
+    value = radc(&r, value, RD8(SCROLLE->step_x_hi[0]));
+    wr8(SCROLL_TRAVEL_LO, value);
+    value = rd8(SCROLL_TRAVEL_HI);
+    value = radc(&r, value, 0);
+    wr8(SCROLL_TRAVEL_HI, value);
+    if (value != 0) {
+        wr8(SCROLL_TRAVEL_LO, 0);
+        wr8(SCROLL_TRAVEL_FRAC, 0);
+    }
+    middle = RD8(SCROLL->x_lo[0]);
+    WR8(SCROLLE->speed_x[0], middle);
+    high = RD8(SCROLL->x_hi[0]);
+    ra(&r, high);
+    WR8(SCROLLE->speed_y[0], high);
+    ra_keep(&r, 0);
+    value = rsub(&r, 0, rd8(SCROLL_TRAVEL_FRAC));
+    WR8(SCROLL->x_frac[0], value);
+    ra_keep(&r, 0);
+    value = rd8(SCROLL_TRAVEL_LO);
+    {
+        uint8_t borrow = r.c ? 0 : 1;
+        uint8_t diff = (uint8_t)(0 - value - borrow);
+
+        ra(&r, diff);
+        rv(&r, ((0 ^ value) & (0 ^ diff) & 0x80) != 0);
+        rc(&r, 0 >= (unsigned)value + borrow);
+        WR8(SCROLL->x_lo[0], diff);
+        value = rd8(SCROLL_TARGET);
+        high = rd8(SCROLL_TRAVEL_HI);
+        borrow = r.c ? 0 : 1;
+        diff = (uint8_t)(value - high - borrow);
+        ra(&r, diff);
+        rv(&r, ((value ^ high) & (value ^ diff) & 0x80) != 0);
+        rc(&r, value >= (unsigned)high + borrow);
+        WR8(SCROLL->x_hi[0], diff);
+    }
+    jsr_push(0x9BDA);
+    r_shift(&r, ShiftObjectsByScrollChange());
+    jsr_pop();
+    value = rd8(SCROLL_TRAVEL_HI);
+    ra(&r, value);
+    if (value == 0) {
+        return r;
+    }
+    ra(&r, MenuStepAdvance());
+    return r;
+}
+
+void abi_FileMenuSlideBack(void)
+{
+    MenuRegs r = FileMenuSlideBack(menu_regs_cpu());
+
+    menu_regs_shim(&r);
+}
+
+/*
+ * @routine 00C4:3E3 FileMenuBackToStart
+ * @run 6B:9BE3
+ * WHAT IT DOES: After the slide back to the first page: the cursor on the item chosen, page 1 at its step 2.
+ * HOW: AnimateCharacterChoice, SetCursorValue, SetMenuPage by JSR, then SetMenuStep.
+ * WAITS: no.
+ * Entry: from MenuStepDispatch. Exit: A 2, N and Z clear, X 1, Y and C as SetCursorValue leaves them.
+ */
+MenuRegs FileMenuBackToStart(MenuRegs r)
+{
+    uint8_t chosen;
+
+    jsr_push(0x9BE6);
+    r = AnimateCharacterChoice(r);
+    jsr_pop();
+    chosen = rd8(MenuChosenItem);
+    ra(&r, chosen);
+    jsr_push(0x9BEC);
+    r_cursor(&r, SetCursorValue(chosen));
+    jsr_pop();
+    jsr_push(0x9BF1);
+    SetMenuPage(1);
+    jsr_pop();
+    SetMenuStep(2);
+    ra(&r, 2);
+    return r;
+}
+
+void abi_FileMenuBackToStart(void)
+{
+    MenuRegs r = FileMenuBackToStart(menu_regs_cpu());
+
+    menu_regs_shim(&r);
+}
+
+/* RecolorTextRun with Y the palette and A the row; the event routines with A the event. */
+static MenuRegs recolor(MenuRegs r, uint8_t row, uint8_t palette, uint16_t ret)
+{
+    jsr_push(ret);
+    rexit(&r, RecolorTextRun(row, palette));
+    jsr_pop();
+    return r;
+}
+
+static MenuRegs set_event(MenuRegs r, uint8_t event, uint16_t ret)
+{
+    ra(&r, event);
+    jsr_push(ret);
+    r_event(&r, EventBitSet(event));
+    jsr_pop();
+    return r;
+}
+
+static MenuRegs clear_event(MenuRegs r, uint8_t event, uint16_t ret)
+{
+    ra(&r, event);
+    jsr_push(ret);
+    r_event(&r, EventBitClear(event));
+    jsr_pop();
+    return r;
+}
+
+/*
+ * @routine 00DD:731 OfferSlotCommands
+ * @run 6F:A731
+ * WHAT IT DOES: Draws menu item 3 in palette 1 and makes event 4 pickable.
+ * HOW: RecolorTextRun with Y 1 on row 3; EventBitSet 4 as a tail.
+ * WAITS: no.
+ * Entry: nothing. Exit: as EventBitSet; Y the event's byte.
+ */
+MenuRegs OfferSlotCommands(MenuRegs r)
+{
+    ry(&r, 1);
+    ra(&r, 3);
+    r = recolor(r, 3, 1, 0xA738);
+    ra(&r, 4);
+    r_event(&r, EventBitSet(4));
+    return r;
+}
+
+void abi_OfferSlotCommands(void)
+{
+    MenuRegs r = OfferSlotCommands(menu_regs_cpu());
+
+    menu_regs_shim(&r);
+}
+
+/*
+ * @routine 00DD:73D DrawSlotMenuGreyed
+ * @run 6F:A73D
+ * WHAT IT DOES: DrawSlotMenu's two arms that grey commands: with three slots used ($A73D), item 3 greyed and event 4
+ * cleared; with none ($A74A), OfferSlotCommands first and then items 4 and 5 greyed and events 5 and 6 cleared. Both
+ * end greying item 6 and clearing event 7.
+ * HOW: RecolorTextRun with palette 0, EventBitClear; the last as a tail jump.
+ * WAITS: no.
+ * Entry: branched to from DrawSlotMenu. Exit: as EventBitClear.
+ */
+static MenuRegs DrawSlotMenuGreyed(MenuRegs r, bool none_used)
+{
+    if (!none_used) {
+        ry_keep(&r, 0);
+        ra(&r, 3);
+        r = recolor(r, 3, 0, 0xA743);
+        r = clear_event(r, 4, 0xA748);
+    } else {
+        ry_keep(&r, 0);
+        ra(&r, 4);
+        r = recolor(r, 4, 0, 0xA752);
+        r = clear_event(r, 5, 0xA757);
+        ry_keep(&r, 0);
+        ra(&r, 5);
+        r = recolor(r, 5, 0, 0xA75D);
+        r = clear_event(r, 6, 0xA762);
+    }
+    ry_keep(&r, 0);
+    ra(&r, 6);
+    r = recolor(r, 6, 0, 0xA768);
+    ra(&r, 7);
+    r_event(&r, EventBitClear(7));
+    return r;
+}
+
+/*
+ * @routine 00DD:6D0 DrawSlotMenu
+ * @run 6F:A6D0
+ * WHAT IT DOES: Draws the slot list and its commands: each of the three slots with data gets its event, name and
+ * percentage, one without has its event cleared and its row blanked, and the row is coloured by it. Then the command
+ * rows: with no slot used, only item 3 is offered and items 4 to 6 are greyed with their events cleared; with one or
+ * two used, items 4, 5, 6 and 3 are offered; with all three, items 4 and 5 are offered and 3 is greyed.
+ * HOW: bios_b low counts the slots with data (bit 0 of each slot's byte $01); per slot EventBitSet or EventBitClear,
+ * DrawSlotName or BlankTextRow, DrawSlotPercent, RecolorTextRun; then the commands.
+ * WAITS: no.
+ * Entry: nothing. Exit: as the last EventBitSet or EventBitClear.
+ */
+MenuRegs DrawSlotMenu(MenuRegs r)
+{
+    uint8_t x, offset, used, event, count;
+
+    WR8(ZP->bios_b.lo, 0);
+    x = 0;
+    rx(&r, 0);
+    do {
+        offset = rd8((uint16_t)(SLOT_OFFSETS + x));
+        ry(&r, offset);
+        used = (uint8_t)(rd8((uint16_t)(SaveBuffer + 1 + offset)) & 0x01);
+        ra(&r, used);
+        ry(&r, used);
+        push8(used);
+        event = (uint8_t)(x + 1);
+        if (used == 0) {
+            ra(&r, x);
+            r = clear_event(r, event, 0xA6E4);
+            ra(&r, x);
+            jsr_push(0xA6E8);
+            rexit(&r, BlankTextRow(x, x));
+            jsr_pop();
+        } else {
+            ra(&r, x);
+            r = set_event(r, event, 0xA6EF);
+            ra(&r, x);
+            jsr_push(0xA6F3);
+            rexit(&r, DrawSlotName(x, x));
+            jsr_pop();
+            rnz(&r, INC8(ZP->bios_b.lo));
+        }
+        ra(&r, x);
+        jsr_push(0xA6F9);
+        rexit(&r, DrawSlotPercent(x, x));
+        jsr_pop();
+        used = pull8();
+        ry(&r, used);
+        ra(&r, x);
+        r = recolor(r, x, used, 0xA6FE);
+        x++;
+        rx(&r, x);
+        rcmp(&r, x, 0x03);
+    } while (x != 3);
+    count = RD8(ZP->bios_b.lo);
+    ra(&r, count);
+    if (count != 0) {
+        ry(&r, 1);
+        ra(&r, 4);
+        r = recolor(r, 4, 1, 0xA70E);
+        r = set_event(r, 5, 0xA713);
+        ry(&r, 1);
+        ra(&r, 5);
+        r = recolor(r, 5, 1, 0xA71A);
+        r = set_event(r, 6, 0xA71F);
+        count = RD8(ZP->bios_b.lo);
+        ra(&r, count);
+        rcmp(&r, count, 0x03);
+        if (count != 3) {
+            ry(&r, 1);
+            ra(&r, 6);
+            r = recolor(r, 6, 1, 0xA72C);
+            r = set_event(r, 7, 0xA731);
+            return OfferSlotCommands(r);
+        }
+        return DrawSlotMenuGreyed(r, false);
+    }
+    jsr_push(0xA74C);
+    r = OfferSlotCommands(r);
+    jsr_pop();
+    return DrawSlotMenuGreyed(r, true);
+}
+
+void abi_DrawSlotMenu(void)
+{
+    MenuRegs r = DrawSlotMenu(menu_regs_cpu());
+
+    menu_regs_shim(&r);
+}
+
+/*
+ * @routine 00C4:42F FileMenuOpenStart
+ * @run 6B:9C2F
+ * WHAT IT DOES: The opening page's first step: list $0F, the objects of object list 0, the cursor objects put on item 1,
+ * and the step goes on.
+ * HOW: StartListChannel0Kind2, PlaceObjectList, PlaceCursorObjects, MenuStepAdvance.
+ * WAITS: no.
+ * Entry: from MenuStepDispatch. Exit: as MenuStepAdvance.
+ */
+MenuRegs FileMenuOpenStart(MenuRegs r)
+{
+    CursorTarget place;
+
+    ra(&r, 0x0F);
+    jsr_push(0x9C34);
+    (void)StartListChannel0Kind2(0x0F);
+    jsr_pop();
+    ra(&r, 2);
+    rx(&r, 0);
+    rnz(&r, 2);
+    ra_keep(&r, 0);
+    jsr_push(0x9C38);
+    rexit(&r, PlaceObjectList(0));
+    jsr_pop();
+    ra(&r, 1);
+    jsr_push(0x9C3D);
+    place = PlaceCursorObjects(1);
+    jsr_pop();
+    ra(&r, place.value);
+    r.x = 1;
+    r.y = place.index;
+    r.set |= REG_X | REG_Y;
+    rc(&r, place.carry);
+    ra(&r, MenuStepAdvance());
+    return r;
+}
+
+void abi_FileMenuOpenStart(void)
+{
+    MenuRegs r = FileMenuOpenStart(menu_regs_cpu());
+
+    menu_regs_shim(&r);
+}
+
+/*
+ * @routine 00C4:440 FileMenuOpenSlots
+ * @run 6B:9C40
+ * WHAT IT DOES: The opening page's second step: script $0E, the slot list drawn, and the step goes on.
+ * HOW: StartScriptSlot0Kind1, DrawSlotMenu, MenuStepAdvance.
+ * WAITS: no.
+ * Entry: from MenuStepDispatch. Exit: as MenuStepAdvance.
+ */
+MenuRegs FileMenuOpenSlots(MenuRegs r)
+{
+    ra(&r, 0x0E);
+    jsr_push(0x9C45);
+    (void)StartScriptSlot0Kind1(0x0E);
+    jsr_pop();
+    ry(&r, 0x0E);
+    rx(&r, 0);
+    rnz(&r, 0x0E);
+    jsr_push(0x9C48);
+    r = DrawSlotMenu(r);
+    jsr_pop();
+    ra(&r, MenuStepAdvance());
+    return r;
+}
+
+void abi_FileMenuOpenSlots(void)
+{
+    MenuRegs r = FileMenuOpenSlots(menu_regs_cpu());
+
+    menu_regs_shim(&r);
+}
+
+/*
+ * @routine 00C4:44B FileMenuOpenPick
+ * @run 6B:9C4B
+ * WHAT IT DOES: The opening page's pick: button I on an item whose event is set makes it MenuChosenItem and goes to
+ * the next page; otherwise the cursor moves by the pad and shakes.
+ * HOW: The trigger's bit 0, EventBitTest, MenuPageAdvance; or CursorMoveByPad (menu 0) and a tail jump to
+ * JitterCursorObjects.
+ * WAITS: no.
+ * Entry: from MenuStepDispatch. Exit: as MenuPageAdvance, or as JitterCursorObjects.
+ */
+MenuRegs FileMenuOpenPick(MenuRegs r)
+{
+    uint8_t trigger, value, page;
+
+    trigger = rd8(BiosJoyTrigger);
+    ra(&r, (uint8_t)(trigger & 0x01));
+    if (r.a != 0) {
+        value = RD8(OBJ->work_d[0]);
+        ra(&r, value);
+        jsr_push(0x9C58);
+        r_event(&r, EventBitTest(value));
+        jsr_pop();
+        if (r.nz != 0) {
+            value = RD8(OBJ->work_d[0]);
+            ra(&r, value);
+            wr8(MenuChosenItem, value);
+            page = MenuPageAdvance();
+            ra_keep(&r, 0);
+            rnz(&r, page);
+            return r;
+        }
+    }
+    ry_keep(&r, 0);
+    jsr_push(0x9C67);
+    r_pad(&r, CursorMoveByPad(0));
+    jsr_pop();
+    r_glide(&r, JitterCursorObjects(), 1);
+    return r;
+}
+
+void abi_FileMenuOpenPick(void)
+{
+    MenuRegs r = FileMenuOpenPick(menu_regs_cpu());
+
+    menu_regs_shim(&r);
+}
+
+/*
+ * @routine 00C4:342 FileMenuSlidePrepare
+ * @run 6B:9B42
+ * WHAT IT DOES: The first step of the page that slides back to the opening page: the character objects animate and the
+ * slot list is drawn; then, as FileMenuSlideBackStart, which it runs into.
+ * HOW: AnimateCharacterChoice, DrawSlotMenu, the bytes of FileMenuSlideBackStart.
+ * WAITS: no.
+ * Entry: from MenuStepDispatch. Exit: as MenuStepAdvance.
+ */
+MenuRegs FileMenuSlidePrepare(MenuRegs r)
+{
+    jsr_push(0x9B45);
+    r = AnimateCharacterChoice(r);
+    jsr_pop();
+    jsr_push(0x9B48);
+    r = DrawSlotMenu(r);
+    jsr_pop();
+    return FileMenuSlideBackStart(r);
+}
+
+void abi_FileMenuSlidePrepare(void)
+{
+    MenuRegs r = FileMenuSlidePrepare(menu_regs_cpu());
+
+    menu_regs_shim(&r);
+}

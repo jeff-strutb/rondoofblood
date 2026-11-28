@@ -28,6 +28,10 @@ ClearedMasks = $B993 ; each record entry's cleared bit
 EntryPlaces = $BA2F ; the VRAM address of each entry's name
 EntryNames = $BA4B ; a string pointer for each entry's name
 UnknownName = $BA67 ; the string of an entry not reached
+ListByItem = $9964 ; the list a slot page starts, by chosen item (from 1)
+KindByItem = $9A30 ; 0 for the slot items, by chosen item
+PictureByCharacter = $9A38 ; object $34's frame by character
+CursorByItem = $9AFF ; the cursor value a page returns to, by chosen item
 FileMenuReadSave:
     jsr VecResetGameState
     jsr VecBackupRead
@@ -868,6 +872,567 @@ FileMenuListLeave_at0:
     jsr SetCursorValue
     lda #$0F
     jmp SetMenuPage
+
+; @routine 00C4:13D FileMenuSlideStart
+; @run 6B:993D
+; WHAT IT DOES: The first step of the page that slides the screen on: starts the item's list (LIST_BY_ITEM; where that
+; is 0, list $13 when the slot has data and $12 when not), keeps the scroll's high byte plus one as the target, puts
+; the cursor on item 0 and goes on.
+; HOW: LIST_BY_ITEM, the slot's first byte shifted right; StartListChannel0Kind2; SetCursorValue; JitterCursorObjects;
+; MenuStepAdvance.
+; WAITS: no.
+; Entry: from MenuStepDispatch. Exit: as MenuStepAdvance.
+FileMenuSlideStart:
+    ldy a:MenuChosenItem
+    lda a:ListByItem,y
+    bne FileMenuSlideStart_at0
+    ldx a:SlotOffsets-1,y
+    lda a:SaveBuffer,x
+    lsr a
+    lda #$13
+    bcs FileMenuSlideStart_at0
+    dec a
+FileMenuSlideStart_at0:
+    jsr VecStartListChannel0Kind2
+    lda a:ScrollXHi
+    inc a
+    sta a:MenuPadRepeatBits+1
+    cla
+    jsr SetCursorValue
+    jsr JitterCursorObjects
+    jmp MenuStepAdvance
+
+; @routine 00C4:16C FileMenuSlideDraw
+; @run 6B:996C
+; WHAT IT DOES: Draws the next screen of the chosen item off to the side: item 7 the copy rows, items 4 to 6 their list
+; ($14 to $16) and the used slots' rows, items 1 to 3 the slot (its number made zSaveSlot): list $1C when its byte $01
+; has no bit 2, its details, name and percentage; then the item's objects (list 3 or 5 for a slot with and without
+; data, or the item's kind), and the slot's character picture and marks. The scroll's step is cleared and the step
+; goes on.
+; HOW: StartListChannel0Kind2, DrawUsedSlotRows, DrawSlotRows, DrawSlotDetails, DrawCursorRowDigit, DrawSlotName,
+; DrawSlotPercent, PlaceObjectList; the object frames of $2B and $2F to $34 and the start arguments of $33 and $34.
+; WAITS: no.
+; Entry: from MenuStepDispatch. Exit: as MenuStepAdvance.
+FileMenuSlideDraw:
+    stz a:$7DDB
+    lda a:MenuChosenItem
+    cmp #$07
+    beq FileMenuSlideDraw_at0
+    cmp #$04
+    bcc FileMenuSlideDraw_at1
+    clc
+    adc #$10
+    jsr VecStartListChannel0Kind2
+    jsr DrawUsedSlotRows
+    bra FileMenuSlideDraw_at2
+FileMenuSlideDraw_at0:
+    cla
+    jsr DrawSlotRows
+    bra FileMenuSlideDraw_at2
+FileMenuSlideDraw_at1:
+    ldy a:MenuChosenItem
+    dey
+    ldx a:SlotOffsets,y
+    lda a:SaveBuffer+1,x
+    and #$04
+    bne FileMenuSlideDraw_at2
+    lda #$1C
+    jsr VecStartListChannel0Kind2
+    inc a:$7DDB
+FileMenuSlideDraw_at2:
+    lda a:MenuChosenItem
+    cmp #$04
+    bcs FileMenuSlideDraw_at3
+    lda a:MenuChosenItem
+    dec a
+    sta z:zSaveSlot
+    jsr DrawSlotDetails
+    jsr DrawCursorRowDigit
+    lda z:zSaveSlot
+    clc
+    adc #$06
+    jsr DrawSlotName
+    lda z:zSaveSlot
+    clc
+    adc #$06
+    jsr DrawSlotPercent
+FileMenuSlideDraw_at3:
+    ldy a:MenuChosenItem
+    lda a:KindByItem,y
+    bne FileMenuSlideDraw_at4
+    ldx a:SlotOffsets-1,y
+    lda a:SaveBuffer,x
+    lsr a
+    lda #$03
+    bcs FileMenuSlideDraw_at4
+    lda #$05
+FileMenuSlideDraw_at4:
+    jsr PlaceObjectList
+    lda a:$7DDB
+    beq FileMenuSlideDraw_at5
+    stz a:OBJ_FRAME+$2B
+FileMenuSlideDraw_at5:
+    ldy a:MenuChosenItem
+    lda a:KindByItem,y
+    bne FileMenuSlideDraw_at6
+    lda a:MenuSlotCharacter-1,y
+    sta a:OBJ_START_ARG+$33
+    sta a:OBJ_WORK_D+$33
+    tax
+    phx
+    ldx a:SlotOffsets-1,y
+    lda a:SaveBuffer,x
+    plx
+    lsr a
+    bcc FileMenuSlideDraw_at7
+    lda a:PictureByCharacter,x
+    sta a:OBJ_FRAME+$34
+FileMenuSlideDraw_at7:
+    ldx a:SlotOffsets-1,y
+    lda a:SaveBuffer,x
+    lsr a
+    bcs FileMenuSlideDraw_at8
+    stz a:OBJ_FRAME+$31
+FileMenuSlideDraw_at8:
+    lsr a
+    bcs FileMenuSlideDraw_at9
+    stz a:OBJ_FRAME+$32
+FileMenuSlideDraw_at9:
+    lsr a
+    bcs FileMenuSlideDraw_at10
+    stz a:OBJ_FRAME+$2F
+FileMenuSlideDraw_at10:
+    lsr a
+    bcs FileMenuSlideDraw_at6
+    stz a:OBJ_FRAME+$30
+FileMenuSlideDraw_at6:
+    stz a:ScrollStepXLo
+    stz a:ScrollStepXHi
+    jsr JitterCursorObjects
+    jmp MenuStepAdvance
+
+; @routine 00C4:23A FileMenuSlideLeft
+; @run 6B:9A3A
+; WHAT IT DOES: Slides the screen to the next page a frame: the step along X ramps by $40 a frame (up while the
+; scroll's middle byte is positive, down after), the 24-bit scroll moves by it, and at the target page the scroll's low
+; bytes are zeroed and the step goes on. The objects move with the scroll.
+; HOW: AnimateCharacterChoice, JitterCursorObjects; the ramp; SCROLL x_frac, x_lo and x_hi added (x_lo and x_hi kept
+; in the speed bytes); x_hi compared with SCROLL_TARGET; ShiftObjectsByScrollChange; MenuStepAdvance.
+; WAITS: no.
+; Entry: from MenuStepDispatch. Exit: not there: N, Z and C from the compare with the target; there: as
+; MenuStepAdvance.
+FileMenuSlideLeft:
+    jsr AnimateCharacterChoice
+    jsr JitterCursorObjects
+    lda a:ScrollXLo
+    bmi FileMenuSlideLeft_at0
+    lda a:ScrollStepXLo
+    clc
+    adc #$40
+    sta a:ScrollStepXLo
+    bcc FileMenuSlideLeft_at1
+    inc a:ScrollStepXHi
+FileMenuSlideLeft_at1:
+    bra FileMenuSlideLeft_at2
+FileMenuSlideLeft_at0:
+    lda a:ScrollStepXLo
+    sec
+    sbc #$40
+    sta a:ScrollStepXLo
+    bcs FileMenuSlideLeft_at2
+    inc a:ScrollStepXHi
+FileMenuSlideLeft_at2:
+    lda a:ScrollXFrac
+    clc
+    adc a:ScrollStepXLo
+    sta a:ScrollXFrac
+    lda a:ScrollXLo
+    sta a:ScrollSpeedX
+    adc a:ScrollStepXHi
+    sta a:ScrollXLo
+    lda a:ScrollXHi
+    sta a:ScrollSpeedY
+    adc #$00
+    sta a:ScrollXHi
+    cmp a:MenuPadRepeatBits+1
+    bne FileMenuSlideLeft_at3
+    stz a:ScrollXLo
+    stz a:ScrollXFrac
+FileMenuSlideLeft_at3:
+    jsr ShiftObjectsByScrollChange
+    lda a:ScrollXHi
+    cmp a:MenuPadRepeatBits+1
+    bne FileMenuSlideLeft_at4
+    jmp MenuStepAdvance
+FileMenuSlideLeft_at4:
+    rts
+
+; @routine 00C4:29E FileMenuSlideEnd
+; @run 6B:9A9E
+; WHAT IT DOES: After the slide: puts the cursor where the item's page has it (CURSOR_BY_ITEM; for value $13 as it is,
+; else moved down to the first slot with data, or for item 4 to the first empty one) and goes to the item's page.
+; HOW: AnimateCharacterChoice; the table; EventBitTest on slots 1 and 2, counted in zTemp00; SetCursorValue; runs into
+; FileMenuReturnPage.
+; WAITS: no.
+; Entry: from MenuStepDispatch. Exit: as FileMenuReturnPage.
+FileMenuSlideEnd:
+    jsr AnimateCharacterChoice
+    ldy a:MenuChosenItem
+    lda a:CursorByItem,y
+    cmp #$13
+    beq FileMenuSlideEnd_at0
+    cpy #$04
+    beq FileMenuSlideEnd_at1
+    lda #$01
+    sta z:zTemp00
+    jsr EventBitTest
+    bne FileMenuSlideEnd_at2
+    inc z:zTemp00
+    lda z:zTemp00
+    jsr EventBitTest
+    bne FileMenuSlideEnd_at2
+    inc z:zTemp00
+FileMenuSlideEnd_at2:
+    ldy a:MenuChosenItem
+    lda a:CursorByItem,y
+    dec a
+    clc
+    adc z:zTemp00
+    bra FileMenuSlideEnd_at0
+FileMenuSlideEnd_at1:
+    lda #$01
+    sta z:zTemp00
+    jsr EventBitTest
+    beq FileMenuSlideEnd_at3
+    inc z:zTemp00
+    lda z:zTemp00
+    jsr EventBitTest
+    beq FileMenuSlideEnd_at3
+    inc z:zTemp00
+FileMenuSlideEnd_at3:
+    ldy a:MenuChosenItem
+    lda a:CursorByItem,y
+    dec a
+    clc
+    adc z:zTemp00
+FileMenuSlideEnd_at0:
+    jsr SetCursorValue
+
+; @routine 00C4:2F0 FileMenuReturnPage
+; @run 6B:9AF0
+; WHAT IT DOES: Goes to the page an item returns to: page 7 for the slots (items 1 to 3), else the page the item less
+; one.
+; HOW: JitterCursorObjects, MenuChosenItem compared with 4, DEC, SetMenuPage.
+; WAITS: no.
+; Entry: nothing. Exit: A 0, N and Z from the page, C from the compare; the rest as JitterCursorObjects leaves them.
+FileMenuReturnPage:
+    jsr JitterCursorObjects
+    lda a:MenuChosenItem
+    cmp #$04
+    bcs FileMenuReturnPage_at0
+    lda #$08
+FileMenuReturnPage_at0:
+    dec a
+    jmp SetMenuPage
+
+; @routine 00C4:312 FileMenuBackStart
+; @run 6B:9B12
+; WHAT IT DOES: Leaves a slot page without sliding: list $0F, the cursor on item $17 or $16 by the first mark flag
+; (slots), or on the selected slot plus 8, and the item's page.
+; HOW: StartListChannel0Kind2; SetCursorValue; a tail jump to FileMenuReturnPage.
+; WAITS: no.
+; Entry: from MenuStepDispatch. Exit: as FileMenuReturnPage.
+FileMenuBackStart:
+    lda #$0F
+    jsr VecStartListChannel0Kind2
+    lda a:MenuChosenItem
+    cmp #$04
+    bcs FileMenuBackStart_at0
+    lda a:$7DDC
+    bne FileMenuBackStart_at1
+    lda #$17
+    bra FileMenuBackStart_at2
+FileMenuBackStart_at1:
+    lda #$16
+    bra FileMenuBackStart_at2
+FileMenuBackStart_at0:
+    lda a:MenuSelectedSlot
+    clc
+    adc #$08
+FileMenuBackStart_at2:
+    jsr SetCursorValue
+    jmp FileMenuReturnPage
+
+; @routine 00C4:342 FileMenuSlidePrepare
+; @run 6B:9B42
+; WHAT IT DOES: The first step of the page that slides back to the opening page: the character objects animate and the
+; slot list is drawn; then, as FileMenuSlideBackStart, which it runs into.
+; HOW: AnimateCharacterChoice, DrawSlotMenu, the bytes of FileMenuSlideBackStart.
+; WAITS: no.
+; Entry: from MenuStepDispatch. Exit: as MenuStepAdvance.
+FileMenuSlidePrepare:
+    jsr AnimateCharacterChoice
+    jsr DrawSlotMenu
+
+; @routine 00C4:348 FileMenuSlideBackStart
+; @run 6B:9B48
+; WHAT IT DOES: Starts the slide back: the scroll's step and the distance travelled cleared, the target the page the
+; scroll is on, the cursor on item 0, and the step goes on.
+; HOW: Five STZ, SCROLL x_hi to SCROLL_TARGET, SetCursorValue, JitterCursorObjects, MenuStepAdvance.
+; WAITS: no.
+; Entry: from MenuStepDispatch. Exit: as MenuStepAdvance.
+FileMenuSlideBackStart:
+    stz a:ScrollStepXLo
+    stz a:ScrollStepXHi
+    stz a:MenuPadRepeatBits+4
+    stz a:MenuPadRepeatBits+3
+    stz a:MenuPadRepeatBits+2
+    lda a:ScrollXHi
+    sta a:MenuPadRepeatBits+1
+    cla
+    jsr SetCursorValue
+    jsr JitterCursorObjects
+    jmp MenuStepAdvance
+
+; @routine 00C4:367 FileMenuSlideBack
+; @run 6B:9B67
+; WHAT IT DOES: Slides the screen back a page a frame: the step ramps by $40 (up while the distance's middle byte is
+; positive, down after) and adds to the 24-bit distance, cleared to a whole page once it reaches one; the scroll is the
+; target less the distance; at a whole page the step goes on. The objects move with the scroll.
+; HOW: AnimateCharacterChoice, JitterCursorObjects; the ramp; the distance; SCROLL x_lo and x_hi kept in the speed
+; bytes; the scroll as a subtraction; ShiftObjectsByScrollChange; MenuStepAdvance when the distance's high byte is set.
+; WAITS: no.
+; Entry: from MenuStepDispatch. Exit: not there: A 0, Z set; there: as MenuStepAdvance.
+FileMenuSlideBack:
+    jsr AnimateCharacterChoice
+    jsr JitterCursorObjects
+    lda a:MenuPadRepeatBits+3
+    bmi FileMenuSlideBack_at0
+    lda a:ScrollStepXLo
+    clc
+    adc #$40
+    sta a:ScrollStepXLo
+    bcc FileMenuSlideBack_at1
+    inc a:ScrollStepXHi
+FileMenuSlideBack_at1:
+    bra FileMenuSlideBack_t9B90
+FileMenuSlideBack_at0:
+    lda a:ScrollStepXLo
+    sec
+    sbc #$40
+    sta a:ScrollStepXLo
+    bcs FileMenuSlideBack_t9B90
+    inc a:ScrollStepXHi
+FileMenuSlideBack_t9B90:
+    lda a:MenuPadRepeatBits+4
+    clc
+    adc a:ScrollStepXLo
+    sta a:MenuPadRepeatBits+4
+    lda a:MenuPadRepeatBits+3
+    adc a:ScrollStepXHi
+    sta a:MenuPadRepeatBits+3
+    lda a:MenuPadRepeatBits+2
+    adc #$00
+    sta a:MenuPadRepeatBits+2
+    beq FileMenuSlideBack_at2
+    stz a:MenuPadRepeatBits+3
+    stz a:MenuPadRepeatBits+4
+FileMenuSlideBack_at2:
+    lda a:ScrollXLo
+    sta a:ScrollSpeedX
+    lda a:ScrollXHi
+    sta a:ScrollSpeedY
+    cla
+    sec
+    sbc a:MenuPadRepeatBits+4
+    sta a:ScrollXFrac
+    cla
+    sbc a:MenuPadRepeatBits+3
+    sta a:ScrollXLo
+    lda a:MenuPadRepeatBits+1
+    sbc a:MenuPadRepeatBits+2
+    sta a:ScrollXHi
+    jsr ShiftObjectsByScrollChange
+    lda a:MenuPadRepeatBits+2
+    beq FileMenuSlideBack_at3
+    jmp MenuStepAdvance
+FileMenuSlideBack_at3:
+    rts
+
+; @routine 00C4:3E3 FileMenuBackToStart
+; @run 6B:9BE3
+; WHAT IT DOES: After the slide back to the first page: the cursor on the item chosen, page 1 at its step 2.
+; HOW: AnimateCharacterChoice, SetCursorValue, SetMenuPage by JSR, then SetMenuStep.
+; WAITS: no.
+; Entry: from MenuStepDispatch. Exit: A 2, N and Z clear, X 1, Y and C as SetCursorValue leaves them.
+FileMenuBackToStart:
+    jsr AnimateCharacterChoice
+    lda a:MenuChosenItem
+    jsr SetCursorValue
+    lda #$01
+    jsr SetMenuPage
+    lda #$02
+    jmp SetMenuStep
+
+; @routine 00C4:42F FileMenuOpenStart
+; @run 6B:9C2F
+; WHAT IT DOES: The opening page's first step: list $0F, the objects of object list 0, the cursor objects put on item 1,
+; and the step goes on.
+; HOW: StartListChannel0Kind2, PlaceObjectList, PlaceCursorObjects, MenuStepAdvance.
+; WAITS: no.
+; Entry: from MenuStepDispatch. Exit: as MenuStepAdvance.
+FileMenuOpenStart:
+    lda #$0F
+    jsr VecStartListChannel0Kind2
+    cla
+    jsr PlaceObjectList
+    lda #$01
+    jsr PlaceCursorObjects
+    jmp MenuStepAdvance
+
+; @routine 00C4:440 FileMenuOpenSlots
+; @run 6B:9C40
+; WHAT IT DOES: The opening page's second step: script $0E, the slot list drawn, and the step goes on.
+; HOW: StartScriptSlot0Kind1, DrawSlotMenu, MenuStepAdvance.
+; WAITS: no.
+; Entry: from MenuStepDispatch. Exit: as MenuStepAdvance.
+FileMenuOpenSlots:
+    lda #$0E
+    jsr VecStartScriptSlot0Kind1
+    jsr DrawSlotMenu
+    jmp MenuStepAdvance
+
+; @routine 00C4:44B FileMenuOpenPick
+; @run 6B:9C4B
+; WHAT IT DOES: The opening page's pick: button I on an item whose event is set makes it MenuChosenItem and goes to
+; the next page; otherwise the cursor moves by the pad and shakes.
+; HOW: The trigger's bit 0, EventBitTest, MenuPageAdvance; or CursorMoveByPad (menu 0) and a tail jump to
+; JitterCursorObjects.
+; WAITS: no.
+; Entry: from MenuStepDispatch. Exit: as MenuPageAdvance, or as JitterCursorObjects.
+FileMenuOpenPick:
+    lda a:BiosJoyTrigger
+    and #$01
+    beq FileMenuOpenPick_at0
+    lda a:OBJ_WORK_D
+    jsr EventBitTest
+    beq FileMenuOpenPick_at0
+    lda a:OBJ_WORK_D
+    sta a:MenuChosenItem
+    jmp MenuPageAdvance
+FileMenuOpenPick_at0:
+    cly
+    jsr CursorMoveByPad
+    jmp JitterCursorObjects
+
+; @routine 00DD:6D0 DrawSlotMenu
+; @run 6F:A6D0
+; WHAT IT DOES: Draws the slot list and its commands: each of the three slots with data gets its event, name and
+; percentage, one without has its event cleared and its row blanked, and the row is coloured by it. Then the command
+; rows: with no slot used, only item 3 is offered and items 4 to 6 are greyed with their events cleared; with one or
+; two used, items 4, 5, 6 and 3 are offered; with all three, items 4 and 5 are offered and 3 is greyed.
+; HOW: bios_b low counts the slots with data (bit 0 of each slot's byte $01); per slot EventBitSet or EventBitClear,
+; DrawSlotName or BlankTextRow, DrawSlotPercent, RecolorTextRun; then the commands.
+; WAITS: no.
+; Entry: nothing. Exit: as the last EventBitSet or EventBitClear.
+DrawSlotMenu:
+    stz z:zBiosBl
+    clx
+DrawSlotMenu_at2:
+    ldy a:SlotOffsets,x
+    lda a:SaveBuffer+1,y
+    and #$01
+    tay
+    phy
+    bne DrawSlotMenu_at0
+    txa
+    inc a
+    jsr EventBitClear
+    txa
+    jsr BlankTextRow
+    bra DrawSlotMenu_at1
+DrawSlotMenu_at0:
+    txa
+    inc a
+    jsr EventBitSet
+    txa
+    jsr DrawSlotName
+    inc z:zBiosBl
+DrawSlotMenu_at1:
+    txa
+    jsr DrawSlotPercent
+    ply
+    txa
+    jsr RecolorTextRun
+    inx
+    cpx #$03
+    bne DrawSlotMenu_at2
+    lda z:zBiosBl
+    beq DrawSlotMenuGreyed+13
+    ldy #$01
+    lda #$04
+    jsr RecolorTextRun
+    lda #$05
+    jsr EventBitSet
+    ldy #$01
+    lda #$05
+    jsr RecolorTextRun
+    lda #$06
+    jsr EventBitSet
+    lda z:zBiosBl
+    cmp #$03
+    beq DrawSlotMenuGreyed
+    ldy #$01
+    lda #$06
+    jsr RecolorTextRun
+    lda #$07
+    jsr EventBitSet
+
+; @routine 00DD:731 OfferSlotCommands
+; @run 6F:A731
+; WHAT IT DOES: Draws menu item 3 in palette 1 and makes event 4 pickable.
+; HOW: RecolorTextRun with Y 1 on row 3; EventBitSet 4 as a tail.
+; WAITS: no.
+; Entry: nothing. Exit: as EventBitSet; Y the event's byte.
+OfferSlotCommands:
+    ldy #$01
+    lda #$03
+    jsr RecolorTextRun
+    lda #$04
+    jmp EventBitSet
+
+; @routine 00DD:73D DrawSlotMenuGreyed
+; @run 6F:A73D
+; WHAT IT DOES: DrawSlotMenu's two arms that grey commands: with three slots used ($A73D), item 3 greyed and event 4
+; cleared; with none ($A74A), OfferSlotCommands first and then items 4 and 5 greyed and events 5 and 6 cleared. Both
+; end greying item 6 and clearing event 7.
+; HOW: RecolorTextRun with palette 0, EventBitClear; the last as a tail jump.
+; WAITS: no.
+; Entry: branched to from DrawSlotMenu. Exit: as EventBitClear.
+DrawSlotMenuGreyed:
+    cly
+    lda #$03
+    jsr RecolorTextRun
+    lda #$04
+    jsr EventBitClear
+    bra DrawSlotMenuGreyed_at0
+    bsr OfferSlotCommands
+    cly
+    lda #$04
+    jsr RecolorTextRun
+    lda #$05
+    jsr EventBitClear
+    cly
+    lda #$05
+    jsr RecolorTextRun
+    lda #$06
+    jsr EventBitClear
+DrawSlotMenuGreyed_at0:
+    cly
+    lda #$06
+    jsr RecolorTextRun
+    lda #$07
+    jmp EventBitClear
 
 ; @routine 00DD:76D DrawUsedSlotRows
 ; @run 6F:A76D

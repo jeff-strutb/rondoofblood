@@ -288,22 +288,11 @@ SetHitboxDxFromFrame_at0:
 ; Entry: X object. Exit: A and N, Z from the last value loaded; X, Y, C and V kept.
 PhaseTimerToState1:
     dec a:OBJ_WORK_K,x
-    beq PhaseTimerToState1_at0
+    beq State1ByWorkJ093C
     stz a:OBJ_ANIM_STEP,x
     stz a:OBJ_ANIM_TIMER,x
     lda #$01
     sta a:OBJ_SUBSTATE,x
-    rts
-PhaseTimerToState1_at0:
-    lda #$01
-    sta a:OBJ_STATE,x
-    lda #$01
-    sta a:OBJ_FRAME,x
-    lda a:OBJ_WORK_J,x
-    beq PhaseTimerToState1_at1
-    lda #$04
-    sta a:OBJ_FRAME,x
-PhaseTimerToState1_at1:
     rts
 
 ; @routine 093C:586 SetHitboxFromFrameRows

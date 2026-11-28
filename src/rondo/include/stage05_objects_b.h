@@ -1,0 +1,98 @@
+/* The routines of object/stage05_objects_b.c. */
+#ifndef RONDO_STAGE05_OBJECTS_B_H
+#define RONDO_STAGE05_OBJECTS_B_H
+
+#include <stdint.h>
+
+void ItemMarkThenByState093C(uint8_t slot);
+void abi_ItemMarkThenByState093C(void);
+void ProbeFromBelow093C(uint8_t slot);
+void abi_ProbeFromBelow093C(void);
+void BySubstate093CBA73(uint8_t slot);
+void abi_BySubstate093CBA73(void);
+void TossObjectByCount093C(uint8_t slot);
+void abi_TossObjectByCount093C(void);
+void State1ByWorkJ093C(uint8_t slot);
+void abi_State1ByWorkJ093C(void);
+void TableThenFollow093C(uint8_t slot);
+void abi_TableThenFollow093C(void);
+void CountHitThenByState093C(uint8_t slot);
+void abi_CountHitThenByState093C(void);
+void BurstWhenHit093C(uint8_t slot);
+void abi_BurstWhenHit093C(void);
+void ScatterSix093C(uint8_t slot);
+void abi_ScatterSix093C(void);
+void BySubstate093CBF67(uint8_t slot);
+void abi_BySubstate093CBF67(void);
+void SpringAway093C(uint8_t slot);
+void abi_SpringAway093C(void);
+void HalveVelocity093D(uint8_t slot);
+void abi_HalveVelocity093D(void);
+void ChaseAndRise093D(uint8_t slot);
+void abi_ChaseAndRise093D(void);
+void ClampSpeedXToTwo093D(uint8_t slot);
+void abi_ClampSpeedXToTwo093D(void);
+void ThrowUpward093D(uint8_t slot);
+void abi_ThrowUpward093D(void);
+void HoverNearTop093D(uint8_t slot);
+void abi_HoverNearTop093D(void);
+void BecomeType9CAtListEnd093D(uint8_t slot);
+void abi_BecomeType9CAtListEnd093D(void);
+void CountThenByState093D1BF(uint8_t slot);
+void abi_CountThenByState093D1BF(void);
+void CountdownThenState4_093D(uint8_t slot);
+void abi_CountdownThenState4_093D(void);
+void LoadRecordStartAngle40_093D(uint8_t slot);
+void abi_LoadRecordStartAngle40_093D(void);
+void OrbitStepBack093D(uint8_t slot);
+void abi_OrbitStepBack093D(void);
+void OrbitStepForward093D(uint8_t slot);
+void abi_OrbitStepForward093D(void);
+void ChecksThenByState093D251(uint8_t slot);
+void abi_ChecksThenByState093D251(void);
+void DamageToState6_093D(uint8_t slot);
+void abi_DamageToState6_093D(void);
+void NextStateOnFrontLanding093D(uint8_t slot);
+void abi_NextStateOnFrontLanding093D(void);
+void WalkNearOrAttack093D(uint8_t slot);
+void abi_WalkNearOrAttack093D(void);
+void MoveTurningAtWalls093D(uint8_t slot);
+void abi_MoveTurningAtWalls093D(void);
+void CheckGroundAhead093D(uint8_t slot);
+void abi_CheckGroundAhead093D(void);
+void WalkFarOrRetreat093D(uint8_t slot);
+void abi_WalkFarOrRetreat093D(void);
+void BySubstate093DC420(uint8_t slot);
+void abi_BySubstate093DC420(void);
+void LandThenFrame39_093D(uint8_t slot);
+void abi_LandThenFrame39_093D(void);
+void CountThenState2_093D(uint8_t slot);
+void abi_CountThenState2_093D(void);
+void BySubstate093DC48D(uint8_t slot);
+void abi_BySubstate093DC48D(void);
+void SlashAlongList093D(uint8_t slot);
+void abi_SlashAlongList093D(void);
+void LandThenWait093DC595(uint8_t slot);
+void abi_LandThenWait093DC595(void);
+void HopAtPlayer093D(uint8_t slot);
+void abi_HopAtPlayer093D(void);
+void LandThenState3_093D(uint8_t slot);
+void abi_LandThenState3_093D(void);
+void ChecksThenByState093D7C7(uint8_t slot);
+void abi_ChecksThenByState093D7C7(void);
+void FacePlayerInSomeStates093D(uint8_t slot);
+void abi_FacePlayerInSomeStates093D(void);
+void CountdownNextState093D(uint8_t slot);
+void abi_CountdownNextState093D(void);
+void ChangeToType9B_093D(uint8_t slot);
+void abi_ChangeToType9B_093D(void);
+void GrabWhenStruckOrIdle093E(uint8_t slot);
+void abi_GrabWhenStruckOrIdle093E(void);
+void FindNearby093E(uint8_t slot);
+void abi_FindNearby093E(void);
+void State9WhenHit093E(uint8_t slot);
+void abi_State9WhenHit093E(void);
+void SetHitBoxByFrame093E(uint8_t slot);
+void abi_SetHitBoxByFrame093E(void);
+
+#endif

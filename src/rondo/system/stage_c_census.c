@@ -27,7 +27,7 @@ enum {
     FADE_ACTIVE = 0x203C, SUB3_STEP_TABLE = 0x2084, SUB3_STEP = 0x2085, FALL_STEP = 0x2088, FADE_COUNT = 0x209B,
     FADE_SOUND = 0x209D, STAGE_FLAG_2743 = 0x2743, DEMO_HELD = 0x207C, DEMO_COUNT = 0x207D, DEMO_POINTER = 0x207E,
     DEMO_PAGE = 0x207F, PAD_HELD = 0x2229, PAD_NEW = 0x222E, DEMO_BUFFER = 0xA000,
-    KERNEL_4006 = 0x4006, KERNEL_4009 = 0x4009, SOUND_HOOK = 0x401B, KERNEL_407B = 0x407B,
+    
     HIT_X = 0x2713, HIT_Y = 0x2723, HIT_HI = 0x2733, TEST_X = 0x2702, TEST_Y = 0x2703, REACH_X = 0x2704,
     REACH_Y = 0x2705, HIT_GATE = 0x2748, PROBE_HIT = 0x26F6, PROBE_X = 0x26FA, PROBE_Y = 0x26FE,
     ROW_MAP = 0x3A00, TALLY_CELLS = 0x3980, BOSS_BAR = 0x2745, ROW_BUFFER = 0x397E, SCREEN_3EB4 = 0x3EB4,
@@ -35,6 +35,32 @@ enum {
 };
 
 typedef StageRegs Regs;
+
+void abi_VecAddScoreByte(void);   /* system/vectors.c */
+void abi_VecApplyVelocity(void);   /* system/vectors.c */
+void abi_VecApplyVelocityX(void);   /* system/vectors.c */
+void abi_VecApplyVelocityY(void);   /* system/vectors.c */
+void abi_VecCdPlayAgain(void);   /* system/vectors.c */
+void abi_VecClearEnemySlots(void);   /* system/vectors.c */
+void abi_VecClearListChannels(void);   /* system/vectors.c */
+void abi_VecClearObjectInY(void);   /* system/vectors.c */
+void abi_VecClearScreenState(void);   /* system/vectors.c */
+void abi_VecLoadObjectRecord(void);   /* system/vectors.c */
+void abi_VecNextRandom(void);   /* system/vectors.c */
+void abi_VecPlayerAndCameraFrame(void);   /* system/vectors.c */
+void abi_VecResetGameState(void);   /* system/vectors.c */
+void abi_VecSelectVramData(void);   /* system/vectors.c */
+void abi_VecSelectVramReadAddress(void);   /* system/vectors.c */
+void abi_VecSelectVramWriteAddress(void);   /* system/vectors.c */
+void abi_VecSoundCommand(void);   /* system/vectors.c */
+void abi_VecStartListChannel0Kind2(void);   /* system/vectors.c */
+void abi_VecStartListChannelKind2(void);   /* system/vectors.c */
+void abi_VecStartScriptSlot0Kind1(void);   /* system/vectors.c */
+void abi_VecStartScriptSlotKind1(void);   /* system/vectors.c */
+void abi_VecStartScriptSlotKind4(void);   /* system/vectors.c */
+void abi_VecStopSound(void);   /* system/vectors.c */
+void abi_VecStreamFullWalk(void);   /* system/vectors.c */
+void abi_VecStreamScrollStep(void);   /* system/vectors.c */
 
 static Regs loaded(Regs r, uint8_t value);
 
@@ -59,19 +85,37 @@ static void regs_exit_shim(Regs r)
     stage_regs_load_shim(r);
 }
 
-/* A JSR into code with no C: the registers as they stand, and what it leaves. */
-static Regs orig_shim(Regs r, uint16_t ret, uint16_t run)
+/* A JSR to a kernel jump-table entry: its C between the frame, the registers as they stand, and what it leaves. */
+static Regs vector_call(Regs r, uint16_t ret, void (*vector)(void))
 {
     stage_regs_load_shim(r);
-    call_orig(ret, run);
+    jsr_push(ret);
+    vector();
+    jsr_pop();
     return stage_regs_from_cpu_shim(r);
 }
 
-/* A tail JMP into code with no C: it returns for this routine. */
-static Regs orig_tail_shim(Regs r, uint16_t run)
+/* A tail JMP to a kernel jump-table entry: it returns for this routine. */
+static Regs vector_tail(Regs r, void (*vector)(void))
 {
     stage_regs_load_shim(r);
-    call_original(run);
+    vector();
+    return stage_regs_from_cpu_shim(r);
+}
+
+/* A JSR into the overlay at $A000, or through a word of a table: the C of the routine loaded there (routine_at). */
+static Regs resident_call(Regs r, uint16_t ret, uint16_t run)
+{
+    stage_regs_load_shim(r);
+    call_routine(ret, run);
+    return stage_regs_from_cpu_shim(r);
+}
+
+/* A tail JMP the same way. */
+static Regs resident_tail(Regs r, uint16_t run)
+{
+    stage_regs_load_shim(r);
+    run_routine(run);
     return stage_regs_from_cpu_shim(r);
 }
 
@@ -259,7 +303,7 @@ void abi_StageEntryA3CD(void)
  */
 StageRegs StageEntryB3CD(StageRegs r)
 {
-    return orig_tail_shim(r, 0x0000);
+    return resident_tail(r, 0x0000);
 }
 
 void abi_StageEntryB3CD(void)
@@ -421,7 +465,7 @@ StageRegs StageSubModeStep3CD(StageRegs r)
     case 0x90FD:
         return StageSubModeTally3CD(r);
     default:
-        return orig_tail_shim(r, handler);
+        return resident_tail(r, handler);
     }
 }
 
@@ -434,7 +478,7 @@ void abi_StageSubModeStep3CD(void)
 static Regs map_and_jump(Regs r, bool banks_5_6, uint16_t ret, uint16_t run)
 {
     r = banks_5_6 ? map_banks_5_6(r, ret) : map_bank_7(r, ret);
-    return orig_tail_shim(r, run);
+    return resident_tail(r, run);
 }
 
 /*
@@ -835,13 +879,13 @@ StageRegs StageSubModeStart3CD(StageRegs r)
 {
     uint8_t value;
 
-    r = orig_shim(r, 0x8128, KERNEL_4006);
+    r = vector_call(r, 0x8128, abi_VecResetGameState);
     CALL(0x812B, StageRouteSetUpA3CD(r));
     CALL(0x812E, StageRouteSetUpB3CD(r));
     CALL(0x8131, StageLoadRowMap3CD(r));
     CALL(0x8134, StageResetScroll3CD(r));
     r = map_banks_5_6(r, 0x8137);
-    r = orig_shim(r, 0x813A, 0xA003);
+    r = resident_call(r, 0x813A, 0xA003);
     CALL(0x813D, StageHudStart3CD(r));
     CALL(0x8140, StageOpeningStart3CD(r));
     CALL(0x8143, StageLevelStart3CD(r));
@@ -864,7 +908,7 @@ StageRegs StageSubModeStart3CD(StageRegs r)
     if ((value & 0x80) != 0) {
         return r;
     }
-    return orig_shim(r, 0x815A, KERNEL_407B);
+    return vector_call(r, 0x815A, abi_VecCdPlayAgain);
 }
 
 void abi_StageSubModeStart3CD(void)
@@ -918,7 +962,7 @@ StageRegs StageFadeTimer3CD(StageRegs r)
     }
     if ((RD8(ZP->field8e) & 0x08) != 0) {
         r = loaded(r, rd8(FADE_SOUND));
-        return orig_tail_shim(r, SOUND_HOOK);
+        return vector_tail(r, abi_VecSoundCommand);
     }
     r.a = 0;
     return fade_tail(r, 0);
@@ -1029,7 +1073,7 @@ static bool frame_and_sub_step_clear(Regs *r)
     if (r->a != 0) {
         return false;
     }
-    *r = orig_shim(*r, 0x8229, 0x40D8);
+    *r = vector_call(*r, 0x8229, abi_VecPlayerAndCameraFrame);
     return true;
 }
 
@@ -1084,7 +1128,7 @@ StageRegs StageSubModePlay3CD(StageRegs r)
                 r = loaded(r, 0x09);
                 r.x = 0x07;
                 r.nz = 0x07;
-                r = orig_shim(r, 0x820D, 0x4015);
+                r = vector_call(r, 0x820D, abi_VecStartScriptSlotKind1);
             }
         }
         WR8(SCROLLE->step_x_hi[0], 0);
@@ -1131,7 +1175,7 @@ StageRegs StageSubModePlay3CD(StageRegs r)
     case 0x82D5:
         return StageSubStepTally3CD(r);
     default:
-        return orig_tail_shim(r, handler);
+        return resident_tail(r, handler);
     }
 }
 
@@ -1376,7 +1420,7 @@ void abi_StageSubStepTally3CD(void)
 StageRegs StageSubModeDeath3CD(StageRegs r)
 {
     r = loaded(r, 0xFF);
-    r = orig_shim(r, 0x8305, SOUND_HOOK);
+    r = vector_call(r, 0x8305, abi_VecSoundCommand);
     CALL(0x8308, StageDeathPhase3CD(r));
     r = loaded(r, RD8(ZP->game_sub_mode));
     r = compared(r, 0x01);
@@ -1384,7 +1428,7 @@ StageRegs StageSubModeDeath3CD(StageRegs r)
         return r;
     }
     r = map_banks_5_6(r, 0x8312);
-    r = orig_shim(r, 0x8315, 0xA015);
+    r = resident_call(r, 0x8315, 0xA015);
     return StageLevelStart3CD(r);
 }
 
@@ -1432,7 +1476,7 @@ StageRegs StageDeathPhase3CD(StageRegs r)
     case 0x83B6:
         return StageDeathFallRight3CD(r);
     default:
-        return orig_tail_shim(r, handler);
+        return resident_tail(r, handler);
     }
 }
 
@@ -1538,8 +1582,8 @@ static Regs fall_ends(Regs r, uint16_t ret, uint8_t step)
 static Regs fall_moves(Regs r, uint16_t at, bool right)
 {
     r = map_banks_5_6(r, at);
-    r = orig_shim(r, (uint16_t)(at + 3), 0xA01B);
-    r = orig_shim(r, (uint16_t)(at + 6), 0xA012);
+    r = resident_call(r, (uint16_t)(at + 3), 0xA01B);
+    r = resident_call(r, (uint16_t)(at + 6), 0xA012);
     r = loaded(r, RD8(OBJ->sprite_attr[24]));
     if (r.a != 0) {
         r = loaded(r, RD8(OBJ->x_hi[8]));
@@ -1551,7 +1595,7 @@ static Regs fall_moves(Regs r, uint16_t at, bool right)
         }
     }
     r.x = 0;
-    return orig_tail_shim(r, 0xA01E);
+    return resident_tail(r, 0xA01E);
 }
 
 /*
@@ -1618,8 +1662,8 @@ StageRegs StageDeathFallStart3CD(StageRegs r)
 {
     r = map_banks_5_6(r, 0x837C);
     r = loaded(r, 0);
-    r = orig_shim(r, 0x8381, 0xA018);
-    r = orig_shim(r, 0x8384, 0xA012);
+    r = resident_call(r, 0x8381, 0xA018);
+    r = resident_call(r, 0x8384, 0xA012);
     r.nz = (uint8_t)(rd8(FALL_STEP) + 1);
     wr8(FALL_STEP, r.nz);
     return r;
@@ -1719,7 +1763,7 @@ static Regs step_by_table(Regs r, uint8_t step, uint16_t table, const StepEntry 
             return entries[i].c(r);
         }
     }
-    return orig_tail_shim(r, handler);
+    return resident_tail(r, handler);
 }
 
 /*
@@ -1779,7 +1823,7 @@ void abi_StageSubModeCleared3CD(void)
  */
 StageRegs StageClearedNextStage3CD(StageRegs r)
 {
-    r = orig_shim(r, 0x8412, KERNEL_4009);
+    r = vector_call(r, 0x8412, abi_VecClearScreenState);
     CALL(0x8415, StageRouteSetUpA3CD(r));
     CALL(0x8418, StageRouteSetUpB3CD(r));
     CALL(0x841B, StageLoadRowMap3CD(r));
@@ -1788,7 +1832,7 @@ StageRegs StageClearedNextStage3CD(StageRegs r)
     r = loaded(r, 2);
     WR8(ZP->field8a, 2);
     r = map_banks_5_6(r, 0x8428);
-    r = orig_shim(r, 0x842B, 0xA003);
+    r = resident_call(r, 0x842B, 0xA003);
     CALL(0x842E, StageLevelStart3CD(r));
     WR8(ZP->paused, 0);
     r = loaded(r, 1);
@@ -1827,7 +1871,7 @@ StageRegs StageWalkSprite3CD(StageRegs r)
     r.x = RD8(ZP->character);
     r = loaded(r, rd8((uint16_t)(0x8453 + r.x)));
     WR8(OBJ->sprite_set[72], r.a);
-    return orig_tail_shim(r, 0xA012);
+    return resident_tail(r, 0xA012);
 }
 
 void abi_StageWalkSprite3CD(void)
@@ -1862,7 +1906,7 @@ StageRegs StageClearedWalkOut3CD(StageRegs r)
     };
 
     r = map_bank_7(r, 0x8458);
-    r = orig_shim(r, 0x845B, 0x4096);
+    r = vector_call(r, 0x845B, abi_VecStreamScrollStep);
     return step_by_table(r, rd8(SUB3_STEP), 0x8462, steps, 5);
 }
 
@@ -2084,7 +2128,7 @@ StageRegs StageClearedWalkBack3CD(StageRegs r)
     WR8(OBJ->work_c[0], 0);
     r = loaded(r, 2);
     WR8(ZP->field8a, 2);
-    r = orig_shim(r, 0x850B, 0xA003);
+    r = resident_call(r, 0x850B, 0xA003);
     CALL(0x850E, StageWalkSprite3CD(r));
     r.nz = (uint8_t)(rd8(SUB3_STEP) + 1);
     wr8(SUB3_STEP, r.nz);
@@ -2144,7 +2188,7 @@ StageRegs StageClearedWalkOn3CD(StageRegs r)
         r.nz = INC8(ZP->field83);
         RMW8(ZP->field8e, old, old | 0x10);
         r = loaded(r, 0xFF);
-        r = orig_shim(r, 0x8553, SOUND_HOOK);
+        r = vector_call(r, 0x8553, abi_VecSoundCommand);
     }
     RMW8(ZP->field8e, old, old | 0x02);
     r = loaded(r, RD8(ZP->field8c));
@@ -2166,7 +2210,7 @@ StageRegs StageClearedWalkOn3CD(StageRegs r)
     r = compared(r, 0x0D);
     if (r.nz == 0) {
         r = map_bank_7(r, 0x8585);
-        r = orig_shim(r, 0x8588, 0xA74E);
+        r = resident_call(r, 0x8588, 0xA74E);
         CALL(0x858B, StageLoadScreen3CD(r));
     }
     RMW8(ZP->field8e, old, old & (uint8_t)~0x02);
@@ -2265,7 +2309,7 @@ StageRegs StageBossScrollToDoor3CD(StageRegs r)
     WR8(SCROLLE->step_x_hi[0], 0);
     WR8(SCROLLE->step_x_lo[2], 0);
     r = loaded(r, 0x58);
-    r = orig_shim(r, 0x85E0, SOUND_HOOK);
+    r = vector_call(r, 0x85E0, abi_VecSoundCommand);
     r.nz = (uint8_t)(rd8(SUB3_STEP) + 1);
     wr8(SUB3_STEP, r.nz);
     return r;
@@ -2343,8 +2387,8 @@ StageRegs StageBossWalkOut3CD(StageRegs r)
     r = loaded(r, 0xB8);
     WR8(OBJ->work_b[16], 0xB8);
     CALL(0x8605, StageFrameA0003CD(r));
-    r = orig_shim(r, 0x8608, 0x40D8);
-    r = orig_shim(r, 0x860B, 0xA009);
+    r = vector_call(r, 0x8608, abi_VecPlayerAndCameraFrame);
+    r = resident_call(r, 0x860B, 0xA009);
     CALL(0x860E, StageFrameA08D3CD(r));
     CALL(0x8611, StageOverlayFrame3CD(r));
     r = loaded(r, RD8(OBJ->x_hi[8]));
@@ -2428,7 +2472,7 @@ StageRegs StageClearedLastWalk3CD(StageRegs r)
     };
 
     r = map_bank_7(r, 0x863A);
-    r = orig_shim(r, 0x863D, 0x4096);
+    r = vector_call(r, 0x863D, abi_VecStreamScrollStep);
     return step_by_table(r, rd8(SUB3_STEP), 0x8644, steps, 5);
 }
 
@@ -2598,9 +2642,9 @@ void abi_StageClearedWalkOff3CD(void)
 StageRegs StageClearedEnding3CD(StageRegs r)
 {
     r = loaded(r, 0xFF);
-    r = orig_shim(r, 0x86C0, SOUND_HOOK);
+    r = vector_call(r, 0x86C0, abi_VecSoundCommand);
     r = map_banks_5_6(r, 0x86C3);
-    r = orig_shim(r, 0x86C6, 0xA015);
+    r = resident_call(r, 0x86C6, 0xA015);
     r = loaded(r, (uint8_t)(RD8(ZP->field8c) & 0x7F));
     if (r.a == 0) {
         WR8(ZP->field8c, 0);
@@ -2805,8 +2849,8 @@ void abi_StageSubModeFade3CD(void)
  */
 StageRegs StageFadeStart3CD(StageRegs r)
 {
-    r = orig_shim(r, 0x878A, 0xA00C);
-    r = orig_shim(r, 0x878D, 0xA012);
+    r = resident_call(r, 0x878A, 0xA00C);
+    r = resident_call(r, 0x878D, 0xA012);
     r.nz = INC8(ZP->field80);
     return r;
 }
@@ -2840,12 +2884,12 @@ StageRegs StageFadeWait3CD(StageRegs r)
 
     r = loaded(r, RD8(OBJ->sprite_set[72]));
     push8(r.a);
-    r = orig_shim(r, 0x8797, 0xA00F);
+    r = resident_call(r, 0x8797, 0xA00F);
     before = pull8();
     r = loaded(r, before);
     r = compared(r, RD8(OBJ->sprite_set[72]));
     if (r.nz != 0) {
-        r = orig_shim(r, 0x87A0, 0xA012);
+        r = resident_call(r, 0x87A0, 0xA012);
     }
     r = loaded(r, RD8(ZP->field89));
     if (r.a == 0) {
@@ -3146,11 +3190,11 @@ void abi_StageLoadRowMap3CD(void)
  */
 StageRegs StageRouteSetUpA3CD(StageRegs r)
 {
-    r = orig_shim(r, 0x8850, 0x403F);
+    r = vector_call(r, 0x8850, abi_VecClearListChannels);
     r.x = RD8(ZP->field82);
     r.nz = r.x;
     r = loaded(r, rd8((uint16_t)(0x9D57 + r.x)));
-    r = orig_shim(r, 0x8858, 0x400C);
+    r = vector_call(r, 0x8858, abi_VecStartListChannel0Kind2);
     return StageUnpackList3CD(r);
 }
 
@@ -3189,7 +3233,7 @@ StageRegs StageRouteSetUpB3CD(StageRegs r)
     r.c = sum.carry;
     r.x = 7;
     r.nz = 7;
-    return orig_tail_shim(r, 0x4015);
+    return vector_tail(r, abi_VecStartScriptSlotKind1);
 }
 
 void abi_StageRouteSetUpB3CD(void)
@@ -3244,18 +3288,18 @@ StageRegs StageResetScroll3CD(StageRegs r)
     WR8(ZP->bios_a.lo, r.a);
     r = loaded(r, RD8(SCROLL->x_lo[0]));
     WR8(ZP->bios_a.hi, r.a);
-    r = orig_shim(r, 0x8885, KERNEL_4009);
+    r = vector_call(r, 0x8885, abi_VecClearScreenState);
     clear_scroll_bytes_3cd(r);
     WR8(OBJ->vy_lo[80], 0);
     r = load_screen_keeping_flags(r, 0x889B);
     r = map_bank_7(r, 0x88A1);
-    r = orig_shim(r, 0x88A4, 0xA74E);
+    r = resident_call(r, 0x88A4, 0xA74E);
     r.y = RD8(ZP->raster_effect);
     r = loaded(r, rd8((uint16_t)(0x886A + r.y)));
     if (r.a != 0) {
         clear_scroll_bytes_3cd(r);
         r = load_screen_keeping_flags(r, 0x88BE);
-        r = orig_shim(r, 0x88C4, 0xA79D);
+        r = resident_call(r, 0x88C4, 0xA79D);
     }
     clear_scroll_bytes_3cd(r);
     return StageLoadScreen3CD(r);
@@ -3426,7 +3470,7 @@ StageRegs StageOverlayFrame3CD(StageRegs r)
     Sum sum;
 
     r = map_bank_7(r, 0x89A1);
-    r = orig_shim(r, 0x89A4, 0x4096);
+    r = vector_call(r, 0x89A4, abi_VecStreamScrollStep);
     sum = add_bytes(0x08, RD8(ZP->ram_base_bank), false);
     r = loaded(r, sum.value);
     r.c = sum.carry;
@@ -3434,7 +3478,7 @@ StageRegs StageOverlayFrame3CD(StageRegs r)
     tam(0x20, r.a);
     r = loaded(r, (uint8_t)(r.a + 1));
     tam(0x40, r.a);
-    return orig_shim(r, 0x89B1, 0xA000);
+    return resident_call(r, 0x89B1, 0xA000);
 }
 
 void abi_StageOverlayFrame3CD(void)
@@ -3465,7 +3509,7 @@ StageRegs StageLevelStart3CD(StageRegs r)
 {
     uint8_t stage, index;
 
-    r = orig_shim(r, 0x89B5, 0x4057);
+    r = vector_call(r, 0x89B5, abi_VecClearEnemySlots);
     r = map_bank_7(r, 0x89B8);
     stage = RD8(ZP->field83);
     index = (uint8_t)(stage << 2);
@@ -3489,7 +3533,7 @@ StageRegs StageLevelStart3CD(StageRegs r)
         r.y = pull8();
         r.nz = r.y;
     }
-    r = orig_shim(r, 0x89E4, 0x4093);
+    r = vector_call(r, 0x89E4, abi_VecStreamFullWalk);
     CALL(0x89E7, StageOverlayFrame3CD(r));
     return r;
 }
@@ -3507,7 +3551,7 @@ static Regs unpack_door(Regs r, uint16_t ret, uint8_t mask, bool third)
     uint8_t slot, packed, rolled;
     bool carry;
 
-    r = orig_shim(r, ret, 0x40D2);
+    r = vector_call(r, ret, abi_VecLoadObjectRecord);
     slot = r.x;
     packed = RD8(OBJ->work_a[64 + slot]);
     r = loaded(r, packed);
@@ -3774,7 +3818,7 @@ StageRegs StageHudStep3CD(StageRegs r)
     } else {
         if ((RD8(ZP->field8e) & 0x20) != 0 && (RD8(ZP->field8e) & 0x40) == 0) {
             r = loaded(r, 0x0E);
-            r = orig_shim(r, 0x8ADC, SOUND_HOOK);
+            r = vector_call(r, 0x8ADC, abi_VecSoundCommand);
             RMW8(ZP->field8e, old, old | 0x40);
         }
         r.nz = INC8(ZP->field99);
@@ -3788,7 +3832,7 @@ StageRegs StageHudStep3CD(StageRegs r)
     if (!rose && (RD8(ZP->field8e) & 0x40) != 0) {
         RMW8(ZP->field8e, old, old & (uint8_t)~0x40);
         r = loaded(r, 0x40);
-        r = orig_shim(r, 0x8AF7, SOUND_HOOK);
+        r = vector_call(r, 0x8AF7, abi_VecSoundCommand);
     }
     r = loaded(r, RD8(ZP->field94));
     before = RD8(ZP->field95);
@@ -3843,7 +3887,7 @@ StageRegs StageHudSound3CD(StageRegs r)
     r = loaded(r, rd8((uint16_t)(0x8B31 + r.x)));
     r.x = 1;
     r.nz = 1;
-    return orig_tail_shim(r, 0x4018);
+    return vector_tail(r, abi_VecStartScriptSlotKind4);
 }
 
 void abi_StageHudSound3CD(void)
@@ -4182,7 +4226,7 @@ StageRegs StageBossBarFlash3CD(StageRegs r)
     }
     r.x = 0x45;
     r.nz = 0x45;
-    r = orig_shim(r, 0x8C4F, 0x4045);
+    r = vector_call(r, 0x8C4F, abi_VecApplyVelocity);
     r = loaded(r, RD8(OBJ->x_frac[45]));
     if (r.a == 0) {
         return r;
@@ -4223,7 +4267,7 @@ StageRegs StageBarErase3CD(StageRegs r)
     r = set_vram_addresses_call(r, 0x8C5D);
     for (r.x = 0x40; r.x != 0; r.x--) {
         r.y = (uint8_t)(RD8(OBJ->work_c[69]) & 0x07);
-        r = orig_shim(r, 0x8C68, 0x4051);
+        r = vector_call(r, 0x8C68, abi_VecNextRandom);
         mask = (uint8_t)(r.a | RD8(ZP->random2));
         mask = (uint8_t)(mask | RD8(ZP->random1));
         mask = (uint8_t)(mask | rd8((uint16_t)(0x8C13 + r.y)));
@@ -4448,12 +4492,12 @@ static Regs pause_menu_row(Regs r, uint8_t row)
     r = loaded(r, rd8((uint16_t)(0x8E0D + row)));
     r.x = 2;
     r.nz = 2;
-    r = orig_shim(r, 0x8DC7, 0x4018);
+    r = vector_call(r, 0x8DC7, abi_VecStartScriptSlotKind4);
     r.x = RD8(ZP->temp00);
     r = loaded(r, rd8((uint16_t)(0x8E0E + r.x)));
     r.x = 3;
     r.nz = 3;
-    r = orig_shim(r, 0x8DD1, 0x4018);
+    r = vector_call(r, 0x8DD1, abi_VecStartScriptSlotKind4);
     r.x = RD8(ZP->temp00);
     r = loaded(r, rd8((uint16_t)(0x8E10 + r.x)));
     WR8(OBJ->frame[55], r.a);
@@ -4474,7 +4518,7 @@ static Regs pause_menu_row(Regs r, uint8_t row)
     }
     r.x = 4;
     r.nz = 4;
-    return orig_tail_shim(r, 0x400F);
+    return vector_tail(r, abi_VecStartListChannelKind2);
 }
 
 /*
@@ -4667,7 +4711,7 @@ StageRegs StageOpeningStep3CD(StageRegs r)
     if (r.a == 0) {
         r = loaded(r, RD8(ZP->stage));
         if (r.a != 0) {
-            r = orig_shim(r, 0x8E79, KERNEL_407B);
+            r = vector_call(r, 0x8E79, abi_VecCdPlayAgain);
         }
         r.nz = INC8(OBJ->hit_taken[52]);
     }
@@ -4696,7 +4740,7 @@ StageRegs StageOpeningStep3CD(StageRegs r)
     }
     r.x = 0x45;
     r.nz = 0x45;
-    r = orig_shim(r, 0x8EBC, 0x4063);
+    r = vector_call(r, 0x8EBC, abi_VecApplyVelocityY);
     r.nz = DEC8(OBJ->work_b[84]);
     if (r.nz == 0) {
         r.nz = INC8(OBJ->work_b[12]);
@@ -4705,7 +4749,7 @@ StageRegs StageOpeningStep3CD(StageRegs r)
     }
     r.x = 0x44;
     r.nz = 0x44;
-    r = orig_shim(r, 0x8EDE, 0x4060);
+    r = vector_call(r, 0x8EDE, abi_VecApplyVelocityX);
     r = loaded(r, RD8(OBJ->work_b[12]));
     r = compared(r, 0x06);
     if (r.nz != 0) {
@@ -4783,7 +4827,7 @@ StageRegs StageOpeningFade3CD(StageRegs r)
     r = loaded(r, rd8((uint16_t)(0x8EFA + r.x)));
     WR8(ZP->product.lo, r.a);
     do {
-        r = orig_shim(r, 0x8F40, 0x4051);
+        r = vector_call(r, 0x8F40, abi_VecNextRandom);
         CALL(0x8F42, StageOpeningCopyRow3CD(r));
         value = RD8(ZP->temp10);
         sum = add_bytes(value, RD8(ZP->product.lo), false);
@@ -5366,7 +5410,7 @@ StageRegs StageSubModeTally3CD(StageRegs r)
     case 0x9340:
         return TallyEnd3CD(r);
     default:
-        return orig_tail_shim(r, handler);
+        return resident_tail(r, handler);
     }
 }
 
@@ -5415,9 +5459,9 @@ StageRegs TallyStart3CD(StageRegs r)
     if (wait.dropped) {
         return r;
     }
-    r = orig_shim(r, 0x9123, 0x4087);
+    r = vector_call(r, 0x9123, abi_VecStopSound);
     r = loaded(r, 0x46);
-    r = orig_shim(r, 0x9128, SOUND_HOOK);
+    r = vector_call(r, 0x9128, abi_VecSoundCommand);
     return TallyNext152D(r);
 }
 
@@ -5449,7 +5493,7 @@ void abi_TallyStart3CD(void)
 StageRegs TallyBoard3CD(StageRegs r)
 {
     r = loaded(r, 0x16);
-    r = orig_shim(r, 0x9130, 0x4012);
+    r = vector_call(r, 0x9130, abi_VecStartScriptSlot0Kind1);
     r.x = 5;
     r.nz = 5;
     CALL(0x9135, StageDrawPiece3CD(r));
@@ -5603,7 +5647,7 @@ StageRegs TallyReveal3CD(StageRegs r)
         return TallyNext152D(r);
     }
     for (;;) {
-        r = orig_shim(r, 0x91B7, 0x4051);
+        r = vector_call(r, 0x91B7, abi_VecNextRandom);
         r = loaded(r, (uint8_t)(r.a & 0x3F));
         r = compared(r, 0x3E);
         if (r.c) {
@@ -5889,14 +5933,14 @@ StageRegs TallyCount3CD(StageRegs r)
         CALL(0x92E2, TallyHearts3CD(r));
         r = loaded(r, 0x10);
     }
-    r = orig_shim(r, 0x92E7, 0x408A);
+    r = vector_call(r, 0x92E7, abi_VecAddScoreByte);
     CALL(0x92EA, StageDrawScore3CD(r));
     r = loaded(r, (uint8_t)(RD8(ZP->mode_events) & 0x03));
     if (r.a != 0) {
         return r;
     }
     r = loaded(r, 0x01);
-    return orig_shim(r, 0x92F5, SOUND_HOOK);
+    return vector_call(r, 0x92F5, abi_VecSoundCommand);
 }
 
 void abi_TallyCount3CD(void)
@@ -5978,7 +6022,7 @@ StageRegs TallyStockBonus3CD(StageRegs r)
     WR8(ZP->stock, r.a);
     CALL(0x9335, StageDrawStock3CD(r));
     r = loaded(r, 0x3E);
-    r = orig_shim(r, 0x933A, SOUND_HOOK);
+    r = vector_call(r, 0x933A, abi_VecSoundCommand);
     r.nz = DEC8(OBJ->work_b[16]);
     return TallyNext152D(r);
 }
@@ -6215,7 +6259,7 @@ void abi_StageClearWords3CD(void)
  */
 StageRegs SetVramAddresses3CD(StageRegs r)
 {
-    r = orig_shim(r, 0x9413, 0x4024);
+    r = vector_call(r, 0x9413, abi_VecSelectVramReadAddress);
     WR8(VDC->data_lo, r.x);
     WR8(VDC->data_hi, r.y);
     return SetVramWriteAddress3CD(r);
@@ -6245,10 +6289,10 @@ void abi_SetVramAddresses3CD(void)
  */
 StageRegs SetVramWriteAddress3CD(StageRegs r)
 {
-    r = orig_shim(r, 0x941C, 0x4021);
+    r = vector_call(r, 0x941C, abi_VecSelectVramWriteAddress);
     WR8(VDC->data_lo, r.x);
     WR8(VDC->data_hi, r.y);
-    return orig_tail_shim(r, 0x4027);
+    return vector_tail(r, abi_VecSelectVramData);
 }
 
 void abi_SetVramWriteAddress3CD(void)
@@ -6279,7 +6323,7 @@ StageRegs StageDrawPiece3CD(StageRegs r)
 {
     r = loaded(r, rd8((uint16_t)(0x9463 + r.x)));
     r.y = r.a;
-    r = orig_shim(r, 0x944A, 0x405D);
+    r = vector_call(r, 0x944A, abi_VecClearObjectInY);
     r = loaded(r, rd8((uint16_t)(0x946B + r.x)));
     WR8(OBJ->sprite_set[72 + r.y], r.a);
     r = loaded(r, rd8((uint16_t)(0x9473 + r.x)));
@@ -6603,7 +6647,7 @@ StageRegs StageHitHandler3CD(StageRegs r)
     case 0x9681:
         return HitKindSide3CD(r);
     default:
-        return orig_tail_shim(r, handler);
+        return resident_tail(r, handler);
     }
 }
 
@@ -6956,11 +7000,11 @@ StageRegs ProbeTile3CD(StageRegs r)
     r.c = sum.carry;
     r.v = sum.overflow;
     WR8(ZP->temp02, value);
-    r = orig_shim(r, 0x979A, 0x4024);
+    r = vector_call(r, 0x979A, abi_VecSelectVramReadAddress);
     WR8(VDC->data_lo, RD8(ZP->temp05));
     r = loaded(r, RD8(ZP->temp07));
     WR8(VDC->data_hi, r.a);
-    r = orig_shim(r, 0x97A7, 0x4027);
+    r = vector_call(r, 0x97A7, abi_VecSelectVramData);
     WR8(ZP->temp08, RD8(VDC->data_lo));
     page = (uint8_t)(RD8(VDC->data_hi) & 0x07);
     WR8(ZP->temp09, page);
@@ -7019,7 +7063,7 @@ StageRegs ProbeTile3CD(StageRegs r)
     case 0x987B:
         return TileSlopeF3CD(r);
     default:
-        return orig_tail_shim(r, handler);
+        return resident_tail(r, handler);
     }
 }
 
@@ -7410,7 +7454,7 @@ StageRegs StageMapDebugPage3CD(StageRegs r)
     do {
         r = loaded(r, RD8_PTR_Y(ZP->temp00, r.y));
         if (r.a != 0) {
-            r = orig_shim(r, 0x94C1, 0x4021);
+            r = vector_call(r, 0x94C1, abi_VecSelectVramWriteAddress);
             WR8(ZP->temp03, 0);
             value = r.y;
             for (int i = 0; i < 3; i++) {
@@ -7425,7 +7469,7 @@ StageRegs StageMapDebugPage3CD(StageRegs r)
             high = RD8(ZP->temp03);
             r = loaded(r, (uint8_t)(high | RD8(ZP->temp02)));
             WR8(VDC->data_hi, r.a);
-            r = orig_shim(r, 0x94DD, 0x4027);
+            r = vector_call(r, 0x94DD, abi_VecSelectVramData);
             for (r.x = 0x10; r.x != 0; r.x--) {
                 st1(0xAA);
                 st2(0x55);
@@ -7492,7 +7536,7 @@ StageRegs GateObjectStep3CD(StageRegs r)
     case 0x99DB:
         return StageSubStepNone152D(r);
     default:
-        return orig_tail_shim(r, handler);
+        return resident_tail(r, handler);
     }
 }
 
@@ -7522,7 +7566,7 @@ void abi_GateObjectStep3CD(void)
  */
 StageRegs GateStart3CD(StageRegs r)
 {
-    r = orig_shim(r, 0x99CF, 0x40D2);
+    r = vector_call(r, 0x99CF, abi_VecLoadObjectRecord);
     r.y = (uint8_t)(RD8(OBJ->work_a[64 + r.x]) & 0x01);
     r = loaded(r, rd8((uint16_t)(0x99DC + r.y)));
     WR8(OBJ->sprite_set[72 + r.x], r.a);
@@ -7607,7 +7651,7 @@ StageRegs GateWaitPlayer3CD(StageRegs r)
     push8(r.x);
     r.x = 0x06;
     r.nz = 0x06;
-    r = orig_shim(r, 0x9A2F, 0x400F);
+    r = vector_call(r, 0x9A2F, abi_VecStartListChannelKind2);
     r.x = pull8();
     r.nz = r.x;
     return r;
@@ -7672,7 +7716,7 @@ static Regs gate_frame(Regs r, uint16_t ret)
     push8(r.x);
     r.x = 0x05;
     r.nz = 0x05;
-    r = orig_shim(r, ret, 0x400F);
+    r = vector_call(r, ret, abi_VecStartListChannelKind2);
     r.x = pull8();
     r.nz = r.x;
     return r;
@@ -7711,7 +7755,7 @@ StageRegs GateOpen3CD(StageRegs r)
     r = loaded(r, (uint8_t)(RD8(ZP->field8c) | 0x80));
     WR8(ZP->field8c, r.a);
     r = loaded(r, 0x56);
-    return orig_tail_shim(r, SOUND_HOOK);
+    return vector_tail(r, abi_VecSoundCommand);
 }
 
 void abi_GateOpen3CD(void)
@@ -7794,7 +7838,7 @@ StageRegs GateClose3CD(StageRegs r)
     }
     r.nz = INC8(OBJ->substate[24 + r.x]);
     r = loaded(r, 0x56);
-    return orig_tail_shim(r, SOUND_HOOK);
+    return vector_tail(r, abi_VecSoundCommand);
 }
 
 void abi_GateClose3CD(void)

@@ -141,6 +141,9 @@
 #define OBJ_DISSOLVE_PHASE_P 0x38D8 /* a dissolving object's use of OBJ_WORK_P: the dissolve's phase 0 to 63 (DissolveStep) */
 #define OBJ_DISSOLVE_PHASE_L 0x3778 /* a dissolving object's use of OBJ_WORK_L: the dissolve's phase 0 to 63 (DissolveStep) */
 #define OBJ_DISSOLVE_PHASE_N 0x3828 /* a dissolving object's use of OBJ_WORK_N: the dissolve's phase 0 to 63 (DissolveStep) */
+#define OBJ_VX_SUM_FRAC 0x3720 /* a summed velocity's use of OBJ_WORK_K: the fraction of the object's X velocity sum (SumXVelocity0EBC) */
+#define OBJ_VX_SUM 0x3778 /* a summed velocity's use of OBJ_WORK_L: the middle byte of the object's X velocity sum (SumXVelocity0EBC) */
+#define OBJ_VX_SUM_HI 0x37D0 /* a summed velocity's use of OBJ_WORK_M: the high byte of the object's X velocity sum (SumXVelocity0EBC) */
 #define OBJ_WORK_A 0x2EE0 /* a work byte of the object: what it holds is its kind's (a timer, an index, a speed, a step); each area names its use */
 #define OBJ_SCROLL_BAND 0x2F38 /* bits 0 to 6 the scroll-speed band the object moves with (ScrollSpeedX and Y by it, RunObjects); bit 7 records an event when told to */
 #define OBJ_EVENT_ID 0x3098 /* event this object records */
@@ -745,6 +748,7 @@
 #define ZeroPage 0x2000 /* the zero page's first byte as a logical address: KernelStart clears it up to zRamBaseBank */
 #define ListChannelClearEnd 0x3CFF /* the first byte past what ClearListChannels clears from ListChannelKind */
 #define GameRamClearEnd 0x3D40 /* the first byte past what ResetGameState clears from GameRamStart */
+#define ScrollBandYFracStep 0x3EE6 /* by band: the scroll's Y fraction less the band's, as MoveXWithScrollBand117B leaves it */
 #define ScrollStateClearEnd 0x3EEE /* the first byte past what ClearScreenState clears from ScrollXFrac */
 #define AdpcmRecords 0x7135 /* by ADPCM sound, four bytes: its disc address (less the track's start by AdpcmLoad) and its sector count */
 #define AdpcmStreamRecords 0x720D /* by sound played from the disc, five bytes: its disc address and _AL, _AH for the BIOS's ADPCM play */

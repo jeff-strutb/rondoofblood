@@ -539,6 +539,9 @@ alias,ObjectTable,dissolve_phase_k,work_k,OBJ_DISSOLVE_PHASE_K
 alias,ObjectTable,dissolve_phase_p,work_p,OBJ_DISSOLVE_PHASE_P
 alias,ObjectTable,dissolve_phase_l,work_l,OBJ_DISSOLVE_PHASE_L
 alias,ObjectTable,dissolve_phase_n,work_n,OBJ_DISSOLVE_PHASE_N
+alias,ObjectTable,vx_sum_frac,work_k,OBJ_VX_SUM_FRAC
+alias,ObjectTable,vx_sum,work_l,OBJ_VX_SUM
+alias,ObjectTable,vx_sum_hi,work_m,OBJ_VX_SUM_HI
 alias,ObjectTable,fling_source,work_d,OBJ_FLING_SOURCE
 alias,ObjectTable,fling_wait,work_e,OBJ_FLING_WAIT
 alias,ObjectTable,pickup_timer,work_d,OBJ_PICKUP_TIMER

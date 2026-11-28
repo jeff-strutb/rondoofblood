@@ -667,7 +667,14 @@ void abi_StageFallRightDone(void)
  */
 StageRegs StageFallLeftDone(StageRegs r)
 {
-    return fall_start_done(r, 0x83EF, 0x80, 0x88EC);
+    return StageFallLeftDoneAt(r, 0x83EF, 0x88EC);
+}
+
+/* StageFallLeftDone's body, init_ret the address after its JSR to InitStage and init where it goes: the builds of the
+ * overlay that hold these instructions at other addresses (stage_programs_census.c) pass their own. */
+StageRegs StageFallLeftDoneAt(StageRegs r, uint16_t init_ret, uint16_t init)
+{
+    return fall_start_done(r, init_ret, 0x80, init);
 }
 
 void abi_StageFallLeftDone(void)

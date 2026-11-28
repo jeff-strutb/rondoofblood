@@ -1859,3 +1859,24 @@ void abi_StageFallRightDone026D(void)
 {
     stage_regs_load_shim(StageFallRightDone026D(stage_regs_entry_shim()));
 }
+
+/*
+ * @routine 026D:3C4 StageFallLeftDone026D
+ * @run 6B:83C4
+ * WHAT IT DOES: The last step of the fall to the left: the stage set up again and the player walked on by pad $80 (as
+ * StageFallLeftDone, 024D:3EC). Programs 031D, 043D, 064D, 10DD, 122D, 1A2D, 1B8D and 1CED hold the same bytes.
+ * HOW: StageFallLeftDoneAt (stage_flow.c), the body of 024D:3EC, with this program's JSR at $83C4 to InitStage026E at
+ * $88A2, the C of the routine loaded there.
+ * WAITS: where InitStage026E waits.
+ * Entry: nothing. Exit: A $80, N and Z from it; X, Y, C and V as InitStage026E left them.
+ * Nothing the game does loads this program (codemap.unloaded_programs), so nothing is known to reach it.
+ */
+StageRegs StageFallLeftDone026D(StageRegs r)
+{
+    return StageFallLeftDoneAt(r, 0x83C7, 0x88A2);
+}
+
+void abi_StageFallLeftDone026D(void)
+{
+    stage_regs_load_shim(StageFallLeftDone026D(stage_regs_entry_shim()));
+}

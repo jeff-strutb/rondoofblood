@@ -2320,3 +2320,22 @@ StageFallRightDone026D:
     lda #$20
     sta a:OBJ_PAD_FORCED
     rts
+
+; @routine 026D:3C4 StageFallLeftDone026D
+; @run 6B:83C4
+; WHAT IT DOES: The last step of the fall to the left: the stage set up again and the player walked on by pad $80 (as
+; StageFallLeftDone, 024D:3EC). Programs 031D, 043D, 064D, 10DD, 122D, 1A2D, 1B8D and 1CED hold the same bytes.
+; HOW: JSR InitStage026E; sub-mode 1, zField8C cleared; $20 frames of pad $80.
+; WAITS: where InitStage026E waits.
+; Entry: nothing. Exit: A $80, N and Z from it; X, Y, C and V as InitStage026E left them.
+; Nothing the game does loads this program (codemap.unloaded_programs), so nothing is known to reach it.
+StageFallLeftDone026D:
+    jsr InitStage026E
+    lda #$01
+    sta z:zGameSubMode
+    stz z:zField8C
+    lda #$20
+    sta a:OBJ_PAD_FORCE_FRAMES
+    lda #$80
+    sta a:OBJ_PAD_FORCED
+    rts

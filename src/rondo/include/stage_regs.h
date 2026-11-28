@@ -85,4 +85,9 @@ StageRegs StageFallRightLandAt(StageRegs r, uint16_t at);
  * address it goes to. */
 StageRegs StageFallRightDoneAt(StageRegs r, uint16_t init_ret, uint16_t init);
 
+
+/* system/stage_flow.c: StageFallLeftDone (024D:3EC) with init_ret the address after its JSR to InitStage and init the
+ * address it goes to. */
+StageRegs StageFallLeftDoneAt(StageRegs r, uint16_t init_ret, uint16_t init);
+
 #endif

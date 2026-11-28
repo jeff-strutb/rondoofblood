@@ -386,7 +386,7 @@ void abi_StageEntryD3CD(void)
  */
 StageRegs StageEntryE3CD(StageRegs r)
 {
-    return StageProbePoints3CD(r);
+    return resident_tail(r, 0x968D);
 }
 
 void abi_StageEntryE3CD(void)
@@ -413,7 +413,7 @@ void abi_StageEntryE3CD(void)
  */
 StageRegs StageEntryF3CD(StageRegs r)
 {
-    return StageProbeAgain3CD(r);
+    return resident_tail(r, 0x96DB);
 }
 
 void abi_StageEntryF3CD(void)
@@ -882,15 +882,15 @@ StageRegs StageSubModeStart3CD(StageRegs r)
     uint8_t value;
 
     r = vector_call(r, 0x8128, abi_VecResetGameState);
-    CALL(0x812B, StageRouteSetUpA3CD(r));
-    CALL(0x812E, StageRouteSetUpB3CD(r));
-    CALL(0x8131, StageLoadRowMap3CD(r));
-    CALL(0x8134, StageResetScroll3CD(r));
+    r = resident_call(r, 0x812B, 0x884D);
+    r = resident_call(r, 0x812E, 0x885B);
+    r = resident_call(r, 0x8131, 0x881E);
+    r = resident_call(r, 0x8134, 0x8878);
     r = map_banks_5_6(r, 0x8137);
     r = resident_call(r, 0x813A, 0xA003);
     CALL(0x813D, StageHudStart3CD(r));
     CALL(0x8140, StageOpeningStart3CD(r));
-    CALL(0x8143, StageLevelStart3CD(r));
+    r = resident_call(r, 0x8143, 0x89B2);
     WR8(ZP->paused, 0);
     wr8(FADE_ACTIVE, 0);
     r.nz = INC8(ZP->game_sub_mode);
@@ -1431,7 +1431,7 @@ StageRegs StageSubModeDeath3CD(StageRegs r)
     }
     r = map_banks_5_6(r, 0x8312);
     r = resident_call(r, 0x8315, 0xA015);
-    return StageLevelStart3CD(r);
+    return resident_tail(r, 0x89B2);
 }
 
 void abi_StageSubModeDeath3CD(void)
@@ -1493,7 +1493,7 @@ static Regs respawn(Regs r, uint16_t ret)
 {
     uint8_t facing;
 
-    CALL(ret, StageResetScroll3CD(r));
+    r = resident_call(r, ret, 0x8878);
     r = loaded(r, 1);
     WR8(ZP->game_sub_mode, 1);
     r = loaded(r, RD8(ZP->field8c));
@@ -1568,7 +1568,7 @@ void abi_StageDeathRespawnB3CD(void)
  * */
 static Regs fall_ends(Regs r, uint16_t ret, uint8_t step)
 {
-    CALL(ret, StageResetScroll3CD(r));
+    r = resident_call(r, ret, 0x8878);
     r = loaded(r, 1);
     WR8(ZP->game_sub_mode, 1);
     WR8(ZP->field8c, 0);
@@ -1826,16 +1826,16 @@ void abi_StageSubModeCleared3CD(void)
 StageRegs StageClearedNextStage3CD(StageRegs r)
 {
     r = vector_call(r, 0x8412, abi_VecClearScreenState);
-    CALL(0x8415, StageRouteSetUpA3CD(r));
-    CALL(0x8418, StageRouteSetUpB3CD(r));
-    CALL(0x841B, StageLoadRowMap3CD(r));
-    CALL(0x841E, StageResetScroll3CD(r));
+    r = resident_call(r, 0x8415, 0x884D);
+    r = resident_call(r, 0x8418, 0x885B);
+    r = resident_call(r, 0x841B, 0x881E);
+    r = resident_call(r, 0x841E, 0x8878);
     CALL(0x8421, StageHudStart3CD(r));
     r = loaded(r, 2);
     WR8(ZP->field8a, 2);
     r = map_banks_5_6(r, 0x8428);
     r = resident_call(r, 0x842B, 0xA003);
-    CALL(0x842E, StageLevelStart3CD(r));
+    r = resident_call(r, 0x842E, 0x89B2);
     WR8(ZP->paused, 0);
     r = loaded(r, 1);
     WR8(ZP->game_sub_mode, 1);
@@ -2668,7 +2668,7 @@ StageRegs StageClearedEnding3CD(StageRegs r)
     r = loaded(r, (uint8_t)(RD8(ZP->field8c) & 0x7F));
     if (r.a == 0) {
         WR8(ZP->field8c, 0);
-        return StageNextRouteStage3CD(r);
+        return resident_tail(r, 0x8619);
     }
     WR8(ZP->field8c, r.a);
     r.nz = INC8(ZP->mode_done);

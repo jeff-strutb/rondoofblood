@@ -2057,3 +2057,23 @@ void abi_StageWalkOutScroll026D(void)
 {
     stage_regs_load_shim(StageWalkOutScroll026D(stage_regs_entry_shim()));
 }
+
+/*
+ * @routine 026D:656 StageStopAndStep026D
+ * @run 6B:8656
+ * WHAT IT DOES: The scroll stopped, a frame of the objects, the next step (as StageStopAndStep, 024D:68C). Programs 031D, 043D, 064D, 10DD, 122D, 1A2D, 1B8D and 1CED hold the same bytes.
+ * HOW: StageStopAndStepAt (stage_steps.c), the body of 024D:68C, at $8656 with its calls to $80AE and $8A05, each the
+ * C of the routine loaded there.
+ * WAITS: as the calls.
+ * Entry: nothing. Exit: N and Z from zField85's INC; the rest as the objects left them.
+ * Nothing the game does loads this program (codemap.unloaded_programs), so nothing is known to reach it.
+ */
+StageRegs StageStopAndStep026D(StageRegs r)
+{
+    return StageStopAndStepAt(r, 0x8656, 0x80AE, 0x8A05);
+}
+
+void abi_StageStopAndStep026D(void)
+{
+    stage_regs_load_shim(StageStopAndStep026D(stage_regs_entry_shim()));
+}

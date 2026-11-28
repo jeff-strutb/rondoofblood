@@ -129,4 +129,8 @@ StageRegs StageClearedScrollOnAt(StageRegs r, uint16_t ret, uint16_t step);
 StageRegs StageWalkOutScrollAt(StageRegs r, uint16_t at, uint16_t scroll_steps, uint16_t player_steps, uint16_t stop_x,
                                  uint16_t camera, uint16_t step, uint16_t scroll_off);
 
+
+/* system/stage_steps.c: StageStopAndStep (024D:68C) run at `at`, with where its two calls go. */
+StageRegs StageStopAndStepAt(StageRegs r, uint16_t at, uint16_t scroll_off, uint16_t step);
+
 #endif

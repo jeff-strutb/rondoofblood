@@ -247,8 +247,16 @@ void abi_StageShowAndStep(void)
  */
 StageRegs StageStopAndStep(StageRegs r)
 {
-    r = call_to(r, 0x868F, 0x80C5);
-    r = call_to(r, 0x8692, 0x8A4F);
+    return StageStopAndStepAt(r, 0x868C, 0x80C5, 0x8A4F);
+}
+
+/* StageStopAndStep's body, at the address it runs at (its JSRs return to at + 3 and + 6), with where its calls to
+ * StageScrollSpeedsOff and StepScrollAndRunObjects go: the builds of the overlay that hold these instructions at
+ * another address (stage_programs_census.c) pass their own. */
+StageRegs StageStopAndStepAt(StageRegs r, uint16_t at, uint16_t scroll_off, uint16_t step)
+{
+    r = call_to(r, (uint16_t)(at + 3), scroll_off);
+    r = call_to(r, (uint16_t)(at + 6), step);
     r.nz = INC8(ZP->field85);
     return r;
 }

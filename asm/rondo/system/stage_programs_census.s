@@ -2529,3 +2529,16 @@ StageWalkOutScroll026D_at0:
     stz a:ScrollStepXHi
     inc z:zField85
     rts
+
+; @routine 026D:656 StageStopAndStep026D
+; @run 6B:8656
+; WHAT IT DOES: The scroll stopped, a frame of the objects, the next step (as StageStopAndStep, 024D:68C). Programs 031D, 043D, 064D, 10DD, 122D, 1A2D, 1B8D and 1CED hold the same bytes.
+; HOW: StageScrollSpeedsOff026D and StepScrollAndRunObjects026E, INC zField85.
+; WAITS: as the calls.
+; Entry: nothing. Exit: N and Z from zField85's INC; the rest as the objects left them.
+; Nothing the game does loads this program (codemap.unloaded_programs), so nothing is known to reach it.
+StageStopAndStep026D:
+    jsr StageScrollSpeedsOff026D
+    jsr StepScrollAndRunObjects026E
+    inc z:zField85
+    rts

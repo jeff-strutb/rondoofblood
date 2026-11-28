@@ -205,4 +205,7 @@ void abi_StageClearedScrollOn026D(void);
 StageRegs StageWalkOutScroll026D(StageRegs r);
 void abi_StageWalkOutScroll026D(void);
 
+StageRegs StageStopAndStep026D(StageRegs r);
+void abi_StageStopAndStep026D(void);
+
 #endif

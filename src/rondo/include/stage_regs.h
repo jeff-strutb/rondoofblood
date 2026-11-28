@@ -145,4 +145,12 @@ StageRegs BossFlashMaskCellAt(StageRegs r, uint16_t at, uint16_t point, uint16_t
 /* object/stage_boss_flash.c: BossGaugeFlash (024E:525) run at `at`, with its table of cells and its mask's address. */
 StageRegs BossGaugeFlashAt(StageRegs r, uint16_t at, uint16_t addresses, uint16_t mask_cell);
 
+
+/* system/stage_tile_rows.c: BlendStageTileRows (024E:584), its code moved by `moved` from the loaded overlays', with
+ * the C of its tile address setter. */
+TileRowsExit BlendStageTileRowsAt(uint8_t phase, uint8_t row_a, uint8_t row_b, uint16_t moved, void (*set)(void));
+
+/* system/stage_tile_rows.c: what a tile row blend leaves, set on the registers. */
+void blend_exit_shim(TileRowsExit out);
+
 #endif

@@ -4,6 +4,7 @@
 #include "routines.h"
 #include "ram.h"
 #include "stage_map.h"
+#include "stage_regs.h"
 
 enum { ROW_ENTRIES = 5, BLEND_NONE = 5 };
 
@@ -112,19 +113,27 @@ static uint8_t write_entries(int kind, uint8_t *x_out, bool *v)
     return a;
 }
 
-/* Calls whichever SetStageTileVramAddress the stage's overlay holds at $8E87. */
-static void set_tile_address(uint16_t ret)
+/* Whichever SetStageTileVramAddress the stage's overlay holds at $8E87. */
+static void loaded_tile_address(void)
 {
-    jsr_push(ret);
     if (resident_at(0x8E87) == DISC(0x024E, 0x687)) {
         SetStageTileVramAddress();
     } else {
         SetStageTileVramAddressLong();
     }
+}
+
+/* The JSR to the tile address setter `set`, returning to ret. */
+static void set_tile_address(uint16_t ret, void (*set)(void))
+{
+    jsr_push(ret);
+    set();
     jsr_pop();
 }
 
-static TileRowsExit blend_rows(uint8_t phase, uint8_t row_a, uint8_t row_b)
+/* The blend's body: moved is how far a build's code sits from the loaded overlays' (its two JSRs return to $8DA8
+ * and $8E40 there), set the C of its tile address setter. */
+static TileRowsExit blend_rows(uint8_t phase, uint8_t row_a, uint8_t row_b, uint16_t moved, void (*set)(void))
 {
     TileRowsExit out = { 0, 0, false };
     uint8_t step;
@@ -133,14 +142,14 @@ static TileRowsExit blend_rows(uint8_t phase, uint8_t row_a, uint8_t row_b)
     WR8(ZP->temp04, phase);
     ROW_POINTER(row_a, ZP->temp00, ZP->temp01, v);
     ROW_POINTER(row_b, ZP->temp06, ZP->temp07, v);
-    set_tile_address(0x8DA8);
+    set_tile_address((uint16_t)(0x8DA8 + moved), set);
     step = RD8(ZP->temp04);
     if ((step & 1) == 0) {
         out.a = write_entries(1, &out.x, &v);
     } else {
         write_entries(2, &out.x, &v);
         INC8(ZP->temp04);
-        set_tile_address(0x8E40);
+        set_tile_address((uint16_t)(0x8E40 + moved), set);
         out.a = write_entries(3, &out.x, &v);
     }
     out.v = v;
@@ -163,7 +172,7 @@ static TileRowsExit blend_rows(uint8_t phase, uint8_t row_a, uint8_t row_b)
  */
 TileRowsExit BlendStageTileRows(uint8_t phase, uint8_t row_a, uint8_t row_b)
 {
-    return blend_rows(phase, row_a, row_b);
+    return blend_rows(phase, row_a, row_b, 0, loaded_tile_address);
 }
 
 /* What the blend leaves in A, X, Y and the flags. */
@@ -177,9 +186,16 @@ void blend_exit_shim(TileRowsExit out)
     abi_flag(P_V, out.v);
 }
 
+/* BlendStageTileRows' body for the builds of the overlay that hold it elsewhere (stage_programs_census.c): moved how
+ * far their code sits from the loaded overlays', set the C of their tile address setter. */
+TileRowsExit BlendStageTileRowsAt(uint8_t phase, uint8_t row_a, uint8_t row_b, uint16_t moved, void (*set)(void))
+{
+    return blend_rows(phase, row_a, row_b, moved, set);
+}
+
 void abi_BlendStageTileRows(void)
 {
-    blend_exit_shim(blend_rows(cpu.x, cpu.a, cpu.y));
+    blend_exit_shim(blend_rows(cpu.x, cpu.a, cpu.y, 0, loaded_tile_address));
 }
 
 /*

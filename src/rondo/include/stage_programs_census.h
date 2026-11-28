@@ -242,4 +242,7 @@ void abi_SetGaugeAddressB031E(void);
 StageRegs BossGaugeFlash026E(StageRegs r);
 void abi_BossGaugeFlash026E(void);
 
+TileRowsExit BlendStageTileRows026E(uint8_t phase, uint8_t row_a, uint8_t row_b);
+void abi_BlendStageTileRows026E(void);
+
 #endif

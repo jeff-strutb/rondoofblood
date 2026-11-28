@@ -2329,3 +2329,33 @@ void abi_BossGaugeFlash026E(void)
 {
     stage_regs_load_shim(BossGaugeFlash026E(stage_regs_entry_shim()));
 }
+
+/* The JSR to the tile address setter loaded at $8E3D (it differs between these programs): the C of the routine there. */
+static void resident_tile_address_8e3d(void)
+{
+    run_routine(0x8E3D);
+}
+
+/*
+ * @routine 026E:53A BlendStageTileRows026E
+ * @run 6B:8D3A
+ * WHAT IT DOES: Writes five tile colour values into the VRAM words of one tile row step of the stage, from one row of
+ * StageTileRows or, while a blend runs, from that row and a second one (as BlendStageTileRows, 024E:584). These are
+ * 024E:584's instructions $4A lower. Programs 031E, 043E, 064E, 10DE, 122E, 1A2E, 1B8E
+ * and 1CEE hold the same bytes, their tile address setter at $8E3D their own.
+ * HOW: BlendStageTileRowsAt (stage_tile_rows.c), the body of 024E:584, its code $4A below the loaded overlays'; its two
+ * JSRs to $8E3D go to the C of the tile address setter loaded there.
+ * WAITS: no.
+ * Entry: X the step (zTemp04), A the first row, Y the second row. Exit: A the last byte written, X the blend step, Y 5,
+ * N 0, Z 1, C 1, V from the last add.
+ * Nothing the game does loads this program (codemap.unloaded_programs), so nothing is known to reach it.
+ */
+TileRowsExit BlendStageTileRows026E(uint8_t phase, uint8_t row_a, uint8_t row_b)
+{
+    return BlendStageTileRowsAt(phase, row_a, row_b, (uint16_t)-0x4A, resident_tile_address_8e3d);
+}
+
+void abi_BlendStageTileRows026E(void)
+{
+    blend_exit_shim(BlendStageTileRows026E(cpu.x, cpu.a, cpu.y));
+}

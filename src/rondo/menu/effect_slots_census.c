@@ -21,6 +21,8 @@
 #include "front_end.h"
 #include "vram_update.h"
 #include "effect_slots_census.h"
+#include "list_channels_census.h"
+#include "list_channels.h"
 
 enum {
     EFFECT_COLOURS = 0x3C60, EFFECT_COLOUR_BYTES = 0x20,
@@ -621,7 +623,7 @@ static Exit run_effect_dispatch(const EffectLayout *layout, uint8_t type, uint8_
     case 6: exit = run_vce_restore(layout, slot, index); break;
     default:
         effect_entry_shim(high, slot, index, carry);
-        call_original(target);
+        run_routine(target);
         exit.from_cpu = true;
         return exit;
     }
@@ -4057,4 +4059,468 @@ Exit EffectColourWithTable(uint16_t table, uint8_t slot)
 
     layout.colour_table = table;
     return run_effect_colour(&layout, slot);
+}
+
+/* The title's effects (overlay sector 00C5) and the ending's kinds the ending's own code does not have (sector 0111):
+ * the same code as these versions, with their own tables. */
+static const EffectLayout LAYOUT_00C5 = {
+    0x8A84, 0x9444, 0x8A84, 0x83F2,
+    { 0x83AA, 0x8423, 0x84CC, 0x85C0, 0x8621, 0x85FA, 0x8604 }, 7,
+    0x86D3, 0x8753, 0x8784, 0x8984,
+    0x85FC, 0x8606,
+    0x839C, 0x8367, 0x8386
+};
+static const EffectLayout LAYOUT_0111 = {
+    0x0000, 0x0000, 0x89D2, 0x0000,
+    { 0x82F8, 0x8371, 0x841A, 0x850E, 0x856F, 0x8548, 0x8552 }, 7,
+    0x8621, 0x86A1, 0x86D2, 0x88D2,
+    0x854A, 0x8554,
+    0x82EA, 0x0000, 0x0000
+};
+
+/*
+ * @routine 00C5:360 EffectStep00C5
+ * @run 6C:8360
+ * WHAT IT DOES: As EffectStep1A31, whose instructions these are with this overlay's table addresses.
+ * HOW: The shared body with this overlay's layout.
+ * WAITS: no.
+ * Entry, exit: as EffectStep1A31.
+ */
+Exit EffectStep00C5(uint8_t y)
+{
+    return run_effect_step(&LAYOUT_00C5, y);
+}
+
+void abi_EffectStep00C5(void)
+{
+    exit_shim(EffectStep00C5(cpu.y));
+}
+
+/*
+ * @routine 00C5:38C EffectDispatch00C5
+ * @run 6C:838C
+ * @stop 839C
+ * WHAT IT DOES: As EffectDispatch1A31, whose instructions these are with this overlay's table addresses.
+ * HOW: The shared body with this overlay's layout.
+ * WAITS: no.
+ * Entry, exit: as EffectDispatch1A31.
+ */
+Exit EffectDispatch00C5(uint8_t type, uint8_t slot)
+{
+    return run_effect_dispatch(&LAYOUT_00C5, type, slot);
+}
+
+void abi_EffectDispatch00C5(void)
+{
+    exit_shim(EffectDispatch00C5(cpu.a, cpu.x));
+}
+
+/*
+ * @routine 00C5:3AA EffectList00C5
+ * @run 6C:83AA
+ * WHAT IT DOES: As EffectList1A31, whose instructions these are with this overlay's table addresses.
+ * HOW: The shared body with this overlay's layout.
+ * WAITS: no.
+ * Entry, exit: as EffectList1A31.
+ */
+Exit EffectList00C5(uint8_t slot)
+{
+    return run_effect_list(&LAYOUT_00C5, slot);
+}
+
+void abi_EffectList00C5(void)
+{
+    exit_shim(EffectList00C5(cpu.x));
+}
+
+/*
+ * @routine 00C5:40A ClearEffectSlot00C5
+ * @run 6C:840A
+ * WHAT IT DOES: As ClearEffectSlot1A31, whose bytes these are.
+ * HOW: Eight STZ of the slot's columns.
+ * WAITS: no.
+ * Entry: X the slot. Exit: A, X, Y and the flags kept.
+ */
+void ClearEffectSlot00C5(uint8_t slot)
+{
+    clear_effect_slot(slot);
+}
+
+void abi_ClearEffectSlot00C5(void)
+{
+    ClearEffectSlot00C5(cpu.x);
+}
+
+/*
+ * @routine 00C5:423 EffectFade00C5
+ * @run 6C:8423
+ * WHAT IT DOES: As EffectFade1A31, whose instructions these are with this overlay's table addresses.
+ * HOW: The shared body with this overlay's layout.
+ * WAITS: no.
+ * Entry, exit: as EffectFade1A31.
+ */
+Exit EffectFade00C5(uint8_t slot)
+{
+    return run_effect_fade(&LAYOUT_00C5, slot);
+}
+
+void abi_EffectFade00C5(void)
+{
+    exit_shim(EffectFade00C5(cpu.x));
+}
+
+/*
+ * @routine 00C5:4CC EffectShade00C5
+ * @run 6C:84CC
+ * WHAT IT DOES: As EffectShade1A31, whose instructions these are with this overlay's table addresses.
+ * HOW: The shared body with this overlay's layout.
+ * WAITS: no.
+ * Entry, exit: as EffectShade1A31.
+ */
+Exit EffectShade00C5(uint8_t slot)
+{
+    return run_effect_shade(slot);
+}
+
+void abi_EffectShade00C5(void)
+{
+    exit_shim(EffectShade00C5(cpu.x));
+}
+
+/*
+ * @routine 00C5:5C0 EffectColour00C5
+ * @run 6C:85C0
+ * WHAT IT DOES: As EffectColour1A31, whose instructions these are with this overlay's table addresses.
+ * HOW: The shared body with this overlay's layout.
+ * WAITS: no.
+ * Entry, exit: as EffectColour1A31.
+ */
+Exit EffectColour00C5(uint8_t slot)
+{
+    return run_effect_colour(&LAYOUT_00C5, slot);
+}
+
+void abi_EffectColour00C5(void)
+{
+    exit_shim(EffectColour00C5(cpu.x));
+}
+
+/*
+ * @routine 00C5:5FA EffectVceSave00C5
+ * @run 6C:85FA
+ * WHAT IT DOES: As EffectVceSave1A31, whose instructions these are with this overlay's table addresses.
+ * HOW: The shared body with this overlay's layout.
+ * WAITS: no.
+ * Entry, exit: as EffectVceSave1A31.
+ */
+Exit EffectVceSave00C5(uint8_t slot, uint8_t y)
+{
+    return run_vce_save(&LAYOUT_00C5, slot, y);
+}
+
+void abi_EffectVceSave00C5(void)
+{
+    exit_shim(EffectVceSave00C5(cpu.x, cpu.y));
+}
+
+/*
+ * @routine 00C5:604 EffectVceRestore00C5
+ * @run 6C:8604
+ * WHAT IT DOES: As EffectVceRestore1A31, whose instructions these are with this overlay's table addresses.
+ * HOW: The shared body with this overlay's layout.
+ * WAITS: no.
+ * Entry, exit: as EffectVceRestore1A31.
+ */
+Exit EffectVceRestore00C5(uint8_t slot, uint8_t y)
+{
+    return run_vce_restore(&LAYOUT_00C5, slot, y);
+}
+
+void abi_EffectVceRestore00C5(void)
+{
+    exit_shim(EffectVceRestore00C5(cpu.x, cpu.y));
+}
+
+/*
+ * @routine 00C5:60E SelectSavedBank00C5
+ * @run 6C:860E
+ * WHAT IT DOES: As SelectSavedBank1A31, whose instructions these are with this overlay's table addresses.
+ * HOW: The shared body with this overlay's layout.
+ * WAITS: no.
+ * Entry, exit: as SelectSavedBank1A31.
+ */
+Exit SelectSavedBank00C5(void)
+{
+    return select_saved_bank();
+}
+
+void abi_SelectSavedBank00C5(void)
+{
+    exit_shim(SelectSavedBank00C5());
+}
+
+/*
+ * @routine 00C5:621 EffectFlash00C5
+ * @run 6C:8621
+ * WHAT IT DOES: As EffectFlash1A31, whose instructions these are with this overlay's table addresses.
+ * HOW: The shared body with this overlay's layout.
+ * WAITS: no.
+ * Entry, exit: as EffectFlash1A31.
+ */
+Exit EffectFlash00C5(uint8_t slot, uint8_t y)
+{
+    return run_effect_flash(&LAYOUT_00C5, slot, y);
+}
+
+void abi_EffectFlash00C5(void)
+{
+    exit_shim(EffectFlash00C5(cpu.x, cpu.y));
+}
+
+/*
+ * @routine 00C5:6AC EffectFlashEnd00C5
+ * @run 6C:86AC
+ * WHAT IT DOES: As EffectFlashEnd1A31, whose instructions these are with this overlay's table addresses.
+ * HOW: The shared body with this overlay's layout.
+ * WAITS: no.
+ * Entry, exit: as EffectFlashEnd1A31.
+ */
+Exit EffectFlashEnd00C5(uint8_t slot, uint8_t y)
+{
+    return end_effect_flash(&LAYOUT_00C5, slot, y);
+}
+
+void abi_EffectFlashEnd00C5(void)
+{
+    exit_shim(EffectFlashEnd00C5(cpu.x, cpu.y));
+}
+
+/*
+ * @routine 0111:41A EffectShade0111
+ * @run 6C:841A
+ * WHAT IT DOES: As EffectShade1A31, whose instructions these are with this overlay's table addresses.
+ * HOW: The shared body with this overlay's layout.
+ * WAITS: no.
+ * Entry, exit: as EffectShade1A31.
+ */
+Exit EffectShade0111(uint8_t slot)
+{
+    return run_effect_shade(slot);
+}
+
+void abi_EffectShade0111(void)
+{
+    exit_shim(EffectShade0111(cpu.x));
+}
+
+/*
+ * @routine 0111:50E EffectColour0111
+ * @run 6C:850E
+ * WHAT IT DOES: As EffectColour1A31, whose instructions these are with this overlay's table addresses.
+ * HOW: The shared body with this overlay's layout.
+ * WAITS: no.
+ * Entry, exit: as EffectColour1A31.
+ */
+Exit EffectColour0111(uint8_t slot)
+{
+    return run_effect_colour(&LAYOUT_0111, slot);
+}
+
+void abi_EffectColour0111(void)
+{
+    exit_shim(EffectColour0111(cpu.x));
+}
+
+/*
+ * @routine 0111:548 EffectVceSave0111
+ * @run 6C:8548
+ * WHAT IT DOES: As EffectVceSave1A31, whose instructions these are with this overlay's table addresses.
+ * HOW: The shared body with this overlay's layout.
+ * WAITS: no.
+ * Entry, exit: as EffectVceSave1A31.
+ */
+Exit EffectVceSave0111(uint8_t slot, uint8_t y)
+{
+    return run_vce_save(&LAYOUT_0111, slot, y);
+}
+
+void abi_EffectVceSave0111(void)
+{
+    exit_shim(EffectVceSave0111(cpu.x, cpu.y));
+}
+
+/*
+ * @routine 0111:552 EffectVceRestore0111
+ * @run 6C:8552
+ * WHAT IT DOES: As EffectVceRestore1A31, whose instructions these are with this overlay's table addresses.
+ * HOW: The shared body with this overlay's layout.
+ * WAITS: no.
+ * Entry, exit: as EffectVceRestore1A31.
+ */
+Exit EffectVceRestore0111(uint8_t slot, uint8_t y)
+{
+    return run_vce_restore(&LAYOUT_0111, slot, y);
+}
+
+void abi_EffectVceRestore0111(void)
+{
+    exit_shim(EffectVceRestore0111(cpu.x, cpu.y));
+}
+
+/*
+ * @routine 0111:55C SelectSavedBank0111
+ * @run 6C:855C
+ * WHAT IT DOES: As SelectSavedBank1A31, whose instructions these are with this overlay's table addresses.
+ * HOW: The shared body with this overlay's layout.
+ * WAITS: no.
+ * Entry, exit: as SelectSavedBank1A31.
+ */
+Exit SelectSavedBank0111(void)
+{
+    return select_saved_bank();
+}
+
+void abi_SelectSavedBank0111(void)
+{
+    exit_shim(SelectSavedBank0111());
+}
+
+/*
+ * @routine 0111:56F EffectFlash0111
+ * @run 6C:856F
+ * WHAT IT DOES: As EffectFlash1A31, whose instructions these are with this overlay's table addresses.
+ * HOW: The shared body with this overlay's layout.
+ * WAITS: no.
+ * Entry, exit: as EffectFlash1A31.
+ */
+Exit EffectFlash0111(uint8_t slot, uint8_t y)
+{
+    return run_effect_flash(&LAYOUT_0111, slot, y);
+}
+
+void abi_EffectFlash0111(void)
+{
+    exit_shim(EffectFlash0111(cpu.x, cpu.y));
+}
+
+/*
+ * @routine 0111:5FA EffectFlashEnd0111
+ * @run 6C:85FA
+ * WHAT IT DOES: As EffectFlashEnd1A31, whose instructions these are with this overlay's table addresses.
+ * HOW: The shared body with this overlay's layout.
+ * WAITS: no.
+ * Entry, exit: as EffectFlashEnd1A31.
+ */
+Exit EffectFlashEnd0111(uint8_t slot, uint8_t y)
+{
+    return end_effect_flash(&LAYOUT_0111, slot, y);
+}
+
+void abi_EffectFlashEnd0111(void)
+{
+    exit_shim(EffectFlashEnd0111(cpu.x, cpu.y));
+}
+
+/* The eight list channels, from the last down: each with a kind is run, X kept across it. */
+static ChannelExit run_all_channels(uint8_t y, bool c, bool v)
+{
+    ChannelExit out = { 0 };
+    uint8_t slot = 7, kind;
+
+    out.y = y;
+    out.c = c;
+    out.v = v;
+    do {
+        kind = rd8((uint16_t)(ListChannelKind + slot));
+        out.a = kind;
+        out.nz = kind;
+        if (kind != 0) {
+            ChannelExit run;
+
+            push8(slot);
+            jsr_push(0x8013);
+            run = RunListChannel00C5(kind, slot, out.y, out.c, out.v);
+            jsr_pop();
+            slot = pull8();
+            out.a = run.a;
+            if (run.y_set) {
+                out.y = run.y;
+                out.y_set = true;
+            }
+            if (run.c_set) {
+                out.c = run.c;
+                out.c_set = true;
+            }
+            if (run.v_set) {
+                out.v = run.v;
+                out.v_set = true;
+            }
+        }
+        slot--;
+    } while ((slot & 0x80) == 0);
+    out.x = slot;
+    out.nz = slot;
+    return out;
+}
+
+/*
+ * @routine 00C5:009 RunListChannels00C5
+ * @run 6C:8009
+ * WHAT IT DOES: Runs every list channel that has a kind, from channel 7 down to 0.
+ * HOW: A loop with PHX, BSR to RunListChannel at $8018 and PLX.
+ * WAITS: no.
+ * Entry: nothing. Exit: X $FF, N set, Z clear; A the last kind read or what the last channel left; Y, C, V as the last channel left them.
+ */
+ChannelExit RunListChannels00C5(uint8_t y, bool c, bool v)
+{
+    return run_all_channels(y, c, v);
+}
+
+void abi_RunListChannels00C5(void)
+{
+    ChannelExitShim(RunListChannels00C5(cpu.y, (cpu.p & P_C) != 0, (cpu.p & P_V) != 0));
+}
+
+/*
+ * @routine 0111:009 RunListChannels0111
+ * @run 6C:8009
+ * WHAT IT DOES: Runs every list channel that has a kind, from channel 7 down to 0. The same bytes as 00C5:009.
+ * HOW: A loop with PHX, BSR to RunListChannel at $8018 and PLX.
+ * WAITS: no.
+ * Entry: nothing. Exit: X $FF, N set, Z clear; A the last kind read or what the last channel left; Y, C, V as the last channel left them.
+ */
+ChannelExit RunListChannels0111(uint8_t y, bool c, bool v)
+{
+    return run_all_channels(y, c, v);
+}
+
+void abi_RunListChannels0111(void)
+{
+    ChannelExitShim(RunListChannels0111(cpu.y, (cpu.p & P_C) != 0, (cpu.p & P_V) != 0));
+}
+
+/*
+ * @routine 00C5:000 VecRunListChannels00C5
+ * @run 6C:8000
+ * WHAT IT DOES: Goes to the overlay's routine at $8009.
+ * HOW: One jump.
+ * WAITS: no.
+ * Entry, exit: as the routine it goes to.
+ */
+void abi_VecRunListChannels00C5(void)
+{
+    run_routine(0x8009);
+}
+
+/*
+ * @routine 00C5:003 VecEffectStep00C5
+ * @run 6C:8003
+ * WHAT IT DOES: Goes to the overlay's routine at $8360.
+ * HOW: One jump.
+ * WAITS: no.
+ * Entry, exit: as the routine it goes to.
+ */
+void abi_VecEffectStep00C5(void)
+{
+    run_routine(0x8360);
 }

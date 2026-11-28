@@ -6534,3 +6534,870 @@ EffectFlashEnd25F7:
     sta a:VCE_ADDR_LO
     tia $88C3,VCE_DATA_LO,$0100
     jmp ClearEffectSlot25F7
+
+; @routine 00C5:000 VecRunListChannels00C5
+; @run 6C:8000
+; WHAT IT DOES: Goes to the overlay's routine at $8009.
+; HOW: One jump.
+; WAITS: no.
+; Entry, exit: as the routine it goes to.
+EffectTypes00C5 = $839C ; 00C5's palette effect handlers by kind
+EffectLists00C5 = $8A84 ; 00C5's lists for a negative list number
+EffectFadeLists00C5 = $9444 ; 00C5's fade lists for a negative list number
+FlashColours00C5 = $86D3 ; 00C5's flash colours
+FlashPalettes00C5 = $8753 ; 00C5's flash palette addresses
+SavedBackground00C5 = $8784 ; where 00C5's flash keeps the background colours
+SavedSprites00C5 = $8984 ; where 00C5's flash keeps the sprite colours
+FlashColours0111 = $8621 ; 0111's flash colours
+FlashPalettes0111 = $86A1 ; 0111's flash palette addresses
+SavedBackground0111 = $86D2 ; where 0111's flash keeps the background colours
+SavedSprites0111 = $88D2 ; where 0111's flash keeps the sprite colours
+VceSaveArea = $B000 ; the super RAM the 1024 bytes of colours are saved in
+VecRunListChannels00C5:
+    jmp RunListChannels00C5
+
+; @routine 00C5:003 VecEffectStep00C5
+; @run 6C:8003
+; WHAT IT DOES: Goes to the overlay's routine at $8360.
+; HOW: One jump.
+; WAITS: no.
+; Entry, exit: as the routine it goes to.
+VecEffectStep00C5:
+    jmp EffectStep00C5
+
+; @routine 00C5:009 RunListChannels00C5
+; @run 6C:8009
+; WHAT IT DOES: Runs every list channel that has a kind, from channel 7 down to 0.
+; HOW: A loop with PHX, BSR to RunListChannel at $8018 and PLX.
+; WAITS: no.
+; Entry: nothing. Exit: X $FF, N set, Z clear; A the last kind read or what the last channel left; Y, C, V as the last channel left them.
+RunListChannels00C5:
+    ldx #$07
+RunListChannels00C5_t800B:
+    lda a:ListChannelKind,x
+    beq RunListChannels00C5_t8014
+    phx
+    bsr RunListChannel00C5
+    plx
+RunListChannels00C5_t8014:
+    dex
+    bpl RunListChannels00C5_t800B
+    rts
+
+; @routine 00C5:360 EffectStep00C5
+; @run 6C:8360
+; WHAT IT DOES: As EffectStep1A31, whose instructions these are with this overlay's table addresses.
+; HOW: The shared body with this overlay's layout.
+; WAITS: no.
+; Entry, exit: as EffectStep1A31.
+EffectStep00C5:
+    bbr0 zPaused,EffectStep00C5_at0
+    ldx #$02
+    bsr EffectStep00C5_at1
+    ldx #$0B
+EffectStep00C5_at1:
+    lda a:ScriptSlotKind,x
+    bne EffectDispatch00C5
+    rts
+EffectStep00C5_at2:
+    ldx #$03
+    jmp EffectFlash00C5
+EffectStep00C5_at0:
+    lda a:ScriptSlotKind+3
+    cmp #$05
+    beq EffectStep00C5_at2
+    ldx #$0B
+EffectStep00C5_at4:
+    lda a:ScriptSlotKind,x
+    beq EffectStep00C5_at3
+    stx z:zRichterObject
+    bsr EffectDispatch00C5
+    ldx z:zRichterObject
+EffectStep00C5_at3:
+    dex
+    bpl EffectStep00C5_at4
+    rts
+
+; @routine 00C5:38C EffectDispatch00C5
+; @run 6C:838C
+; @stop 839C
+; WHAT IT DOES: As EffectDispatch1A31, whose instructions these are with this overlay's table addresses.
+; HOW: The shared body with this overlay's layout.
+; WAITS: no.
+; Entry, exit: as EffectDispatch1A31.
+EffectDispatch00C5:
+    dec a
+    asl a
+    tay
+    lda a:EffectTypes00C5,y
+    sta z:zTemp00
+    lda a:EffectTypes00C5+1,y
+    sta z:zTemp01
+    jmp (ZeroPage)
+
+; @routine 00C5:3AA EffectList00C5
+; @run 6C:83AA
+; WHAT IT DOES: As EffectList1A31, whose instructions these are with this overlay's table addresses.
+; HOW: The shared body with this overlay's layout.
+; WAITS: no.
+; Entry, exit: as EffectList1A31.
+EffectList00C5:
+    lda a:ScriptSlotTimer,x
+    beq EffectList00C5_at0
+    dec a:ScriptSlotTimer,x
+    rts
+EffectList00C5_at0:
+    lda a:ScriptSlotScript,x
+    bpl EffectList00C5_at1
+    asl a
+    tay
+    lda a:EffectLists00C5,y
+    sta z:zTemp00
+    lda a:EffectLists00C5+1,y
+    sta z:zTemp01
+    bra EffectList00C5_at2
+EffectList00C5_at1:
+    asl a
+    tay
+    lda a:OverlayEffectLists
+    sta z:zBiosAl
+    lda a:OverlayEffectLists+1
+    sta z:zBiosAh
+    lda (zBiosAl),y
+    sta z:zTemp00
+    iny
+    lda (zBiosAl),y
+    sta z:zTemp01
+EffectList00C5_at2:
+    cly
+    lda (zTemp00),y
+    sta a:ScriptSlotTimer,x
+EffectList00C5_at4:
+    lda a:ScriptSlotField18,x
+    asl a
+    asl a
+    inc a
+    inc a
+    tay
+    lda (zTemp00),y
+    cmp #$FF
+    beq EffectList00C5_at3
+    jsr LoadPackedPaletteB
+    inc a:ScriptSlotField18,x
+    bra EffectList00C5
+EffectList00C5_at3:
+    inc a:ScriptSlotField24,x
+    stz a:ScriptSlotField18,x
+    ldy #$01
+    lda (zTemp00),y
+    bmi EffectList00C5_at4
+    and #$7F
+    cmp a:ScriptSlotField24,x
+    bcs EffectList00C5_at4
+
+; @routine 00C5:40A ClearEffectSlot00C5
+; @run 6C:840A
+; WHAT IT DOES: As ClearEffectSlot1A31, whose bytes these are.
+; HOW: Eight STZ of the slot's columns.
+; WAITS: no.
+; Entry: X the slot. Exit: A, X, Y and the flags kept.
+ClearEffectSlot00C5:
+    stz a:ScriptSlotKind,x
+    stz a:ScriptSlotScript,x
+    stz a:ScriptSlotField18,x
+    stz a:ScriptSlotField24,x
+    stz a:ScriptSlotTimer,x
+    stz a:ScriptSlotField3C,x
+    stz a:ScriptSlotField48,x
+    stz a:ScriptSlotField54,x
+    rts
+
+; @routine 00C5:423 EffectFade00C5
+; @run 6C:8423
+; WHAT IT DOES: As EffectFade1A31, whose instructions these are with this overlay's table addresses.
+; HOW: The shared body with this overlay's layout.
+; WAITS: no.
+; Entry, exit: as EffectFade1A31.
+EffectFade00C5:
+    lda a:ScriptSlotTimer,x
+    beq EffectFade00C5_at0
+    dec a:ScriptSlotTimer,x
+    rts
+EffectFade00C5_at0:
+    inc a:ScriptSlotField24,x
+    lda a:ScriptSlotField24,x
+    cmp #$08
+    bcc EffectFade00C5_at1
+    jmp ClearEffectSlot00C5
+EffectFade00C5_at1:
+    lda a:ScriptSlotScript,x
+    asl a
+    tay
+    bcc EffectFade00C5_at2
+    lda a:EffectFadeLists00C5,y
+    sta z:zTemp00
+    lda a:EffectFadeLists00C5+1,y
+    sta z:zTemp01
+    bra EffectFade00C5_at3
+EffectFade00C5_at2:
+    lda a:OverlayEffectFadeLists
+    sta z:zBiosAl
+    lda a:OverlayEffectFadeLists+1
+    sta z:zBiosAh
+    lda (zBiosAl),y
+    sta z:zTemp00
+    iny
+    lda (zBiosAl),y
+    sta z:zTemp01
+EffectFade00C5_at3:
+    cly
+    lda (zTemp00),y
+    sta a:ScriptSlotTimer,x
+    iny
+EffectFade00C5_at9:
+    lda (zTemp00),y
+    cmp #$FF
+    bne EffectFade00C5_at4
+    rts
+EffectFade00C5_at4:
+    sta z:zTemp08
+    sta a:VCE_ADDR_LO
+    iny
+    lda (zTemp00),y
+    sta z:zTemp09
+    sta a:VCE_ADDR_HI
+    iny
+    tai VCE_DATA_LO,SavedColoursLo,$0020
+    clx
+EffectFade00C5_at8:
+    lda a:SavedColoursLo,x
+    and #$07
+    beq EffectFade00C5_at5
+    dec a
+EffectFade00C5_at5:
+    sta z:zTemp02
+    lda a:SavedColoursLo,x
+    and #$38
+    beq EffectFade00C5_at6
+    sec
+    sbc #$08
+EffectFade00C5_at6:
+    ora z:zTemp02
+    sta z:zTemp02
+    lda a:SavedColoursLo,x
+    lsr a:SavedColoursLo+1,x
+    ror a
+    and #$E0
+    beq EffectFade00C5_at7
+    sec
+    sbc #$20
+EffectFade00C5_at7:
+    asl a
+    rol a:SavedColoursLo+1,x
+    ora z:zTemp02
+    sta a:SavedColoursLo,x
+    inx
+    inx
+    cpx #$20
+    bcc EffectFade00C5_at8
+    lda z:zTemp08
+    sta a:VCE_ADDR_LO
+    lda z:zTemp09
+    sta a:VCE_ADDR_HI
+    tia SavedColoursLo,VCE_DATA_LO,$0020
+    jmp EffectFade00C5_at9
+
+; @routine 00C5:4CC EffectShade00C5
+; @run 6C:84CC
+; WHAT IT DOES: As EffectShade1A31, whose instructions these are with this overlay's table addresses.
+; HOW: The shared body with this overlay's layout.
+; WAITS: no.
+; Entry, exit: as EffectShade1A31.
+EffectShade00C5:
+    lda a:ScriptSlotTimer,x
+    beq EffectShade00C5_t84D5
+    dec a:ScriptSlotTimer,x
+    rts
+EffectShade00C5_t84D5:
+    inc a:ScriptSlotField24,x
+    lda a:ScriptSlotField24,x
+    cmp #$08
+    bcc EffectShade00C5_at0
+    jmp ClearEffectSlot00C5
+EffectShade00C5_at0:
+    eor #$07
+    sta z:zTemp08
+    asl a
+    asl a
+    asl a
+    sta z:zTemp09
+    asl a
+    asl a
+    sta z:zTemp0A
+    lda a:ScriptSlotScript,x
+    asl a
+    tay
+    lda a:OverlayEffectShadeLists
+    sta z:zBiosAl
+    lda a:OverlayEffectShadeLists+1
+    sta z:zBiosAh
+    lda (zBiosAl),y
+    sta z:zTemp00
+    iny
+    lda (zBiosAl),y
+    sta z:zTemp01
+    cly
+    lda (zTemp00),y
+    sta a:ScriptSlotTimer,x
+    iny
+EffectShade00C5_t850E:
+    lda (zTemp00),y
+    cmp #$FF
+    bne EffectShade00C5_at1
+    rts
+EffectShade00C5_at1:
+    sta a:VCE_ADDR_LO
+    iny
+    lda (zTemp00),y
+    sta a:VCE_ADDR_HI
+    iny
+    lda (zTemp00),y
+    sta z:zTemp02
+    iny
+    lda (zTemp00),y
+    sta z:zTemp03
+    iny
+    sty z:zHitSlot
+    lda (zTemp02)
+    sta z:zTemp05
+EffectShade00C5_at6:
+    ldy #$01
+    lda (zTemp02),y
+    sta z:zTemp04
+EffectShade00C5_t8535:
+    iny
+    lda (zTemp02),y
+    and #$07
+    sec
+    sbc z:zTemp08
+    bcs EffectShade00C5_at2
+    cla
+EffectShade00C5_at2:
+    sta z:zTemp0B
+    lda (zTemp02),y
+    and #$38
+    sec
+    sbc z:zTemp09
+    bcs EffectShade00C5_at3
+    cla
+EffectShade00C5_at3:
+    ora z:zTemp0B
+    sta z:zTemp0B
+    lda (zTemp02),y
+    asl z:zTemp04
+    ror a
+    and #$E0
+    sec
+    sbc z:zTemp0A
+    bcs EffectShade00C5_at4
+    cla
+EffectShade00C5_at4:
+    asl a
+    ora z:zTemp0B
+    sta a:VCE_DATA_LO
+    cla
+    rol a
+    sta a:VCE_DATA_HI
+    cpy #$09
+    bcc EffectShade00C5_t8535
+    lda z:zTemp02
+    clc
+    adc #$09
+    sta z:zTemp02
+    bcc EffectShade00C5_at5
+    inc z:zTemp03
+EffectShade00C5_at5:
+    dec z:zTemp05
+    bpl EffectShade00C5_at6
+    ldy z:zHitSlot
+    jmp EffectShade00C5_t850E
+
+; @routine 00C5:5C0 EffectColour00C5
+; @run 6C:85C0
+; WHAT IT DOES: As EffectColour1A31, whose instructions these are with this overlay's table addresses.
+; HOW: The shared body with this overlay's layout.
+; WAITS: no.
+; Entry, exit: as EffectColour1A31.
+EffectColour00C5:
+    lda a:ScriptSlotScript,x
+    bmi EffectColour00C5_at0
+    asl a
+    asl a
+    adc a:OverlayEffectColourLists
+    sta z:zTemp00
+    cla
+    adc a:OverlayEffectColourLists+1
+    sta z:zTemp01
+    bra EffectColour00C5_at1
+EffectColour00C5_at0:
+    asl a
+    asl a
+    adc #$84
+    sta z:zTemp00
+    cla
+    adc #$8A
+    sta z:zTemp01
+EffectColour00C5_at1:
+    cly
+    lda (zTemp00),y
+    sta a:VCE_ADDR_LO
+    iny
+    lda (zTemp00),y
+    sta a:VCE_ADDR_HI
+    iny
+    lda (zTemp00),y
+    sta a:VCE_DATA_LO
+    iny
+    lda (zTemp00),y
+    sta a:VCE_DATA_HI
+    jmp ClearEffectSlot00C5
+
+; @routine 00C5:5FA EffectVceSave00C5
+; @run 6C:85FA
+; WHAT IT DOES: As EffectVceSave1A31, whose instructions these are with this overlay's table addresses.
+; HOW: The shared body with this overlay's layout.
+; WAITS: no.
+; Entry, exit: as EffectVceSave1A31.
+EffectVceSave00C5:
+    bsr SelectSavedBank00C5
+    tai VCE_DATA_LO,VceSaveArea,$0400
+    rts
+
+; @routine 00C5:604 EffectVceRestore00C5
+; @run 6C:8604
+; WHAT IT DOES: As EffectVceRestore1A31, whose instructions these are with this overlay's table addresses.
+; HOW: The shared body with this overlay's layout.
+; WAITS: no.
+; Entry, exit: as EffectVceRestore1A31.
+EffectVceRestore00C5:
+    bsr SelectSavedBank00C5
+    tia VceSaveArea,VCE_DATA_LO,$0400
+    rts
+
+; @routine 00C5:60E SelectSavedBank00C5
+; @run 6C:860E
+; WHAT IT DOES: As SelectSavedBank1A31, whose instructions these are with this overlay's table addresses.
+; HOW: The shared body with this overlay's layout.
+; WAITS: no.
+; Entry, exit: as SelectSavedBank1A31.
+SelectSavedBank00C5:
+    lda #$12
+    bbr0 zIdleFlag,SelectSavedBank00C5_at0
+    lda #$30
+SelectSavedBank00C5_at0:
+    clc
+    adc z:zRamBaseBank
+    tam #$20
+    stz a:VCE_ADDR_LO
+    stz a:VCE_ADDR_HI
+    rts
+
+; @routine 00C5:621 EffectFlash00C5
+; @run 6C:8621
+; WHAT IT DOES: As EffectFlash1A31, whose instructions these are with this overlay's table addresses.
+; HOW: The shared body with this overlay's layout.
+; WAITS: no.
+; Entry, exit: as EffectFlash1A31.
+EffectFlash00C5:
+    lda #$01
+    sta z:zFadeActive
+    lda a:ScriptSlotField24,x
+    bne EffectFlash00C5_at0
+    lda #$00
+    sta a:VCE_ADDR_HI
+    lda #$00
+    sta a:VCE_ADDR_LO
+    tai VCE_DATA_LO,SavedBackground00C5,$0200
+    lda #$01
+    sta a:VCE_ADDR_HI
+    lda #$80
+    sta a:VCE_ADDR_LO
+    tai VCE_DATA_LO,SavedSprites00C5,$0100
+EffectFlash00C5_at0:
+    inc a:ScriptSlotField24,x
+    lda a:ScriptSlotField24,x
+    cmp #$10
+    bcc EffectFlash00C5_at1
+    jmp EffectFlashEnd00C5
+EffectFlash00C5_at1:
+    lda a:ScriptSlotScript,x
+    asl a
+    asl a
+    asl a
+    asl a
+    asl a
+    sta z:zTemp04
+    lda a:ScriptSlotField24,x
+    asl a
+    clc
+    adc z:zTemp04
+    tay
+    lda a:FlashColours00C5,y
+    sta z:zTemp02
+    lda a:FlashColours00C5+1,y
+    sta z:zTemp03
+    cly
+EffectFlash00C5_at4:
+    lda a:FlashPalettes00C5,y
+    cmp #$FF
+    bne EffectFlash00C5_at2
+    rts
+EffectFlash00C5_at2:
+    sta z:zTemp08
+    iny
+    lda a:FlashPalettes00C5,y
+    sta z:zTemp09
+    iny
+    clx
+EffectFlash00C5_at3:
+    lda z:zTemp02
+    sta a:SavedColoursLo,x
+    lda z:zTemp03
+    sta a:SavedColoursLo+1,x
+    inx
+    inx
+    cpx #$20
+    bcc EffectFlash00C5_at3
+    lda z:zTemp08
+    sta a:VCE_ADDR_LO
+    lda z:zTemp09
+    sta a:VCE_ADDR_HI
+    tia SavedColoursLo,VCE_DATA_LO,$0020
+    jmp EffectFlash00C5_at4
+
+; @routine 00C5:6AC EffectFlashEnd00C5
+; @run 6C:86AC
+; WHAT IT DOES: As EffectFlashEnd1A31, whose instructions these are with this overlay's table addresses.
+; HOW: The shared body with this overlay's layout.
+; WAITS: no.
+; Entry, exit: as EffectFlashEnd1A31.
+EffectFlashEnd00C5:
+    stz z:zFadeActive
+    lda #$00
+    sta a:VCE_ADDR_HI
+    lda #$00
+    sta a:VCE_ADDR_LO
+    tia SavedBackground00C5,VCE_DATA_LO,$0200
+    lda #$01
+    sta a:VCE_ADDR_HI
+    lda #$80
+    sta a:VCE_ADDR_LO
+    tia SavedSprites00C5,VCE_DATA_LO,$0100
+    jmp ClearEffectSlot00C5
+
+; @routine 0111:009 RunListChannels0111
+; @run 6C:8009
+; WHAT IT DOES: Runs every list channel that has a kind, from channel 7 down to 0. The same bytes as 00C5:009.
+; HOW: A loop with PHX, BSR to RunListChannel at $8018 and PLX.
+; WAITS: no.
+; Entry: nothing. Exit: X $FF, N set, Z clear; A the last kind read or what the last channel left; Y, C, V as the last channel left them.
+RunListChannels0111:
+    ldx #$07
+RunListChannels0111_t800B:
+    lda a:ListChannelKind,x
+    beq RunListChannels0111_t8014
+    phx
+    bsr RunListChannel0111
+    plx
+RunListChannels0111_t8014:
+    dex
+    bpl RunListChannels0111_t800B
+    rts
+
+; @routine 0111:41A EffectShade0111
+; @run 6C:841A
+; WHAT IT DOES: As EffectShade1A31, whose instructions these are with this overlay's table addresses.
+; HOW: The shared body with this overlay's layout.
+; WAITS: no.
+; Entry, exit: as EffectShade1A31.
+EffectShade0111:
+    lda a:ScriptSlotTimer,x
+    beq EffectShade0111_t8423
+    dec a:ScriptSlotTimer,x
+    rts
+EffectShade0111_t8423:
+    inc a:ScriptSlotField24,x
+    lda a:ScriptSlotField24,x
+    cmp #$08
+    bcc EffectShade0111_at0
+    jmp EndingEffectList+96
+EffectShade0111_at0:
+    eor #$07
+    sta z:zTemp08
+    asl a
+    asl a
+    asl a
+    sta z:zTemp09
+    asl a
+    asl a
+    sta z:zTemp0A
+    lda a:ScriptSlotScript,x
+    asl a
+    tay
+    lda a:OverlayEffectShadeLists
+    sta z:zBiosAl
+    lda a:OverlayEffectShadeLists+1
+    sta z:zBiosAh
+    lda (zBiosAl),y
+    sta z:zTemp00
+    iny
+    lda (zBiosAl),y
+    sta z:zTemp01
+    cly
+    lda (zTemp00),y
+    sta a:ScriptSlotTimer,x
+    iny
+EffectShade0111_at8:
+    lda (zTemp00),y
+    cmp #$FF
+    bne EffectShade0111_at1
+    rts
+EffectShade0111_at1:
+    sta a:VCE_ADDR_LO
+    iny
+    lda (zTemp00),y
+    sta a:VCE_ADDR_HI
+    iny
+    lda (zTemp00),y
+    sta z:zTemp02
+    iny
+    lda (zTemp00),y
+    sta z:zTemp03
+    iny
+    sty z:zHitSlot
+    lda (zTemp02)
+    sta z:zTemp05
+EffectShade0111_at7:
+    ldy #$01
+    lda (zTemp02),y
+    sta z:zTemp04
+EffectShade0111_at5:
+    iny
+    lda (zTemp02),y
+    and #$07
+    sec
+    sbc z:zTemp08
+    bcs EffectShade0111_at2
+    cla
+EffectShade0111_at2:
+    sta z:zTemp0B
+    lda (zTemp02),y
+    and #$38
+    sec
+    sbc z:zTemp09
+    bcs EffectShade0111_at3
+    cla
+EffectShade0111_at3:
+    ora z:zTemp0B
+    sta z:zTemp0B
+    lda (zTemp02),y
+    asl z:zTemp04
+    ror a
+    and #$E0
+    sec
+    sbc z:zTemp0A
+    bcs EffectShade0111_at4
+    cla
+EffectShade0111_at4:
+    asl a
+    ora z:zTemp0B
+    sta a:VCE_DATA_LO
+    cla
+    rol a
+    sta a:VCE_DATA_HI
+    cpy #$09
+    bcc EffectShade0111_at5
+    lda z:zTemp02
+    clc
+    adc #$09
+    sta z:zTemp02
+    bcc EffectShade0111_at6
+    inc z:zTemp03
+EffectShade0111_at6:
+    dec z:zTemp05
+    bpl EffectShade0111_at7
+    ldy z:zHitSlot
+    jmp EffectShade0111_at8
+
+; @routine 0111:50E EffectColour0111
+; @run 6C:850E
+; WHAT IT DOES: As EffectColour1A31, whose instructions these are with this overlay's table addresses.
+; HOW: The shared body with this overlay's layout.
+; WAITS: no.
+; Entry, exit: as EffectColour1A31.
+EffectColour0111:
+    lda a:ScriptSlotScript,x
+    bmi EffectColour0111_at0
+    asl a
+    asl a
+    adc a:OverlayEffectColourLists
+    sta z:zTemp00
+    cla
+    adc a:OverlayEffectColourLists+1
+    sta z:zTemp01
+    bra EffectColour0111_at1
+EffectColour0111_at0:
+    asl a
+    asl a
+    adc #$D2
+    sta z:zTemp00
+    cla
+    adc #$89
+    sta z:zTemp01
+EffectColour0111_at1:
+    cly
+    lda (zTemp00),y
+    sta a:VCE_ADDR_LO
+    iny
+    lda (zTemp00),y
+    sta a:VCE_ADDR_HI
+    iny
+    lda (zTemp00),y
+    sta a:VCE_DATA_LO
+    iny
+    lda (zTemp00),y
+    sta a:VCE_DATA_HI
+    jmp EndingEffectList+96
+
+; @routine 0111:548 EffectVceSave0111
+; @run 6C:8548
+; WHAT IT DOES: As EffectVceSave1A31, whose instructions these are with this overlay's table addresses.
+; HOW: The shared body with this overlay's layout.
+; WAITS: no.
+; Entry, exit: as EffectVceSave1A31.
+EffectVceSave0111:
+    bsr SelectSavedBank0111
+    tai VCE_DATA_LO,VceSaveArea,$0400
+    rts
+
+; @routine 0111:552 EffectVceRestore0111
+; @run 6C:8552
+; WHAT IT DOES: As EffectVceRestore1A31, whose instructions these are with this overlay's table addresses.
+; HOW: The shared body with this overlay's layout.
+; WAITS: no.
+; Entry, exit: as EffectVceRestore1A31.
+EffectVceRestore0111:
+    bsr SelectSavedBank0111
+    tia VceSaveArea,VCE_DATA_LO,$0400
+    rts
+
+; @routine 0111:55C SelectSavedBank0111
+; @run 6C:855C
+; WHAT IT DOES: As SelectSavedBank1A31, whose instructions these are with this overlay's table addresses.
+; HOW: The shared body with this overlay's layout.
+; WAITS: no.
+; Entry, exit: as SelectSavedBank1A31.
+SelectSavedBank0111:
+    lda #$12
+    bbr0 zIdleFlag,SelectSavedBank0111_at0
+    lda #$30
+SelectSavedBank0111_at0:
+    clc
+    adc z:zRamBaseBank
+    tam #$20
+    stz a:VCE_ADDR_LO
+    stz a:VCE_ADDR_HI
+    rts
+
+; @routine 0111:56F EffectFlash0111
+; @run 6C:856F
+; WHAT IT DOES: As EffectFlash1A31, whose instructions these are with this overlay's table addresses.
+; HOW: The shared body with this overlay's layout.
+; WAITS: no.
+; Entry, exit: as EffectFlash1A31.
+EffectFlash0111:
+    lda #$01
+    sta z:zFadeActive
+    lda a:ScriptSlotField24,x
+    bne EffectFlash0111_at0
+    lda #$00
+    sta a:VCE_ADDR_HI
+    lda #$00
+    sta a:VCE_ADDR_LO
+    tai VCE_DATA_LO,SavedBackground0111,$0200
+    lda #$01
+    sta a:VCE_ADDR_HI
+    lda #$80
+    sta a:VCE_ADDR_LO
+    tai VCE_DATA_LO,EffectSecondSetUp+4,$0100
+EffectFlash0111_at0:
+    inc a:ScriptSlotField24,x
+    lda a:ScriptSlotField24,x
+    cmp #$10
+    bcc EffectFlash0111_at1
+    jmp EffectFlashEnd0111
+EffectFlash0111_at1:
+    lda a:ScriptSlotScript,x
+    asl a
+    asl a
+    asl a
+    asl a
+    asl a
+    sta z:zTemp04
+    lda a:ScriptSlotField24,x
+    asl a
+    clc
+    adc z:zTemp04
+    tay
+    lda a:FlashColours0111,y
+    sta z:zTemp02
+    lda a:FlashColours0111+1,y
+    sta z:zTemp03
+    cly
+EffectFlash0111_t85C4:
+    lda a:FlashPalettes0111,y
+    cmp #$FF
+    bne EffectFlash0111_at2
+    rts
+EffectFlash0111_at2:
+    sta z:zTemp08
+    iny
+    lda a:FlashPalettes0111,y
+    sta z:zTemp09
+    iny
+    clx
+EffectFlash0111_at3:
+    lda z:zTemp02
+    sta a:SavedColoursLo,x
+    lda z:zTemp03
+    sta a:SavedColoursLo+1,x
+    inx
+    inx
+    cpx #$20
+    bcc EffectFlash0111_at3
+    lda z:zTemp08
+    sta a:VCE_ADDR_LO
+    lda z:zTemp09
+    sta a:VCE_ADDR_HI
+    tia SavedColoursLo,VCE_DATA_LO,$0020
+    jmp EffectFlash0111_t85C4
+
+; @routine 0111:5FA EffectFlashEnd0111
+; @run 6C:85FA
+; WHAT IT DOES: As EffectFlashEnd1A31, whose instructions these are with this overlay's table addresses.
+; HOW: The shared body with this overlay's layout.
+; WAITS: no.
+; Entry, exit: as EffectFlashEnd1A31.
+EffectFlashEnd0111:
+    stz z:zFadeActive
+    lda #$00
+    sta a:VCE_ADDR_HI
+    lda #$00
+    sta a:VCE_ADDR_LO
+    tia SavedBackground0111,VCE_DATA_LO,$0200
+    lda #$01
+    sta a:VCE_ADDR_HI
+    lda #$80
+    sta a:VCE_ADDR_LO
+    tia EffectSecondSetUp+4,VCE_DATA_LO,$0100
+    jmp EndingEffectList+96

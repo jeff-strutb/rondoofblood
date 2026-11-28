@@ -11,6 +11,7 @@
 #include "access.h"
 #include "routines.h"
 #include "front_end.h"
+#include "effect_slots_census.h"
 #include "vram_update.h"
 
 enum { ENDING_LISTS = 0x8A05 };
@@ -3228,9 +3229,14 @@ Exit EndingEffectDispatch(uint8_t type, uint8_t slot)
     switch (target) {
     case 0x82F8: exit = EndingEffectList(slot); break;
     case 0x8371: exit = EndingEffectFade(slot); break;
+    case 0x841A: exit = EffectShade0111(slot); break;
+    case 0x850E: exit = EffectColour0111(slot); break;
+    case 0x856F: exit = EffectFlash0111(slot, index); break;
+    case 0x8548: exit = EffectVceSave0111(slot, index); break;
+    case 0x8552: exit = EffectVceRestore0111(slot, index); break;
     default:
         cpu_entry_shim(high, slot, index, carry);
-        call_original(target);
+        run_routine(target);
         exit.from_cpu = true;
         return exit;
     }

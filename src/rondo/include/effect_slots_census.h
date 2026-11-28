@@ -234,4 +234,51 @@ void abi_EffectFlashEnd1DDA(void);
 Exit EffectFadeWithTable(uint16_t table, uint8_t slot);
 Exit EffectColourWithTable(uint16_t table, uint8_t slot);
 
+/* The title's (00C5) and the ending's (0111) versions. */
+#include "list_channels_census.h"
+Exit EffectStep00C5(uint8_t y);
+void abi_EffectStep00C5(void);
+Exit EffectDispatch00C5(uint8_t type, uint8_t slot);
+void abi_EffectDispatch00C5(void);
+Exit EffectList00C5(uint8_t slot);
+void abi_EffectList00C5(void);
+void ClearEffectSlot00C5(uint8_t slot);
+void abi_ClearEffectSlot00C5(void);
+Exit EffectFade00C5(uint8_t slot);
+void abi_EffectFade00C5(void);
+Exit EffectShade00C5(uint8_t slot);
+void abi_EffectShade00C5(void);
+Exit EffectColour00C5(uint8_t slot);
+void abi_EffectColour00C5(void);
+Exit EffectVceSave00C5(uint8_t slot, uint8_t y);
+void abi_EffectVceSave00C5(void);
+Exit EffectVceRestore00C5(uint8_t slot, uint8_t y);
+void abi_EffectVceRestore00C5(void);
+Exit SelectSavedBank00C5(void);
+void abi_SelectSavedBank00C5(void);
+Exit EffectFlash00C5(uint8_t slot, uint8_t y);
+void abi_EffectFlash00C5(void);
+Exit EffectFlashEnd00C5(uint8_t slot, uint8_t y);
+void abi_EffectFlashEnd00C5(void);
+Exit EffectShade0111(uint8_t slot);
+void abi_EffectShade0111(void);
+Exit EffectColour0111(uint8_t slot);
+void abi_EffectColour0111(void);
+Exit EffectVceSave0111(uint8_t slot, uint8_t y);
+void abi_EffectVceSave0111(void);
+Exit EffectVceRestore0111(uint8_t slot, uint8_t y);
+void abi_EffectVceRestore0111(void);
+Exit SelectSavedBank0111(void);
+void abi_SelectSavedBank0111(void);
+Exit EffectFlash0111(uint8_t slot, uint8_t y);
+void abi_EffectFlash0111(void);
+Exit EffectFlashEnd0111(uint8_t slot, uint8_t y);
+void abi_EffectFlashEnd0111(void);
+ChannelExit RunListChannels00C5(uint8_t y, bool c, bool v);
+void abi_RunListChannels00C5(void);
+ChannelExit RunListChannels0111(uint8_t y, bool c, bool v);
+void abi_RunListChannels0111(void);
+void abi_VecRunListChannels00C5(void);
+void abi_VecEffectStep00C5(void);
+
 #endif

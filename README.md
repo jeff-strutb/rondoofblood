@@ -137,10 +137,10 @@ number in this file.
 
 | | |
 |---|---|
-| Assembly | 2,684 game routines filed; the whole data track assembles from them, the rest from the disc's own bytes, with 0 differing bytes on both data tracks |
-| C | 2,755 game routines have C; 71 of them have no filed assembly yet. 22 routines in 2 files still call original game code (calls into the System Card are by design): those are not finished |
+| Assembly | 2,783 game routines filed; the whole data track assembles from them, the rest from the disc's own bytes, with 0 differing bytes on both data tracks |
+| C | 2,783 game routines have C, every one with its assembly filed; none calls original game code (calls into the System Card are by design) |
 | System Card | 198 routines with assembly and C; the card's image rebuilds with 0 differing bytes |
-| Not yet built | the static code map of the whole disc (what loads where, code against data, copies): until it exists, the total size of the game's code is not known |
+| Code map | `tools/rondo/codemap.py` finds the code from the disc alone: 375,212 B of distinct code so far. Its to-do list (`--todo`): 2,115 routines done (103,643 B), 3,785 to do (184,064 B), every copy counted once |
 
 The C filed before 2026-11-27 was written under an earlier process of
 gates and runners, which is kept on the branch `shelf/gates-runners` and

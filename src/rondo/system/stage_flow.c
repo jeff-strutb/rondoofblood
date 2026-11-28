@@ -738,10 +738,18 @@ void abi_StageFallRightLand(void)
  */
 StageRegs StageFallLeftLand(StageRegs r)
 {
-    r = map_banks_5_6(r, 0x83D3);
-    r = call_to(r, 0x83D6, 0xA01B);
-    r = call_to(r, 0x83D9, 0xA012);
-    return fall_until(r, false, 0xF0, 0x8396);
+    return StageFallLeftLandAt(r, 0x83D0);
+}
+
+/* StageFallLeftLand's body, at the address it runs at (its JSRs return to at + 3, + 6 and + 9, its tail JMP is at
+ * at + $16): the builds of the overlay that hold these instructions at another address (stage_programs_census.c) pass
+ * their own. */
+StageRegs StageFallLeftLandAt(StageRegs r, uint16_t at)
+{
+    r = map_banks_5_6(r, (uint16_t)(at + 3));
+    r = call_to(r, (uint16_t)(at + 6), 0xA01B);
+    r = call_to(r, (uint16_t)(at + 9), 0xA012);
+    return fall_until(r, false, 0xF0, (uint16_t)(at + 0x16));
 }
 
 void abi_StageFallLeftLand(void)

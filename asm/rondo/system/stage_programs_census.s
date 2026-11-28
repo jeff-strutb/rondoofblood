@@ -2339,3 +2339,26 @@ StageFallLeftDone026D:
     lda #$80
     sta a:OBJ_PAD_FORCED
     rts
+
+; @routine 026D:3A8 StageFallLeftLand026D
+; @run 6B:83A8
+; WHAT IT DOES: The fall to the left's middle step: the player idle, his animation sound, and while his X is below $F0 on a
+; screen past the first the step counts on; else his landing (as StageFallLeftLand, 024D:3D0). Programs 031D, 043D, 064D, 10DD, 122D, 1A2D, 1B8D and 1CED hold the same bytes.
+; HOW: MapOverlayBanks5And6's bytes at $8089, $A01B, $A012; OBJ_X_HI and OBJ_X_LO; the tail JMP to $A01E with X 0, or
+; StageFallStepNext's bytes at $83C1.
+; WAITS: no.
+; Entry: nothing. Exit: counting: N and Z from the new step; else as $A01E.
+; Nothing the game does loads this program (codemap.unloaded_programs), so nothing is known to reach it.
+StageFallStepNext_026D = $83C1 ; StageFallStepNext's bytes (024D:3E9) in the 026D programs
+StageFallLeftLand026D:
+    jsr MapOverlayBanks5And6_026D
+    jsr MariaVecAnimationTick
+    jsr MariaVecAnimationSound
+    lda a:OBJ_X_HI
+    beq StageFallLeftLand026D_at0
+    lda a:OBJ_X_LO
+    cmp #$F0
+    bcc StageFallStepNext_026D
+StageFallLeftLand026D_at0:
+    clx
+    jmp MariaVecObjectApplyVelocity

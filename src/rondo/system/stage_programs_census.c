@@ -1880,3 +1880,25 @@ void abi_StageFallLeftDone026D(void)
 {
     stage_regs_load_shim(StageFallLeftDone026D(stage_regs_entry_shim()));
 }
+
+/*
+ * @routine 026D:3A8 StageFallLeftLand026D
+ * @run 6B:83A8
+ * WHAT IT DOES: The fall to the left's middle step: the player idle, his animation sound, and while his X is below $F0 on a
+ * screen past the first the step counts on; else his landing (as StageFallLeftLand, 024D:3D0). Programs 031D, 043D, 064D, 10DD, 122D, 1A2D, 1B8D and 1CED hold the same bytes.
+ * HOW: StageFallLeftLandAt (stage_flow.c), the body of 024D:3D0, at $83A8. Its JSR to $8089 goes to
+ * MapOverlayBanks5And6's bytes (024D:0A0) in all nine programs, so its C is MapOverlayBanks5And6's; its branch to
+ * $83C1 goes to StageFallStepNext's bytes (024D:3E9), whose C is StageFallStepNext's.
+ * WAITS: no.
+ * Entry: nothing. Exit: counting: N and Z from the new step; else as $A01E.
+ * Nothing the game does loads this program (codemap.unloaded_programs), so nothing is known to reach it.
+ */
+StageRegs StageFallLeftLand026D(StageRegs r)
+{
+    return StageFallLeftLandAt(r, 0x83A8);
+}
+
+void abi_StageFallLeftLand026D(void)
+{
+    stage_regs_load_shim(StageFallLeftLand026D(stage_regs_entry_shim()));
+}

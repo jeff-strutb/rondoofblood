@@ -90,4 +90,8 @@ StageRegs StageFallRightDoneAt(StageRegs r, uint16_t init_ret, uint16_t init);
  * address it goes to. */
 StageRegs StageFallLeftDoneAt(StageRegs r, uint16_t init_ret, uint16_t init);
 
+
+/* system/stage_flow.c: StageFallLeftLand (024D:3D0) run at `at`. */
+StageRegs StageFallLeftLandAt(StageRegs r, uint16_t at);
+
 #endif

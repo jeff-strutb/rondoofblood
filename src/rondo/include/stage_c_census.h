@@ -353,6 +353,10 @@ StageRegs TallyPause3CDAt(StageRegs r, uint16_t at, const TallyBuild *build);
 
 StageRegs TallyEnd3CDAt(StageRegs r, uint16_t at, const TallyBuild *build);
 
+StageRegs StageSubModeTally031F(StageRegs r);
+void abi_StageSubModeTally031F(void);
+StageRegs TallyCount031F(StageRegs r);
+void abi_TallyCount031F(void);
 StageRegs TallyStart031F(StageRegs r);
 void abi_TallyStart031F(void);
 StageRegs TallyBoard031F(StageRegs r);

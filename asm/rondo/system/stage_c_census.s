@@ -6177,3 +6177,81 @@ ClearVramRows031F_at0:
     dec z:zTemp00
     bne ClearVramRows031F_at1
     rts
+
+; @routine 031F:2F1 StageSubModeTally031F
+; @run 6B:92F1
+; WHAT IT DOES: Sub-mode 6 in the 031D program, the tally after the boss: zWaveCounter counted, the stage's frame, the scroll and objects,
+; then the tally's step at zField80 from the eight at $9300.
+; HOW: An increment; JSRs to the routines loaded at $8B23 and $8A05; zField80 doubled indexes the table, whose word is jumped
+; through.
+; WAITS: no.
+; Entry: nothing. Exit: as the step leaves them; it is entered with A and X twice zField80, N and Z from it, C its bit 7.
+; Nothing the game does loads this program (codemap.unloaded_programs), so nothing is known to reach it.
+TallySteps031F = $9300 ; the tally's step table in this program
+StageSubModeTally031F:
+    inc z:zWaveCounter
+    jsr StepStageFrame031E
+    jsr StepScrollAndRunObjects026E
+    lda z:zField80
+    asl a
+    tax
+    jmp (TallySteps031F,x)
+
+; @routine 031F:4AB TallyCount031F
+; @run 6B:94AB
+; WHAT IT DOES: The tally's count: while there is health it is counted into the score (zPlayerHealth down by one, the board's health
+; redrawn, 1 point); then after the wait the hearts (zField94 down by one in BCD, redrawn, $10 points). A carry from the
+; score gives a life more and puts zStock at $3616. The score's rows are blended, and sound 1 plays every fourth frame. With
+; both at 0 the tally goes on two steps with a wait of $C0, or, with the full-health mark at $2ABB set, stays with a wait
+; of $40.
+; HOW: Decrements; TallyHealth031F, TallyWait031F, TallyHearts031F; the kernel's score add; TallyExtraLife031F by BSR on a
+; carry; the routine loaded at $915E.
+; WAITS: no.
+; Entry: D clear, as the game keeps it. Exit: as the last piece that ran left them.
+; Nothing the game does loads this program (codemap.unloaded_programs), so nothing is known to reach it.
+TallyCount031F:
+    lda z:zPlayerHealth
+    beq TallyCount031F_at0
+    dec z:zPlayerHealth
+    jsr TallyHealth031F
+    lda #$01
+    bra TallyCount031F_at1
+TallyCount031F_at0:
+    jsr TallyWait031F
+    lda z:zField94
+    beq TallyCount031F_at2
+    sed
+    sec
+    sbc #$01
+    sta z:zField94
+    cld
+    jsr TallyHearts031F
+    lda #$10
+TallyCount031F_at1:
+    jsr VecAddScoreByte
+    bcc TallyCount031F_at3
+    bsr TallyExtraLife031F
+    lda z:zStock
+    sta a:StageVar3616
+TallyCount031F_at3:
+    jsr BlendStageScoreRows031F
+    lda z:zWaveCounter
+    and #$03
+    bne TallyCount031F_at4
+    lda #$01
+    jsr VecSoundCommand
+TallyCount031F_at4:
+    rts
+TallyCount031F_at2:
+    lda #$C0
+    sta a:OBJ_TALLY_WAIT
+    inc z:zField80
+    inc z:zField80
+    lda a:OBJ_FRAME+83
+    beq TallyCount031F_at5
+    dec z:zField80
+    dec z:zField80
+    lda #$40
+    sta a:OBJ_TALLY_WAIT
+TallyCount031F_at5:
+    jmp TallyNext031F

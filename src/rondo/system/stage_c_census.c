@@ -8449,3 +8449,124 @@ void abi_ClearVramRows031F(void)
 {
     regs_exit_shim(ClearVramRows031F(regs_entry_shim()));
 }
+
+/*
+ * @routine 031F:2F1 StageSubModeTally031F
+ * @run 6B:92F1
+ * WHAT IT DOES: Sub-mode 6 in the 031D program, the tally after the boss: zWaveCounter counted, the stage's frame, the scroll and objects,
+ * then the tally's step at zField80 from the eight at $9300.
+ * HOW: An increment; JSRs to the routines loaded at $8B23 and $8A05; zField80 doubled indexes the table, whose word is jumped
+ * through.
+ * WAITS: no.
+ * Entry: nothing. Exit: as the step leaves them; it is entered with A and X twice zField80, N and Z from it, C its bit 7.
+ * Nothing the game does loads this program (codemap.unloaded_programs), so nothing is known to reach it.
+ */
+StageRegs StageSubModeTally031F(StageRegs r)
+{
+    uint8_t step, twice;
+    uint16_t handler;
+
+    r.nz = INC8(ZP->wave_counter);
+    r = resident_call(r, 0x92F6, 0x8B23);
+    r = resident_call(r, 0x92F9, 0x8A05);
+    step = RD8(ZP->field80);
+    twice = (uint8_t)(step << 1);
+    r.c = (step & 0x80) != 0;
+    r = loaded(r, twice);
+    r.x = twice;
+    handler = table_word(0x9300, twice);
+    switch (handler) {
+    case 0x9310:
+        return TallyStart031F(r);
+    case 0x931E:
+        return TallyBoard031F(r);
+    case 0x9390:
+        return TallyReveal031F(r);
+    case 0x94A0:
+        return TallyPause031F(r);
+    case 0x94AB:
+        return TallyCount031F(r);
+    case 0x9500:
+        return TallyWaitPress031F(r);
+    case 0x9514:
+        return TallyStockBonus031F(r);
+    case 0x9537:
+        return TallyEnd031F(r);
+    default:
+        return resident_tail(r, handler);
+    }
+}
+
+void abi_StageSubModeTally031F(void)
+{
+    regs_exit_shim(StageSubModeTally031F(regs_entry_shim()));
+}
+
+/*
+ * @routine 031F:4AB TallyCount031F
+ * @run 6B:94AB
+ * WHAT IT DOES: The tally's count: while there is health it is counted into the score (zPlayerHealth down by one, the board's health
+ * redrawn, 1 point); then after the wait the hearts (zField94 down by one in BCD, redrawn, $10 points). A carry from the
+ * score gives a life more and puts zStock at $3616. The score's rows are blended, and sound 1 plays every fourth frame. With
+ * both at 0 the tally goes on two steps with a wait of $C0, or, with the full-health mark at $2ABB set, stays with a wait
+ * of $40.
+ * HOW: Decrements; TallyHealth031F, TallyWait031F, TallyHearts031F; the kernel's score add; TallyExtraLife031F by BSR on a
+ * carry; the routine loaded at $915E.
+ * WAITS: no.
+ * Entry: D clear, as the game keeps it. Exit: as the last piece that ran left them.
+ * Nothing the game does loads this program (codemap.unloaded_programs), so nothing is known to reach it.
+ */
+StageRegs TallyCount031F(StageRegs r)
+{
+    TallyWaitEnd wait;
+
+    r = loaded(r, RD8(ZP->player_health));
+    if (r.a != 0) {
+        r.nz = DEC8(ZP->player_health);
+        CALL(0x94B4, TallyHealth031F(r));
+        r = loaded(r, 0x01);
+    } else {
+        wait = tally_wait_at(r, 0x94BB, OBJ_TALLY_WAIT);
+        r = wait.r;
+        if (wait.dropped) {
+            return r;
+        }
+        r = loaded(r, RD8(ZP->field94));
+        if (r.a == 0) {
+            r = loaded(r, 0xC0);
+            WR8(OBJ->tally_wait[0], 0xC0);
+            r.nz = INC8(ZP->field80);
+            r.nz = INC8(ZP->field80);
+            r = loaded(r, RD8(OBJ->frame[83]));
+            if (r.a != 0) {
+                r.nz = DEC8(ZP->field80);
+                r.nz = DEC8(ZP->field80);
+                r = loaded(r, 0x40);
+                WR8(OBJ->tally_wait[0], 0x40);
+            }
+            return TallyNext152D(r);
+        }
+        r = bcd_less_one(r);
+        WR8(ZP->field94, r.a);
+        CALL(0x94C9, TallyHearts031F(r));
+        r = loaded(r, 0x10);
+    }
+    r = vector_call(r, 0x94CE, abi_VecAddScoreByte);
+    if (r.c) {
+        CALL(0x94D2, TallyExtraLife031F(r));
+        r = loaded(r, RD8(ZP->stock));
+        WR8(STAGEVARS->state_3616[0], r.a);
+    }
+    r = resident_call(r, 0x94DA, 0x915E);
+    r = loaded(r, (uint8_t)(RD8(ZP->wave_counter) & 0x03));
+    if (r.a != 0) {
+        return r;
+    }
+    r = loaded(r, 0x01);
+    return vector_call(r, 0x94E5, abi_VecSoundCommand);
+}
+
+void abi_TallyCount031F(void)
+{
+    regs_exit_shim(TallyCount031F(regs_entry_shim()));
+}

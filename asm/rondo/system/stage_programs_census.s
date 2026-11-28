@@ -2598,3 +2598,33 @@ BossFlashMaskCell026E_at0:
     dex
     bne BossFlashMaskCell026E_at0
     rts
+
+; @routine 031E:51A BossFlashMaskCell031E
+; @run 6B:8D1A
+; WHAT IT DOES: Masks one cell of VRAM, $40 words, with random bits and a pattern by the flash's step (as BossFlashMaskCell,
+; 024E:564). Programs 043E and 10DE hold the same bytes.
+; HOW: The VRAM address from X and Y (SetVramAddresses031F); for each word, BossFlashMasks026E by the step's low three bits OR a
+; random byte OR zRandom2 OR zRandom1 is both masks of AndVramData, X kept on the stack.
+; WAITS: no.
+; Entry: X and Y the address. Exit: X 0, N 0, Z 1; A, Y, C and V as the last AndVramData left them.
+; Nothing the game does loads this program (codemap.unloaded_programs), so nothing is known to reach it.
+AndVramData_031F = $9631 ; AndVramData's bytes (024F:392) in the 031D programs
+BossFlashMaskCell031E:
+    jsr SetVramAddresses031F
+    ldx #$40
+BossFlashMaskCell031E_at0:
+    lda a:BossFlashStep
+    and #$07
+    tay
+    jsr VecNextRandom
+    ora z:zRandom2
+    ora z:zRandom1
+    ora a:BossFlashMasks026E,y
+    phx
+    tax
+    tay
+    jsr AndVramData_031F
+    plx
+    dex
+    bne BossFlashMaskCell031E_at0
+    rts

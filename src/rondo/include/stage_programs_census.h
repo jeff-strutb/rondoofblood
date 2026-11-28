@@ -214,4 +214,7 @@ void abi_StageScriptByWave026E(void);
 StageRegs BossFlashMaskCell026E(StageRegs r);
 void abi_BossFlashMaskCell026E(void);
 
+StageRegs BossFlashMaskCell031E(StageRegs r);
+void abi_BossFlashMaskCell031E(void);
+
 #endif

@@ -554,3 +554,8 @@ alias,PlayerVars,door_ready,f3bd7,PlayerDoorReady
 alias,PlayerVars,whip_struck,f3be1,PlayerWhipStruck
 alias,PlayerVarsB,keeps_last_point,f3bf7,PlayerKeepsLastPoint
 alias,ObjectTable,animation_at,scroll_band,OBJ_ANIMATION_AT
+alias,ObjectTable,gate_wait,work_d,OBJ_GATE_WAIT
+alias,ObjectTable,marker_value,work_d,OBJ_MARKER_VALUE
+alias,ObjectTable,flash_frames,work_d,OBJ_FLASH_FRAMES
+alias,ObjectTable,tally_wait,work_e,OBJ_TALLY_WAIT
+alias,ObjectTable,tally_step,work_f,OBJ_TALLY_STEP

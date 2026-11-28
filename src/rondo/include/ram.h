@@ -901,5 +901,10 @@
 #define StartFrameByCharacter 0x8456 /* the player's frame at a start by zCharacter (StageShowStartFrame) */
 #define zClearKind 0x2084 /* how a cleared stage plays out (StageChooseClearKind): 1 to 4 */
 #define StageFlashActive 0x2741 /* 1 while the screen flash object runs (StageFlashStart); a second one is cleared */
+#define OBJ_GATE_WAIT 0x34B8 /* a stage gate's use of OBJ_WORK_D: frames before its next step (StageGateAdvance sets it) */
+#define OBJ_MARKER_VALUE 0x34B8 /* the score marker's use of OBJ_WORK_D: the value its maker gave (StageObjectBecomeScore) */
+#define OBJ_FLASH_FRAMES 0x34B8 /* the screen flash object's use of OBJ_WORK_D: frames left (StageFlashStart, StageFlashEnd) */
+#define OBJ_TALLY_WAIT 0x3510 /* the player's use of OBJ_WORK_E in the stage tally: the wait StageSubStepTally sets */
+#define OBJ_TALLY_STEP 0x3568 /* the player's use of OBJ_WORK_F in the stage tally: cleared by StageSubStepTally */
 
 #endif

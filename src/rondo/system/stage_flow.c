@@ -344,9 +344,9 @@ StageRegs StageSubStepTally(StageRegs r)
     wr8(PadForcedPress, 0);
     wr8(PadForcedPressB, 0);
     WR8(ZP->fall_step, 0);
-    WR8(OBJ->work_f[0], 0);
+    WR8(OBJ->tally_step[0], 0);
     r = loaded(r, TALLY_WAIT);
-    WR8(OBJ->work_e[0], TALLY_WAIT);
+    WR8(OBJ->tally_wait[0], TALLY_WAIT);
     return restart_fade_if_slowed(r);
 }
 
@@ -519,12 +519,12 @@ static Regs forced_walk(Regs r, uint16_t init_ret)
     if (r.a != 0) {
         WR8(ZP->field8c, 0);
         r = loaded(r, 0x18);
-        WR8(OBJ->work_e[0], 0x18);
+        WR8(OBJ->pad_force_frames[0], 0x18);
     }
     side = (uint8_t)((RD8(OBJ->f2ac0[0]) ^ 0x01) & 0x01);
     r.x = side;
     r = loaded(r, rd8((uint16_t)(ForcedWalkPads + side)));
-    WR8(OBJ->work_f[0], r.a);
+    WR8(OBJ->pad_forced[0], r.a);
     return r;
 }
 
@@ -573,9 +573,9 @@ static Regs fall_start_done(Regs r, uint16_t init_ret, uint8_t pad)
     WR8(ZP->game_sub_mode, 0x01);
     WR8(ZP->field8c, 0);
     r = loaded(r, 0x20);
-    WR8(OBJ->work_e[0], 0x20);
+    WR8(OBJ->pad_force_frames[0], 0x20);
     r = loaded(r, pad);
-    WR8(OBJ->work_f[0], pad);
+    WR8(OBJ->pad_forced[0], pad);
     return r;
 }
 
@@ -990,7 +990,7 @@ StageRegs StageStartDone(StageRegs r)
 {
     r = loaded(r, 0x05);
     WR8(ZP->game_sub_mode, 0x05);
-    r.nz = DEC8(OBJ->work_e[0]);
+    r.nz = DEC8(OBJ->pad_force_frames[0]);
     r = loaded(r, 0x01);
     wr8(PlayerStartPose, 0x01);
     return r;

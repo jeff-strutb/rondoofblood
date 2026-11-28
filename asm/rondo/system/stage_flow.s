@@ -121,7 +121,7 @@ StageStartPlain:
 StageStartDone:
     lda #$05
     sta z:zGameSubMode
-    dec a:OBJ_WORK_E
+    dec a:OBJ_PAD_FORCE_FRAMES
     lda #$01
     sta a:PlayerStartPose
 StageStartDone_at0:
@@ -322,9 +322,9 @@ StageSubStepTally:
     stz a:PadForcedPress
     stz a:PadForcedPressB
     stz z:zFallStep
-    stz a:OBJ_WORK_F
+    stz a:OBJ_TALLY_STEP
     lda #$40
-    sta a:OBJ_WORK_E
+    sta a:OBJ_TALLY_WAIT
     lda a:TimeSlowMode
     bne StageSubStepTally_at0
     rts
@@ -349,14 +349,14 @@ StageForcedWalk:
     beq StageForcedWalk_at0
     stz z:zField8C
     lda #$18
-    sta a:OBJ_WORK_E
+    sta a:OBJ_PAD_FORCE_FRAMES
 StageForcedWalk_at0:
     lda a:OBJ_FACING_LEFT
     eor #$01
     and #$01
     tax
     lda a:ForcedWalkPads,x
-    sta a:OBJ_WORK_F
+    sta a:OBJ_PAD_FORCED
     rts
 
 ; @routine 024D:340 StageForcedWalkB
@@ -373,14 +373,14 @@ StageForcedWalkB:
     beq StageForcedWalkB_at0
     stz z:zField8C
     lda #$18
-    sta a:OBJ_WORK_E
+    sta a:OBJ_PAD_FORCE_FRAMES
 StageForcedWalkB_at0:
     lda a:OBJ_FACING_LEFT
     eor #$01
     and #$01
     tax
     lda a:ForcedWalkPads,x
-    sta a:OBJ_WORK_F
+    sta a:OBJ_PAD_FORCED
     rts
 
 ; @routine 024D:361 StageFallRight
@@ -450,9 +450,9 @@ StageFallRightDone:
     sta z:zGameSubMode
     stz z:zField8C
     lda #$20
-    sta a:OBJ_WORK_E
+    sta a:OBJ_PAD_FORCE_FRAMES
     lda #$20
-    sta a:OBJ_WORK_F
+    sta a:OBJ_PAD_FORCED
     rts
 
 ; @routine 024D:3B0 StageFallLeft
@@ -523,9 +523,9 @@ StageFallLeftDone:
     sta z:zGameSubMode
     stz z:zField8C
     lda #$20
-    sta a:OBJ_WORK_E
+    sta a:OBJ_PAD_FORCE_FRAMES
     lda #$80
-    sta a:OBJ_WORK_F
+    sta a:OBJ_PAD_FORCED
     rts
 
 ; @routine 024D:413 StageRestartInPlace

@@ -915,3 +915,8 @@ C73B,abs,MariaObjectHandlers,the handlers of her objects in slots 3 to 15 by OBJ
 8456,abs,StartFrameByCharacter,the player's frame at a start by zCharacter (StageShowStartFrame)
 84,zp,zClearKind,how a cleared stage plays out (StageChooseClearKind): 1 to 4
 2741,abs,StageFlashActive,1 while the screen flash object runs (StageFlashStart); a second one is cleared
+34B8,abs,OBJ_GATE_WAIT,a stage gate's use of OBJ_WORK_D: frames before its next step (StageGateAdvance sets it)
+34B8,abs,OBJ_MARKER_VALUE,the score marker's use of OBJ_WORK_D: the value its maker gave (StageObjectBecomeScore)
+34B8,abs,OBJ_FLASH_FRAMES,the screen flash object's use of OBJ_WORK_D: frames left (StageFlashStart, StageFlashEnd)
+3510,abs,OBJ_TALLY_WAIT,the player's use of OBJ_WORK_E in the stage tally: the wait StageSubStepTally sets
+3568,abs,OBJ_TALLY_STEP,the player's use of OBJ_WORK_F in the stage tally: cleared by StageSubStepTally

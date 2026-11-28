@@ -59,7 +59,7 @@ void abi_StageObjectRemove(void)
 /*
  * @routine 0259:5DA StageObjectBecomeScore
  * @run 70:A5DA
- * WHAT IT DOES: Turns the object into the score marker (kind $9F) after blending the score added: its OBJ_WORK_D from
+ * WHAT IT DOES: Turns the object into the score marker (kind $9F) after blending the score added: its OBJ_MARKER_VALUE from
  * the value in Y, its state cleared.
  * HOW: PHY, BlendStageScoreAddRows by its $9181 C, PLA.
  * WAITS: no.
@@ -73,7 +73,7 @@ StageRegs StageObjectBecomeScore(StageRegs r)
     r = call_to(r, 0xA5DE, 0x9181);
     value = pull8();
     r = regs_loaded(r, value);
-    WR8(OBJ->work_d[r.x], value);
+    WR8(OBJ->marker_value[r.x], value);
     r = regs_loaded(r, 0x9F);
     WR8(OBJ->kind[r.x], 0x9F);
     WR8(OBJ->state[r.x], 0);
@@ -116,7 +116,7 @@ StageRegs StageFlashStart(StageRegs r)
     r.x = value;
     r.nz = value;
     r = regs_loaded(r, 0x12);
-    WR8(OBJ->work_d[r.x], 0x12);
+    WR8(OBJ->flash_frames[r.x], 0x12);
     value = (uint8_t)(rd8(HitAttackFlags) | 0x02);
     r = regs_loaded(r, value);
     wr8(HitAttackFlags, value);
@@ -133,7 +133,7 @@ void abi_StageFlashStart(void)
 /*
  * @routine 025A:009 StageFlashEnd
  * @run 70:A809
- * WHAT IT DOES: The flash's countdown: bit 1 of HitAttackFlags cleared; when the object's OBJ_WORK_D runs out the
+ * WHAT IT DOES: The flash's countdown: bit 1 of HitAttackFlags cleared; when the object's OBJ_FLASH_FRAMES runs out the
  * flash is over and the object cleared.
  * HOW: AND and a store, DEC, the tail JMP to ClearObject.
  * WAITS: no.
@@ -145,7 +145,7 @@ StageRegs StageFlashEnd(StageRegs r)
 
     r = regs_loaded(r, value);
     wr8(HitAttackFlags, value);
-    r.nz = DEC8(OBJ->work_d[r.x]);
+    r.nz = DEC8(OBJ->flash_frames[r.x]);
     if (r.nz != 0) {
         return r;
     }
@@ -207,7 +207,7 @@ void abi_StageObjectRiseToTop(void)
 /*
  * @routine 0250:29D StageGateAdvance
  * @run 6B:9A9D
- * WHAT IT DOES: Unless zField8C is negative, advances the object's state with $04 in its OBJ_WORK_D, twice for the
+ * WHAT IT DOES: Unless zField8C is negative, advances the object's state with $04 in its OBJ_GATE_WAIT, twice for the
  * start arguments whose low nibble is 2 to 5, $0A or $0B.
  * HOW: CMP chain on OBJ_START_ARG's low nibble.
  * WAITS: no.
@@ -224,7 +224,7 @@ StageRegs StageGateAdvance(StageRegs r)
     }
     r.nz = INC8(OBJ->state[r.x]);
     r = regs_loaded(r, 0x04);
-    WR8(OBJ->work_d[r.x], 0x04);
+    WR8(OBJ->gate_wait[r.x], 0x04);
     value = (uint8_t)(RD8(OBJ->start_arg[r.x]) & 0x0F);
     r = regs_loaded(r, value);
     r = regs_compared(r, value, 0x02);

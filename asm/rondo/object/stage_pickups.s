@@ -1,6 +1,6 @@
 ; @routine 0250:29D StageGateAdvance
 ; @run 6B:9A9D
-; WHAT IT DOES: Unless zField8C is negative, advances the object's state with $04 in its OBJ_WORK_D, twice for the
+; WHAT IT DOES: Unless zField8C is negative, advances the object's state with $04 in its OBJ_GATE_WAIT, twice for the
 ; start arguments whose low nibble is 2 to 5, $0A or $0B.
 ; HOW: CMP chain on OBJ_START_ARG's low nibble.
 ; WAITS: no.
@@ -10,7 +10,7 @@ StageGateAdvance:
     bmi StageGateAdvance_at0
     inc a:OBJ_STATE,x
     lda #$04
-    sta a:OBJ_WORK_D,x
+    sta a:OBJ_GATE_WAIT,x
     lda a:OBJ_START_ARG,x
     and #$0F
     cmp #$02
@@ -39,7 +39,7 @@ StageObjectRemove:
 
 ; @routine 0259:5DA StageObjectBecomeScore
 ; @run 70:A5DA
-; WHAT IT DOES: Turns the object into the score marker (kind $9F) after blending the score added: its OBJ_WORK_D from
+; WHAT IT DOES: Turns the object into the score marker (kind $9F) after blending the score added: its OBJ_MARKER_VALUE from
 ; the value in Y, its state cleared.
 ; HOW: PHY, BlendStageScoreAddRows by its $9181 C, PLA.
 ; WAITS: no.
@@ -48,7 +48,7 @@ StageObjectBecomeScore:
     phy
     jsr BlendStageScoreAddRows
     pla
-    sta a:OBJ_WORK_D,x
+    sta a:OBJ_MARKER_VALUE,x
     lda #$9F
     sta a:OBJ_KIND,x
     stz a:OBJ_STATE,x
@@ -100,7 +100,7 @@ StagePickupPotion:
 
 ; @routine 025A:009 StageFlashEnd
 ; @run 70:A809
-; WHAT IT DOES: The flash's countdown: bit 1 of HitAttackFlags cleared; when the object's OBJ_WORK_D runs out the
+; WHAT IT DOES: The flash's countdown: bit 1 of HitAttackFlags cleared; when the object's OBJ_FLASH_FRAMES runs out the
 ; flash is over and the object cleared.
 ; HOW: AND and a store, DEC, the tail JMP to ClearObject.
 ; WAITS: no.
@@ -109,7 +109,7 @@ StageFlashEnd:
     lda a:HitAttackFlags
     and #$FD
     sta a:HitAttackFlags
-    dec a:OBJ_WORK_D,x
+    dec a:OBJ_FLASH_FRAMES,x
     bne StageFlashEnd_at0
     stz a:StageFlashActive
     jmp VecClearObject

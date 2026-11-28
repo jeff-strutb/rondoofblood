@@ -27,20 +27,20 @@ InitStage026E:
     sta z:zBiosAh
 InitStage026E_at0:
     tai KernelZeros,ScrollXFrac,$0030
-    tai KernelZeros,Scroll3E66,$0088
+    tai KernelZeros,ScrollColumnBlocks,$0088
     stz a:OBJ_SPRITE_FLIP
     lda z:zField8E
     pha
     bsr LoadStageEntry026E
     pla
     sta z:zField8E
-    jsr $80A0
+    jsr MapOverlayBank7At80A0
     jsr $A8EC
     ldy z:zRasterEffect
     lda a:$8889,y
     beq InitStage026E_at1
     tai KernelZeros,ScrollXFrac,$0030
-    tai KernelZeros,Scroll3E66,$0088
+    tai KernelZeros,ScrollColumnBlocks,$0088
     lda z:zField8E
     pha
     bsr LoadStageEntry026E
@@ -49,7 +49,7 @@ InitStage026E_at0:
     jsr $A94D
 InitStage026E_at1:
     tai KernelZeros,ScrollXFrac,$0030
-    tai KernelZeros,Scroll3E66,$0088
+    tai KernelZeros,ScrollColumnBlocks,$0088
 
 ; @routine 026E:108 LoadStageEntry026E
 ; @run 6B:8908
@@ -113,7 +113,7 @@ LoadStageEntry026E:
     sta a:CameraMode
     lda (zTemp00),y
     iny
-    sta a:Scroll3E66
+    sta a:ScrollColumnBlocks
     lda (zTemp00),y
     iny
     sta a:ScrollXMinHi
@@ -229,7 +229,7 @@ StageScrollStep026E:
 ; Entry: X the caller's. Exit: as RunObjects.
 SetUpStageObjects026E:
     jsr VecClearEnemySlots
-    jsr $80A0
+    jsr MapOverlayBank7At80A0
     lda z:zField83
     asl a
     asl a
@@ -261,7 +261,7 @@ SetUpStageObjects026E_at0:
     inc a
     tam #$40
     jsr VecStreamFullWalk
-    jmp $8A05
+    jmp StepScrollAndRunObjects026E
 
 ; @routine 026E:309 SpawnStageObjectsRows01026E
 ; @run 6B:8B09
@@ -280,12 +280,12 @@ SetUpStageObjects026E_at0:
 ; Entry: nothing. Exit: A 2, X 4, Y the second row's slot, N 0, Z 0. C and V as the spawn left them.
 SpawnStageObjectsRows01026E:
     clx
-    jsr $936E
+    jsr SpawnStageObject026F
     inx
-    jsr $936E
-    stz a:StageVar3616
+    jsr SpawnStageObject026F
+    stz a:StageShownStock
     lda #$C0
-    sta a:StageVar3616+1
+    sta a:StageSequenceDelay
     rmb5 z:zField8E
     lda #$65
     ldx #$04
@@ -311,25 +311,25 @@ SpawnStageObjectsRows01026E:
 ; WAITS: no.
 ; Entry: X and Y as the blends take them; V as the caller left it. Exit: as the last step left it.
 StepStageFrame026E:
-    lda a:$2ABF
+    lda a:OBJ_FRAME+87
     beq $8B22
     bbs1 zPaused,StepStageFrame026E_at0
-    lda a:StageVar3616+1
+    lda a:StageSequenceDelay
     beq StepStageFrame026E_at1
-    dec a:StageVar3616+1
+    dec a:StageSequenceDelay
     bne StepStageFrame026E_at1
     smb1 z:zPaused
 StepStageFrame026E_at0:
     jsr $8EAF
     bra StepStageFrame026E_at2
 StepStageFrame026E_at1:
-    jsr $910F
-    jsr $913F
-    jsr $916A
+    jsr BlendStageStockRows026F
+    jsr BlendStageScoreAddRows026F
+    jsr BlendStageScoreRows026F
 StepStageFrame026E_at2:
-    jsr $8BD8
+    jsr StageScriptByWave026E
     lda #$24
-    sta a:$2D26
+    sta a:OBJ_Y_LO+86
     ldx z:zField93
     lda a:$8BCF,x
     ldx z:zCharacter
@@ -339,21 +339,21 @@ StepStageFrame026E_at2:
     cmp #$11
     bne StepStageFrame026E_at3
     ldx #$28
-    stx a:$2D26
+    stx a:OBJ_Y_LO+86
     lda #$71
     bra StepStageFrame026E_at3
 StepStageFrame026E_at4:
     lda #$72
 StepStageFrame026E_at3:
-    sta a:$2ABE
+    sta a:OBJ_FRAME+86
     lda z:zPlayerHealth
     cmp z:zField99
     beq StepStageFrame026E_at5
     bcs StepStageFrame026E_at6
-    jsr $8BF9
+    jsr SetHealthBarAddress026E
     ldx #$FF
     ldy #$F0
-    jsr $9350
+    jsr AndVramDataAt9350
     dec z:zField99
     bra StepStageFrame026E_x0
 StepStageFrame026E_at6:
@@ -367,7 +367,7 @@ StepStageFrame026E_at7:
     bsr $8BF9
     ldx #$00
     ldy #$0F
-    jsr $935F
+    jsr OrVramDataAt935F
     bra StepStageFrame026E_at8
 StepStageFrame026E_at5:
     smb5 z:zField8E
@@ -377,7 +377,7 @@ StepStageFrame026E_x0:
     lda #$4A
     jsr VecSoundCommand
 StepStageFrame026E_at8:
-    jsr $9307
+    jsr MapStageBanksAt9307
     stz a:StageBlendOn
     lda z:zField94
     cmp z:zField95
@@ -385,14 +385,14 @@ StepStageFrame026E_at8:
     sta z:zField95
     and #$0F
     ldx #$08
-    jsr $8D3A
+    jsr BlendStageTileRows026E
     lda z:zField94
     lsr a
     lsr a
     lsr a
     lsr a
     ldx #$09
-    jsr $8D3A
+    jsr BlendStageTileRows026E
 StepStageFrame026E_at9:
     bbs2 zField8E,StepStageFrame026E_at10
     rts
@@ -428,20 +428,20 @@ InitStage031E:
     sta z:zBiosAh
 InitStage031E_at0:
     tai KernelZeros,ScrollXFrac,$0030
-    tai KernelZeros,Scroll3E66,$0088
+    tai KernelZeros,ScrollColumnBlocks,$0088
     stz a:OBJ_SPRITE_FLIP
     lda z:zField8E
     pha
     bsr LoadStageEntry031E
     pla
     sta z:zField8E
-    jsr $80A0
+    jsr MapOverlayBank7At80A0
     jsr $A8EC
     ldy z:zRasterEffect
     lda a:$8889,y
     beq InitStage031E_at1
     tai KernelZeros,ScrollXFrac,$0030
-    tai KernelZeros,Scroll3E66,$0088
+    tai KernelZeros,ScrollColumnBlocks,$0088
     lda z:zField8E
     pha
     bsr LoadStageEntry031E
@@ -450,7 +450,7 @@ InitStage031E_at0:
     jsr $A94D
 InitStage031E_at1:
     tai KernelZeros,ScrollXFrac,$0030
-    tai KernelZeros,Scroll3E66,$0088
+    tai KernelZeros,ScrollColumnBlocks,$0088
 
 ; @routine 031E:108 LoadStageEntry031E
 ; @run 6B:8908
@@ -514,7 +514,7 @@ LoadStageEntry031E:
     sta a:CameraMode
     lda (zTemp00),y
     iny
-    sta a:Scroll3E66
+    sta a:ScrollColumnBlocks
     lda (zTemp00),y
     iny
     sta a:ScrollXMinHi
@@ -630,7 +630,7 @@ StageScrollStep031E:
 ; Entry: X the caller's. Exit: as RunObjects.
 SetUpStageObjects031E:
     jsr VecClearEnemySlots
-    jsr $80A0
+    jsr MapOverlayBank7At80A0
     lda z:zField83
     asl a
     asl a
@@ -662,7 +662,7 @@ SetUpStageObjects031E_at0:
     inc a
     tam #$40
     jsr VecStreamFullWalk
-    jmp $8A05
+    jmp StepScrollAndRunObjects026E
 
 ; @routine 031E:309 SpawnStageObjectsRows01031E
 ; @run 6B:8B09
@@ -681,12 +681,12 @@ SetUpStageObjects031E_at0:
 ; Entry: nothing. Exit: A 2, X 4, Y the second row's slot, N 0, Z 0. C and V as the spawn left them.
 SpawnStageObjectsRows01031E:
     clx
-    jsr $964F
+    jsr SpawnStageObject031F
     inx
-    jsr $964F
-    stz a:StageVar3616
+    jsr SpawnStageObject031F
+    stz a:StageShownStock
     lda #$C0
-    sta a:StageVar3616+1
+    sta a:StageSequenceDelay
     rmb5 z:zField8E
     lda #$65
     ldx #$04
@@ -712,25 +712,25 @@ SpawnStageObjectsRows01031E:
 ; WAITS: no.
 ; Entry: X and Y as the blends take them; V as the caller left it. Exit: as the last step left it.
 StepStageFrame031E:
-    lda a:$2ABF
+    lda a:OBJ_FRAME+87
     beq $8B22
     bbs1 zPaused,StepStageFrame031E_at0
-    lda a:StageVar3616+1
+    lda a:StageSequenceDelay
     beq StepStageFrame031E_at1
-    dec a:StageVar3616+1
+    dec a:StageSequenceDelay
     bne StepStageFrame031E_at1
     smb1 z:zPaused
 StepStageFrame031E_at0:
     jsr $8EA3
     bra StepStageFrame031E_at2
 StepStageFrame031E_at1:
-    jsr $9103
-    jsr $9133
-    jsr $915E
+    jsr BlendStageStockRows031F
+    jsr BlendStageScoreAddRows031F
+    jsr BlendStageScoreRows031F
 StepStageFrame031E_at2:
-    jsr $8BD8
+    jsr StageScriptByWave026E
     lda #$24
-    sta a:$2D26
+    sta a:OBJ_Y_LO+86
     ldx z:zField93
     lda a:$8BCF,x
     ldx z:zCharacter
@@ -740,21 +740,21 @@ StepStageFrame031E_at2:
     cmp #$11
     bne StepStageFrame031E_at3
     ldx #$28
-    stx a:$2D26
+    stx a:OBJ_Y_LO+86
     lda #$71
     bra StepStageFrame031E_at3
 StepStageFrame031E_at4:
     lda #$72
 StepStageFrame031E_at3:
-    sta a:$2ABE
+    sta a:OBJ_FRAME+86
     lda z:zPlayerHealth
     cmp z:zField99
     beq StepStageFrame031E_at5
     bcs StepStageFrame031E_at6
-    jsr $8BF9
+    jsr SetHealthBarAddress031E
     ldx #$FF
     ldy #$F0
-    jsr $9631
+    jsr AndVramDataAt9631
     dec z:zField99
     bra StepStageFrame031E_x0
 StepStageFrame031E_at6:
@@ -768,7 +768,7 @@ StepStageFrame031E_at7:
     bsr $8BF9
     ldx #$00
     ldy #$0F
-    jsr $9640
+    jsr OrVramDataAt9640
     bra StepStageFrame031E_at8
 StepStageFrame031E_at5:
     smb5 z:zField8E
@@ -778,7 +778,7 @@ StepStageFrame031E_x0:
     lda #$4A
     jsr VecSoundCommand
 StepStageFrame031E_at8:
-    jsr $95E8
+    jsr MapStageBanksAt95E8
     stz a:StageBlendOn
     lda z:zField94
     cmp z:zField95
@@ -786,14 +786,14 @@ StepStageFrame031E_at8:
     sta z:zField95
     and #$0F
     ldx #$08
-    jsr $8D3A
+    jsr BlendStageTileRows026E
     lda z:zField94
     lsr a
     lsr a
     lsr a
     lsr a
     ldx #$09
-    jsr $8D3A
+    jsr BlendStageTileRows026E
 StepStageFrame031E_at9:
     bbs2 zField8E,StepStageFrame031E_at10
     rts
@@ -829,20 +829,20 @@ InitStage043E:
     sta z:zBiosAh
 InitStage043E_at0:
     tai KernelZeros,ScrollXFrac,$0030
-    tai KernelZeros,Scroll3E66,$0088
+    tai KernelZeros,ScrollColumnBlocks,$0088
     stz a:OBJ_SPRITE_FLIP
     lda z:zField8E
     pha
     bsr LoadStageEntry043E
     pla
     sta z:zField8E
-    jsr $80A0
+    jsr MapOverlayBank7At80A0
     jsr $A8EC
     ldy z:zRasterEffect
     lda a:$8889,y
     beq InitStage043E_at1
     tai KernelZeros,ScrollXFrac,$0030
-    tai KernelZeros,Scroll3E66,$0088
+    tai KernelZeros,ScrollColumnBlocks,$0088
     lda z:zField8E
     pha
     bsr LoadStageEntry043E
@@ -851,7 +851,7 @@ InitStage043E_at0:
     jsr $A94D
 InitStage043E_at1:
     tai KernelZeros,ScrollXFrac,$0030
-    tai KernelZeros,Scroll3E66,$0088
+    tai KernelZeros,ScrollColumnBlocks,$0088
 
 ; @routine 043E:108 LoadStageEntry043E
 ; @run 6B:8908
@@ -915,7 +915,7 @@ LoadStageEntry043E:
     sta a:CameraMode
     lda (zTemp00),y
     iny
-    sta a:Scroll3E66
+    sta a:ScrollColumnBlocks
     lda (zTemp00),y
     iny
     sta a:ScrollXMinHi
@@ -1031,7 +1031,7 @@ StageScrollStep043E:
 ; Entry: X the caller's. Exit: as RunObjects.
 SetUpStageObjects043E:
     jsr VecClearEnemySlots
-    jsr $80A0
+    jsr MapOverlayBank7At80A0
     lda z:zField83
     asl a
     asl a
@@ -1063,7 +1063,7 @@ SetUpStageObjects043E_at0:
     inc a
     tam #$40
     jsr VecStreamFullWalk
-    jmp $8A05
+    jmp StepScrollAndRunObjects026E
 
 ; @routine 043E:309 SpawnStageObjectsRows01043E
 ; @run 6B:8B09
@@ -1082,12 +1082,12 @@ SetUpStageObjects043E_at0:
 ; Entry: nothing. Exit: A 2, X 4, Y the second row's slot, N 0, Z 0. C and V as the spawn left them.
 SpawnStageObjectsRows01043E:
     clx
-    jsr $964F
+    jsr SpawnStageObject031F
     inx
-    jsr $964F
-    stz a:StageVar3616
+    jsr SpawnStageObject031F
+    stz a:StageShownStock
     lda #$C0
-    sta a:StageVar3616+1
+    sta a:StageSequenceDelay
     rmb5 z:zField8E
     lda #$65
     ldx #$04
@@ -1113,25 +1113,25 @@ SpawnStageObjectsRows01043E:
 ; WAITS: no.
 ; Entry: X and Y as the blends take them; V as the caller left it. Exit: as the last step left it.
 StepStageFrame043E:
-    lda a:$2ABF
+    lda a:OBJ_FRAME+87
     beq $8B22
     bbs1 zPaused,StepStageFrame043E_at0
-    lda a:StageVar3616+1
+    lda a:StageSequenceDelay
     beq StepStageFrame043E_at1
-    dec a:StageVar3616+1
+    dec a:StageSequenceDelay
     bne StepStageFrame043E_at1
     smb1 z:zPaused
 StepStageFrame043E_at0:
     jsr $8EA3
     bra StepStageFrame043E_at2
 StepStageFrame043E_at1:
-    jsr $9103
-    jsr $9133
-    jsr $915E
+    jsr BlendStageStockRows031F
+    jsr BlendStageScoreAddRows031F
+    jsr BlendStageScoreRows031F
 StepStageFrame043E_at2:
-    jsr $8BD8
+    jsr StageScriptByWave026E
     lda #$24
-    sta a:$2D26
+    sta a:OBJ_Y_LO+86
     ldx z:zField93
     lda a:$8BCF,x
     ldx z:zCharacter
@@ -1141,21 +1141,21 @@ StepStageFrame043E_at2:
     cmp #$11
     bne StepStageFrame043E_at3
     ldx #$28
-    stx a:$2D26
+    stx a:OBJ_Y_LO+86
     lda #$71
     bra StepStageFrame043E_at3
 StepStageFrame043E_at4:
     lda #$72
 StepStageFrame043E_at3:
-    sta a:$2ABE
+    sta a:OBJ_FRAME+86
     lda z:zPlayerHealth
     cmp z:zField99
     beq StepStageFrame043E_at5
     bcs StepStageFrame043E_at6
-    jsr $8BF9
+    jsr SetHealthBarAddress031E
     ldx #$FF
     ldy #$F0
-    jsr $9631
+    jsr AndVramDataAt9631
     dec z:zField99
     bra StepStageFrame043E_x0
 StepStageFrame043E_at6:
@@ -1169,7 +1169,7 @@ StepStageFrame043E_at7:
     bsr $8BF9
     ldx #$00
     ldy #$0F
-    jsr $9640
+    jsr OrVramDataAt9640
     bra StepStageFrame043E_at8
 StepStageFrame043E_at5:
     smb5 z:zField8E
@@ -1179,7 +1179,7 @@ StepStageFrame043E_x0:
     lda #$4A
     jsr VecSoundCommand
 StepStageFrame043E_at8:
-    jsr $95E8
+    jsr MapStageBanksAt95E8
     stz a:StageBlendOn
     lda z:zField94
     cmp z:zField95
@@ -1187,14 +1187,14 @@ StepStageFrame043E_at8:
     sta z:zField95
     and #$0F
     ldx #$08
-    jsr $8D3A
+    jsr BlendStageTileRows026E
     lda z:zField94
     lsr a
     lsr a
     lsr a
     lsr a
     ldx #$09
-    jsr $8D3A
+    jsr BlendStageTileRows026E
 StepStageFrame043E_at9:
     bbs2 zField8E,StepStageFrame043E_at10
     rts
@@ -1230,20 +1230,20 @@ InitStage064E:
     sta z:zBiosAh
 InitStage064E_at0:
     tai KernelZeros,ScrollXFrac,$0030
-    tai KernelZeros,Scroll3E66,$0088
+    tai KernelZeros,ScrollColumnBlocks,$0088
     stz a:OBJ_SPRITE_FLIP
     lda z:zField8E
     pha
     bsr LoadStageEntry064E
     pla
     sta z:zField8E
-    jsr $80A0
+    jsr MapOverlayBank7At80A0
     jsr $A8EC
     ldy z:zRasterEffect
     lda a:$8889,y
     beq InitStage064E_at1
     tai KernelZeros,ScrollXFrac,$0030
-    tai KernelZeros,Scroll3E66,$0088
+    tai KernelZeros,ScrollColumnBlocks,$0088
     lda z:zField8E
     pha
     bsr LoadStageEntry064E
@@ -1252,7 +1252,7 @@ InitStage064E_at0:
     jsr $A94D
 InitStage064E_at1:
     tai KernelZeros,ScrollXFrac,$0030
-    tai KernelZeros,Scroll3E66,$0088
+    tai KernelZeros,ScrollColumnBlocks,$0088
 
 ; @routine 064E:108 LoadStageEntry064E
 ; @run 6B:8908
@@ -1316,7 +1316,7 @@ LoadStageEntry064E:
     sta a:CameraMode
     lda (zTemp00),y
     iny
-    sta a:Scroll3E66
+    sta a:ScrollColumnBlocks
     lda (zTemp00),y
     iny
     sta a:ScrollXMinHi
@@ -1432,7 +1432,7 @@ StageScrollStep064E:
 ; Entry: X the caller's. Exit: as RunObjects.
 SetUpStageObjects064E:
     jsr VecClearEnemySlots
-    jsr $80A0
+    jsr MapOverlayBank7At80A0
     lda z:zField83
     asl a
     asl a
@@ -1464,7 +1464,7 @@ SetUpStageObjects064E_at0:
     inc a
     tam #$40
     jsr VecStreamFullWalk
-    jmp $8A05
+    jmp StepScrollAndRunObjects026E
 
 ; @routine 064E:309 SpawnStageObjectsRows01064E
 ; @run 6B:8B09
@@ -1483,12 +1483,12 @@ SetUpStageObjects064E_at0:
 ; Entry: nothing. Exit: A 2, X 4, Y the second row's slot, N 0, Z 0. C and V as the spawn left them.
 SpawnStageObjectsRows01064E:
     clx
-    jsr $936E
+    jsr SpawnStageObject026F
     inx
-    jsr $936E
-    stz a:StageVar3616
+    jsr SpawnStageObject026F
+    stz a:StageShownStock
     lda #$C0
-    sta a:StageVar3616+1
+    sta a:StageSequenceDelay
     rmb5 z:zField8E
     lda #$65
     ldx #$04
@@ -1514,25 +1514,25 @@ SpawnStageObjectsRows01064E:
 ; WAITS: no.
 ; Entry: X and Y as the blends take them; V as the caller left it. Exit: as the last step left it.
 StepStageFrame064E:
-    lda a:$2ABF
+    lda a:OBJ_FRAME+87
     beq $8B22
     bbs1 zPaused,StepStageFrame064E_at0
-    lda a:StageVar3616+1
+    lda a:StageSequenceDelay
     beq StepStageFrame064E_at1
-    dec a:StageVar3616+1
+    dec a:StageSequenceDelay
     bne StepStageFrame064E_at1
     smb1 z:zPaused
 StepStageFrame064E_at0:
     jsr $8EAF
     bra StepStageFrame064E_at2
 StepStageFrame064E_at1:
-    jsr $910F
-    jsr $913F
-    jsr $916A
+    jsr BlendStageStockRows026F
+    jsr BlendStageScoreAddRows026F
+    jsr BlendStageScoreRows026F
 StepStageFrame064E_at2:
-    jsr $8BD8
+    jsr StageScriptByWave026E
     lda #$24
-    sta a:$2D26
+    sta a:OBJ_Y_LO+86
     ldx z:zField93
     lda a:$8BCF,x
     ldx z:zCharacter
@@ -1542,21 +1542,21 @@ StepStageFrame064E_at2:
     cmp #$11
     bne StepStageFrame064E_at3
     ldx #$28
-    stx a:$2D26
+    stx a:OBJ_Y_LO+86
     lda #$71
     bra StepStageFrame064E_at3
 StepStageFrame064E_at4:
     lda #$72
 StepStageFrame064E_at3:
-    sta a:$2ABE
+    sta a:OBJ_FRAME+86
     lda z:zPlayerHealth
     cmp z:zField99
     beq StepStageFrame064E_at5
     bcs StepStageFrame064E_at6
-    jsr $8BF9
+    jsr SetHealthBarAddress026E
     ldx #$FF
     ldy #$F0
-    jsr $9350
+    jsr AndVramDataAt9350
     dec z:zField99
     bra StepStageFrame064E_x0
 StepStageFrame064E_at6:
@@ -1570,7 +1570,7 @@ StepStageFrame064E_at7:
     bsr $8BF9
     ldx #$00
     ldy #$0F
-    jsr $935F
+    jsr OrVramDataAt935F
     bra StepStageFrame064E_at8
 StepStageFrame064E_at5:
     smb5 z:zField8E
@@ -1580,7 +1580,7 @@ StepStageFrame064E_x0:
     lda #$4A
     jsr VecSoundCommand
 StepStageFrame064E_at8:
-    jsr $9307
+    jsr MapStageBanksAt9307
     stz a:StageBlendOn
     lda z:zField94
     cmp z:zField95
@@ -1588,14 +1588,14 @@ StepStageFrame064E_at8:
     sta z:zField95
     and #$0F
     ldx #$08
-    jsr $8D3A
+    jsr BlendStageTileRows026E
     lda z:zField94
     lsr a
     lsr a
     lsr a
     lsr a
     ldx #$09
-    jsr $8D3A
+    jsr BlendStageTileRows026E
 StepStageFrame064E_at9:
     bbs2 zField8E,StepStageFrame064E_at10
     rts
@@ -1631,20 +1631,20 @@ InitStage10DE:
     sta z:zBiosAh
 InitStage10DE_at0:
     tai KernelZeros,ScrollXFrac,$0030
-    tai KernelZeros,Scroll3E66,$0088
+    tai KernelZeros,ScrollColumnBlocks,$0088
     stz a:OBJ_SPRITE_FLIP
     lda z:zField8E
     pha
     bsr LoadStageEntry10DE
     pla
     sta z:zField8E
-    jsr $80A0
+    jsr MapOverlayBank7At80A0
     jsr $A8EC
     ldy z:zRasterEffect
     lda a:$8889,y
     beq InitStage10DE_at1
     tai KernelZeros,ScrollXFrac,$0030
-    tai KernelZeros,Scroll3E66,$0088
+    tai KernelZeros,ScrollColumnBlocks,$0088
     lda z:zField8E
     pha
     bsr LoadStageEntry10DE
@@ -1653,7 +1653,7 @@ InitStage10DE_at0:
     jsr $A94D
 InitStage10DE_at1:
     tai KernelZeros,ScrollXFrac,$0030
-    tai KernelZeros,Scroll3E66,$0088
+    tai KernelZeros,ScrollColumnBlocks,$0088
 
 ; @routine 10DE:108 LoadStageEntry10DE
 ; @run 6B:8908
@@ -1717,7 +1717,7 @@ LoadStageEntry10DE:
     sta a:CameraMode
     lda (zTemp00),y
     iny
-    sta a:Scroll3E66
+    sta a:ScrollColumnBlocks
     lda (zTemp00),y
     iny
     sta a:ScrollXMinHi
@@ -1833,7 +1833,7 @@ StageScrollStep10DE:
 ; Entry: X the caller's. Exit: as RunObjects.
 SetUpStageObjects10DE:
     jsr VecClearEnemySlots
-    jsr $80A0
+    jsr MapOverlayBank7At80A0
     lda z:zField83
     asl a
     asl a
@@ -1865,7 +1865,7 @@ SetUpStageObjects10DE_at0:
     inc a
     tam #$40
     jsr VecStreamFullWalk
-    jmp $8A05
+    jmp StepScrollAndRunObjects026E
 
 ; @routine 10DE:309 SpawnStageObjectsRows0110DE
 ; @run 6B:8B09
@@ -1884,12 +1884,12 @@ SetUpStageObjects10DE_at0:
 ; Entry: nothing. Exit: A 2, X 4, Y the second row's slot, N 0, Z 0. C and V as the spawn left them.
 SpawnStageObjectsRows0110DE:
     clx
-    jsr $964F
+    jsr SpawnStageObject031F
     inx
-    jsr $964F
-    stz a:StageVar3616
+    jsr SpawnStageObject031F
+    stz a:StageShownStock
     lda #$C0
-    sta a:StageVar3616+1
+    sta a:StageSequenceDelay
     rmb5 z:zField8E
     lda #$65
     ldx #$04
@@ -1915,25 +1915,25 @@ SpawnStageObjectsRows0110DE:
 ; WAITS: no.
 ; Entry: X and Y as the blends take them; V as the caller left it. Exit: as the last step left it.
 StepStageFrame10DE:
-    lda a:$2ABF
+    lda a:OBJ_FRAME+87
     beq $8B22
     bbs1 zPaused,StepStageFrame10DE_at0
-    lda a:StageVar3616+1
+    lda a:StageSequenceDelay
     beq StepStageFrame10DE_at1
-    dec a:StageVar3616+1
+    dec a:StageSequenceDelay
     bne StepStageFrame10DE_at1
     smb1 z:zPaused
 StepStageFrame10DE_at0:
     jsr $8EA3
     bra StepStageFrame10DE_at2
 StepStageFrame10DE_at1:
-    jsr $9103
-    jsr $9133
-    jsr $915E
+    jsr BlendStageStockRows031F
+    jsr BlendStageScoreAddRows031F
+    jsr BlendStageScoreRows031F
 StepStageFrame10DE_at2:
-    jsr $8BD8
+    jsr StageScriptByWave026E
     lda #$24
-    sta a:$2D26
+    sta a:OBJ_Y_LO+86
     ldx z:zField93
     lda a:$8BCF,x
     ldx z:zCharacter
@@ -1943,21 +1943,21 @@ StepStageFrame10DE_at2:
     cmp #$11
     bne StepStageFrame10DE_at3
     ldx #$28
-    stx a:$2D26
+    stx a:OBJ_Y_LO+86
     lda #$71
     bra StepStageFrame10DE_at3
 StepStageFrame10DE_at4:
     lda #$72
 StepStageFrame10DE_at3:
-    sta a:$2ABE
+    sta a:OBJ_FRAME+86
     lda z:zPlayerHealth
     cmp z:zField99
     beq StepStageFrame10DE_at5
     bcs StepStageFrame10DE_at6
-    jsr $8BF9
+    jsr SetHealthBarAddress031E
     ldx #$FF
     ldy #$F0
-    jsr $9631
+    jsr AndVramDataAt9631
     dec z:zField99
     bra StepStageFrame10DE_x0
 StepStageFrame10DE_at6:
@@ -1971,7 +1971,7 @@ StepStageFrame10DE_at7:
     bsr $8BF9
     ldx #$00
     ldy #$0F
-    jsr $9640
+    jsr OrVramDataAt9640
     bra StepStageFrame10DE_at8
 StepStageFrame10DE_at5:
     smb5 z:zField8E
@@ -1981,7 +1981,7 @@ StepStageFrame10DE_x0:
     lda #$4A
     jsr VecSoundCommand
 StepStageFrame10DE_at8:
-    jsr $95E8
+    jsr MapStageBanksAt95E8
     stz a:StageBlendOn
     lda z:zField94
     cmp z:zField95
@@ -1989,14 +1989,14 @@ StepStageFrame10DE_at8:
     sta z:zField95
     and #$0F
     ldx #$08
-    jsr $8D3A
+    jsr BlendStageTileRows026E
     lda z:zField94
     lsr a
     lsr a
     lsr a
     lsr a
     ldx #$09
-    jsr $8D3A
+    jsr BlendStageTileRows026E
 StepStageFrame10DE_at9:
     bbs2 zField8E,StepStageFrame10DE_at10
     rts
@@ -2032,20 +2032,20 @@ InitStage122E:
     sta z:zBiosAh
 InitStage122E_at0:
     tai KernelZeros,ScrollXFrac,$0030
-    tai KernelZeros,Scroll3E66,$0088
+    tai KernelZeros,ScrollColumnBlocks,$0088
     stz a:OBJ_SPRITE_FLIP
     lda z:zField8E
     pha
     bsr LoadStageEntry122E
     pla
     sta z:zField8E
-    jsr $80A0
+    jsr MapOverlayBank7At80A0
     jsr $A8EC
     ldy z:zRasterEffect
     lda a:$8889,y
     beq InitStage122E_at1
     tai KernelZeros,ScrollXFrac,$0030
-    tai KernelZeros,Scroll3E66,$0088
+    tai KernelZeros,ScrollColumnBlocks,$0088
     lda z:zField8E
     pha
     bsr LoadStageEntry122E
@@ -2054,7 +2054,7 @@ InitStage122E_at0:
     jsr $A94D
 InitStage122E_at1:
     tai KernelZeros,ScrollXFrac,$0030
-    tai KernelZeros,Scroll3E66,$0088
+    tai KernelZeros,ScrollColumnBlocks,$0088
 
 ; @routine 122E:108 LoadStageEntry122E
 ; @run 6B:8908
@@ -2118,7 +2118,7 @@ LoadStageEntry122E:
     sta a:CameraMode
     lda (zTemp00),y
     iny
-    sta a:Scroll3E66
+    sta a:ScrollColumnBlocks
     lda (zTemp00),y
     iny
     sta a:ScrollXMinHi
@@ -2234,7 +2234,7 @@ StageScrollStep122E:
 ; Entry: X the caller's. Exit: as RunObjects.
 SetUpStageObjects122E:
     jsr VecClearEnemySlots
-    jsr $80A0
+    jsr MapOverlayBank7At80A0
     lda z:zField83
     asl a
     asl a
@@ -2266,7 +2266,7 @@ SetUpStageObjects122E_at0:
     inc a
     tam #$40
     jsr VecStreamFullWalk
-    jmp $8A05
+    jmp StepScrollAndRunObjects026E
 
 ; @routine 122E:309 SpawnStageObjectsRows01122E
 ; @run 6B:8B09
@@ -2285,12 +2285,12 @@ SetUpStageObjects122E_at0:
 ; Entry: nothing. Exit: A 2, X 4, Y the second row's slot, N 0, Z 0. C and V as the spawn left them.
 SpawnStageObjectsRows01122E:
     clx
-    jsr $936E
+    jsr SpawnStageObject026F
     inx
-    jsr $936E
-    stz a:StageVar3616
+    jsr SpawnStageObject026F
+    stz a:StageShownStock
     lda #$C0
-    sta a:StageVar3616+1
+    sta a:StageSequenceDelay
     rmb5 z:zField8E
     lda #$65
     ldx #$04
@@ -2316,25 +2316,25 @@ SpawnStageObjectsRows01122E:
 ; WAITS: no.
 ; Entry: X and Y as the blends take them; V as the caller left it. Exit: as the last step left it.
 StepStageFrame122E:
-    lda a:$2ABF
+    lda a:OBJ_FRAME+87
     beq $8B22
     bbs1 zPaused,StepStageFrame122E_at0
-    lda a:StageVar3616+1
+    lda a:StageSequenceDelay
     beq StepStageFrame122E_at1
-    dec a:StageVar3616+1
+    dec a:StageSequenceDelay
     bne StepStageFrame122E_at1
     smb1 z:zPaused
 StepStageFrame122E_at0:
     jsr $8EAF
     bra StepStageFrame122E_at2
 StepStageFrame122E_at1:
-    jsr $910F
-    jsr $913F
-    jsr $916A
+    jsr BlendStageStockRows026F
+    jsr BlendStageScoreAddRows026F
+    jsr BlendStageScoreRows026F
 StepStageFrame122E_at2:
-    jsr $8BD8
+    jsr StageScriptByWave026E
     lda #$24
-    sta a:$2D26
+    sta a:OBJ_Y_LO+86
     ldx z:zField93
     lda a:$8BCF,x
     ldx z:zCharacter
@@ -2344,21 +2344,21 @@ StepStageFrame122E_at2:
     cmp #$11
     bne StepStageFrame122E_at3
     ldx #$28
-    stx a:$2D26
+    stx a:OBJ_Y_LO+86
     lda #$71
     bra StepStageFrame122E_at3
 StepStageFrame122E_at4:
     lda #$72
 StepStageFrame122E_at3:
-    sta a:$2ABE
+    sta a:OBJ_FRAME+86
     lda z:zPlayerHealth
     cmp z:zField99
     beq StepStageFrame122E_at5
     bcs StepStageFrame122E_at6
-    jsr $8BF9
+    jsr SetHealthBarAddress026E
     ldx #$FF
     ldy #$F0
-    jsr $9350
+    jsr AndVramDataAt9350
     dec z:zField99
     bra StepStageFrame122E_x0
 StepStageFrame122E_at6:
@@ -2372,7 +2372,7 @@ StepStageFrame122E_at7:
     bsr $8BF9
     ldx #$00
     ldy #$0F
-    jsr $935F
+    jsr OrVramDataAt935F
     bra StepStageFrame122E_at8
 StepStageFrame122E_at5:
     smb5 z:zField8E
@@ -2382,7 +2382,7 @@ StepStageFrame122E_x0:
     lda #$4A
     jsr VecSoundCommand
 StepStageFrame122E_at8:
-    jsr $9307
+    jsr MapStageBanksAt9307
     stz a:StageBlendOn
     lda z:zField94
     cmp z:zField95
@@ -2390,14 +2390,14 @@ StepStageFrame122E_at8:
     sta z:zField95
     and #$0F
     ldx #$08
-    jsr $8D3A
+    jsr BlendStageTileRows026E
     lda z:zField94
     lsr a
     lsr a
     lsr a
     lsr a
     ldx #$09
-    jsr $8D3A
+    jsr BlendStageTileRows026E
 StepStageFrame122E_at9:
     bbs2 zField8E,StepStageFrame122E_at10
     rts
@@ -2433,20 +2433,20 @@ InitStage1A2E:
     sta z:zBiosAh
 InitStage1A2E_at0:
     tai KernelZeros,ScrollXFrac,$0030
-    tai KernelZeros,Scroll3E66,$0088
+    tai KernelZeros,ScrollColumnBlocks,$0088
     stz a:OBJ_SPRITE_FLIP
     lda z:zField8E
     pha
     bsr LoadStageEntry1A2E
     pla
     sta z:zField8E
-    jsr $80A0
+    jsr MapOverlayBank7At80A0
     jsr $A8EC
     ldy z:zRasterEffect
     lda a:$8889,y
     beq InitStage1A2E_at1
     tai KernelZeros,ScrollXFrac,$0030
-    tai KernelZeros,Scroll3E66,$0088
+    tai KernelZeros,ScrollColumnBlocks,$0088
     lda z:zField8E
     pha
     bsr LoadStageEntry1A2E
@@ -2455,7 +2455,7 @@ InitStage1A2E_at0:
     jsr $A94D
 InitStage1A2E_at1:
     tai KernelZeros,ScrollXFrac,$0030
-    tai KernelZeros,Scroll3E66,$0088
+    tai KernelZeros,ScrollColumnBlocks,$0088
 
 ; @routine 1A2E:108 LoadStageEntry1A2E
 ; @run 6B:8908
@@ -2519,7 +2519,7 @@ LoadStageEntry1A2E:
     sta a:CameraMode
     lda (zTemp00),y
     iny
-    sta a:Scroll3E66
+    sta a:ScrollColumnBlocks
     lda (zTemp00),y
     iny
     sta a:ScrollXMinHi
@@ -2635,7 +2635,7 @@ StageScrollStep1A2E:
 ; Entry: X the caller's. Exit: as RunObjects.
 SetUpStageObjects1A2E:
     jsr VecClearEnemySlots
-    jsr $80A0
+    jsr MapOverlayBank7At80A0
     lda z:zField83
     asl a
     asl a
@@ -2667,7 +2667,7 @@ SetUpStageObjects1A2E_at0:
     inc a
     tam #$40
     jsr VecStreamFullWalk
-    jmp $8A05
+    jmp StepScrollAndRunObjects026E
 
 ; @routine 1A2E:309 SpawnStageObjectsRows011A2E
 ; @run 6B:8B09
@@ -2686,12 +2686,12 @@ SetUpStageObjects1A2E_at0:
 ; Entry: nothing. Exit: A 2, X 4, Y the second row's slot, N 0, Z 0. C and V as the spawn left them.
 SpawnStageObjectsRows011A2E:
     clx
-    jsr $936E
+    jsr SpawnStageObject026F
     inx
-    jsr $936E
-    stz a:StageVar3616
+    jsr SpawnStageObject026F
+    stz a:StageShownStock
     lda #$C0
-    sta a:StageVar3616+1
+    sta a:StageSequenceDelay
     rmb5 z:zField8E
     lda #$65
     ldx #$04
@@ -2717,25 +2717,25 @@ SpawnStageObjectsRows011A2E:
 ; WAITS: no.
 ; Entry: X and Y as the blends take them; V as the caller left it. Exit: as the last step left it.
 StepStageFrame1A2E:
-    lda a:$2ABF
+    lda a:OBJ_FRAME+87
     beq $8B22
     bbs1 zPaused,StepStageFrame1A2E_at0
-    lda a:StageVar3616+1
+    lda a:StageSequenceDelay
     beq StepStageFrame1A2E_at1
-    dec a:StageVar3616+1
+    dec a:StageSequenceDelay
     bne StepStageFrame1A2E_at1
     smb1 z:zPaused
 StepStageFrame1A2E_at0:
     jsr $8EAF
     bra StepStageFrame1A2E_at2
 StepStageFrame1A2E_at1:
-    jsr $910F
-    jsr $913F
-    jsr $916A
+    jsr BlendStageStockRows026F
+    jsr BlendStageScoreAddRows026F
+    jsr BlendStageScoreRows026F
 StepStageFrame1A2E_at2:
-    jsr $8BD8
+    jsr StageScriptByWave026E
     lda #$24
-    sta a:$2D26
+    sta a:OBJ_Y_LO+86
     ldx z:zField93
     lda a:$8BCF,x
     ldx z:zCharacter
@@ -2745,21 +2745,21 @@ StepStageFrame1A2E_at2:
     cmp #$11
     bne StepStageFrame1A2E_at3
     ldx #$28
-    stx a:$2D26
+    stx a:OBJ_Y_LO+86
     lda #$71
     bra StepStageFrame1A2E_at3
 StepStageFrame1A2E_at4:
     lda #$72
 StepStageFrame1A2E_at3:
-    sta a:$2ABE
+    sta a:OBJ_FRAME+86
     lda z:zPlayerHealth
     cmp z:zField99
     beq StepStageFrame1A2E_at5
     bcs StepStageFrame1A2E_at6
-    jsr $8BF9
+    jsr SetHealthBarAddress026E
     ldx #$FF
     ldy #$F0
-    jsr $9350
+    jsr AndVramDataAt9350
     dec z:zField99
     bra StepStageFrame1A2E_x0
 StepStageFrame1A2E_at6:
@@ -2773,7 +2773,7 @@ StepStageFrame1A2E_at7:
     bsr $8BF9
     ldx #$00
     ldy #$0F
-    jsr $935F
+    jsr OrVramDataAt935F
     bra StepStageFrame1A2E_at8
 StepStageFrame1A2E_at5:
     smb5 z:zField8E
@@ -2783,7 +2783,7 @@ StepStageFrame1A2E_x0:
     lda #$4A
     jsr VecSoundCommand
 StepStageFrame1A2E_at8:
-    jsr $9307
+    jsr MapStageBanksAt9307
     stz a:StageBlendOn
     lda z:zField94
     cmp z:zField95
@@ -2791,14 +2791,14 @@ StepStageFrame1A2E_at8:
     sta z:zField95
     and #$0F
     ldx #$08
-    jsr $8D3A
+    jsr BlendStageTileRows026E
     lda z:zField94
     lsr a
     lsr a
     lsr a
     lsr a
     ldx #$09
-    jsr $8D3A
+    jsr BlendStageTileRows026E
 StepStageFrame1A2E_at9:
     bbs2 zField8E,StepStageFrame1A2E_at10
     rts
@@ -2834,20 +2834,20 @@ InitStage1B8E:
     sta z:zBiosAh
 InitStage1B8E_at0:
     tai KernelZeros,ScrollXFrac,$0030
-    tai KernelZeros,Scroll3E66,$0088
+    tai KernelZeros,ScrollColumnBlocks,$0088
     stz a:OBJ_SPRITE_FLIP
     lda z:zField8E
     pha
     bsr LoadStageEntry1B8E
     pla
     sta z:zField8E
-    jsr $80A0
+    jsr MapOverlayBank7At80A0
     jsr $A8EC
     ldy z:zRasterEffect
     lda a:$8889,y
     beq InitStage1B8E_at1
     tai KernelZeros,ScrollXFrac,$0030
-    tai KernelZeros,Scroll3E66,$0088
+    tai KernelZeros,ScrollColumnBlocks,$0088
     lda z:zField8E
     pha
     bsr LoadStageEntry1B8E
@@ -2856,7 +2856,7 @@ InitStage1B8E_at0:
     jsr $A94D
 InitStage1B8E_at1:
     tai KernelZeros,ScrollXFrac,$0030
-    tai KernelZeros,Scroll3E66,$0088
+    tai KernelZeros,ScrollColumnBlocks,$0088
 
 ; @routine 1B8E:108 LoadStageEntry1B8E
 ; @run 6B:8908
@@ -2920,7 +2920,7 @@ LoadStageEntry1B8E:
     sta a:CameraMode
     lda (zTemp00),y
     iny
-    sta a:Scroll3E66
+    sta a:ScrollColumnBlocks
     lda (zTemp00),y
     iny
     sta a:ScrollXMinHi
@@ -3036,7 +3036,7 @@ StageScrollStep1B8E:
 ; Entry: X the caller's. Exit: as RunObjects.
 SetUpStageObjects1B8E:
     jsr VecClearEnemySlots
-    jsr $80A0
+    jsr MapOverlayBank7At80A0
     lda z:zField83
     asl a
     asl a
@@ -3068,7 +3068,7 @@ SetUpStageObjects1B8E_at0:
     inc a
     tam #$40
     jsr VecStreamFullWalk
-    jmp $8A05
+    jmp StepScrollAndRunObjects026E
 
 ; @routine 1B8E:309 SpawnStageObjectsRows011B8E
 ; @run 6B:8B09
@@ -3087,12 +3087,12 @@ SetUpStageObjects1B8E_at0:
 ; Entry: nothing. Exit: A 2, X 4, Y the second row's slot, N 0, Z 0. C and V as the spawn left them.
 SpawnStageObjectsRows011B8E:
     clx
-    jsr $936E
+    jsr SpawnStageObject026F
     inx
-    jsr $936E
-    stz a:StageVar3616
+    jsr SpawnStageObject026F
+    stz a:StageShownStock
     lda #$C0
-    sta a:StageVar3616+1
+    sta a:StageSequenceDelay
     rmb5 z:zField8E
     lda #$65
     ldx #$04
@@ -3118,25 +3118,25 @@ SpawnStageObjectsRows011B8E:
 ; WAITS: no.
 ; Entry: X and Y as the blends take them; V as the caller left it. Exit: as the last step left it.
 StepStageFrame1B8E:
-    lda a:$2ABF
+    lda a:OBJ_FRAME+87
     beq $8B22
     bbs1 zPaused,StepStageFrame1B8E_at0
-    lda a:StageVar3616+1
+    lda a:StageSequenceDelay
     beq StepStageFrame1B8E_at1
-    dec a:StageVar3616+1
+    dec a:StageSequenceDelay
     bne StepStageFrame1B8E_at1
     smb1 z:zPaused
 StepStageFrame1B8E_at0:
     jsr $8EAF
     bra StepStageFrame1B8E_at2
 StepStageFrame1B8E_at1:
-    jsr $910F
-    jsr $913F
-    jsr $916A
+    jsr BlendStageStockRows026F
+    jsr BlendStageScoreAddRows026F
+    jsr BlendStageScoreRows026F
 StepStageFrame1B8E_at2:
-    jsr $8BD8
+    jsr StageScriptByWave026E
     lda #$24
-    sta a:$2D26
+    sta a:OBJ_Y_LO+86
     ldx z:zField93
     lda a:$8BCF,x
     ldx z:zCharacter
@@ -3146,21 +3146,21 @@ StepStageFrame1B8E_at2:
     cmp #$11
     bne StepStageFrame1B8E_at3
     ldx #$28
-    stx a:$2D26
+    stx a:OBJ_Y_LO+86
     lda #$71
     bra StepStageFrame1B8E_at3
 StepStageFrame1B8E_at4:
     lda #$72
 StepStageFrame1B8E_at3:
-    sta a:$2ABE
+    sta a:OBJ_FRAME+86
     lda z:zPlayerHealth
     cmp z:zField99
     beq StepStageFrame1B8E_at5
     bcs StepStageFrame1B8E_at6
-    jsr $8BF9
+    jsr SetHealthBarAddress026E
     ldx #$FF
     ldy #$F0
-    jsr $9350
+    jsr AndVramDataAt9350
     dec z:zField99
     bra StepStageFrame1B8E_x0
 StepStageFrame1B8E_at6:
@@ -3174,7 +3174,7 @@ StepStageFrame1B8E_at7:
     bsr $8BF9
     ldx #$00
     ldy #$0F
-    jsr $935F
+    jsr OrVramDataAt935F
     bra StepStageFrame1B8E_at8
 StepStageFrame1B8E_at5:
     smb5 z:zField8E
@@ -3184,7 +3184,7 @@ StepStageFrame1B8E_x0:
     lda #$4A
     jsr VecSoundCommand
 StepStageFrame1B8E_at8:
-    jsr $9307
+    jsr MapStageBanksAt9307
     stz a:StageBlendOn
     lda z:zField94
     cmp z:zField95
@@ -3192,14 +3192,14 @@ StepStageFrame1B8E_at8:
     sta z:zField95
     and #$0F
     ldx #$08
-    jsr $8D3A
+    jsr BlendStageTileRows026E
     lda z:zField94
     lsr a
     lsr a
     lsr a
     lsr a
     ldx #$09
-    jsr $8D3A
+    jsr BlendStageTileRows026E
 StepStageFrame1B8E_at9:
     bbs2 zField8E,StepStageFrame1B8E_at10
     rts
@@ -3235,20 +3235,20 @@ InitStage1CEE:
     sta z:zBiosAh
 InitStage1CEE_at0:
     tai KernelZeros,ScrollXFrac,$0030
-    tai KernelZeros,Scroll3E66,$0088
+    tai KernelZeros,ScrollColumnBlocks,$0088
     stz a:OBJ_SPRITE_FLIP
     lda z:zField8E
     pha
     bsr LoadStageEntry1CEE
     pla
     sta z:zField8E
-    jsr $80A0
+    jsr MapOverlayBank7At80A0
     jsr $A8EC
     ldy z:zRasterEffect
     lda a:$8889,y
     beq InitStage1CEE_at1
     tai KernelZeros,ScrollXFrac,$0030
-    tai KernelZeros,Scroll3E66,$0088
+    tai KernelZeros,ScrollColumnBlocks,$0088
     lda z:zField8E
     pha
     bsr LoadStageEntry1CEE
@@ -3257,7 +3257,7 @@ InitStage1CEE_at0:
     jsr $A94D
 InitStage1CEE_at1:
     tai KernelZeros,ScrollXFrac,$0030
-    tai KernelZeros,Scroll3E66,$0088
+    tai KernelZeros,ScrollColumnBlocks,$0088
 
 ; @routine 1CEE:108 LoadStageEntry1CEE
 ; @run 6B:8908
@@ -3321,7 +3321,7 @@ LoadStageEntry1CEE:
     sta a:CameraMode
     lda (zTemp00),y
     iny
-    sta a:Scroll3E66
+    sta a:ScrollColumnBlocks
     lda (zTemp00),y
     iny
     sta a:ScrollXMinHi
@@ -3437,7 +3437,7 @@ StageScrollStep1CEE:
 ; Entry: X the caller's. Exit: as RunObjects.
 SetUpStageObjects1CEE:
     jsr VecClearEnemySlots
-    jsr $80A0
+    jsr MapOverlayBank7At80A0
     lda z:zField83
     asl a
     asl a
@@ -3469,7 +3469,7 @@ SetUpStageObjects1CEE_at0:
     inc a
     tam #$40
     jsr VecStreamFullWalk
-    jmp $8A05
+    jmp StepScrollAndRunObjects026E
 
 ; @routine 1CEE:309 SpawnStageObjectsRows011CEE
 ; @run 6B:8B09
@@ -3488,12 +3488,12 @@ SetUpStageObjects1CEE_at0:
 ; Entry: nothing. Exit: A 2, X 4, Y the second row's slot, N 0, Z 0. C and V as the spawn left them.
 SpawnStageObjectsRows011CEE:
     clx
-    jsr $936E
+    jsr SpawnStageObject026F
     inx
-    jsr $936E
-    stz a:StageVar3616
+    jsr SpawnStageObject026F
+    stz a:StageShownStock
     lda #$C0
-    sta a:StageVar3616+1
+    sta a:StageSequenceDelay
     rmb5 z:zField8E
     lda #$65
     ldx #$04
@@ -3519,25 +3519,25 @@ SpawnStageObjectsRows011CEE:
 ; WAITS: no.
 ; Entry: X and Y as the blends take them; V as the caller left it. Exit: as the last step left it.
 StepStageFrame1CEE:
-    lda a:$2ABF
+    lda a:OBJ_FRAME+87
     beq $8B22
     bbs1 zPaused,StepStageFrame1CEE_at0
-    lda a:StageVar3616+1
+    lda a:StageSequenceDelay
     beq StepStageFrame1CEE_at1
-    dec a:StageVar3616+1
+    dec a:StageSequenceDelay
     bne StepStageFrame1CEE_at1
     smb1 z:zPaused
 StepStageFrame1CEE_at0:
     jsr $8EAF
     bra StepStageFrame1CEE_at2
 StepStageFrame1CEE_at1:
-    jsr $910F
-    jsr $913F
-    jsr $916A
+    jsr BlendStageStockRows026F
+    jsr BlendStageScoreAddRows026F
+    jsr BlendStageScoreRows026F
 StepStageFrame1CEE_at2:
-    jsr $8BD8
+    jsr StageScriptByWave026E
     lda #$24
-    sta a:$2D26
+    sta a:OBJ_Y_LO+86
     ldx z:zField93
     lda a:$8BCF,x
     ldx z:zCharacter
@@ -3547,21 +3547,21 @@ StepStageFrame1CEE_at2:
     cmp #$11
     bne StepStageFrame1CEE_at3
     ldx #$28
-    stx a:$2D26
+    stx a:OBJ_Y_LO+86
     lda #$71
     bra StepStageFrame1CEE_at3
 StepStageFrame1CEE_at4:
     lda #$72
 StepStageFrame1CEE_at3:
-    sta a:$2ABE
+    sta a:OBJ_FRAME+86
     lda z:zPlayerHealth
     cmp z:zField99
     beq StepStageFrame1CEE_at5
     bcs StepStageFrame1CEE_at6
-    jsr $8BF9
+    jsr SetHealthBarAddress026E
     ldx #$FF
     ldy #$F0
-    jsr $9350
+    jsr AndVramDataAt9350
     dec z:zField99
     bra StepStageFrame1CEE_x0
 StepStageFrame1CEE_at6:
@@ -3575,7 +3575,7 @@ StepStageFrame1CEE_at7:
     bsr $8BF9
     ldx #$00
     ldy #$0F
-    jsr $935F
+    jsr OrVramDataAt935F
     bra StepStageFrame1CEE_at8
 StepStageFrame1CEE_at5:
     smb5 z:zField8E
@@ -3585,7 +3585,7 @@ StepStageFrame1CEE_x0:
     lda #$4A
     jsr VecSoundCommand
 StepStageFrame1CEE_at8:
-    jsr $9307
+    jsr MapStageBanksAt9307
     stz a:StageBlendOn
     lda z:zField94
     cmp z:zField95
@@ -3593,14 +3593,14 @@ StepStageFrame1CEE_at8:
     sta z:zField95
     and #$0F
     ldx #$08
-    jsr $8D3A
+    jsr BlendStageTileRows026E
     lda z:zField94
     lsr a
     lsr a
     lsr a
     lsr a
     ldx #$09
-    jsr $8D3A
+    jsr BlendStageTileRows026E
 StepStageFrame1CEE_at9:
     bbs2 zField8E,StepStageFrame1CEE_at10
     rts

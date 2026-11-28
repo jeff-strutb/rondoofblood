@@ -115,13 +115,13 @@ StageSubModeStart152D:
     jsr StageRouteSetUpB152D
     jsr StageLoadRowMap152D
     jsr StageResetScroll152D
-    jsr $8021
+    jsr MapOverlayBanks5And6At8021
     jsr RichterVecStart
     jsr StageHudStart152D
     jsr StageOpeningStart152D
     jsr StageLevelStart152D
     stz z:zPaused
-    stz z:$3C
+    stz z:zFadeActive
     inc z:zGameSubMode
     lda z:zField83
     sta z:zField86
@@ -134,7 +134,7 @@ StageSubModeStart152D_at1:
 StageSubModeStart152D_at0:
     lda #$05
     sta z:zGameSubMode
-    dec a:$3310
+    dec a:OBJ_WORK_B+16
     rts
 
 ; @routine 152D:06F StageFadeTimer152D
@@ -156,22 +156,22 @@ StageSubModeStart152D_at0:
 ; Entry: nothing. Exit: A the count first read (0: N and Z from it), or the value the last test loaded; N and Z from
 ; the last decrement or test; after the sound or the fade, as they leave them.
 StageFadeTimer152D:
-    lda z:$9B
+    lda z:zFadeCount
     beq StageFadeTimer152D_at0
-    dec z:$9B
+    dec z:zFadeCount
     beq StageFadeTimer152D_at1
-    dec z:$9B
-    stz z:$3C
+    dec z:zFadeCount
+    stz z:zFadeActive
     bbs4 zField8E,StageFadeTimer152D_at0
     bbs3 zField8E,StageFadeTimer152D_at2
     cla
     jmp BiosCdFade
 StageFadeTimer152D_at2:
-    lda z:$9D
+    lda z:zFadeSound
     jmp VecSoundCommand
 StageFadeTimer152D_at1:
     lda #$01
-    sta z:$3C
+    sta z:zFadeActive
     lda z:zField8E
     and #$18
     bne StageFadeTimer152D_at0
@@ -197,7 +197,7 @@ StageFadeTimer152D_at0:
 ; Entry: nothing. Exit: A the last value loaded or computed, N and Z from it (the bit test leaves A the pad's bit).
 ; X, Y, C and V kept.
 StagePauseToggle152D:
-    lda z:$3C
+    lda z:zFadeActive
     eor #$01
     beq StagePauseToggle152D_at0
     lda a:BiosJoyTrigger
@@ -279,14 +279,14 @@ StageSubModePlay152D:
     jmp StagePausedFrame152D
 StageSubModePlay152D_at0:
     jsr StageModeEventsStep152D
-    jsr $8021
+    jsr MapOverlayBanks5And6At8021
     jsr RunObjects1619
     lda z:zSubStep
     bne StageSubModePlay152D_at1
     jsr RichterVecApplyMove
-    jsr $802C
+    jsr MapOverlayBank7At802C
     jsr $A08D
-    jsr $8021
+    jsr MapOverlayBanks5And6At8021
     jsr RichterVecC3A7
     jsr StageOverlayFrame152D
     jsr StageObjectHits152D
@@ -353,18 +353,18 @@ StageSubStepDeath152D:
     sta z:zGameSubMode
     stz z:zField80
     stz z:zField89
-    jsr $802C
+    jsr MapOverlayBank7At802C
     jsr ClearScrollSpeeds
     stz a:PadForcedPress
     stz a:PadForcedPressB
-    stz z:$88
+    stz z:zFallStep
     lda a:TimeSlowMode
     bne StageSubStepDeath152D_at0
     rts
 StageSubStepDeath152D_at0:
     stz a:TimeSlowMode
     lda #$02
-    sta z:$9B
+    sta z:zFadeCount
     jmp StageFadeTimer152D
 
 ; @routine 152D:148 StageSubStepCleared152D
@@ -400,11 +400,11 @@ StageSubStepCleared152D_at1:
 StageSubStepCleared152D_at0:
     lda #$02
 StageSubStepCleared152D_at2:
-    sta z:$84
+    sta z:zClearKind
     lda #$03
     sta z:zGameSubMode
     stz z:zField85
-    jsr $802C
+    jsr MapOverlayBank7At802C
     jsr ClearScrollSpeeds
     stz a:PadForcedPress
     stz a:PadForcedPressB
@@ -430,7 +430,7 @@ StageSubStepFadeOut152D:
     sta z:zGameSubMode
     stz z:zField80
     stz z:zField89
-    jsr $802C
+    jsr MapOverlayBank7At802C
     jsr ClearScrollSpeeds
     rts
 
@@ -455,7 +455,7 @@ StageSubStepFadeOutB152D:
     lda #$05
     sta z:zField80
     stz z:zField89
-    jsr $802C
+    jsr MapOverlayBank7At802C
     jsr ClearScrollSpeeds
     rts
 
@@ -480,21 +480,21 @@ StageSubStepBoss152D:
     sta z:zGameSubMode
     stz z:zField80
     stz z:zField89
-    jsr $802C
+    jsr MapOverlayBank7At802C
     jsr ClearScrollSpeeds
     stz a:PadForcedPress
     stz a:PadForcedPressB
-    stz z:$88
+    stz z:zFallStep
     stz a:OBJ_WORK_C
     lda #$40
-    sta a:$3310
+    sta a:OBJ_WORK_B+16
     lda a:TimeSlowMode
     bne StageSubStepBoss152D_at0
     rts
 StageSubStepBoss152D_at0:
     stz a:TimeSlowMode
     lda #$02
-    sta z:$9B
+    sta z:zFadeCount
     jmp StageFadeTimer152D
 
 ; @routine 152D:1C9 StageSubModeDeath152D
@@ -522,7 +522,7 @@ StageSubModeDeath152D:
     beq StageSubModeDeath152D_at0
     rts
 StageSubModeDeath152D_at0:
-    jsr $8021
+    jsr MapOverlayBanks5And6At8021
     jsr RichterVecCE1D
     jmp StageLevelStart152D
 
@@ -568,8 +568,8 @@ StageDeathRespawn152D:
     lda #$01
     sta z:zGameSubMode
     lda #$18
-    sta a:$3310
-    lda a:$2818
+    sta a:OBJ_WORK_B+16
+    lda a:OBJ_SUBSTATE+24
     and #$01
     tax
     lda a:$8209,x
@@ -595,8 +595,8 @@ StageDeathRespawnB152D:
     lda #$01
     sta z:zGameSubMode
     lda #$18
-    sta a:$3310
-    lda a:$2818
+    sta a:OBJ_WORK_B+16
+    lda a:OBJ_SUBSTATE+24
     and #$01
     tax
     lda a:$8209,x
@@ -623,7 +623,7 @@ StageDeathRespawnB152D:
 ; the increment, C from the compare; else as $A01E leaves them. Step 2: A $20, N and Z from it, the rest as
 ; StageResetScroll152D left them.
 StageDeathFallLeft152D:
-    lda z:$88
+    lda z:zFallStep
     dec a
     beq StageDeathFallStart152D_at2
     dec a
@@ -631,7 +631,7 @@ StageDeathFallLeft152D:
     lda #$40
     sta a:OBJ_Y_FRAC
     lda #$01
-    sta a:$2CE0
+    sta a:OBJ_Y_LO+16
 
 ; @routine 152D:236 StageDeathFallStart152D
 ; @run 6B:8236
@@ -649,16 +649,16 @@ StageDeathFallLeft152D:
 ; WAITS: no.
 ; Entry: nothing. Exit: N and Z from the step's increment; A, X, Y, C and V as $A012 left them.
 StageDeathFallStart152D:
-    jsr $8021
+    jsr MapOverlayBanks5And6At8021
     lda #$00
     jsr RichterVecSetAnimation
     jsr RichterVecAnimationSound
     bra StageDeathFallStart152D_at0
 StageDeathFallStart152D_at2:
-    jsr $8021
+    jsr MapOverlayBanks5And6At8021
     jsr RichterVecSetIdle
     jsr RichterVecAnimationSound
-    lda a:$2B30
+    lda a:OBJ_SPRITE_ATTR+24
     beq StageDeathFallStart152D_at1
     lda a:OBJ_X_HI+8
     cmp #$10
@@ -667,7 +667,7 @@ StageDeathFallStart152D_at1:
     clx
     jmp RichterVecCE73
 StageDeathFallStart152D_at0:
-    inc z:$88
+    inc z:zFallStep
     rts
 
 ; @routine 152D:25F StageDeathFallBackLeft152D
@@ -690,7 +690,7 @@ StageDeathFallBackLeft152D:
     lda #$01
     sta z:zGameSubMode
     lda #$20
-    sta a:$3310
+    sta a:OBJ_WORK_B+16
     lda #$20
     sta a:OBJ_WORK_C
     rts
@@ -715,7 +715,7 @@ StageDeathFallBackLeft152D:
 ; Entry: nothing. Exit, steps 0 and 1, the step counted: A the player's X, N and Z from the increment, C from the
 ; compare; else as $A01E leaves them. Step 2: A $80, N and Z from it, the rest as StageResetScroll152D left them.
 StageDeathFallRight152D:
-    lda z:$88
+    lda z:zFallStep
     dec a
     beq StageDeathFallRight152D_at0
     dec a
@@ -723,13 +723,13 @@ StageDeathFallRight152D:
     lda #$C0
     sta a:OBJ_Y_FRAC
     lda #$FE
-    sta a:$2CE0
+    sta a:OBJ_Y_LO+16
     jsr StageDeathFallStart152D
 StageDeathFallRight152D_at0:
-    jsr $8021
+    jsr MapOverlayBanks5And6At8021
     jsr RichterVecSetIdle
     jsr RichterVecAnimationSound
-    lda a:$2B30
+    lda a:OBJ_SPRITE_ATTR+24
     beq StageDeathFallRight152D_at2
     lda a:OBJ_X_HI+8
     cmp #$F0
@@ -738,14 +738,14 @@ StageDeathFallRight152D_at2:
     clx
     jmp RichterVecCE73
 StageDeathFallRight152D_at3:
-    inc z:$88
+    inc z:zFallStep
     rts
 StageDeathFallRight152D_at1:
     jsr StageResetScroll152D
     lda #$01
     sta z:zGameSubMode
     lda #$20
-    sta a:$3310
+    sta a:OBJ_WORK_B+16
     lda #$80
     sta a:OBJ_WORK_C
     rts
@@ -768,7 +768,7 @@ StageDeathFallRight152D_at1:
 ; Entry: nothing. Exit: as the step leaves them; it is entered with A and X twice $84, N and Z from it, C its bit 7.
 StageSubModeCleared152D:
     jsr StageModeEventsStep152D
-    lda z:$84
+    lda z:zClearKind
     asl a
     tax
     jmp ($82BE,x)
@@ -800,7 +800,7 @@ StageClearedNextStage152D:
     jsr StageHudStart152D
     lda #$02
     sta z:zField8A
-    jsr $8021
+    jsr MapOverlayBanks5And6At8021
     jsr RichterVecStart
     jsr StageLevelStart152D
     stz z:zPaused
@@ -851,14 +851,14 @@ StageClearedWalkOut152D:
 ; Entry: nothing. Exit, an object still busy: A its state, X its slot, N and Z from A. Else: X 0, N and Z from the
 ; step's increment; A, Y, C and V as StageOverlayFrame152D left them.
 StageClearedWaitObjects152D:
-    jsr $8021
+    jsr MapOverlayBanks5And6At8021
     jsr RichterVecC3A7
-    jsr $802C
+    jsr MapOverlayBank7At802C
     jsr $A08D
     jsr StageOverlayFrame152D
     ldx #$40
 StageClearedWaitObjects152D_at1:
-    lda a:$27D0,x
+    lda a:OBJ_STATE+40,x
     bmi StageClearedWaitObjects152D_at0
     bne StageClearedWaitScroll152D_at0
 StageClearedWaitObjects152D_at0:
@@ -892,13 +892,13 @@ StageClearedWalk152D:
     tay
     lda a:$82F0,y
     sta a:ScrollStepYLo+6
-    stz a:Scroll3E66+6
+    stz a:ScrollColumnBlocks+6
     stz a:ScrollXFrac
     lda a:OBJ_X_HI+8
     clc
     adc a:$82F2,y
     sta a:OBJ_X_HI+8
-    jsr $802C
+    jsr MapOverlayBank7At802C
     jsr $A08D
     jsr StageOverlayFrame152D
     jsr $A321
@@ -911,7 +911,7 @@ StageClearedWalk152D:
     beq StageClearedWalk152D_at0
     rts
 StageClearedWalk152D_at0:
-    jsr $802C
+    jsr MapOverlayBank7At802C
     jsr ClearScrollSpeeds
     stz a:ScrollStepYLo+6
     inc z:zField85
@@ -961,14 +961,14 @@ StageClearedWaitScroll152D_at0:
 ; the mark: N and Z from the step's increment, the rest as $A003 left them.
 StageClearedWalkBack152D:
     lda #$E0
-    sta a:$3310
+    sta a:OBJ_WORK_B+16
     lda z:zField8C
     dec a
     and #$01
     tay
     lda a:$82F8,y
     sta a:OBJ_WORK_C
-    jsr $8021
+    jsr MapOverlayBanks5And6At8021
     jsr RunObjects1619
     lda z:zField8C
     dec a
@@ -985,7 +985,7 @@ StageClearedWalkBack152D_at0:
     lda z:zField8C
     and #$7F
     sta z:zField8C
-    stz a:$3310
+    stz a:OBJ_WORK_B+16
     stz a:OBJ_WORK_C
     lda #$02
     sta z:zField8A
@@ -1020,12 +1020,12 @@ StageClearedWalkOn152D:
     tay
     lda a:$82F0,y
     sta a:ScrollStepYLo+6
-    stz a:Scroll3E66+6
+    stz a:ScrollColumnBlocks+6
     lda a:OBJ_X_HI+8
     clc
     adc a:$82F2,y
     sta a:OBJ_X_HI+8
-    jsr $802C
+    jsr MapOverlayBank7At802C
     jsr $A08D
     jsr StageOverlayFrame152D
     jsr $A321
@@ -1110,13 +1110,13 @@ StageClearedBossWalk152D:
 ; Entry: nothing. Exit, short of 4: A ScrollXHi, N, Z and C from the compare, the rest as StageOverlayFrame152D left
 ; them. Else: N and Z from the step's increment, the rest as the sound hook left them.
 StageBossScrollToDoor152D:
-    jsr $8021
+    jsr MapOverlayBanks5And6At8021
     jsr RichterVecC3A7
     lda #$01
     sta a:ScrollStepYLo+6
-    stz a:Scroll3E66+6
+    stz a:ScrollColumnBlocks+6
     dec a:OBJ_X_HI+8
-    jsr $802C
+    jsr MapOverlayBank7At802C
     jsr $A08D
     jsr StageOverlayFrame152D
     lda a:ScrollXHi
@@ -1124,7 +1124,7 @@ StageBossScrollToDoor152D:
     beq StageBossScrollToDoor152D_at0
     rts
 StageBossScrollToDoor152D_at0:
-    jsr $802C
+    jsr MapOverlayBank7At802C
     jsr ClearScrollSpeeds
     stz a:ScrollStepYLo+6
     stz a:ScrollStepYLo
@@ -1150,10 +1150,10 @@ StageBossScrollToDoor152D_at0:
 ; Entry: nothing. Exit: A the last byte tested, N and Z from its test (C from the compare with 4), or $20 with N and Z
 ; from the step's increment; X, Y and V as StageOverlayFrame152D left them.
 StageBossWaitDoor152D:
-    jsr $8021
+    jsr MapOverlayBanks5And6At8021
     jsr RichterVecC3A7
     jsr StageOverlayFrame152D
-    lda a:$283A
+    lda a:OBJ_SUBSTATE+58
     cmp #$04
     bne StageBossWaitDoor152D_at0
     lda a:OBJ_ANIM_STEP+2
@@ -1184,12 +1184,12 @@ StageBossWaitDoor152D_at0:
 ; them. Else: as StageLevelStart152D.
 StageBossWalkOut152D:
     lda #$B8
-    sta a:$3310
-    jsr $8021
+    sta a:OBJ_WORK_B+16
+    jsr MapOverlayBanks5And6At8021
     jsr RunObjects1619
     jsr RichterVecApplyMove
     jsr RichterVecC3A7
-    jsr $802C
+    jsr MapOverlayBank7At802C
     jsr $A08D
     jsr StageOverlayFrame152D
     lda a:OBJ_X_HI+8
@@ -1197,7 +1197,7 @@ StageBossWalkOut152D:
     beq StageBossWalkOut152D_at0
     rts
 StageBossWalkOut152D_at0:
-    stz a:$3310
+    stz a:OBJ_WORK_B+16
     stz a:Field2742+1
     stz a:OBJ_WORK_C
     inc z:zField82
@@ -1206,8 +1206,8 @@ StageBossWalkOut152D_at0:
     lda a:$9A5F,y
     sta z:zField83
     cla
-    sta z:$84
-    stz a:$2A58
+    sta z:zClearKind
+    stz a:OBJ_SPRITE_SET+72
     jsr StageLevelStart152D
     rts
 
@@ -1275,8 +1275,8 @@ StageClearedWalkOff152D:
     tay
     lda a:$82F8,y
     sta a:OBJ_WORK_C
-    sta a:$3310
-    jsr $8021
+    sta a:OBJ_WORK_B+16
+    jsr MapOverlayBanks5And6At8021
     jsr RunObjects1619
     lda z:zField8C
     dec a
@@ -1289,8 +1289,8 @@ StageClearedWalkOff152D:
     bne StageClearedWalkOff152D_at0
     lda a:$82F0,y
     clc
-    adc a:$2B30
-    sta a:$2B30
+    adc a:OBJ_SPRITE_ATTR+24
+    sta a:OBJ_SPRITE_ATTR+24
 StageClearedWalkOff152D_at0:
     lda z:zField8C
     dec a
@@ -1330,7 +1330,7 @@ StageSubModeFade152D:
     cmp #$03
     beq StageSubModeFade152D_at0
 StageSubModeFade152D_at0:
-    jsr $8021
+    jsr MapOverlayBanks5And6At8021
     lda z:zField80
     asl a
     tax
@@ -1373,11 +1373,11 @@ StageFadeStart152D:
 ; Entry: nothing. Exit: A zField89, N and Z from it or from zField80's increment; C from the compare, or as $A012 left
 ; it; X, Y and V as the last call left them.
 StageFadeWait152D:
-    lda a:$2A58
+    lda a:OBJ_SPRITE_SET+72
     pha
     jsr RichterVecC076
     pla
-    cmp a:$2A58
+    cmp a:OBJ_SPRITE_SET+72
     beq StageFadeWait152D_at0
     jsr RichterVecAnimationSound
 StageFadeWait152D_at0:
@@ -1526,17 +1526,17 @@ StageFadeRestart152D_at1:
 StageSubModeOpening152D:
     jsr StageModeEventsStep152D
     jsr StageHudStep152D
-    jsr $8021
+    jsr MapOverlayBanks5And6At8021
     jsr RunObjects1619
     jsr StageOverlayFrame152D
-    jsr $802C
+    jsr MapOverlayBank7At802C
     jsr $A08D
     jsr StageOpeningStep152D
     bbr0 zField8E,StageSubModeOpening152D_at0
     stz a:TimeSlowMode
     lda #$01
     sta z:zGameSubMode
-    stz a:$3310
+    stz a:OBJ_WORK_B+16
 StageSubModeOpening152D_at0:
     rts
 
@@ -1581,7 +1581,7 @@ StageLoadRowMap152D_at0:
     asl a
     rol z:zTemp02
     lsr a
-    sta a:$3A00,x
+    sta a:OBJ_HITBOX_DY+32,x
     inx
     bbs0 zTemp02,StageLoadRowMap152D_at1
     bra StageLoadRowMap152D_at2
@@ -1653,7 +1653,7 @@ StageResetScroll152D:
     bsr StageLoadScreen152D
     pla
     sta z:zField8E
-    jsr $802C
+    jsr MapOverlayBank7At802C
     jsr $A5EB
     lda z:zRasterEffect
     cmp #$05
@@ -1754,12 +1754,12 @@ StageLoadScreen152D_at0:
     sta a:OBJ_X_HI+8
     lda (zTemp00),y
     iny
-    sta a:$2C50
-    stz a:$2C08
-    stz a:$2B30
+    sta a:OBJ_X_FRAC+48
+    stz a:OBJ_X_LO+64
+    stz a:OBJ_SPRITE_ATTR+24
     lda z:zCharacter
     beq StageLoadScreen152D_at1
-    lda a:$2818
+    lda a:OBJ_SUBSTATE+24
     cmp #$05
     bcc StageLoadScreen152D_at1
     sec
@@ -1776,7 +1776,7 @@ StageLoadScreen152D_at1:
     stz z:zRasterArg
     lda (zTemp00),y
     iny
-    sta a:$2AA0
+    sta a:OBJ_FRAME+56
     rts
 
 ; @routine 152D:734 StageOverlayFrame152D
@@ -1795,7 +1795,7 @@ StageLoadScreen152D_at1:
 ; WAITS: where the pieces wait.
 ; Entry: nothing. Exit: as $A000 leaves them.
 StageOverlayFrame152D:
-    jsr $802C
+    jsr MapOverlayBank7At802C
     jsr $AE47
     lda #$08
     clc
@@ -1823,7 +1823,7 @@ StageOverlayFrame152D:
 ; WAITS: where the pieces wait.
 ; Entry: nothing. Exit: as $ADAF leaves them.
 StageLevelStart152D:
-    jsr $802C
+    jsr MapOverlayBank7At802C
     jsr VecClearEnemySlots
     lda z:zField83
     asl a
@@ -1870,13 +1870,13 @@ StageLevelStart152D_at0:
 ; Entry: X the object. Exit: A the last value loaded or masked, N and Z from it, C from the shifts or the compare, Y
 ; the packed byte shifted or the override's index; X kept.
 DoorHandler152D:
-    lda a:$2818,x
+    lda a:OBJ_SUBSTATE+24,x
     bne DoorHandler152D_at0
     jsr $A36C
-    lda a:$2F20,x
+    lda a:OBJ_WORK_A+64,x
     tay
     and #$0F
-    sta a:$3310,x
+    sta a:OBJ_WORK_B+16,x
     tya
     rol a
     rol a
@@ -1888,18 +1888,18 @@ DoorHandler152D:
     rol a
     rol a
     and #$03
-    sta a:$32C8,x
+    sta a:OBJ_HEALTH+32,x
     rts
 DoorHandler152D_at0:
-    stz a:$3790,x
-    ldy a:$32C8,x
+    stz a:OBJ_WORK_L+24,x
+    ldy a:OBJ_HEALTH+32,x
     lda a:PadOverrides,y
     beq DoorHandler152D_at1
-    lda a:$31F0,x
+    lda a:OBJ_HIT_STATUS+80,x
     beq DoorHandler152D_at1
     cmp #$05
     bcs DoorHandler152D_at1
-    lda a:$3310,x
+    lda a:OBJ_WORK_B+16,x
     sta z:zField83
     lda a:OBJ_WORK_C,x
     sta z:zField87
@@ -1907,7 +1907,7 @@ DoorHandler152D_at0:
     sta z:zSubStep
     rts
 DoorHandler152D_at1:
-    stz a:$31F0,x
+    stz a:OBJ_HIT_STATUS+80,x
     rts
 
 ; @routine 152D:7C6 DoorHandlerB152D
@@ -1927,13 +1927,13 @@ DoorHandler152D_at1:
 ; WAITS: no.
 ; Entry: X the object. Exit: as DoorHandler152D, Y the packed byte when it was unpacked.
 DoorHandlerB152D:
-    lda a:$2818,x
+    lda a:OBJ_SUBSTATE+24,x
     bne DoorHandlerB152D_at0
     jsr $A36C
-    lda a:$2F20,x
+    lda a:OBJ_WORK_A+64,x
     tay
     and #$0F
-    sta a:$3310,x
+    sta a:OBJ_WORK_B+16,x
     tya
     rol a
     rol a
@@ -1942,14 +1942,14 @@ DoorHandlerB152D:
     sta a:OBJ_WORK_C,x
     rts
 DoorHandlerB152D_at0:
-    stz a:$3790,x
+    stz a:OBJ_WORK_L+24,x
     lda a:PlayerDoorReady
     beq DoorHandler152D_at1
-    lda a:$31F0,x
+    lda a:OBJ_HIT_STATUS+80,x
     beq DoorHandler152D_at1
     cmp #$05
     bcs DoorHandler152D_at1
-    lda a:$3310,x
+    lda a:OBJ_WORK_B+16,x
     sta z:zField83
     lda a:OBJ_WORK_C,x
     sta z:zField87
@@ -2007,7 +2007,7 @@ StageHudStep152D:
     jsr StageHudSound152D
     ldx z:zField93
     lda a:$8878,x
-    sta a:$2A9E
+    sta a:OBJ_FRAME+54
     lda z:zPlayerHealth
     cmp z:zField99
     beq StageHudStep152D_at0
@@ -2015,7 +2015,7 @@ StageHudStep152D:
     bsr StageHealthBarAddress152D
     ldx #$FF
     ldy #$F0
-    jsr $942A
+    jsr AndVramDataAt942A
     dec z:zField99
     bra StageHudStep152D_at6
 StageHudStep152D_at1:
@@ -2029,7 +2029,7 @@ StageHudStep152D_at2:
     bsr StageHealthBarAddress152D
     ldx #$00
     ldy #$0F
-    jsr $9439
+    jsr OrVramDataAt9439
     bra StageHudStep152D_at3
 StageHudStep152D_at0:
     smb5 z:zField8E
@@ -2165,12 +2165,12 @@ StageBossBarReset152D:
 ; WAITS: no.
 ; Entry: nothing. Exit: as StageBossBarStep152D.
 StageBossBar152D:
-    lda a:$2A9D
+    lda a:OBJ_FRAME+53
     beq StageBossBarReset152D
-    lda a:$2BBD
+    lda a:OBJ_X_HI+77
     cmp #$D8
     beq StageBossBarStep152D
-    dec a:$2BBD
+    dec a:OBJ_X_HI+77
 
 ; @routine 152E:0DB StageBossBarStep152D
 ; @run 6B:88DB
@@ -2191,11 +2191,11 @@ StageBossBar152D:
 ; WAITS: no.
 ; Entry: nothing. Exit: as the last piece that ran left them; at the bar, A the health, N, Z and C from the compare.
 StageBossBarStep152D:
-    lda a:$330D
+    lda a:OBJ_WORK_B+13
     beq StageBossBarStep152D_at0
     jmp StageBossBarFlash152D
 StageBossBarStep152D_at0:
-    lda a:$3128
+    lda a:OBJ_LOOP_FLAGS+56
     bmi StageBossBarStep152D_at1
     cmp a:BossBarLength
     beq StageBossBarStep152D_at2
@@ -2203,25 +2203,25 @@ StageBossBarStep152D_at0:
     bsr StageBossBarAddress152D
     ldx #$0F
     ldy #$FF
-    jsr $942A
+    jsr AndVramDataAt942A
     dec a:BossBarLength
     rts
 StageBossBarStep152D_at1:
     pha
-    stz a:$3128
+    stz a:OBJ_LOOP_FLAGS+56
     bsr StageBossBarStep152D
     pla
-    sta a:$3128
+    sta a:OBJ_LOOP_FLAGS+56
     ldy a:BossBarLength
     bne StageBossBarStep152D_at2
-    sta a:$330D
+    sta a:OBJ_WORK_B+13
     rts
 StageBossBarStep152D_at3:
     inc a:BossBarLength
     bsr StageBossBarAddress152D
     ldx #$F0
     ldy #$00
-    jsr $9439
+    jsr OrVramDataAt9439
 StageBossBarStep152D_at2:
     rts
 
@@ -2321,19 +2321,19 @@ StageBossBarFlash152D_at0:
     lda z:zTemp01
     cmp #$08
     bcc StageBossBarFlash152D_at0
-    inc a:$339D
-    lda a:$2DFD
+    inc a:OBJ_WORK_C+69
+    lda a:OBJ_VX_LO+37
     clc
     adc #$0C
-    sta a:$2DFD
+    sta a:OBJ_VX_LO+37
     cla
-    adc a:$2DB5
-    sta a:$2DB5
+    adc a:OBJ_VX_HI+53
+    sta a:OBJ_VX_HI+53
     ldx #$45
     jsr VecApplyVelocity
-    lda a:$2C4D
+    lda a:OBJ_X_FRAC+45
     beq StageBossBarAddress152D_at1
-    stz a:$2A9D
+    stz a:OBJ_FRAME+53
     rmb2 z:zField8E
     rts
 
@@ -2358,7 +2358,7 @@ StageBarErase152D:
     jsr SetVramAddresses152D
     ldx #$40
 StageBarErase152D_at0:
-    lda a:$339D
+    lda a:OBJ_WORK_C+69
     and #$07
     tay
     jsr VecNextRandom
@@ -2521,7 +2521,7 @@ StagePausedSelect152D_at0:
     sta z:zField93
     tax
     lda a:$8878,x
-    sta a:$2A9E
+    sta a:OBJ_FRAME+54
     lda #$01
     sta a:PlayerItemFirstUse
     lda #$99
@@ -2590,7 +2590,7 @@ StagePausedFrame152D_at1:
     jsr VecStartScriptSlotKind4
     ldx z:zTemp00
     lda a:$8B73,x
-    sta a:$2A9F
+    sta a:OBJ_FRAME+55
     lda z:zPaused
     sta z:zTemp01
     ldx z:zTemp00
@@ -2645,18 +2645,18 @@ StageOpeningStart152D_at0:
     inx
     jsr StageDrawPiece152D
     dec a:OBJ_X_HI+4
-    dec a:$2C4D
+    dec a:OBJ_X_FRAC+45
     lda #$04
-    sta a:$2D24
-    sta a:$2DB5
+    sta a:OBJ_Y_LO+84
+    sta a:OBJ_VX_HI+53
     lda #$20
-    sta a:$3354
-    sta a:$3355
+    sta a:OBJ_WORK_B+84
+    sta a:OBJ_WORK_B+85
     lda #$02
     sta a:TimeSlowMode
     lda #$3B
     jsr VecSoundCommand
-    stz a:$33E4
+    stz a:OBJ_HIT_TAKEN+52
     rts
 
 ; @routine 152E:3D5 StageOpeningStep152D
@@ -2680,23 +2680,23 @@ StageOpeningStart152D_at0:
 ; WAITS: no.
 ; Entry: nothing. Exit: as the last piece that ran left them.
 StageOpeningStep152D:
-    lda a:$33E4
+    lda a:OBJ_HIT_TAKEN+52
     bne StageOpeningStep152D_at0
     jsr BiosAdStat
     tax
     bne StageOpeningStep152D_at0
     jsr VecCdPlayAgain
-    inc a:$33E4
+    inc a:OBJ_HIT_TAKEN+52
 StageOpeningStep152D_at0:
-    dec a:$3355
+    dec a:OBJ_WORK_B+85
     bne StageOpeningStep152D_at1
-    inc a:$330D
-    ldy a:$330D
+    inc a:OBJ_WORK_B+13
+    ldy a:OBJ_WORK_B+13
     cpy #$07
     bne StageOpeningStep152D_at2
-    stz a:$2A9D
+    stz a:OBJ_FRAME+53
     smb0 z:zField8E
-    lda a:$33E4
+    lda a:OBJ_HIT_TAKEN+52
     bne StageOpeningStep152D_at3
     jsr VecCdPlayAgain
 StageOpeningStep152D_at3:
@@ -2704,62 +2704,62 @@ StageOpeningStep152D_at3:
 StageOpeningStep152D_at2:
     lda a:$8C86,y
     lsr a
-    sta a:$2DB5
+    sta a:OBJ_VX_HI+53
     cla
     ror a
-    sta a:$2DFD
+    sta a:OBJ_VX_LO+37
     lda a:$8C8C,y
-    sta a:$3355
+    sta a:OBJ_WORK_B+85
 StageOpeningStep152D_at1:
-    lda a:$330D
+    lda a:OBJ_WORK_B+13
     cmp #$06
     bne StageOpeningStep152D_at4
-    lda a:$3355
+    lda a:OBJ_WORK_B+85
     cmp #$1F
     bne StageOpeningStep152D_at5
-    stz a:$2A9C
+    stz a:OBJ_FRAME+52
 StageOpeningStep152D_at5:
-    sta a:$339C
+    sta a:OBJ_WORK_C+68
 StageOpeningStep152D_at4:
-    lda a:$2DFD
+    lda a:OBJ_VX_LO+37
     clc
-    adc a:$2CDD
-    sta a:$2CDD
-    lda a:$2DB5
-    adc a:$2C95
-    sta a:$2C95
+    adc a:OBJ_Y_LO+13
+    sta a:OBJ_Y_LO+13
+    lda a:OBJ_VX_HI+53
+    adc a:OBJ_Y_HI+29
+    sta a:OBJ_Y_HI+29
     cla
-    adc a:$2C4D
-    sta a:$2C4D
-    dec a:$3354
+    adc a:OBJ_X_FRAC+45
+    sta a:OBJ_X_FRAC+45
+    dec a:OBJ_WORK_B+84
     bne StageOpeningStep152D_at6
-    inc a:$330C
-    ldy a:$330C
+    inc a:OBJ_WORK_B+12
+    ldy a:OBJ_WORK_B+12
     lda a:$8C86,y
     lsr a
-    sta a:$2D24
+    sta a:OBJ_Y_LO+84
     cla
     ror a
-    sta a:$2D6C
+    sta a:OBJ_Y_FRAC+68
     lda a:$8C8C,y
-    sta a:$3354
+    sta a:OBJ_WORK_B+84
 StageOpeningStep152D_at6:
-    lda a:$2D6C
+    lda a:OBJ_Y_FRAC+68
     clc
-    adc a:$2C04
-    sta a:$2C04
-    lda a:$2D24
-    adc a:$2BBC
-    sta a:$2BBC
+    adc a:OBJ_X_LO+60
+    sta a:OBJ_X_LO+60
+    lda a:OBJ_Y_LO+84
+    adc a:OBJ_X_HI+76
+    sta a:OBJ_X_HI+76
     cla
     adc a:OBJ_X_HI+4
     sta a:OBJ_X_HI+4
-    lda a:$330C
+    lda a:OBJ_WORK_B+12
     cmp #$06
     beq StageOpeningStep152D_at7
     rts
 StageOpeningStep152D_at7:
-    lda a:$339C
+    lda a:OBJ_WORK_C+68
     bra StageOpeningFade152D
 
 ; @routine 152E:4A3 StageOpeningFade152D
@@ -2850,9 +2850,9 @@ StageOpeningCopyRow152D:
     ldx #$80
 StageOpeningCopyRow152D_at1:
     lda a:VDC_DATA_LO
-    sta a:$397F,x
+    sta a:OBJ_HITBOX_DX+79,x
     lda a:VDC_DATA_HI
-    sta a:$397E,x
+    sta a:OBJ_HITBOX_DX+78,x
     dex
     dex
     bne StageOpeningCopyRow152D_at1
@@ -2861,7 +2861,7 @@ StageOpeningCopyRow152D_at1:
     bcc StageOpeningCopyRow152D_at2
     ldx #$7F
 StageOpeningCopyRow152D_at3:
-    stz a:$3980,x
+    stz a:OBJ_HITBOX_DX+80,x
     dex
     bpl StageOpeningCopyRow152D_at3
     jmp StageOpeningWriteRow152D
@@ -2876,24 +2876,24 @@ StageOpeningCopyRow152D_at5:
     ora z:zRandom2
     sta z:zTemp00
 StageOpeningCopyRow152D_at0:
-    lda a:$3982,x
+    lda a:OBJ_HITBOX_DX+82,x
     and z:zTemp00
-    sta a:$3980,x
-    lda a:$3983,x
+    sta a:OBJ_HITBOX_DX+80,x
+    lda a:OBJ_HITBOX_DX+83,x
     and z:zTemp00
-    sta a:$3981,x
-    lda a:$39A2,x
+    sta a:OBJ_HITBOX_DX+81,x
+    lda a:OBJ_HITBOX_HALF_W+26,x
     and z:zTemp00
-    sta a:$39A0,x
-    lda a:$39A3,x
+    sta a:OBJ_HITBOX_HALF_W+24,x
+    lda a:OBJ_HITBOX_HALF_W+27,x
     and z:zTemp00
-    sta a:$39A1,x
-    lda a:$39C2,x
+    sta a:OBJ_HITBOX_HALF_W+25,x
+    lda a:OBJ_HITBOX_HALF_W+58,x
     and z:zTemp00
-    sta a:$39C0,x
-    lda a:$39C3,x
+    sta a:OBJ_HITBOX_HALF_W+56,x
+    lda a:OBJ_HITBOX_HALF_W+59,x
     and z:zTemp00
-    sta a:$39C1,x
+    sta a:OBJ_HITBOX_HALF_W+57,x
     lda a:OBJ_HITBOX_DY+2,x
     and z:zTemp00
     sta a:OBJ_HITBOX_DY,x
@@ -2911,24 +2911,24 @@ StageOpeningCopyRow152D_at6:
     lda z:zRandom2
     ora z:zRandom3
     sta z:zTemp00
-    lda a:$3980,x
+    lda a:OBJ_HITBOX_DX+80,x
     and z:zTemp00
-    sta a:$3980,x
-    lda a:$3981,x
+    sta a:OBJ_HITBOX_DX+80,x
+    lda a:OBJ_HITBOX_DX+81,x
     and z:zTemp00
-    sta a:$3981,x
-    lda a:$39A0,x
+    sta a:OBJ_HITBOX_DX+81,x
+    lda a:OBJ_HITBOX_HALF_W+24,x
     and z:zTemp00
-    sta a:$39A0,x
-    lda a:$39A1,x
+    sta a:OBJ_HITBOX_HALF_W+24,x
+    lda a:OBJ_HITBOX_HALF_W+25,x
     and z:zTemp00
-    sta a:$39A1,x
-    lda a:$39C0,x
+    sta a:OBJ_HITBOX_HALF_W+25,x
+    lda a:OBJ_HITBOX_HALF_W+56,x
     and z:zTemp00
-    sta a:$39C0,x
-    lda a:$39C1,x
+    sta a:OBJ_HITBOX_HALF_W+56,x
+    lda a:OBJ_HITBOX_HALF_W+57,x
     and z:zTemp00
-    sta a:$39C1,x
+    sta a:OBJ_HITBOX_HALF_W+57,x
     lda a:OBJ_HITBOX_DY,x
     and z:zTemp00
     sta a:OBJ_HITBOX_DY,x
@@ -2957,9 +2957,9 @@ StageOpeningCopyRow152D_at6:
 StageOpeningWriteRow152D:
     ldx #$80
 StageOpeningWriteRow152D_at0:
-    lda a:$397F,x
+    lda a:OBJ_HITBOX_DX+79,x
     sta a:VDC_DATA_LO
-    lda a:$397E,x
+    lda a:OBJ_HITBOX_DX+78,x
     sta a:VDC_DATA_HI
     dex
     dex
@@ -3304,17 +3304,17 @@ ContinueStart152D_at0:
     jsr VecClearObject
     txa
     asl a
-    sta a:$32C8,x
+    sta a:OBJ_HEALTH+32,x
     txa
     clc
     adc #$0D
-    sta a:$2A58,x
+    sta a:OBJ_SPRITE_SET+72,x
     lda #$05
     sta a:OBJ_SPRITE_SET,x
     lda #$48
     sta a:OBJ_X_HI+8,x
     lda #$59
-    sta a:$2C50,x
+    sta a:OBJ_X_FRAC+48,x
     dec z:zTemp10
     bpl ContinueStart152D_at1
     lda #$0D
@@ -3342,7 +3342,7 @@ ContinueReveal152D:
     lda a:BiosJoyTrigger
     and #$08
     beq ContinueReveal152D_at0
-    lda a:$32CF
+    lda a:OBJ_HEALTH+39
     cmp #$11
     bne ContinueReveal152D_at0
     inc z:zGameSubMode
@@ -3353,10 +3353,10 @@ ContinueReveal152D_at1:
     bsr ContinueRowStep152D
     dex
     bpl ContinueReveal152D_at1
-    lda a:$32CF
+    lda a:OBJ_HEALTH+39
     cmp #$10
     bne ContinueRowStep152D_at2
-    inc a:$32CF
+    inc a:OBJ_HEALTH+39
     rts
 
 ; @routine 152E:77E ContinueDeadFade152D
@@ -3398,22 +3398,22 @@ ContinueDeadFade152D:
 ; WAITS: no.
 ; Entry: X the row. Exit: as the last instruction that ran left them; X kept.
 ContinueRowStep152D:
-    lda a:$2818,x
+    lda a:OBJ_SUBSTATE+24,x
     bne ContinueRowStep152D_at0
-    lda a:$32C8,x
+    lda a:OBJ_HEALTH+32,x
     bne ContinueRowStep152D_at1
-    inc a:$2818,x
+    inc a:OBJ_SUBSTATE+24,x
     rts
 ContinueRowStep152D_at1:
     lda a:OBJ_X_HI+8,x
     clc
     adc #$08
     sta a:OBJ_X_HI+8,x
-    dec a:$32C8,x
+    dec a:OBJ_HEALTH+32,x
 ContinueRowStep152D_at2:
     rts
 ContinueRowStep152D_at0:
-    lda a:$32C8,x
+    lda a:OBJ_HEALTH+32,x
     cmp #$10
     bcs ContinueRowStep152D_at2
     stz z:zTemp00
@@ -3430,7 +3430,7 @@ ContinueRowStep152D_at0:
     lda #$6E
     adc z:zTemp01
     sta z:zTemp01
-    lda a:$32C8,x
+    lda a:OBJ_HEALTH+32,x
     cmp #$0F
     beq ContinueRowStep152D_at3
     jsr VecSelectVramWriteAddress
@@ -3438,7 +3438,7 @@ ContinueRowStep152D_at0:
     clc
     adc #$0E
     sec
-    sbc a:$32C8,x
+    sbc a:OBJ_HEALTH+32,x
     sta a:VDC_DATA_LO
     lda z:zTemp01
     sta a:VDC_DATA_HI
@@ -3472,8 +3472,8 @@ ContinueRowStep152D_at3:
     bsr ContinueRowDraw152D
     lda #$3F
     bsr ContinueRowDraw152D
-    inc a:$2C50,x
-    inc a:$32C8,x
+    inc a:OBJ_X_FRAC+48,x
+    inc a:OBJ_HEALTH+32,x
     rts
 
 ; @routine 152F:015 ContinueRowDraw152D
@@ -3499,14 +3499,14 @@ ContinueRowDraw152D:
     clc
     adc z:zTemp10
     sec
-    sbc a:$32C8,x
+    sbc a:OBJ_HEALTH+32,x
     sta a:VDC_DATA_LO
     lda z:zTemp01
     sta a:VDC_DATA_HI
     jsr VecSelectVramData
     lda z:zTemp10
     sec
-    sbc a:$32C8,x
+    sbc a:OBJ_HEALTH+32,x
     asl a
     tay
     lda (zTemp08),y
@@ -3560,11 +3560,11 @@ ContinueMenuStart152D_at1:
     lda #$6C
     jsr VecStartListChannel0Kind2
     lda #$04
-    sta a:$2A60
+    sta a:OBJ_SPRITE_SET+80
     lda #$03
     sta a:OBJ_SPRITE_SET+8
     lda #$4F
-    sta a:$2B80
+    sta a:OBJ_X_HI+16
     stz a:ContinueChoice
     bra ContinueMenu152D_at3
 
@@ -3608,7 +3608,7 @@ ContinueMenu152D_at2:
 ContinueMenu152D_at3:
     ldx a:ContinueChoice
     lda a:$90CD,x
-    sta a:$2C58
+    sta a:OBJ_X_FRAC+56
     rts
 ContinueMenu152D_at0:
     lda #$FF
@@ -3636,15 +3636,15 @@ ContinueBlink152D:
     lda z:zFrameTick
     and #$03
     bne ContinueBlink152D_at0
-    ldy a:$32D0
+    ldy a:OBJ_HEALTH+40
     lda a:$90EE,y
     clx
     jsr VecStartScriptSlotKind4
-    inc a:$32D0
-    lda a:$32D0
+    inc a:OBJ_HEALTH+40
+    lda a:OBJ_HEALTH+40
     cmp #$0A
     bcc ContinueBlink152D_at0
-    stz a:$32D0
+    stz a:OBJ_HEALTH+40
 ContinueBlink152D_at0:
     rts
 
@@ -3742,12 +3742,12 @@ TallyBoard152D:
     inx
     jsr StageDrawPiece152D
     lda z:zField94
-    sta a:$330D
+    sta a:OBJ_WORK_B+13
     lda z:zPlayerHealth
     cmp #$5C
     bne TallyBoard152D_at0
     lda #$18
-    sta a:$2A9B
+    sta a:OBJ_FRAME+51
 TallyBoard152D_at0:
     clx
     ldy #$50
@@ -3764,7 +3764,7 @@ TallyBoard152D_at0:
     clx
 TallyBoard152D_at1:
     lda a:$93B9,x
-    sta a:$3980,x
+    sta a:OBJ_HITBOX_DX+80,x
     inx
     cpx #$3E
     bne TallyBoard152D_at1
@@ -3793,10 +3793,10 @@ TallyDigits152D:
     inx
     cpx #$01
     beq TallyDigits152D_at0
-    stx a:$3991
+    stx a:OBJ_HITBOX_HALF_W+9
 TallyDigits152D_at0:
     inc a
-    sta a:$3992
+    sta a:OBJ_HITBOX_HALF_W+10
     lda z:zField94
     lsr a
     lsr a
@@ -3805,12 +3805,12 @@ TallyDigits152D_at0:
     inc a
     cmp #$01
     beq TallyDigits152D_at1
-    sta a:$39A1
+    sta a:OBJ_HITBOX_HALF_W+25
 TallyDigits152D_at1:
     lda z:zField94
     and #$0F
     inc a
-    sta a:$39A2
+    sta a:OBJ_HITBOX_HALF_W+26
     rts
 
 ; @routine 152F:198 TallyReveal152D
@@ -3840,13 +3840,13 @@ TallyReveal152D:
     tam #$40
     ldx #$3D
 TallyReveal152D_at1:
-    lda a:$3980,x
+    lda a:OBJ_HITBOX_DX+80,x
     bne TallyReveal152D_at0
     dex
     bpl TallyReveal152D_at1
     smb1 z:zPaused
     lda #$40
-    sta a:$3310
+    sta a:OBJ_WORK_B+16
     jmp TallyNext152D
 TallyReveal152D_at0:
     jsr VecNextRandom
@@ -3854,13 +3854,13 @@ TallyReveal152D_at0:
     cmp #$3E
     bcs TallyReveal152D_at0
     tax
-    lda a:$3980,x
+    lda a:OBJ_HITBOX_DX+80,x
     beq TallyReveal152D_at0
     sta z:zTemp00
     adc #$40
-    sta a:$3980,x
+    sta a:OBJ_HITBOX_DX+80,x
     bcc TallyReveal152D_at2
-    stz a:$3980,x
+    stz a:OBJ_HITBOX_DX+80,x
 TallyReveal152D_at2:
     txa
     and #$3F
@@ -4032,7 +4032,7 @@ TallyCell152D_at3:
 TallyPause152D:
     jsr TallyWait152D
     lda #$40
-    sta a:$3310
+    sta a:OBJ_WORK_B+16
     jmp TallyNext152D
 
 ; @routine 152F:2BC TallyCount152D
@@ -4086,16 +4086,16 @@ TallyCount152D_at1:
 TallyCount152D_at3:
     rts
 TallyCount152D_at2:
-    dec a:$3310
+    dec a:OBJ_WORK_B+16
     inc z:zField80
     inc z:zField80
-    lda a:$2A9B
+    lda a:OBJ_FRAME+51
     beq TallyCount152D_at4
     dec z:zField80
     dec z:zField80
     smb1 z:zPaused
     lda #$40
-    sta a:$3310
+    sta a:OBJ_WORK_B+16
 TallyCount152D_at4:
     jmp TallyNext152D
 
@@ -4121,7 +4121,7 @@ TallyWaitPress152D:
     rts
 TallyWaitPress152D_at0:
     lda #$20
-    sta a:$3310
+    sta a:OBJ_WORK_B+16
     jmp TallyNext152D
 
 ; @routine 152F:324 TallyStockBonus152D
@@ -4153,7 +4153,7 @@ TallyStockBonus152D_at0:
     jsr StageDrawStock152D
     lda #$2A
     jsr VecSoundCommand
-    dec a:$3310
+    dec a:OBJ_WORK_B+16
     jmp TallyNext152D
 
 ; @routine 152F:342 TallyEnd152D
@@ -4172,7 +4172,7 @@ TallyStockBonus152D_at0:
 ; Entry: nothing. Exit: A the hearts, N and Z from zModeDone's increment.
 TallyEnd152D:
     jsr TallyWait152D
-    lda a:$330D
+    lda a:OBJ_WORK_B+13
     sta z:zField94
     inc z:zModeDone
     rts
@@ -4194,9 +4194,9 @@ TallyEnd152D:
 ; Entry: nothing. Exit, count 0: A 0, N and Z from it, the rest kept. Else: the frame dropped, A the return address's
 ; high byte less one, N and Z from it.
 TallyWait152D:
-    lda a:$3310
+    lda a:OBJ_WORK_B+16
     beq TallyWait152D_at0
-    dec a:$3310
+    dec a:OBJ_WORK_B+16
     pla
     pla
 TallyWait152D_at0:
@@ -4293,16 +4293,16 @@ TallyHearts152D_at0:
 ; Entry: X the cell. Exit: A the cell plus $40, C set, N and Z from it; X the cell; Y 8.
 TallyDigitCell152D:
     phx
-    lda a:$3980,x
+    lda a:OBJ_HITBOX_DX+80,x
     sta z:zTemp00
     txa
     jsr TallyCell152D
     plx
-    lda a:$3980,x
+    lda a:OBJ_HITBOX_DX+80,x
     clc
     adc #$40
     bcs TallyDigitCell152D_at0
-    sta a:$3980,x
+    sta a:OBJ_HITBOX_DX+80,x
     bra TallyDigitCell152D
 TallyDigitCell152D_at0:
     rts
@@ -4425,13 +4425,13 @@ StageDrawPiece152D:
     tay
     jsr VecClearObjectInY
     lda a:$9470,x
-    sta a:$2A58,y
+    sta a:OBJ_SPRITE_SET+72,y
     lda a:$9478,x
     sta a:OBJ_SPRITE_SET,y
     lda a:$9480,x
     sta a:OBJ_X_HI+8,y
     lda a:$9488,x
-    sta a:$2C50,y
+    sta a:OBJ_X_FRAC+48,y
     rts
 
 ; @routine 152F:490 StageObjectHits152D
@@ -4456,7 +4456,7 @@ StageObjectHits152D:
     jsr StagePlaceHitBoxes152D
     ldx #$47
 StageObjectHits152D_at0:
-    lda a:$30D0,x
+    lda a:OBJ_EVENT_ID+56,x
     bne StageHitEvent152D
 
 ; @routine 152F:49B StageHitTimer152D
@@ -4475,10 +4475,10 @@ StageObjectHits152D_at0:
 ; WAITS: no.
 ; Entry: X the object, the loop's X on the stack. Exit: as StageObjectHits152D.
 StageHitTimer152D:
-    lda a:$3790,x
+    lda a:OBJ_WORK_L+24,x
     beq StageHitNext152D
-    stz a:$31F0,x
-    dec a:$3790,x
+    stz a:OBJ_HIT_STATUS+80,x
+    dec a:OBJ_WORK_L+24,x
 
 ; @routine 152F:4A6 StageHitNext152D
 ; @run 6B:94A6
@@ -4542,7 +4542,7 @@ StagePlaceHitBoxes152D_at0:
 ; WAITS: no.
 ; Entry: X the slot. Exit: A the page byte, N and Z from the ORA; C and V from the last add. X and Y kept.
 StagePlaceHitBox152D:
-    lda a:$30D0,x
+    lda a:OBJ_EVENT_ID+56,x
     bne StagePlaceHitBox152D_at0
     lda #$01
     sta a:HitboxHi+3,x
@@ -4557,19 +4557,19 @@ StagePlaceHitBox152D_at1:
     clc
     adc a:OBJ_WORK_I,x
     sta a:HitboxXLo+3,x
-    lda a:$2B30,x
+    lda a:OBJ_SPRITE_ATTR+24,x
     adc z:zTemp00
     sta a:HitboxHi+3,x
     stz z:zTemp00
-    lda a:$3700,x
+    lda a:OBJ_WORK_J+56,x
     bpl StagePlaceHitBox152D_at2
     dec z:zTemp00
 StagePlaceHitBox152D_at2:
-    lda a:$2C50,x
+    lda a:OBJ_X_FRAC+48,x
     clc
-    adc a:$3700,x
+    adc a:OBJ_WORK_J+56,x
     sta a:HitboxYLo+3,x
-    lda a:$2C08,x
+    lda a:OBJ_X_LO+64,x
     adc z:zTemp00
     ora a:HitboxHi+3,x
     sta a:HitboxHi+3,x
@@ -4594,7 +4594,7 @@ StagePlaceHitBox152D_at2:
 ; WAITS: no.
 ; Entry: X the object, the loop's X on the stack. Exit: as StageObjectHits152D.
 StageHitEvent152D:
-    stz a:$31F0,x
+    stz a:OBJ_HIT_STATUS+80,x
     stz z:zTemp00
     lda a:OBJ_WORK_I,x
     bpl StageHitEvent152D_at0
@@ -4603,20 +4603,20 @@ StageHitEvent152D_at0:
     clc
     adc a:OBJ_X_HI+8,x
     sta a:StreamStepHi
-    lda a:$2B30,x
+    lda a:OBJ_SPRITE_ATTR+24,x
     adc z:zTemp00
     beq StageHitEvent152D_at1
     jmp StageHitTimer152D
 StageHitEvent152D_at1:
     stz z:zTemp00
-    lda a:$3700,x
+    lda a:OBJ_WORK_J+56,x
     bpl StageHitEvent152D_at2
     dec z:zTemp00
 StageHitEvent152D_at2:
     clc
-    adc a:$2C50,x
+    adc a:OBJ_X_FRAC+48,x
     sta a:StreamStepHi+1
-    lda a:$2C08,x
+    lda a:OBJ_X_LO+64,x
     adc z:zTemp00
     beq StageHitEvent152D_at3
     jmp StageHitTimer152D
@@ -4625,13 +4625,13 @@ StageHitEvent152D_at3:
 StageHitEvent152D_at8:
     lda a:HitboxHi+3,y
     bne StageHitEvent152D_at4
-    lda a:$36B8,x
+    lda a:OBJ_WORK_I+72,x
     clc
-    adc a:$36B8,y
+    adc a:OBJ_WORK_I+72,y
     sta a:StreamStepHi+2
-    lda a:$3748,x
+    lda a:OBJ_WORK_K+40,x
     clc
-    adc a:$3748,y
+    adc a:OBJ_WORK_K+40,y
     sta a:StreamStepHi+3
     lda a:StreamStepHi
     sec
@@ -4652,12 +4652,12 @@ StageHitEvent152D_at6:
     cmp a:StreamStepHi+3
     bcs StageHitEvent152D_at4
     jsr StageHitHandler152D
-    lda a:$3790,x
+    lda a:OBJ_WORK_L+24,x
     bne StageHitEvent152D_at7
     jmp StageHitNext152D
 StageHitEvent152D_at7:
-    dec a:$3790,x
-    stz a:$31F0,x
+    dec a:OBJ_WORK_L+24,x
+    stz a:OBJ_HIT_STATUS+80,x
     jmp StageHitNext152D
 StageHitEvent152D_at4:
     dey
@@ -4682,9 +4682,9 @@ StageHitEvent152D_at4:
 ; with A the handler's high byte and Y the slot.
 StageHitHandler152D:
     txa
-    sta a:$35E0,y
+    sta a:OBJ_WORK_G+32,y
     sty z:zHitSlot
-    lda a:$3598,y
+    lda a:OBJ_WORK_F+48,y
     beq StageHitHandler152D_at0
     dec a
     asl a
@@ -4715,16 +4715,16 @@ StageHitHandler152D_at0:
 ; WAITS: no.
 ; Entry: X the object, Y the slot. Exit: A the last byte loaded, N and Z from it. X, Y, C and V kept.
 HitKindSpawn152D:
-    lda a:$3598,y
-    sta a:$31F0,x
-    lda a:$31F0
+    lda a:OBJ_WORK_F+48,y
+    sta a:OBJ_HIT_STATUS+80,x
+    lda a:OBJ_HIT_STATUS+80
     bne HitKindSpawn152D_at0
     lda a:HitStoreGateB
     bne HitKindSpawn152D_at0
     lda a:OBJ_HIT_STATUS+8,x
-    sta a:$31F0
-    lda a:$3160,x
-    sta a:$3118
+    sta a:OBJ_HIT_STATUS+80
+    lda a:OBJ_PACE+24,x
+    sta a:OBJ_LOOP_FLAGS+40
 HitKindSpawn152D_at0:
     rts
 
@@ -4744,10 +4744,10 @@ HitKindSpawn152D_at0:
 ; WAITS: no.
 ; Entry: X the object, Y the slot. Exit: side 2: A 2, Z set, C set. Else as HitKindState152D.
 HitKindFacing152D:
-    lda a:$2FF8,x
+    lda a:OBJ_SPRITE_FLIP+16,x
     and #$01
     inc a
-    sta a:$3628,y
+    sta a:OBJ_WORK_H+16,y
 HitKindFacing152D_at0:
     cmp #$02
     beq HitKindState152D_at0
@@ -4767,8 +4767,8 @@ HitKindFacing152D_at0:
 ; WAITS: no.
 ; Entry: X the object, Y the slot. Exit: A the kind, N and Z from it. X, Y, C and V kept.
 HitKindState152D:
-    lda a:$3598,y
-    sta a:$31F0,x
+    lda a:OBJ_WORK_F+48,y
+    sta a:OBJ_HIT_STATUS+80,x
 HitKindState152D_at0:
     rts
 
@@ -4788,11 +4788,11 @@ HitKindState152D_at0:
 ; WAITS: no.
 ; Entry: X the object, Y the slot. Exit: as HitKindFacing152D.
 HitKindSide152D:
-    lda a:$2FF8,x
+    lda a:OBJ_SPRITE_FLIP+16,x
     and #$02
     lsr a
     inc a
-    sta a:$3628,y
+    sta a:OBJ_WORK_H+16,y
     bra HitKindFacing152D_at0
 
 ; @routine 152F:604 StageProbePoints152D
@@ -4828,16 +4828,16 @@ StageProbePoints152D_at0:
     sta z:zTemp00
     iny
     lda (zTemp0C),y
-    adc a:$2B30,x
+    adc a:OBJ_SPRITE_ATTR+24,x
     sta z:zTemp01
     iny
     lda (zTemp0C),y
     clc
-    adc a:$2C50,x
+    adc a:OBJ_X_FRAC+48,x
     sta z:zTemp02
     iny
     lda (zTemp0C),y
-    adc a:$2C08,x
+    adc a:OBJ_X_LO+64,x
     sta z:zTemp03
     iny
     phy
@@ -4898,16 +4898,16 @@ StageProbeAgain152D_at3:
     sta z:zTemp00
     iny
     lda (zTemp0C),y
-    adc a:$2B30,x
+    adc a:OBJ_SPRITE_ATTR+24,x
     sta z:zTemp01
     iny
     lda (zTemp0C),y
     clc
-    adc a:$2C50,x
+    adc a:OBJ_X_FRAC+48,x
     sta z:zTemp02
     iny
     lda (zTemp0C),y
-    adc a:$2C08,x
+    adc a:OBJ_X_LO+64,x
     sta z:zTemp03
     iny
     lda #$F8
@@ -5139,7 +5139,7 @@ ProbeTile152D_at7:
 ; WAITS: no.
 ; Entry: X the object. Exit: as the step leaves them; it is entered with A the word's high byte and Y the index.
 GateObjectStep152D:
-    lda a:$2818,x
+    lda a:OBJ_SUBSTATE+24,x
     asl a
     tay
     lda a:$98FC,y
@@ -5171,13 +5171,13 @@ GateStart152D:
     eor #$FF
     inc a
     clc
-    adc a:$2C50,x
-    sta a:$2C50,x
-    lda a:$2F20,x
+    adc a:OBJ_X_FRAC+48,x
+    sta a:OBJ_X_FRAC+48,x
+    lda a:OBJ_WORK_A+64,x
     and #$01
     tay
     lda a:$9927,y
-    sta a:$2A58,x
+    sta a:OBJ_SPRITE_SET+72,x
 
 ; @routine 1530:12B GateWaitPlayer152D
 ; @run 6B:992B
@@ -5201,26 +5201,26 @@ GateWaitPlayer152D:
     eor #$01
     and a:PlayerDoorReady
     beq GateWaitPlayer152D_at0
-    lda a:$31F0,x
+    lda a:OBJ_HIT_STATUS+80,x
     beq GateWaitPlayer152D_at0
     cmp #$03
     bcs GateWaitPlayer152D_at0
-    lda a:$2F20,x
+    lda a:OBJ_WORK_A+64,x
     and #$0F
     inc a
     sta z:zField8C
     lda #$03
     sta z:zSubStep
-    inc a:$2818,x
-    stz a:$3310,x
+    inc a:OBJ_SUBSTATE+24,x
+    stz a:OBJ_WORK_B+16,x
     lda #$04
-    sta a:$32C8,x
-    lda a:$2F20,x
+    sta a:OBJ_HEALTH+32,x
+    lda a:OBJ_WORK_A+64,x
     and #$F0
     beq GateWaitPlayer152D_at0
     stz z:zRasterEffect
     stz a:ScrollSpeedX+6
-    lda a:$2F20,x
+    lda a:OBJ_WORK_A+64,x
     and #$F0
     beq GateWaitPlayer152D_at0
     lsr a
@@ -5253,7 +5253,7 @@ GateWaitStep152D:
     lda z:zField85
     cmp #$02
     bne GateWaitClear152D_at0
-    inc a:$2818,x
+    inc a:OBJ_SUBSTATE+24,x
     rts
 
 ; @routine 1530:180 GateOpen152D
@@ -5272,13 +5272,13 @@ GateWaitStep152D:
 ; WAITS: no.
 ; Entry: X the object. Exit: as the last instruction, the sound hook or the kernel left them; X kept.
 GateOpen152D:
-    dec a:$32C8,x
+    dec a:OBJ_HEALTH+32,x
     bne GateOpen152D_at0
-    inc a:$3310,x
-    lda a:$3310,x
+    inc a:OBJ_WORK_B+16,x
+    lda a:OBJ_WORK_B+16,x
     cmp #$04
     bne GateOpen152D_at1
-    inc a:$2818,x
+    inc a:OBJ_SUBSTATE+24,x
     lda z:zField8C
     ora #$80
     sta z:zField8C
@@ -5286,14 +5286,14 @@ GateOpen152D:
     jmp VecSoundCommand
 GateOpen152D_at1:
     lda #$04
-    sta a:$32C8,x
-    lda a:$2F20,x
+    sta a:OBJ_HEALTH+32,x
+    lda a:OBJ_WORK_A+64,x
     and #$01
     tay
     lda a:$9927,y
     clc
-    adc a:$3310,x
-    sta a:$2A58,x
+    adc a:OBJ_WORK_B+16,x
+    sta a:OBJ_SPRITE_SET+72,x
     clc
     adc a:$9929,y
     phx
@@ -5320,9 +5320,9 @@ GateOpen152D_at0:
 GateWaitClear152D:
     lda z:zField8C
     bmi GateWaitClear152D_at0
-    inc a:$2818,x
+    inc a:OBJ_SUBSTATE+24,x
     lda #$04
-    sta a:$32C8,x
+    sta a:OBJ_HEALTH+32,x
 GateWaitClear152D_at0:
     rts
 
@@ -5342,23 +5342,23 @@ GateWaitClear152D_at0:
 ; WAITS: no.
 ; Entry: X the object. Exit: as the last instruction, the sound hook or the kernel left them; X kept.
 GateClose152D:
-    dec a:$32C8,x
+    dec a:OBJ_HEALTH+32,x
     bne GateClose152D_at0
-    dec a:$3310,x
+    dec a:OBJ_WORK_B+16,x
     bpl GateClose152D_at1
-    inc a:$2818,x
+    inc a:OBJ_SUBSTATE+24,x
     lda #$3A
     jmp VecSoundCommand
 GateClose152D_at1:
     lda #$04
-    sta a:$32C8,x
-    lda a:$2F20,x
+    sta a:OBJ_HEALTH+32,x
+    lda a:OBJ_WORK_A+64,x
     and #$01
     tay
     lda a:$9927,y
     clc
-    adc a:$3310,x
-    sta a:$2A58,x
+    adc a:OBJ_WORK_B+16,x
+    sta a:OBJ_SPRITE_SET+72,x
     clc
     adc a:$9929,y
     phx

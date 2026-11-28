@@ -13,6 +13,24 @@
 ; HOW: One jump, no frame of its own.
 ; WAITS: as the sub-mode's handler.
 ; Entry, exit: as StageSubModeStep3CD.
+AndVramDataAt9350 = $9350 ; AndVramData's bytes (024F:392) at this address
+AndVramDataAt9425 = $9425 ; AndVramData's bytes (024F:392) at this address
+AndVramDataAt942A = $942A ; AndVramData's bytes (024F:392) at this address
+AndVramDataAt9631 = $9631 ; AndVramData's bytes (024F:392) at this address
+MapOverlayBank7At802C = $802C ; MapOverlayBank7's bytes (024D:0B7) at this address
+MapOverlayBank7At8044 = $8044 ; MapOverlayBank7's bytes (024D:0B7) at this address
+MapOverlayBank7At80A0 = $80A0 ; MapOverlayBank7's bytes (024D:0B7) at this address
+MapOverlayBanks5And6At8021 = $8021 ; MapOverlayBanks5And6's bytes (024D:0A0) at this address
+MapOverlayBanks5And6At802D = $802D ; MapOverlayBanks5And6's bytes (024D:0A0) at this address
+MapStageBanksAt9307 = $9307 ; MapStageBanks's bytes (024F:349) at this address
+MapStageBanksAt93E7 = $93E7 ; MapStageBanks's bytes (024F:349) at this address
+MapStageBanksAt95E8 = $95E8 ; MapStageBanks's bytes (024F:349) at this address
+OrVramDataAt935F = $935F ; OrVramData's bytes (024F:3A1) at this address
+OrVramDataAt9434 = $9434 ; OrVramData's bytes (024F:3A1) at this address
+OrVramDataAt9439 = $9439 ; OrVramData's bytes (024F:3A1) at this address
+OrVramDataAt9640 = $9640 ; OrVramData's bytes (024F:3A1) at this address
+StageOpeningWriteRow152DAt8FA1 = $8FA1 ; StageOpeningWriteRow152D's bytes (152E:5B8) at this address
+StageSplitTens152DAt9405 = $9405 ; StageSplitTens152D's bytes (152F:40A) at this address
 StageEntryA3CD:
     jmp StageSubModeStep3CD
 
@@ -147,7 +165,7 @@ StageSubModeStep3CD:
 ; WAITS: as $A000.
 ; Entry: nothing. Exit: as $A000 leaves them.
 StageFrameA0003CD:
-    jsr $802D
+    jsr MapOverlayBanks5And6At802D
     jmp RunObjects
 
 ; @routine 03CD:03E StageFrameA0093CD
@@ -166,7 +184,7 @@ StageFrameA0003CD:
 ; WAITS: as $A009.
 ; Entry: nothing. Exit: as $A009 leaves them.
 StageFrameA0093CD:
-    jsr $802D
+    jsr MapOverlayBanks5And6At802D
     jmp RichterVecC3A7
 
 ; @routine 03CD:04C StageFrameA08D3CD
@@ -185,7 +203,7 @@ StageFrameA0093CD:
 ; WAITS: as $A08D.
 ; Entry: nothing. Exit: as $A08D leaves them.
 StageFrameA08D3CD:
-    jsr $8044
+    jsr MapOverlayBank7At8044
     jmp $A08D
 
 ; @routine 03CD:052 StageFrameA0673CD
@@ -204,7 +222,7 @@ StageFrameA08D3CD:
 ; WAITS: as $A067.
 ; Entry: nothing. Exit: as $A067 leaves them.
 StageFrameA0673CD:
-    jsr $8044
+    jsr MapOverlayBank7At8044
     jmp ClearScrollSpeeds
 
 ; @routine 03CD:058 DemoStart3CD
@@ -249,8 +267,8 @@ DemoStart3CD_at0:
     stz z:zWaveCounter
     stz z:zModeEvents
     stz z:zFrameTick
-    stz z:$7C
-    stz z:$7D
+    stz z:zDemoPadLast
+    stz z:zDemoPadFrames
     stz z:zScriptPtr
     lda #$A0
     sta z:zScriptPtrHi
@@ -366,22 +384,22 @@ DemoAdvance3CD_at0:
 ; WAITS: no.
 ; Entry: nothing. Exit: as the last instruction that ran left them.
 DemoPlay3CD:
-    lda z:$7D
+    lda z:zDemoPadFrames
     bne DemoPlay3CD_at0
     lda (zScriptPtr)
     beq DemoAdvance3CD_at1
-    sta z:$7D
+    sta z:zDemoPadFrames
 DemoPlay3CD_at0:
     ldy #$01
     lda (zScriptPtr),y
     sta a:BiosPadState
-    lda z:$7C
+    lda z:zDemoPadLast
     eor #$FF
     and a:BiosPadState
     sta a:BiosJoyTrigger
     lda a:BiosPadState
-    sta z:$7C
-    dec z:$7D
+    sta z:zDemoPadLast
+    dec z:zDemoPadFrames
     beq DemoPlay3CD_at1
     rts
 DemoPlay3CD_at1:
@@ -422,13 +440,13 @@ StageSubModeStart3CD:
     jsr StageRouteSetUpB3CD
     jsr StageLoadRowMap3CD
     jsr StageResetScroll3CD
-    jsr $802D
+    jsr MapOverlayBanks5And6At802D
     jsr RichterVecStart
     jsr StageHudStart3CD
     jsr StageOpeningStart3CD
     jsr StageLevelStart3CD
     stz z:zPaused
-    stz z:$3C
+    stz z:zFadeActive
     inc z:zGameSubMode
     lda z:zField83
     sta z:zField86
@@ -442,7 +460,7 @@ StageSubModeStart3CD_at1:
 StageSubModeStart3CD_at0:
     lda #$05
     sta z:zGameSubMode
-    dec a:$3310
+    dec a:OBJ_WORK_B+16
     lda #$01
     sta a:PlayerStartPose
     rts
@@ -463,22 +481,22 @@ StageSubModeStart3CD_at0:
 ; WAITS: no.
 ; Entry: nothing. Exit: as StageFadeTimer152D.
 StageFadeTimer3CD:
-    lda z:$9B
+    lda z:zFadeCount
     beq StagePauseToggle3CD_at0
-    dec z:$9B
+    dec z:zFadeCount
     beq StageFadeTimer3CD_at0
-    dec z:$9B
-    stz z:$3C
+    dec z:zFadeCount
+    stz z:zFadeActive
     bbs4 zField8E,StagePauseToggle3CD_at0
     bbs3 zField8E,StageFadeTimer3CD_at1
     cla
     jmp BiosCdFade
 StageFadeTimer3CD_at1:
-    lda z:$9D
+    lda z:zFadeSound
     jmp VecSoundCommand
 StageFadeTimer3CD_at0:
     lda #$01
-    sta z:$3C
+    sta z:zFadeActive
     lda z:zField8E
     and #$18
     bne StagePauseToggle3CD_at0
@@ -501,7 +519,7 @@ StageFadeTimer3CD_at0:
 ; WAITS: no.
 ; Entry: nothing. Exit: A the last value loaded or computed, N and Z from it. X, Y, C and V kept.
 StagePauseToggle3CD:
-    lda z:$3C
+    lda z:zFadeActive
     eor #$01
     beq StagePauseToggle3CD_at0
     lda a:BiosJoyTrigger
@@ -573,7 +591,7 @@ StageSubModePlay3CD:
     beq StageSubModePlay3CD_at1
     jmp StagePausedFrame3CD
 StageSubModePlay3CD_at1:
-    jsr $81AD
+    jsr StageModeEventsStep3CD
     lda a:PlayerSlowTimerLo
     ora a:PlayerSlowTimerHi
     beq StageSubModePlay3CD_at2
@@ -643,14 +661,14 @@ StageSubStepDeath3CD:
     jsr StageFrameA0673CD
     stz a:PadForcedPress
     stz a:PadForcedPressB
-    stz z:$88
+    stz z:zFallStep
     lda a:TimeSlowMode
     bne StageSubStepDeath3CD_at0
     rts
 StageSubStepDeath3CD_at0:
     stz a:TimeSlowMode
     lda #$02
-    sta z:$9B
+    sta z:zFadeCount
     jmp StageFadeTimer3CD
 
 ; @routine 03CD:283 StageSubStepCleared3CD
@@ -694,7 +712,7 @@ StageSubStepCleared3CD_at1:
 StageSubStepCleared3CD_at0:
     lda #$02
 StageSubStepCleared3CD_at4:
-    sta z:$84
+    sta z:zClearKind
     lda #$03
     sta z:zGameSubMode
     stz z:zField85
@@ -775,17 +793,17 @@ StageSubStepTally3CD:
     jsr StageFrameA0673CD
     stz a:PadForcedPress
     stz a:PadForcedPressB
-    stz z:$88
+    stz z:zFallStep
     stz a:OBJ_WORK_C
     lda #$40
-    sta a:$3310
+    sta a:OBJ_WORK_B+16
     lda a:TimeSlowMode
     bne StageSubStepTally3CD_at0
     rts
 StageSubStepTally3CD_at0:
     stz a:TimeSlowMode
     lda #$02
-    sta z:$9B
+    sta z:zFadeCount
     jmp StageFadeTimer3CD
 
 ; @routine 03CD:300 StageSubModeDeath3CD
@@ -813,7 +831,7 @@ StageSubModeDeath3CD:
     beq StageSubModeDeath3CD_at0
     rts
 StageSubModeDeath3CD_at0:
-    jsr $802D
+    jsr MapOverlayBanks5And6At802D
     jsr RichterVecCE1D
     jmp StageLevelStart3CD
 
@@ -864,9 +882,9 @@ StageDeathRespawn3CD:
     beq StageDeathRespawn3CD_at0
     stz z:zField8C
     lda #$18
-    sta a:$3310
+    sta a:OBJ_WORK_B+16
 StageDeathRespawn3CD_at0:
-    lda a:$2818
+    lda a:OBJ_SUBSTATE+24
     and #$01
     tax
     lda a:$8346,x
@@ -896,9 +914,9 @@ StageDeathRespawnB3CD:
     beq StageDeathRespawnB3CD_at0
     stz z:zField8C
     lda #$18
-    sta a:$3310
+    sta a:OBJ_WORK_B+16
 StageDeathRespawnB3CD_at0:
-    lda a:$2818
+    lda a:OBJ_SUBSTATE+24
     and #$01
     tax
     lda a:$8346,x
@@ -923,7 +941,7 @@ StageDeathRespawnB3CD_at0:
 ; WAITS: no.
 ; Entry: nothing. Exit: as the step that ran left them.
 StageDeathFallLeft3CD:
-    lda z:$88
+    lda z:zFallStep
     dec a
     beq StageDeathFallStart3CD_at2
     dec a
@@ -931,7 +949,7 @@ StageDeathFallLeft3CD:
     lda #$40
     sta a:OBJ_Y_FRAC
     lda #$01
-    sta a:$2CE0
+    sta a:OBJ_Y_LO+16
 
 ; @routine 03CD:379 StageDeathFallStart3CD
 ; @run 6B:8379
@@ -950,16 +968,16 @@ StageDeathFallLeft3CD:
 ; WAITS: no.
 ; Entry: nothing. Exit: N and Z from the step's increment; A, X, Y, C and V as $A012 left them.
 StageDeathFallStart3CD:
-    jsr $802D
+    jsr MapOverlayBanks5And6At802D
     lda #$00
     jsr RichterVecSetAnimation
     jsr RichterVecAnimationSound
     bra StageDeathFallStart3CD_at0
 StageDeathFallStart3CD_at2:
-    jsr $802D
+    jsr MapOverlayBanks5And6At802D
     jsr RichterVecSetIdle
     jsr RichterVecAnimationSound
-    lda a:$2B30
+    lda a:OBJ_SPRITE_ATTR+24
     beq StageDeathFallStart3CD_at1
     lda a:OBJ_X_HI+8
     cmp #$10
@@ -968,7 +986,7 @@ StageDeathFallStart3CD_at1:
     clx
     jmp RichterVecCE73
 StageDeathFallStart3CD_at0:
-    inc z:$88
+    inc z:zFallStep
     rts
 
 ; @routine 03CD:3A2 StageDeathFallBackLeft3CD
@@ -993,7 +1011,7 @@ StageDeathFallBackLeft3CD:
     sta z:zGameSubMode
     stz z:zField8C
     lda #$20
-    sta a:$3310
+    sta a:OBJ_WORK_B+16
     lda #$20
     sta a:OBJ_WORK_C
     rts
@@ -1016,7 +1034,7 @@ StageDeathFallBackLeft3CD:
 ; WAITS: no.
 ; Entry: nothing. Exit: as the step that ran left them.
 StageDeathFallRight3CD:
-    lda z:$88
+    lda z:zFallStep
     dec a
     beq StageDeathFallRight3CD_at0
     dec a
@@ -1024,13 +1042,13 @@ StageDeathFallRight3CD:
     lda #$C0
     sta a:OBJ_Y_FRAC
     lda #$FE
-    sta a:$2CE0
+    sta a:OBJ_Y_LO+16
     jsr StageDeathFallStart3CD
 StageDeathFallRight3CD_at0:
-    jsr $802D
+    jsr MapOverlayBanks5And6At802D
     jsr RichterVecSetIdle
     jsr RichterVecAnimationSound
-    lda a:$2B30
+    lda a:OBJ_SPRITE_ATTR+24
     beq StageDeathFallRight3CD_at2
     lda a:OBJ_X_HI+8
     cmp #$F0
@@ -1039,7 +1057,7 @@ StageDeathFallRight3CD_at2:
     clx
     jmp RichterVecCE73
 StageDeathFallRight3CD_at3:
-    inc z:$88
+    inc z:zFallStep
     rts
 StageDeathFallRight3CD_at1:
     jsr StageResetScroll3CD
@@ -1047,7 +1065,7 @@ StageDeathFallRight3CD_at1:
     sta z:zGameSubMode
     stz z:zField8C
     lda #$20
-    sta a:$3310
+    sta a:OBJ_WORK_B+16
     lda #$80
     sta a:OBJ_WORK_C
     rts
@@ -1070,8 +1088,8 @@ StageDeathFallRight3CD_at1:
 ; WAITS: as the step.
 ; Entry: nothing. Exit: as the step leaves them; it is entered with A and X twice $84, N and Z from it, C its bit 7.
 StageSubModeCleared3CD:
-    jsr $81AD
-    lda z:$84
+    jsr StageModeEventsStep3CD
+    lda z:zClearKind
     asl a
     tax
     jmp ($8405,x)
@@ -1103,7 +1121,7 @@ StageClearedNextStage3CD:
     jsr StageHudStart3CD
     lda #$02
     sta z:zField8A
-    jsr $802D
+    jsr MapOverlayBanks5And6At802D
     jsr RichterVecStart
     jsr StageLevelStart3CD
     stz z:zPaused
@@ -1130,10 +1148,10 @@ StageClearedNextStage3CD:
 ; WAITS: no.
 ; Entry: nothing. Exit: as $A012 leaves them.
 StageWalkSprite3CD:
-    jsr $802D
+    jsr MapOverlayBanks5And6At802D
     ldx z:zCharacter
     lda a:$8453,x
-    sta a:$2A58
+    sta a:OBJ_SPRITE_SET+72
     jmp RichterVecAnimationSound
 
 ; @routine 03CD:455 StageClearedWalkOut3CD
@@ -1154,7 +1172,7 @@ StageWalkSprite3CD:
 ; WAITS: as the step.
 ; Entry: nothing. Exit: as the step leaves them.
 StageClearedWalkOut3CD:
-    jsr $8044
+    jsr MapOverlayBank7At8044
     jsr VecStreamScrollStep
     lda z:zField85
     asl a
@@ -1186,7 +1204,7 @@ StageClearedWaitObjects3CD:
     jsr StageOverlayFrame3CD
     ldx #$40
 StageClearedWaitObjects3CD_at1:
-    lda a:$27D0,x
+    lda a:OBJ_STATE+40,x
     bmi StageClearedWaitObjects3CD_at0
     bne StageClearedWaitScroll3CD_at0
 StageClearedWaitObjects3CD_at0:
@@ -1287,7 +1305,7 @@ StageClearedWaitScroll3CD_at0:
 ; the mark: N and Z from the step's increment.
 StageClearedWalkBack3CD:
     lda #$E0
-    sta a:$3310
+    sta a:OBJ_WORK_B+16
     lda z:zField8C
     dec a
     and #$01
@@ -1310,7 +1328,7 @@ StageClearedWalkBack3CD_at0:
     lda z:zField8C
     and #$7F
     sta z:zField8C
-    stz a:$3310
+    stz a:OBJ_WORK_B+16
     stz a:OBJ_WORK_C
     lda #$02
     sta z:zField8A
@@ -1382,7 +1400,7 @@ StageClearedWalkOn3CD_at2:
 StageClearedWalkOn3CD_at3:
     jsr StageLoadRowMap3CD
     tai KernelZeros,ScrollXFrac,$0030
-    tai KernelZeros,Scroll3E66,$0088
+    tai KernelZeros,ScrollColumnBlocks,$0088
     lda z:zField8E
     pha
     jsr StageLoadScreen3CD
@@ -1391,7 +1409,7 @@ StageClearedWalkOn3CD_at3:
     lda a:CameraMode
     cmp #$0D
     bne StageClearedWalkOn3CD_at4
-    jsr $8044
+    jsr MapOverlayBank7At8044
     jsr SetBlinkFlash
     jsr StageLoadScreen3CD
 StageClearedWalkOn3CD_at4:
@@ -1493,7 +1511,7 @@ StageBossScrollToDoor3CD_at0:
 StageBossWaitDoor3CD:
     jsr StageFrameA0093CD
     jsr StageOverlayFrame3CD
-    lda a:$283A
+    lda a:OBJ_SUBSTATE+58
     cmp #$04
     bne StageBossWaitDoor3CD_at0
     lda a:OBJ_ANIM_STEP+2
@@ -1523,7 +1541,7 @@ StageBossWaitDoor3CD_at0:
 ; Entry: nothing. Exit, short of $F0: A the X, N, Z and C from the compare. Else: as StageNextRouteStage3CD.
 StageBossWalkOut3CD:
     lda #$B8
-    sta a:$3310
+    sta a:OBJ_WORK_B+16
     jsr StageFrameA0003CD
     jsr VecPlayerAndCameraFrame
     jsr RichterVecC3A7
@@ -1553,7 +1571,7 @@ StageBossWalkOut3CD:
 StageNextRouteStage3CD:
     lda #$02
     sta z:zDisplayDelay
-    stz a:$3310
+    stz a:OBJ_WORK_B+16
     stz a:Field2742+1
     stz a:OBJ_WORK_C
     inc z:zField82
@@ -1562,8 +1580,8 @@ StageNextRouteStage3CD:
     lda a:$9D60,y
     sta z:zField83
     cla
-    sta z:$84
-    stz a:$2A58
+    sta z:zClearKind
+    stz a:OBJ_SPRITE_SET+72
     rts
 
 ; @routine 03CD:637 StageClearedLastWalk3CD
@@ -1584,7 +1602,7 @@ StageNextRouteStage3CD:
 ; WAITS: as the step.
 ; Entry: nothing. Exit: as the step leaves them.
 StageClearedLastWalk3CD:
-    jsr $8044
+    jsr MapOverlayBank7At8044
     jsr VecStreamScrollStep
     lda z:zField85
     asl a
@@ -1661,7 +1679,7 @@ StageClearedWalkOff3CD:
     tay
     lda a:$8441,y
     sta a:OBJ_WORK_C
-    sta a:$3310
+    sta a:OBJ_WORK_B+16
     jsr StageFrameA0003CD
     lda z:zField8C
     dec a
@@ -1674,8 +1692,8 @@ StageClearedWalkOff3CD:
     bne StageClearedWalkOff3CD_at0
     lda a:$8439,y
     clc
-    adc a:$2B30
-    sta a:$2B30
+    adc a:OBJ_SPRITE_ATTR+24
+    sta a:OBJ_SPRITE_ATTR+24
 StageClearedWalkOff3CD_at0:
     lda z:zField8C
     dec a
@@ -1723,7 +1741,7 @@ StageClearedWalkOff3CD_at2:
 StageClearedEnding3CD:
     lda #$FF
     jsr VecSoundCommand
-    jsr $802D
+    jsr MapOverlayBanks5And6At802D
     jsr RichterVecCE1D
     lda z:zField8C
     and #$7F
@@ -1756,18 +1774,18 @@ StageClearedEnding3CD_at0:
 StageCenterPlayer3CD:
     lda a:$2860
     bne StageCenterPlayer3CD_at0
-    lda a:$2818
+    lda a:OBJ_SUBSTATE+24
     cmp #$02
     bcc StageCenterPlayer3CD_at1
 StageCenterPlayer3CD_at0:
     lda #$80
-    sta a:$3310
+    sta a:OBJ_WORK_B+16
     stz a:OBJ_WORK_C
     jsr StageFrameA0093CD
     rts
 StageCenterPlayer3CD_at1:
     lda #$80
-    sta a:$3310
+    sta a:OBJ_WORK_B+16
     stz a:OBJ_WORK_C
     lda #$01
     sta a:PlayerStartPose
@@ -1806,7 +1824,7 @@ StageCenterPlayer3CD_at3:
     bne StageCenterPlayer3CD_at4
 StageCenterPlayer3CD_at5:
     rmb7 z:zField8E
-    stz a:$3310
+    stz a:OBJ_WORK_B+16
     stz a:PlayerStartPose
 StageCenterPlayer3CD_at4:
     rts
@@ -1831,7 +1849,7 @@ StageCenterPlayer3CD_at4:
 ; WAITS: as the step.
 ; Entry: nothing. Exit: as the step leaves them.
 StageSubModeFade3CD:
-    jsr $81AD
+    jsr StageModeEventsStep3CD
     jsr StageHudStep3CD
     lda z:zField80
     cmp #$03
@@ -1850,7 +1868,7 @@ StageSubModeFade3CD_at1:
 StageSubModeFade3CD_at2:
     stz a:TimeSlowMode
 StageSubModeFade3CD_at3:
-    jsr $802D
+    jsr MapOverlayBanks5And6At802D
     lda z:zField80
     asl a
     tax
@@ -1894,11 +1912,11 @@ StageFadeStart3CD:
 ; WAITS: no.
 ; Entry: nothing. Exit: A zField89, N and Z from it or from zField80's increment.
 StageFadeWait3CD:
-    lda a:$2A58
+    lda a:OBJ_SPRITE_SET+72
     pha
     jsr RichterVecC076
     pla
-    cmp a:$2A58
+    cmp a:OBJ_SPRITE_SET+72
     beq StageFadeWait3CD_at1
     jsr RichterVecAnimationSound
 StageFadeWait3CD_at1:
@@ -1991,7 +2009,7 @@ StageFadeRestart3CD_at0:
 ; WAITS: no.
 ; Entry: nothing. Exit: A 1, N and Z from it when the stage goes into play; else as StageOpeningStep3CD left them.
 StageSubModeOpening3CD:
-    jsr $81AD
+    jsr StageModeEventsStep3CD
     jsr StageHudStep3CD
     jsr StageFrameA0003CD
     jsr StageFrameA08D3CD
@@ -2001,7 +2019,7 @@ StageSubModeOpening3CD:
     stz a:TimeSlowMode
     lda #$01
     sta z:zGameSubMode
-    sta a:$3310
+    sta a:OBJ_WORK_B+16
     stz a:PlayerStartPose
 StageSubModeOpening3CD_at0:
     rts
@@ -2047,7 +2065,7 @@ StageLoadRowMap3CD_at0:
     asl a
     rol z:zTemp02
     lsr a
-    sta a:$3A00,x
+    sta a:OBJ_HITBOX_DY+32,x
     inx
     bbs0 zTemp02,StageLoadRowMap3CD_at1
     bra StageLoadRowMap3CD_at2
@@ -2126,20 +2144,20 @@ StageResetScroll3CD:
     sta z:zBiosAh
     jsr VecClearScreenState
     tai KernelZeros,ScrollXFrac,$0030
-    tai KernelZeros,Scroll3E66,$0088
-    stz a:$2ED8
+    tai KernelZeros,ScrollColumnBlocks,$0088
+    stz a:OBJ_VY_LO+80
     lda z:zField8E
     pha
     bsr StageLoadScreen3CD
     pla
     sta z:zField8E
-    jsr $8044
+    jsr MapOverlayBank7At8044
     jsr SetBlinkFlash
     ldy z:zRasterEffect
     lda a:$886A,y
     beq StageResetScroll3CD_at0
     tai KernelZeros,ScrollXFrac,$0030
-    tai KernelZeros,Scroll3E66,$0088
+    tai KernelZeros,ScrollColumnBlocks,$0088
     lda z:zField8E
     pha
     bsr StageLoadScreen3CD
@@ -2148,7 +2166,7 @@ StageResetScroll3CD:
     jsr $A79D
 StageResetScroll3CD_at0:
     tai KernelZeros,ScrollXFrac,$0030
-    tai KernelZeros,Scroll3E66,$0088
+    tai KernelZeros,ScrollColumnBlocks,$0088
 
 ; @routine 03CE:0D2 StageLoadScreen3CD
 ; @run 6B:88D2
@@ -2207,7 +2225,7 @@ StageLoadScreen3CD:
     sta a:CameraMode
     lda (zTemp00),y
     iny
-    sta a:Scroll3E66
+    sta a:ScrollColumnBlocks
     lda (zTemp00),y
     iny
     sta a:ScrollXMinHi
@@ -2242,12 +2260,12 @@ StageLoadScreen3CD_at1:
 StageLoadScreen3CD_at2:
     lda (zTemp00),y
     iny
-    sta a:$2C50
-    stz a:$2C08
-    stz a:$2B30
+    sta a:OBJ_X_FRAC+48
+    stz a:OBJ_X_LO+64
+    stz a:OBJ_SPRITE_ATTR+24
     lda z:zCharacter
     beq StageLoadScreen3CD_at0
-    lda a:$2818
+    lda a:OBJ_SUBSTATE+24
     cmp #$05
     bcc StageLoadScreen3CD_at0
     sec
@@ -2267,7 +2285,7 @@ StageLoadScreen3CD_at0:
     lda (zTemp00),y
     bmi StageLoadScreen3CD_at3
     iny
-    sta a:$2AA0
+    sta a:OBJ_FRAME+56
     bra StageLoadScreen3CD_at4
 StageLoadScreen3CD_at3:
     iny
@@ -2291,7 +2309,7 @@ StageLoadScreen3CD_at4:
 ; WAITS: where the pieces wait.
 ; Entry: nothing. Exit: as $A000 leaves them.
 StageOverlayFrame3CD:
-    jsr $8044
+    jsr MapOverlayBank7At8044
     jsr VecStreamScrollStep
     lda #$08
     clc
@@ -2321,7 +2339,7 @@ StageOverlayFrame3CD:
 ; Entry: nothing. Exit: as StageOverlayFrame3CD.
 StageLevelStart3CD:
     jsr VecClearEnemySlots
-    jsr $8044
+    jsr MapOverlayBank7At8044
     lda z:zField83
     asl a
     asl a
@@ -2365,13 +2383,13 @@ StageLevelStart3CD_at0:
 ; WAITS: no.
 ; Entry: X the object. Exit: A the last value loaded or masked, N and Z from it; X kept.
 DoorHandler3CD:
-    lda a:$2818,x
+    lda a:OBJ_SUBSTATE+24,x
     bne DoorHandler3CD_at0
     jsr VecLoadObjectRecord
-    lda a:$2F20,x
+    lda a:OBJ_WORK_A+64,x
     tay
     and #$0F
-    sta a:$3310,x
+    sta a:OBJ_WORK_B+16,x
     tya
     rol a
     rol a
@@ -2383,18 +2401,18 @@ DoorHandler3CD:
     rol a
     rol a
     and #$03
-    sta a:$32C8,x
+    sta a:OBJ_HEALTH+32,x
     rts
 DoorHandler3CD_at0:
-    stz a:$3790,x
-    ldy a:$32C8,x
+    stz a:OBJ_WORK_L+24,x
+    ldy a:OBJ_HEALTH+32,x
     lda a:PadOverrides,y
     beq DoorHandler3CD_at1
-    lda a:$31F0,x
+    lda a:OBJ_HIT_STATUS+80,x
     beq DoorHandler3CD_at1
     cmp #$05
     bcs DoorHandler3CD_at1
-    lda a:$3310,x
+    lda a:OBJ_WORK_B+16,x
     sta z:zField83
     lda a:OBJ_WORK_C,x
     sta z:zField87
@@ -2404,7 +2422,7 @@ DoorHandler3CD_at0:
     sta z:zSubStep
     rts
 DoorHandler3CD_at1:
-    stz a:$31F0,x
+    stz a:OBJ_HIT_STATUS+80,x
     rts
 
 ; @routine 03CE:237 DoorHandlerB3CD
@@ -2427,13 +2445,13 @@ DoorHandler3CD_at1:
 ; WAITS: no.
 ; Entry: X the object. Exit: A the last value loaded or computed, N and Z from it; X kept.
 DoorHandlerB3CD:
-    lda a:$2818,x
+    lda a:OBJ_SUBSTATE+24,x
     bne DoorHandlerB3CD_at1
     jsr VecLoadObjectRecord
-    lda a:$2F20,x
+    lda a:OBJ_WORK_A+64,x
     tay
     and #$1F
-    sta a:$3310,x
+    sta a:OBJ_WORK_B+16,x
     tya
     rol a
     rol a
@@ -2443,8 +2461,8 @@ DoorHandlerB3CD:
 DoorHandlerB3CD_at0:
     rts
 DoorHandlerB3CD_at1:
-    stz a:$3790,x
-    lda a:$2F20,x
+    stz a:OBJ_WORK_L+24,x
+    lda a:OBJ_WORK_A+64,x
     bpl DoorHandlerB3CD_at2
     lda a:PlayerDoorReady
     beq DoorHandler3CD_at1
@@ -2452,18 +2470,18 @@ DoorHandlerB3CD_at2:
     lda a:PlayerMayLeaveTop
     dec a
     beq DoorHandlerB3CD_at0
-    lda a:$31F0,x
+    lda a:OBJ_HIT_STATUS+80,x
     beq DoorHandler3CD_at1
     cmp #$05
     bcs DoorHandler3CD_at1
-    lda a:$3310,x
+    lda a:OBJ_WORK_B+16,x
     sta z:zField83
     lda a:OBJ_WORK_C,x
     sta z:zField87
     stz z:zField8C
     lda #$02
     sta z:zSubStep
-    stz a:$2CE0
+    stz a:OBJ_Y_LO+16
     stz a:OBJ_Y_FRAC
     rts
 
@@ -2515,7 +2533,7 @@ StageHudStart3CD:
 StageHudStep3CD:
     jsr StageHudSound3CD
     lda #$24
-    sta a:$2C96
+    sta a:OBJ_Y_HI+30
     ldx z:zField93
     lda a:$8B18,x
     ldx z:zCharacter
@@ -2525,13 +2543,13 @@ StageHudStep3CD:
     cmp #$11
     bne StageHudStep3CD_at0
     ldx #$28
-    stx a:$2C96
+    stx a:OBJ_Y_HI+30
     lda #$71
     bra StageHudStep3CD_at0
 StageHudStep3CD_at1:
     lda #$72
 StageHudStep3CD_at0:
-    sta a:$2A9E
+    sta a:OBJ_FRAME+54
     lda z:zPlayerHealth
     cmp z:zField99
     beq StageHudStep3CD_at2
@@ -2539,7 +2557,7 @@ StageHudStep3CD_at0:
     bsr StageHealthBarAddress3CD
     ldx #$FF
     ldy #$F0
-    jsr $9425
+    jsr AndVramDataAt9425
     dec z:zField99
     bra StageHudStep3CD_at3
 StageHudStep3CD_at8:
@@ -2553,7 +2571,7 @@ StageHudStep3CD_at4:
     bsr StageHealthBarAddress3CD
     ldx #$00
     ldy #$0F
-    jsr $9434
+    jsr OrVramDataAt9434
     bra StageHudStep3CD_at5
 StageHudStep3CD_at2:
     smb5 z:zField8E
@@ -2688,12 +2706,12 @@ StageBossBarReset3CD:
 ; WAITS: no.
 ; Entry: nothing. Exit: as StageBossBarStep3CD.
 StageBossBar3CD:
-    lda a:$2A9D
+    lda a:OBJ_FRAME+53
     beq StageBossBarReset3CD
-    lda a:$2BBD
+    lda a:OBJ_X_HI+77
     cmp #$D8
     beq StageBossBarStep3CD
-    dec a:$2BBD
+    dec a:OBJ_X_HI+77
 
 ; @routine 03CE:379 StageBossBarStep3CD
 ; @run 6B:8B79
@@ -2713,11 +2731,11 @@ StageBossBar3CD:
 ; WAITS: no.
 ; Entry: nothing. Exit: as the last piece that ran left them.
 StageBossBarStep3CD:
-    lda a:$330D
+    lda a:OBJ_WORK_B+13
     beq StageBossBarStep3CD_at0
     jmp StageBossBarFlash3CD
 StageBossBarStep3CD_at0:
-    lda a:$3128
+    lda a:OBJ_LOOP_FLAGS+56
     bmi StageBossBarStep3CD_at1
     cmp a:BossBarLength
     beq StageBossBarStep3CD_at2
@@ -2725,25 +2743,25 @@ StageBossBarStep3CD_at0:
     bsr StageBossBarAddress3CD
     ldx #$0F
     ldy #$FF
-    jsr $9425
+    jsr AndVramDataAt9425
     dec a:BossBarLength
     rts
 StageBossBarStep3CD_at1:
     pha
-    stz a:$3128
+    stz a:OBJ_LOOP_FLAGS+56
     bsr StageBossBarStep3CD
     pla
-    sta a:$3128
+    sta a:OBJ_LOOP_FLAGS+56
     ldy a:BossBarLength
     bne StageBossBarStep3CD_at2
-    sta a:$330D
+    sta a:OBJ_WORK_B+13
     rts
 StageBossBarStep3CD_at3:
     inc a:BossBarLength
     bsr StageBossBarAddress3CD
     ldx #$F0
     ldy #$00
-    jsr $9434
+    jsr OrVramDataAt9434
 StageBossBarStep3CD_at2:
     rts
 
@@ -2841,19 +2859,19 @@ StageBossBarFlash3CD_at0:
     lda z:zTemp01
     cmp #$08
     bcc StageBossBarFlash3CD_at0
-    inc a:$339D
-    lda a:$2DFD
+    inc a:OBJ_WORK_C+69
+    lda a:OBJ_VX_LO+37
     clc
     adc #$0C
-    sta a:$2DFD
+    sta a:OBJ_VX_LO+37
     bcc StageBossBarFlash3CD_at1
-    inc a:$2DB5
+    inc a:OBJ_VX_HI+53
 StageBossBarFlash3CD_at1:
     ldx #$45
     jsr VecApplyVelocity
-    lda a:$2C4D
+    lda a:OBJ_X_FRAC+45
     beq StageBossBarAddress3CD_at1
-    stz a:$2A9D
+    stz a:OBJ_FRAME+53
     rmb2 z:zField8E
     rts
 
@@ -2878,7 +2896,7 @@ StageBarErase3CD:
     jsr SetVramAddresses3CD
     ldx #$40
 StageBarErase3CD_at0:
-    lda a:$339D
+    lda a:OBJ_WORK_C+69
     and #$07
     tay
     jsr VecNextRandom
@@ -2888,7 +2906,7 @@ StageBarErase3CD_at0:
     phx
     tax
     tay
-    jsr $9425
+    jsr AndVramDataAt9425
     plx
     dex
     bne StageBarErase3CD_at0
@@ -3045,7 +3063,7 @@ StagePausedSelect3CD_at1:
     sta z:zField93
     tax
     lda a:$8B18,x
-    sta a:$2A9E
+    sta a:OBJ_FRAME+54
     lda #$01
     sta a:PlayerItemFirstUse
     lda #$99
@@ -3115,7 +3133,7 @@ StagePausedFrame3CD_at1:
     jsr VecStartScriptSlotKind4
     ldx z:zTemp00
     lda a:$8E10,x
-    sta a:$2A9F
+    sta a:OBJ_FRAME+55
     lda z:zPaused
     sta z:zTemp01
     ldx z:zTemp00
@@ -3171,16 +3189,16 @@ StageOpeningStart3CD_at0:
     inx
     jsr StageDrawPiece3CD
     dec a:OBJ_X_HI+4
-    dec a:$2C4D
+    dec a:OBJ_X_FRAC+45
     lda #$04
-    sta a:$2D24
-    sta a:$2DB5
+    sta a:OBJ_Y_LO+84
+    sta a:OBJ_VX_HI+53
     lda #$20
-    sta a:$3354
-    sta a:$3355
+    sta a:OBJ_WORK_B+84
+    sta a:OBJ_WORK_B+85
     lda #$02
     sta a:TimeSlowMode
-    stz a:$33E4
+    stz a:OBJ_HIT_TAKEN+52
     rts
 
 ; @routine 03CE:66D StageOpeningStep3CD
@@ -3203,66 +3221,66 @@ StageOpeningStart3CD_at0:
 ; WAITS: no.
 ; Entry: nothing. Exit: as the last piece that ran left them.
 StageOpeningStep3CD:
-    lda a:$33E4
+    lda a:OBJ_HIT_TAKEN+52
     bne StageOpeningStep3CD_at0
     lda z:zStage
     beq StageOpeningStep3CD_at1
     jsr VecCdPlayAgain
 StageOpeningStep3CD_at1:
-    inc a:$33E4
+    inc a:OBJ_HIT_TAKEN+52
 StageOpeningStep3CD_at0:
-    dec a:$3355
+    dec a:OBJ_WORK_B+85
     bne StageOpeningStep3CD_at2
-    inc a:$330D
-    ldy a:$330D
+    inc a:OBJ_WORK_B+13
+    ldy a:OBJ_WORK_B+13
     cpy #$07
     bne StageOpeningStep3CD_at3
-    stz a:$2A9D
+    stz a:OBJ_FRAME+53
     smb0 z:zField8E
     rts
 StageOpeningStep3CD_at3:
     lda a:$8EEA,y
     lsr a
-    sta a:$2DB5
+    sta a:OBJ_VX_HI+53
     cla
     ror a
-    sta a:$2DFD
+    sta a:OBJ_VX_LO+37
     lda a:$8EF0,y
-    sta a:$3355
+    sta a:OBJ_WORK_B+85
 StageOpeningStep3CD_at2:
-    lda a:$330D
+    lda a:OBJ_WORK_B+13
     cmp #$06
     bne StageOpeningStep3CD_at4
-    lda a:$3355
+    lda a:OBJ_WORK_B+85
     cmp #$1F
     bne StageOpeningStep3CD_at5
-    stz a:$2A9C
+    stz a:OBJ_FRAME+52
 StageOpeningStep3CD_at5:
-    sta a:$339C
+    sta a:OBJ_WORK_C+68
 StageOpeningStep3CD_at4:
     ldx #$45
     jsr VecApplyVelocityY
-    dec a:$3354
+    dec a:OBJ_WORK_B+84
     bne StageOpeningStep3CD_at6
-    inc a:$330C
-    ldy a:$330C
+    inc a:OBJ_WORK_B+12
+    ldy a:OBJ_WORK_B+12
     lda a:$8EEA,y
     lsr a
-    sta a:$2D24
+    sta a:OBJ_Y_LO+84
     cla
     ror a
-    sta a:$2D6C
+    sta a:OBJ_Y_FRAC+68
     lda a:$8EF0,y
-    sta a:$3354
+    sta a:OBJ_WORK_B+84
 StageOpeningStep3CD_at6:
     ldx #$44
     jsr VecApplyVelocityX
-    lda a:$330C
+    lda a:OBJ_WORK_B+12
     cmp #$06
     beq StageOpeningStep3CD_at7
     rts
 StageOpeningStep3CD_at7:
-    lda a:$339C
+    lda a:OBJ_WORK_C+68
     bra StageOpeningFade3CD
 
 ; @routine 03CE:707 StageOpeningFade3CD
@@ -3353,9 +3371,9 @@ StageOpeningCopyRow3CD:
     ldx #$80
 StageOpeningCopyRow3CD_at5:
     lda a:VDC_DATA_LO
-    sta a:$397F,x
+    sta a:OBJ_HITBOX_DX+79,x
     lda a:VDC_DATA_HI
-    sta a:$397E,x
+    sta a:OBJ_HITBOX_DX+78,x
     dex
     dex
     bne StageOpeningCopyRow3CD_at5
@@ -3364,10 +3382,10 @@ StageOpeningCopyRow3CD_at5:
     bcc StageOpeningCopyRow3CD_at0
     ldx #$7F
 StageOpeningCopyRow3CD_at1:
-    stz a:$3980,x
+    stz a:OBJ_HITBOX_DX+80,x
     dex
     bpl StageOpeningCopyRow3CD_at1
-    jmp $8FA1
+    jmp StageOpeningWriteRow152DAt8FA1
 StageOpeningCopyRow3CD_at0:
     dey
     beq StageOpeningCopyRow3CD_at2
@@ -3423,9 +3441,9 @@ StageFadeRowNext3CD_at0:
     clc
     adc z:zTemp08
     tay
-    lda a:$3982,y
+    lda a:OBJ_HITBOX_DX+82,y
     and z:zTemp00
-    sta a:$3980,y
+    sta a:OBJ_HITBOX_DX+80,y
     dex
     bpl StageFadeRowNext3CD_at0
     ply
@@ -3457,9 +3475,9 @@ StageFadeRowSelf3CD_at0:
     clc
     adc z:zTemp08
     tay
-    lda a:$3980,y
+    lda a:OBJ_HITBOX_DX+80,y
     and z:zTemp00
-    sta a:$3980,y
+    sta a:OBJ_HITBOX_DX+80,y
     dex
     bpl StageFadeRowSelf3CD_at0
     ply
@@ -3749,7 +3767,7 @@ StageClearBitRows3CD_at0:
 ; Entry: nothing. Exit: as the step leaves them; it is entered with A and X twice zField80, N and Z from it, C its
 ; bit 7.
 StageSubModeTally3CD:
-    jsr $81AD
+    jsr StageModeEventsStep3CD
     jsr StageHudStep3CD
     jsr StageOverlayFrame3CD
     lda z:zField80
@@ -3775,7 +3793,7 @@ StageSubModeTally3CD:
 ; WAITS: no.
 ; Entry: nothing. Exit: as TallyWait152D when it ends the step; else as TallyNext152D.
 TallyStart3CD:
-    jsr $934B
+    jsr TallyWait3CD
     jsr VecStopSound
     lda #$46
     jsr VecSoundCommand
@@ -3808,12 +3826,12 @@ TallyBoard3CD:
     inx
     jsr StageDrawPiece3CD
     lda z:zField94
-    sta a:$330D
+    sta a:OBJ_WORK_B+13
     lda z:zPlayerHealth
     cmp #$5C
     bne TallyBoard3CD_at0
     lda #$18
-    sta a:$2A9B
+    sta a:OBJ_FRAME+51
 TallyBoard3CD_at0:
     clx
     ldy #$50
@@ -3830,7 +3848,7 @@ TallyBoard3CD_at0:
     clx
 TallyBoard3CD_at1:
     lda a:$93A9,x
-    sta a:$3980,x
+    sta a:OBJ_HITBOX_DX+80,x
     inx
     cpx #$3E
     bne TallyBoard3CD_at1
@@ -3856,14 +3874,14 @@ TallyBoard3CD_at1:
 ; compare, V from the split's add. Y kept.
 TallyDigits3CD:
     lda z:zPlayerHealth
-    jsr $9405
+    jsr StageSplitTens152DAt9405
     inx
     cpx #$01
     beq TallyDigits3CD_at0
-    stx a:$3991
+    stx a:OBJ_HITBOX_HALF_W+9
 TallyDigits3CD_at0:
     inc a
-    sta a:$3992
+    sta a:OBJ_HITBOX_HALF_W+10
     lda z:zField94
     lsr a
     lsr a
@@ -3872,12 +3890,12 @@ TallyDigits3CD_at0:
     inc a
     cmp #$01
     beq TallyDigits3CD_at1
-    sta a:$39A1
+    sta a:OBJ_HITBOX_HALF_W+25
 TallyDigits3CD_at1:
     lda z:zField94
     and #$0F
     inc a
-    sta a:$39A2
+    sta a:OBJ_HITBOX_HALF_W+26
     rts
 
 ; @routine 03CF:19D TallyReveal3CD
@@ -3901,16 +3919,16 @@ TallyDigits3CD_at1:
 ; WAITS: no.
 ; Entry: nothing. Exit: as the last instruction that ran left them.
 TallyReveal3CD:
-    jsr $93E7
+    jsr MapStageBanksAt93E7
     ldx #$3D
 TallyReveal3CD_at1:
-    lda a:$3980,x
+    lda a:OBJ_HITBOX_DX+80,x
     bne TallyReveal3CD_at0
     dex
     bpl TallyReveal3CD_at1
     smb1 z:zPaused
     lda #$40
-    sta a:$3310
+    sta a:OBJ_WORK_B+16
     jmp $9128
 TallyReveal3CD_at0:
     jsr VecNextRandom
@@ -3918,13 +3936,13 @@ TallyReveal3CD_at0:
     cmp #$3E
     bcs TallyReveal3CD_at0
     tax
-    lda a:$3980,x
+    lda a:OBJ_HITBOX_DX+80,x
     beq TallyReveal3CD_at0
     sta z:zTemp00
     adc #$40
-    sta a:$3980,x
+    sta a:OBJ_HITBOX_DX+80,x
     bcc TallyReveal3CD_at2
-    stz a:$3980,x
+    stz a:OBJ_HITBOX_DX+80,x
 TallyReveal3CD_at2:
     txa
     and #$3F
@@ -4096,9 +4114,9 @@ TallyCell3CD_at3:
 ; WAITS: no.
 ; Entry: nothing. Exit: as TallyWait152D when it ends the step; else as TallyNext152D, A $40.
 TallyPause3CD:
-    jsr $934B
+    jsr TallyWait3CD
     lda #$40
-    sta a:$3310
+    sta a:OBJ_WORK_B+16
     jmp $9128
 
 ; @routine 03CF:2BA TallyCount3CD
@@ -4132,7 +4150,7 @@ TallyCount3CD:
     lda #$01
     bra TallyCount3CD_at1
 TallyCount3CD_at0:
-    jsr $934B
+    jsr TallyWait3CD
     lda z:zField94
     beq TallyCount3CD_at2
     sed
@@ -4153,16 +4171,16 @@ TallyCount3CD_at1:
 TallyCount3CD_at3:
     rts
 TallyCount3CD_at2:
-    dec a:$3310
+    dec a:OBJ_WORK_B+16
     inc z:zField80
     inc z:zField80
-    lda a:$2A9B
+    lda a:OBJ_FRAME+51
     beq TallyCount3CD_at4
     dec z:zField80
     dec z:zField80
     smb1 z:zPaused
     lda #$40
-    sta a:$3310
+    sta a:OBJ_WORK_B+16
 TallyCount3CD_at4:
     jmp $9128
 
@@ -4183,13 +4201,13 @@ TallyCount3CD_at4:
 ; WAITS: no.
 ; Entry: nothing. Exit: as the last piece that ran left them.
 TallyWaitPress3CD:
-    jsr $934B
+    jsr TallyWait3CD
     jsr StagePausedFrame3CD
     bbr1 zPaused,TallyWaitPress3CD_at0
     rts
 TallyWaitPress3CD_at0:
     lda #$20
-    sta a:$3310
+    sta a:OBJ_WORK_B+16
     jmp $9128
 
 ; @routine 03CF:322 TallyStockBonus3CD
@@ -4209,7 +4227,7 @@ TallyWaitPress3CD_at0:
 ; WAITS: no.
 ; Entry: D clear, as the game keeps it. Exit: as TallyNext152D.
 TallyStockBonus3CD:
-    jsr $934B
+    jsr TallyWait3CD
     sed
     lda z:zStock
     clc
@@ -4222,7 +4240,7 @@ TallyStockBonus3CD_at0:
     jsr StageDrawStock3CD
     lda #$3E
     jsr VecSoundCommand
-    dec a:$3310
+    dec a:OBJ_WORK_B+16
     jmp $9128
 
 ; @routine 03CF:340 TallyEnd3CD
@@ -4241,8 +4259,8 @@ TallyStockBonus3CD_at0:
 ; WAITS: no.
 ; Entry: nothing. Exit: A the hearts, N and Z from zModeDone's increment.
 TallyEnd3CD:
-    jsr $934B
-    lda a:$330D
+    jsr TallyWait3CD
+    lda a:OBJ_WORK_B+13
     sta z:zField94
     inc z:zModeDone
     rts
@@ -4265,7 +4283,7 @@ TallyEnd3CD:
 ; WAITS: no.
 ; Entry: nothing. Exit: as TallyDigitCell3CD or StageClearWords3CD.
 TallyHealth3CD:
-    jsr $93E7
+    jsr MapStageBanksAt93E7
     jsr TallyDigits3CD
     ldx #$12
     bsr TallyDigitCell3CD
@@ -4298,7 +4316,7 @@ TallyHealth3CD_at0:
 ; WAITS: no.
 ; Entry: nothing. Exit: as TallyDigitCell3CD or StageClearWords3CD.
 TallyHearts3CD:
-    jsr $93E7
+    jsr MapStageBanksAt93E7
     jsr TallyDigits3CD
     ldx #$22
     bsr TallyDigitCell3CD
@@ -4331,16 +4349,16 @@ TallyHearts3CD_at0:
 ; Entry: X the cell. Exit: A the cell plus $40, C set, N and Z from it; X the cell; Y 8.
 TallyDigitCell3CD:
     phx
-    lda a:$3980,x
+    lda a:OBJ_HITBOX_DX+80,x
     sta z:zTemp00
     txa
     jsr TallyCell3CD
     plx
-    lda a:$3980,x
+    lda a:OBJ_HITBOX_DX+80,x
     clc
     adc #$40
     bcs TallyDigitCell3CD_at0
-    sta a:$3980,x
+    sta a:OBJ_HITBOX_DX+80,x
     bra TallyDigitCell3CD
 TallyDigitCell3CD_at0:
     rts
@@ -4440,13 +4458,13 @@ StageDrawPiece3CD:
     tay
     jsr VecClearObjectInY
     lda a:$946B,x
-    sta a:$2A58,y
+    sta a:OBJ_SPRITE_SET+72,y
     lda a:$9473,x
     sta a:OBJ_SPRITE_SET,y
     lda a:$947B,x
     sta a:OBJ_X_HI+8,y
     lda a:$9483,x
-    sta a:$2C50,y
+    sta a:OBJ_X_FRAC+48,y
     rts
 
 ; @routine 03CF:48B StageMapDebug3CD
@@ -4565,10 +4583,10 @@ StageObjectHits3CD:
     ldx #$47
 StageObjectHits3CD_at1:
     jsr StageHitTestObject3CD
-    lda a:$3790,x
+    lda a:OBJ_WORK_L+24,x
     beq StageObjectHits3CD_at0
-    stz a:$31F0,x
-    dec a:$3790,x
+    stz a:OBJ_HIT_STATUS+80,x
+    dec a:OBJ_WORK_L+24,x
 StageObjectHits3CD_at0:
     dex
     cpx #$10
@@ -4596,7 +4614,7 @@ StageObjectHits3CD_at0:
 StagePlaceHitBoxes3CD:
     ldx #$00
 StagePlaceHitBoxes3CD_at5:
-    lda a:$30D0,x
+    lda a:OBJ_EVENT_ID+56,x
     bne StagePlaceHitBoxes3CD_at0
     lda #$01
     sta a:HitboxHi+3,x
@@ -4604,7 +4622,7 @@ StagePlaceHitBoxes3CD_at5:
 StagePlaceHitBoxes3CD_at0:
     lda a:OBJ_WORK_I,x
     sta z:zTemp01
-    lda a:$2AA0,x
+    lda a:OBJ_FRAME+56,x
     beq StagePlaceHitBoxes3CD_at2
     lda z:zTemp01
     eor #$FF
@@ -4619,19 +4637,19 @@ StagePlaceHitBoxes3CD_at3:
     clc
     adc a:OBJ_X_HI+8,x
     sta a:HitboxXLo+3,x
-    lda a:$2B30,x
+    lda a:OBJ_SPRITE_ATTR+24,x
     adc z:zTemp00
     sta a:HitboxHi+3,x
     stz z:zTemp00
-    lda a:$3700,x
+    lda a:OBJ_WORK_J+56,x
     bpl StagePlaceHitBoxes3CD_at4
     dec z:zTemp00
 StagePlaceHitBoxes3CD_at4:
-    lda a:$2C50,x
+    lda a:OBJ_X_FRAC+48,x
     clc
-    adc a:$3700,x
+    adc a:OBJ_WORK_J+56,x
     sta a:HitboxYLo+3,x
-    lda a:$2C08,x
+    lda a:OBJ_X_LO+64,x
     adc z:zTemp00
     ora a:HitboxHi+3,x
     sta a:HitboxHi+3,x
@@ -4661,19 +4679,19 @@ StagePlaceHitBoxes3CD_at1:
 ; WAITS: no.
 ; Entry: X the object. Exit: as the last test or the handler left them.
 StageHitTestObject3CD:
-    stz a:$31F0,x
-    lda a:$30D0,x
+    stz a:OBJ_HIT_STATUS+80,x
+    lda a:OBJ_EVENT_ID+56,x
     bne StageHitTestObject3CD_at0
     jmp $95FB
 StageHitTestObject3CD_at0:
-    lda a:$36B8,x
-    ora a:$3748,x
+    lda a:OBJ_WORK_I+72,x
+    ora a:OBJ_WORK_K+40,x
     bne StageHitTestObject3CD_at1
     jmp $95FB
 StageHitTestObject3CD_at1:
     lda a:OBJ_WORK_I,x
     sta z:zTemp01
-    lda a:$2AA0,x
+    lda a:OBJ_FRAME+56,x
     beq StageHitTestObject3CD_at2
     lda z:zTemp01
     eor #$FF
@@ -4688,21 +4706,21 @@ StageHitTestObject3CD_at3:
     clc
     adc a:OBJ_X_HI+8,x
     sta a:StreamStepHi
-    lda a:$2B30,x
+    lda a:OBJ_SPRITE_ATTR+24,x
     adc z:zTemp00
     bne $95FB
     stz z:zTemp00
-    lda a:$3700,x
+    lda a:OBJ_WORK_J+56,x
     bpl StageHitTestObject3CD_at4
     dec z:zTemp00
 StageHitTestObject3CD_at4:
     clc
-    adc a:$2C50,x
+    adc a:OBJ_X_FRAC+48,x
     sta a:StreamStepHi+1
-    lda a:$2C08,x
+    lda a:OBJ_X_LO+64,x
     adc z:zTemp00
     bne $95FB
-    lda a:$30D0,x
+    lda a:OBJ_EVENT_ID+56,x
     bpl StageHitTestObject3CD_at5
     cly
     bra StageHitTestObject3CD_at6
@@ -4711,13 +4729,13 @@ StageHitTestObject3CD_at5:
 StageHitTestObject3CD_at6:
     lda a:HitboxHi+3,y
     bne StageHitTestObject3CD_at9
-    lda a:$36B8,x
+    lda a:OBJ_WORK_I+72,x
     clc
-    adc a:$36B8,y
+    adc a:OBJ_WORK_I+72,y
     sta a:StreamStepHi+2
-    lda a:$3748,x
+    lda a:OBJ_WORK_K+40,x
     clc
-    adc a:$3748,y
+    adc a:OBJ_WORK_K+40,y
     sta a:StreamStepHi+3
     lda a:StreamStepHi
     sec
@@ -4759,9 +4777,9 @@ StageHitTestObject3CD_at9:
 ; Entry: X the object, Y the slot. Exit: kind 0: A 0, N and Z from it. Else: as the handler leaves them.
 StageHitHandler3CD:
     txa
-    sta a:$35E0,y
+    sta a:OBJ_WORK_G+32,y
     sty z:zHitSlot
-    lda a:$3598,y
+    lda a:OBJ_WORK_F+48,y
     beq StageHitHandler3CD_at0
     dec a
     asl a
@@ -4792,10 +4810,10 @@ StageHitHandler3CD_at0:
 ; WAITS: no.
 ; Entry: X the object, Y the slot. Exit: side 2: A 2, Z set, C set. Else as HitKindReport3CD.
 HitKindFacing3CD:
-    lda a:$2FF8,x
+    lda a:OBJ_SPRITE_FLIP+16,x
     and #$01
     inc a
-    sta a:$3628,y
+    sta a:OBJ_WORK_H+16,y
 HitKindFacing3CD_at0:
     cmp #$02
     beq $9680
@@ -4845,11 +4863,11 @@ HitKindReport3CD:
 ; WAITS: no.
 ; Entry: X the object, Y the slot. Exit: as HitKindFacing3CD.
 HitKindSide3CD:
-    lda a:$2FF8,x
+    lda a:OBJ_SPRITE_FLIP+16,x
     and #$02
     lsr a
     inc a
-    sta a:$3628,y
+    sta a:OBJ_WORK_H+16,y
     bra HitKindFacing3CD_at0
 
 ; @routine 03CF:68D StageProbePoints3CD
@@ -4886,16 +4904,16 @@ StageProbePoints3CD_at0:
     sta z:zTemp00
     iny
     lda (zTemp0C),y
-    adc a:$2B30,x
+    adc a:OBJ_SPRITE_ATTR+24,x
     sta z:zTemp01
     iny
     lda (zTemp0C),y
     clc
-    adc a:$2C50,x
+    adc a:OBJ_X_FRAC+48,x
     sta z:zTemp02
     iny
     lda (zTemp0C),y
-    adc a:$2C08,x
+    adc a:OBJ_X_LO+64,x
     sta z:zTemp03
     iny
     phy
@@ -4957,16 +4975,16 @@ StageProbeAgain3CD_at2:
     sta z:zTemp00
     iny
     lda (zTemp0C),y
-    adc a:$2B30,x
+    adc a:OBJ_SPRITE_ATTR+24,x
     sta z:zTemp01
     iny
     lda (zTemp0C),y
     clc
-    adc a:$2C50,x
+    adc a:OBJ_X_FRAC+48,x
     sta z:zTemp02
     iny
     lda (zTemp0C),y
-    adc a:$2C08,x
+    adc a:OBJ_X_LO+64,x
     sta z:zTemp03
     iny
     lda #$F8
@@ -5357,7 +5375,7 @@ TileSlopeF3CD:
 ; WAITS: no.
 ; Entry: X the object. Exit: as the step leaves them.
 GateObjectStep3CD:
-    lda a:$2818,x
+    lda a:OBJ_SUBSTATE+24,x
     asl a
     tay
     lda a:$99BE,y
@@ -5385,11 +5403,11 @@ GateObjectStep3CD:
 ; Entry: X the object. Exit: A the sprite, N and Z from it, Y the bit.
 GateStart3CD:
     jsr VecLoadObjectRecord
-    lda a:$2F20,x
+    lda a:OBJ_WORK_A+64,x
     and #$01
     tay
     lda a:$99DC,y
-    sta a:$2A58,x
+    sta a:OBJ_SPRITE_SET+72,x
 
 ; @routine 03D0:1E0 GateWaitPlayer3CD
 ; @run 6B:99E0
@@ -5413,11 +5431,11 @@ GateWaitPlayer3CD:
     eor #$01
     and a:PlayerDoorReady
     beq GateWaitPlayer3CD_at0
-    lda a:$31F0,x
+    lda a:OBJ_HIT_STATUS+80,x
     beq GateWaitPlayer3CD_at0
     cmp #$03
     bcs GateWaitPlayer3CD_at0
-    lda a:$2F20,x
+    lda a:OBJ_WORK_A+64,x
     and #$0F
     inc a
     sta z:zField8C
@@ -5428,11 +5446,11 @@ GateWaitPlayer3CD:
 GateWaitPlayer3CD_at1:
     lda #$03
     sta z:zSubStep
-    inc a:$2818,x
-    stz a:$3310,x
+    inc a:OBJ_SUBSTATE+24,x
+    stz a:OBJ_WORK_B+16,x
     lda #$04
-    sta a:$32C8,x
-    lda a:$2F20,x
+    sta a:OBJ_HEALTH+32,x
+    lda a:OBJ_WORK_A+64,x
     and #$F0
     beq GateWaitPlayer3CD_at2
     stz z:zRasterEffect
@@ -5451,7 +5469,7 @@ GateWaitPlayer3CD_at1:
 GateWaitPlayer3CD_at0:
     rts
 GateWaitPlayer3CD_at2:
-    lda a:$2F20,x
+    lda a:OBJ_WORK_A+64,x
     cmp #$02
     bcc GateWaitPlayer3CD_at0
     cmp #$06
@@ -5478,7 +5496,7 @@ GateWaitStep3CD:
     lda z:zField85
     cmp #$02
     bne GateWaitClear3CD_at0
-    inc a:$2818,x
+    inc a:OBJ_SUBSTATE+24,x
     rts
 
 ; @routine 03D0:24B GateOpen3CD
@@ -5497,13 +5515,13 @@ GateWaitStep3CD:
 ; WAITS: no.
 ; Entry: X the object. Exit: as the last instruction, the sound hook or the kernel left them; X kept.
 GateOpen3CD:
-    dec a:$32C8,x
+    dec a:OBJ_HEALTH+32,x
     bne GateOpen3CD_at0
-    inc a:$3310,x
-    lda a:$3310,x
+    inc a:OBJ_WORK_B+16,x
+    lda a:OBJ_WORK_B+16,x
     cmp #$04
     bne GateOpen3CD_at1
-    inc a:$2818,x
+    inc a:OBJ_SUBSTATE+24,x
     lda z:zField8C
     ora #$80
     sta z:zField8C
@@ -5511,14 +5529,14 @@ GateOpen3CD:
     jmp VecSoundCommand
 GateOpen3CD_at1:
     lda #$04
-    sta a:$32C8,x
-    lda a:$2F20,x
+    sta a:OBJ_HEALTH+32,x
+    lda a:OBJ_WORK_A+64,x
     and #$01
     tay
     lda a:$99DC,y
     clc
-    adc a:$3310,x
-    sta a:$2A58,x
+    adc a:OBJ_WORK_B+16,x
+    sta a:OBJ_SPRITE_SET+72,x
     clc
     adc a:$99DE,y
     phx
@@ -5548,10 +5566,10 @@ GateOpen3CD_at0:
 GateWaitClear3CD:
     lda z:zField8C
     bmi GateWaitClear3CD_at0
-    inc a:$2818,x
+    inc a:OBJ_SUBSTATE+24,x
     lda #$04
-    sta a:$32C8,x
-    lda a:$2F20,x
+    sta a:OBJ_HEALTH+32,x
+    lda a:OBJ_WORK_A+64,x
     cmp #$02
     bcc GateWaitClear3CD_at1
     cmp #$06
@@ -5559,7 +5577,7 @@ GateWaitClear3CD:
 GateWaitClear3CD_at1:
     bra GateWaitClear3CD_at0
 GateWaitClear3CD_at2:
-    inc a:$2818,x
+    inc a:OBJ_SUBSTATE+24,x
 GateWaitClear3CD_at0:
     rts
 
@@ -5579,23 +5597,23 @@ GateWaitClear3CD_at0:
 ; WAITS: no.
 ; Entry: X the object. Exit: as the last instruction, the sound hook or the kernel left them; X kept.
 GateClose3CD:
-    dec a:$32C8,x
+    dec a:OBJ_HEALTH+32,x
     bne GateClose3CD_at0
-    dec a:$3310,x
+    dec a:OBJ_WORK_B+16,x
     bpl GateClose3CD_at1
-    inc a:$2818,x
+    inc a:OBJ_SUBSTATE+24,x
     lda #$56
     jmp VecSoundCommand
 GateClose3CD_at1:
     lda #$04
-    sta a:$32C8,x
-    lda a:$2F20,x
+    sta a:OBJ_HEALTH+32,x
+    lda a:OBJ_WORK_A+64,x
     and #$01
     tay
     lda a:$99DC,y
     clc
-    adc a:$3310,x
-    sta a:$2A58,x
+    adc a:OBJ_WORK_B+16,x
+    sta a:OBJ_SPRITE_SET+72,x
     clc
     adc a:$99DE,y
     phx

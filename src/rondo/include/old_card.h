@@ -250,4 +250,18 @@ void abi_ApplyWorldVelocityX(void);
 HitsArm CheckPlayerHits(void);
 void abi_CheckPlayerHits(void);
 
+/* Byte copies of kernel routines. */
+FrameStep OldCardStepObjectFrames(uint8_t object, uint8_t *exit_y);
+void OldCardClearObject(uint8_t object);
+void OldCardClearObjectExceptPlace(uint8_t object);
+AxisMove OldCardApplyVelocity(uint8_t object);
+AxisMove OldCardApplyVelocityY(uint8_t object);
+RandomResult OldCardNextRandom(void);
+void abi_OldCardStepObjectFrames(void);
+void abi_OldCardClearObject(void);
+void abi_OldCardClearObjectExceptPlace(void);
+void abi_OldCardApplyVelocity(void);
+void abi_OldCardApplyVelocityY(void);
+void abi_OldCardNextRandom(void);
+
 #endif

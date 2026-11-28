@@ -1762,3 +1762,194 @@ CheckPlayerHits_at7:
     cpx #$15
     bne CheckPlayerHits_at11
     rts
+
+; @routine 0023:49E OldCardStepObjectFrames
+; @run 80:449E
+; WHAT IT DOES: As StepObjectFrames (0047:18A), whose bytes these are.
+; HOW: The same instructions.
+; WAITS: no.
+; Entry, exit: as StepObjectFrames.
+OldCardStepObjectFrames:
+    lda a:OBJ_ANIM_TIMER,x
+    bne OldCardStepObjectFrames_at0
+    lda a:OBJ_ANIM_STEP,x
+    asl a
+    tay
+    lda (zTemp10),y
+    bne OldCardStepObjectFrames_at1
+    stz a:OBJ_ANIM_STEP,x
+    stz a:OBJ_ANIM_TIMER,x
+    clc
+    lda #$00
+    rts
+OldCardStepObjectFrames_at1:
+    sta a:OBJ_ANIM_TIMER,x
+    iny
+    lda (zTemp10),y
+    sta a:OBJ_FRAME,x
+    inc a:OBJ_ANIM_STEP,x
+    dec a:OBJ_ANIM_TIMER,x
+    sec
+    lda #$FF
+    rts
+OldCardStepObjectFrames_at0:
+    dec a:OBJ_ANIM_TIMER,x
+    clc
+    lda #$FF
+    rts
+
+; @routine 0023:584 OldCardClearObject
+; @run 80:4584
+; WHAT IT DOES: As ClearObject (0046:1ED), whose bytes these are: the place bytes cleared, then on into the next.
+; HOW: The same instructions.
+; WAITS: no.
+; Entry, exit: as ClearObject.
+OldCardClearObject:
+    stz a:OBJ_KIND,x
+    stz a:OBJ_STATE,x
+    stz a:OBJ_SPRITE_SET,x
+    stz a:OBJ_FRAME,x
+    stz a:OBJ_X_HI,x
+    stz a:OBJ_X_LO,x
+    stz a:OBJ_X_FRAC,x
+    stz a:OBJ_Y_HI,x
+    stz a:OBJ_Y_LO,x
+    stz a:OBJ_Y_FRAC,x
+
+; @routine 0023:5A2 OldCardClearObjectExceptPlace
+; @run 80:45A2
+; WHAT IT DOES: As ClearObjectExceptPlace (0046:20B), whose bytes these are.
+; HOW: The same instructions.
+; WAITS: no.
+; Entry, exit: as ClearObjectExceptPlace.
+OldCardClearObjectExceptPlace:
+    stz a:OBJ_FACING_LEFT,x
+    stz a:OBJ_SPRITE_ATTR,x
+    stz a:OBJ_SUBSTATE,x
+    stz a:OBJ_VX_HI,x
+    stz a:OBJ_VX_LO,x
+    stz a:OBJ_VY_HI,x
+    stz a:OBJ_VY_LO,x
+    stz a:OBJ_WORK_A,x
+    stz a:OBJ_SCROLL_BAND,x
+    stz a:OBJ_HURT_TIMER,x
+    stz a:OBJ_SPRITE_FLIP,x
+    stz a:OBJ_START_ARG,x
+    stz a:OBJ_EVENT_ID,x
+    stz a:OBJ_LOOP_FLAGS,x
+    stz a:OBJ_PACE,x
+    stz a:OBJ_HIT_STATUS,x
+    stz a:OBJ_HIT_REACTION,x
+    stz a:OBJ_HITBOX_ON,x
+    stz a:OBJ_HEALTH,x
+    stz a:OBJ_WORK_B,x
+    stz a:OBJ_WORK_C,x
+    stz a:OBJ_HIT_TAKEN,x
+    stz a:OBJ_ANIM_STEP,x
+    stz a:OBJ_ANIM_TIMER,x
+    stz a:OBJ_WORK_D,x
+    stz a:OBJ_WORK_E,x
+    stz a:OBJ_WORK_F,x
+    stz a:OBJ_WORK_G,x
+    stz a:OBJ_WORK_H,x
+    stz a:OBJ_WORK_I,x
+    stz a:OBJ_WORK_J,x
+    stz a:OBJ_WORK_K,x
+    stz a:OBJ_WORK_L,x
+    stz a:OBJ_WORK_M,x
+    stz a:OBJ_WORK_N,x
+    stz a:OBJ_WORK_O,x
+    stz a:OBJ_WORK_P,x
+    stz a:OBJ_HITBOX_DX,x
+    stz a:OBJ_HITBOX_HALF_W,x
+    stz a:OBJ_HITBOX_DY,x
+    stz a:OBJ_HITBOX_HALF_H,x
+    stz a:OBJ_INVULN_TIMER,x
+    stz a:OBJ_SAVED_ATTR,x
+    rts
+
+; @routine 0023:624 OldCardApplyVelocity
+; @run 80:4624
+; WHAT IT DOES: As ApplyVelocity (0045:5D2), whose bytes these are: the X axis, then on into the Y.
+; HOW: The same instructions.
+; WAITS: no.
+; Entry, exit: as ApplyVelocity.
+OldCardApplyVelocity:
+    stz z:zTemp10
+    lda a:OBJ_VX_HI,x
+    bpl OldCardApplyVelocity_at0
+    dec z:zTemp10
+OldCardApplyVelocity_at0:
+    lda a:OBJ_VX_LO,x
+    clc
+    adc a:OBJ_X_FRAC,x
+    sta a:OBJ_X_FRAC,x
+    lda a:OBJ_VX_HI,x
+    adc a:OBJ_X_LO,x
+    sta a:OBJ_X_LO,x
+    lda z:zTemp10
+    adc a:OBJ_X_HI,x
+    sta a:OBJ_X_HI,x
+
+; @routine 0023:648 OldCardApplyVelocityY
+; @run 80:4648
+; WHAT IT DOES: As ApplyVelocityY (0045:5F6), whose bytes these are.
+; HOW: The same instructions.
+; WAITS: no.
+; Entry, exit: as ApplyVelocityY.
+OldCardApplyVelocityY:
+    stz z:zTemp10
+    lda a:OBJ_VY_HI,x
+    bpl OldCardApplyVelocityY_at0
+    dec z:zTemp10
+OldCardApplyVelocityY_at0:
+    lda a:OBJ_VY_LO,x
+    clc
+    adc a:OBJ_Y_FRAC,x
+    sta a:OBJ_Y_FRAC,x
+    lda a:OBJ_VY_HI,x
+    adc a:OBJ_Y_LO,x
+    sta a:OBJ_Y_LO,x
+    lda z:zTemp10
+    adc a:OBJ_Y_HI,x
+    sta a:OBJ_Y_HI,x
+    rts
+
+; @routine 0023:692 OldCardNextRandom
+; @run 80:4692
+; WHAT IT DOES: As NextRandom (0046:29A), whose bytes these are.
+; HOW: The same instructions.
+; WAITS: no.
+; Entry, exit: as NextRandom.
+OldCardNextRandom:
+    lda z:zRandom3
+    clc
+    adc z:zRandom2
+    sta z:zRandom3
+    lda z:zRandom2
+    clc
+    adc z:zRandom1
+    sta z:zRandom2
+    lda z:zRandom3
+    adc z:zRandom1
+    sta z:zRandom3
+    lda z:zRandom1
+    clc
+    adc z:zRandom0
+    sta z:zRandom1
+    lda z:zRandom2
+    adc z:zRandom0
+    sta z:zRandom2
+    lda z:zRandom3
+    adc z:zRandom0
+    sta z:zRandom3
+    inc z:zRandom0
+    bne OldCardNextRandom_at0
+    inc z:zRandom1
+    bne OldCardNextRandom_at0
+    inc z:zRandom2
+    bne OldCardNextRandom_at0
+    inc z:zRandom3
+OldCardNextRandom_at0:
+    lda z:zRandom3
+    rts

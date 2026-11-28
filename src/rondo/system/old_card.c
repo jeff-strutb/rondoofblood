@@ -11,8 +11,8 @@
  *
  * Several pieces of the program are byte for byte copies of kernel routines filed elsewhere (ClearObject with
  * ClearObjectExceptPlace at $4584, ApplyVelocity at $4624, StepObjectFrames at $449E, NextRandom at $4692; the
- * census's proven duplicates). They are not filed again: this C calls those routines' bodies where the program
- * calls its copies, with the copies' return addresses.
+ * census's proven duplicates). They are filed at the end of this file with the kernel routines' C; the program's
+ * calls to them are made to those routines' bodies, with the copies' return addresses.
  */
 #include "machine.h"
 #include "ram.h"
@@ -21,7 +21,14 @@
 #include "front_end.h"
 #include "old_card.h"
 
-void abi_NextRandom(void);   /* math/trig.c: the kernel routine the copy at $4692 duplicates */
+/* The kernel routines the program's byte copies duplicate (math/trig.c, object/spawn.c, lifecycle.c, motion.c). */
+void abi_NextRandom(void);
+void abi_StepObjectFrames(void);
+void abi_ClearObject(void);
+void abi_ClearObjectExceptPlace(void);
+void ClearObjectExceptPlace(uint8_t object);
+void abi_ApplyVelocity(void);
+void abi_ApplyVelocityY(void);
 
 enum {
     VDC_REG_BXR = 0x07, VDC_REG_BYR = 0x08,
@@ -2990,4 +2997,117 @@ void abi_CheckPlayerHits(void)
     if (r.v_set) {
         abi_flag(P_V, r.overflow);
     }
+}
+
+/* The program's byte copies of kernel routines, filed at this origin. None has an absolute operand into its own
+ * bytes, so each is the same routine and its C is the kernel routine's; they are filed so that their assembly is
+ * assembled here too. The program calls them with these addresses (the callers above make the kernel routine's call
+ * with the copy's return address). */
+
+/*
+ * @routine 0023:49E OldCardStepObjectFrames
+ * @run 80:449E
+ * WHAT IT DOES: As StepObjectFrames (0047:18A), whose bytes these are.
+ * HOW: The same instructions.
+ * WAITS: no.
+ * Entry, exit: as StepObjectFrames.
+ */
+FrameStep OldCardStepObjectFrames(uint8_t object, uint8_t *exit_y)
+{
+    return StepObjectFrames(object, exit_y);
+}
+
+void abi_OldCardStepObjectFrames(void)
+{
+    abi_StepObjectFrames();
+}
+
+/*
+ * @routine 0023:584 OldCardClearObject
+ * @run 80:4584
+ * WHAT IT DOES: As ClearObject (0046:1ED), whose bytes these are: the place bytes cleared, then on into the next.
+ * HOW: The same instructions.
+ * WAITS: no.
+ * Entry, exit: as ClearObject.
+ */
+void OldCardClearObject(uint8_t object)
+{
+    ClearObject(object);
+}
+
+void abi_OldCardClearObject(void)
+{
+    abi_ClearObject();
+}
+
+/*
+ * @routine 0023:5A2 OldCardClearObjectExceptPlace
+ * @run 80:45A2
+ * WHAT IT DOES: As ClearObjectExceptPlace (0046:20B), whose bytes these are.
+ * HOW: The same instructions.
+ * WAITS: no.
+ * Entry, exit: as ClearObjectExceptPlace.
+ */
+void OldCardClearObjectExceptPlace(uint8_t object)
+{
+    ClearObjectExceptPlace(object);
+}
+
+void abi_OldCardClearObjectExceptPlace(void)
+{
+    abi_ClearObjectExceptPlace();
+}
+
+/*
+ * @routine 0023:624 OldCardApplyVelocity
+ * @run 80:4624
+ * WHAT IT DOES: As ApplyVelocity (0045:5D2), whose bytes these are: the X axis, then on into the Y.
+ * HOW: The same instructions.
+ * WAITS: no.
+ * Entry, exit: as ApplyVelocity.
+ */
+AxisMove OldCardApplyVelocity(uint8_t object)
+{
+    return ApplyVelocity(object);
+}
+
+void abi_OldCardApplyVelocity(void)
+{
+    abi_ApplyVelocity();
+}
+
+/*
+ * @routine 0023:648 OldCardApplyVelocityY
+ * @run 80:4648
+ * WHAT IT DOES: As ApplyVelocityY (0045:5F6), whose bytes these are.
+ * HOW: The same instructions.
+ * WAITS: no.
+ * Entry, exit: as ApplyVelocityY.
+ */
+AxisMove OldCardApplyVelocityY(uint8_t object)
+{
+    return ApplyVelocityY(object);
+}
+
+void abi_OldCardApplyVelocityY(void)
+{
+    abi_ApplyVelocityY();
+}
+
+/*
+ * @routine 0023:692 OldCardNextRandom
+ * @run 80:4692
+ * WHAT IT DOES: As NextRandom (0046:29A), whose bytes these are.
+ * HOW: The same instructions.
+ * WAITS: no.
+ * Entry, exit: as NextRandom.
+ */
+RandomResult OldCardNextRandom(void)
+{
+    return NextRandom();
+}
+
+void abi_OldCardNextRandom(void)
+{
+    abi_NextRandom();
 }

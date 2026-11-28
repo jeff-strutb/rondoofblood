@@ -66,6 +66,7 @@ ObjExit DispatchSceneObject(uint8_t kind, uint8_t object)
     target = (uint16_t)(low | (high_read << 8));
     switch (target) {
     case 0x89B0: result = PlayFrameListOnce(object); break;
+    case 0x89C1: result = SlideForCount(object); break;
     case 0x8A86: result = MirrorVramBlock(object); break;
     case 0x8AF0: result = NudgeScrollIn(object); break;
     case 0x8B19: result = DropAndShakeScreen(object); break;

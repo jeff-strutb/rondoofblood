@@ -142,6 +142,42 @@ void abi_AttractBegin(void)
 }
 
 /*
+ * @routine 00C1:72E AttractRestart
+ * @run 6B:872E
+ * WHAT IT DOES: The attract mode's sub-mode 3: the game state is wiped, the scene's script goes back to $9192 (where
+ * AttractWaitStart sets it when start is pressed), its frame counter to $FFFF, and the mode steps back to sub-mode 2
+ * (AttractStartCheck). No script or routine found sets sub-mode 3.
+ * HOW: ResetGameState; the script pointer and the frame counter are written; zGameSubMode goes down by one.
+ * WAITS: yes, through ResetGameState, which waits for the vertical blank with the display off; the stack there is this
+ * routine's return address and the call's.
+ * Entry: X the doubled sub-mode and Y kept (ResetGameState sees them). Exit: A $FF, X 0, Y $FF (ResetGameState's), N and
+ * Z from the new sub-mode, C kept.
+ */
+Exit AttractRestart(uint8_t kept_x, uint8_t kept_y)
+{
+    Exit exit = { 0 };
+
+    jsr_push(0x8731);
+    ResetGameState(wait_regs_xy_shim(kept_x, kept_y));
+    jsr_pop();
+    WR8(ZP->script_ptr, 0x92);
+    WR8(ZP->script_ptr_hi, 0x91);
+    WR8(ZP->wait_timer3, 0xFF);
+    WR8(ZP->wait_timer4, 0xFF);
+    exit.a = 0xFF;
+    exit.x = 0;
+    exit.y = 0xFF;
+    exit.nz = DEC8(ZP->game_sub_mode);
+    exit.c_kept = true;
+    return exit;
+}
+
+void abi_AttractRestart(void)
+{
+    exit_shim(AttractRestart(cpu.x, cpu.y));
+}
+
+/*
  * @routine 00C1:265 ModeDoneAdd
  * @run 6B:8265
  * WHAT IT DOES: Adds one to zModeDone, the count the mode loop reads to learn that the mode has
@@ -285,6 +321,8 @@ Exit ScriptStep(void)
     case 0x8866: return ScriptStartList();
     case 0x88A2: return ScriptPlaceObjectKind2();
     case 0x8852: return ScriptSound(index);
+    case 0x8883: return ScriptPlayAdpcm();
+    case 0x88D1: return ScriptPlaceObjectTimed();
     default:
         break;
     }
@@ -472,6 +510,31 @@ void abi_ScriptStartSlotKind3(void)
 }
 
 /*
+ * @routine 00C2:083 ScriptPlayAdpcm
+ * @run 6B:8883
+ * WHAT IT DOES: A script command: plays the operand's sound straight from the disc as ADPCM.
+ * HOW: AdpcmPlayFromDisc; back to ScriptAdvance.
+ * WAITS: yes, on the drive and the ADPCM, through AdpcmPlayFromDisc; the stack there is the caller's return and this
+ * call's two bytes.
+ * Entry: from ScriptStep, Y 3. Exit: as ScriptAdvance.
+ */
+Exit ScriptPlayAdpcm(void)
+{
+    uint8_t sound;
+
+    sound = RD8_PTR_Y(ZP->SCRIPT_PTR, 3);
+    jsr_push(0x8888);
+    (void)AdpcmPlayFromDisc(sound);
+    jsr_pop();
+    return ScriptAdvance();
+}
+
+void abi_ScriptPlayAdpcm(void)
+{
+    exit_shim(ScriptPlayAdpcm());
+}
+
+/*
  * @routine 00C2:08B ScriptPlayTrack
  * @run 6B:888B
  * WHAT IT DOES: A script command: plays the operand's CD track once.
@@ -630,6 +693,44 @@ Exit ScriptPlaceObjectFrame(void)
 void abi_ScriptPlaceObjectFrame(void)
 {
     exit_shim(ScriptPlaceObjectFrame());
+}
+
+/*
+ * @routine 00C2:0D1 ScriptPlaceObjectTimed
+ * @run 6B:88D1
+ * WHAT IT DOES: A script command: places an object, gives it a frame, a kind of picture, a start argument and a work
+ * byte (OBJ->frame, sprite_set, start_arg and work_d) from the next four operands, and its kind 3.
+ * HOW: ScriptPlaceObject, four bytes, a 3 in OBJ->kind; back to ScriptAdvance.
+ * WAITS: no.
+ * Entry: from ScriptStep, Y 3. Exit: as ScriptAdvance.
+ */
+Exit ScriptPlaceObjectTimed(void)
+{
+    uint8_t object, y, value;
+
+    object = RD8_PTR_Y(ZP->SCRIPT_PTR, 3);
+    jsr_push(0x88D7);
+    ScriptPlaceObject(object, 3);
+    jsr_pop();
+    y = 8;
+    value = RD8_PTR_Y(ZP->SCRIPT_PTR, y);
+    WR8(OBJ->frame[object], value);
+    y = 9;
+    value = RD8_PTR_Y(ZP->SCRIPT_PTR, y);
+    WR8(OBJ->sprite_set[object], value);
+    y = 10;
+    value = RD8_PTR_Y(ZP->SCRIPT_PTR, y);
+    WR8(OBJ->start_arg[object], value);
+    y = 11;
+    value = RD8_PTR_Y(ZP->SCRIPT_PTR, y);
+    WR8(OBJ->work_d[object], value);
+    WR8(OBJ->kind[object], 3);
+    return ScriptAdvance();
+}
+
+void abi_ScriptPlaceObjectTimed(void)
+{
+    exit_shim(ScriptPlaceObjectTimed());
 }
 
 /* The two title objects of the script: ClearObject, state +1 and four operands. */
@@ -828,6 +929,62 @@ ObjExit PlayFrameListOnce(uint8_t object)
 void abi_PlayFrameListOnce(void)
 {
     object_exit_shim(PlayFrameListOnce(cpu.x));
+}
+
+/* SlideForCount's speeds by OBJ->start_arg: the X speed's high byte at $89E8, the Y speed's at $89EA (0 up, 1 left). */
+enum { SLIDE_SPEEDS_X = 0x89E8, SLIDE_SPEEDS_Y = 0x89EA };
+
+/*
+ * @routine 00C2:1C1 SlideForCount
+ * @run 6B:89C1
+ * WHAT IT DOES: An object handler: on its first frame the object is given a speed of one dot a frame, up for a start
+ * argument of 0 and left for 1; then it moves for as many frames as OBJ->work_d holds, and goes to its next state.
+ * HOW: OBJ->state 0: OBJ->start_arg indexes the speeds at $89E8 (OBJ->vx_hi) and $89EA (OBJ->vy_hi), state +1. State 1:
+ * ApplyVelocity, OBJ->work_d counted down, state +1 at zero. Any other state returns.
+ * WAITS: no.
+ * Entry: X the object. Exit, state 0: A the Y speed, Y the start argument, N and Z from the new state; X and C kept.
+ * State 1: A, C and V from ApplyVelocity, N and Z from the count or the new state; X and Y kept. Other states: A the
+ * state less one, N and Z from it; X, Y and C kept.
+ */
+ObjExit SlideForCount(uint8_t object)
+{
+    ObjExit result;
+    uint8_t state, arg, speed, less;
+    AxisMove move;
+
+    state = RD8(OBJ->state[object]);
+    if (state == 0) {
+        arg = RD8(OBJ->start_arg[object]);
+        speed = rd8((uint16_t)(SLIDE_SPEEDS_X + arg));
+        WR8(OBJ->vx_hi[object], speed);
+        speed = rd8((uint16_t)(SLIDE_SPEEDS_Y + arg));
+        WR8(OBJ->vy_hi[object], speed);
+        result = object_exit(speed, INC8(OBJ->state[object]));
+        result.exit.y = arg;
+        result.exit.y_kept = false;
+        return result;
+    }
+    less = (uint8_t)(state - 1);
+    if (less != 0) {
+        return object_exit(less, less);
+    }
+    jsr_push(0x89DF);
+    move = ApplyVelocity(object);
+    jsr_pop();
+    result = object_exit(0, DEC8(OBJ->work_d[object]));
+    result.exit.a_kept = true;
+    result.move = move;
+    result.moved = true;
+    if (result.exit.nz != 0) {
+        return result;
+    }
+    result.exit.nz = INC8(OBJ->state[object]);
+    return result;
+}
+
+void abi_SlideForCount(void)
+{
+    object_exit_shim(SlideForCount(cpu.x));
 }
 
 /* The end 1EC and 20E share: a frame list stepped, and a script slot started when the picture changes. */

@@ -651,6 +651,7 @@ Exit AttractStep(uint8_t kept_y)
         return through_table(done, index, state, kept_y, v_in);
     }
     case 0x8792: return through_table(AttractBlink(), index, state, kept_y, v_in);
+    case 0x872E: return through_table(AttractRestart(index, kept_y), index, state, kept_y, v_in);
     default:
         break;
     }

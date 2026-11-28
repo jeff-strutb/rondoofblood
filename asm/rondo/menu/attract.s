@@ -35,6 +35,28 @@ AttractBegin:
     inc z:zGameSubMode
     rts
 
+; @routine 00C1:72E AttractRestart
+; @run 6B:872E
+; WHAT IT DOES: The attract mode's sub-mode 3: the game state is wiped, the scene's script goes back to $9192 (where
+; AttractWaitStart sets it when start is pressed), its frame counter to $FFFF, and the mode steps back to sub-mode 2
+; (AttractStartCheck). No script or routine found sets sub-mode 3.
+; HOW: ResetGameState; the script pointer and the frame counter are written; zGameSubMode goes down by one.
+; WAITS: yes, through ResetGameState, which waits for the vertical blank with the display off; the stack there is this
+; routine's return address and the call's.
+; Entry: X the doubled sub-mode and Y kept (ResetGameState sees them). Exit: A $FF, X 0, Y $FF (ResetGameState's), N and
+; Z from the new sub-mode, C kept.
+AttractRestart:
+    jsr VecResetGameState
+    lda #$92
+    sta z:zScriptPtr
+    lda #$91
+    sta z:zScriptPtrHi
+    lda #$FF
+    sta z:zWaitTimer3
+    sta z:zWaitTimer4
+    dec z:zGameSubMode
+    rts
+
 ; @routine 00C1:7CC AttractFrameTick
 ; @run 6B:87CC
 ; WHAT IT DOES: Counts one frame of the attract scene on its 16-bit frame counter.
@@ -213,6 +235,18 @@ ScriptStartSlotKind3:
     jsr VecStartScriptSlot0Kind3
     jmp ScriptAdvance
 
+; @routine 00C2:083 ScriptPlayAdpcm
+; @run 6B:8883
+; WHAT IT DOES: A script command: plays the operand's sound straight from the disc as ADPCM.
+; HOW: AdpcmPlayFromDisc; back to ScriptAdvance.
+; WAITS: yes, on the drive and the ADPCM, through AdpcmPlayFromDisc; the stack there is the caller's return and this
+; call's two bytes.
+; Entry: from ScriptStep, Y 3. Exit: as ScriptAdvance.
+ScriptPlayAdpcm:
+    lda (zScriptPtr),y
+    jsr VecAdpcmPlayFromDisc
+    jmp ScriptAdvance
+
 ; @routine 00C2:08B ScriptPlayTrack
 ; @run 6B:888B
 ; WHAT IT DOES: A script command: plays the operand's CD track once.
@@ -281,6 +315,33 @@ ScriptPlaceObjectFrame:
     iny
     lda (zScriptPtr),y
     sta a:OBJ_SPRITE_SET,x
+    jmp ScriptAdvance
+
+; @routine 00C2:0D1 ScriptPlaceObjectTimed
+; @run 6B:88D1
+; WHAT IT DOES: A script command: places an object, gives it a frame, a kind of picture, a start argument and a work
+; byte (OBJ->frame, sprite_set, start_arg and work_d) from the next four operands, and its kind 3.
+; HOW: ScriptPlaceObject, four bytes, a 3 in OBJ->kind; back to ScriptAdvance.
+; WAITS: no.
+; Entry: from ScriptStep, Y 3. Exit: as ScriptAdvance.
+ScriptPlaceObjectTimed:
+    lda (zScriptPtr),y
+    tax
+    jsr ScriptPlaceObject
+    iny
+    lda (zScriptPtr),y
+    sta a:OBJ_FRAME,x
+    iny
+    lda (zScriptPtr),y
+    sta a:OBJ_SPRITE_SET,x
+    iny
+    lda (zScriptPtr),y
+    sta a:OBJ_START_ARG,x
+    iny
+    lda (zScriptPtr),y
+    sta a:OBJ_WORK_D,x
+    lda #$03
+    sta a:OBJ_KIND,x
     jmp ScriptAdvance
 
 ; @routine 00C2:0F7 ClearAllObjects
@@ -389,6 +450,38 @@ PlayFrameListOnce:
     bne PlayFrameListOnce_at0
     inc a:OBJ_STATE,x
 PlayFrameListOnce_at0:
+    rts
+
+; @routine 00C2:1C1 SlideForCount
+; @run 6B:89C1
+; WHAT IT DOES: An object handler: on its first frame the object is given a speed of one dot a frame, up for a start
+; argument of 0 and left for 1; then it moves for as many frames as OBJ->work_d holds, and goes to its next state.
+; HOW: OBJ->state 0: OBJ->start_arg indexes the speeds at $89E8 (OBJ->vx_hi) and $89EA (OBJ->vy_hi), state +1. State 1:
+; ApplyVelocity, OBJ->work_d counted down, state +1 at zero. Any other state returns.
+; WAITS: no.
+; Entry: X the object. Exit, state 0: A the Y speed, Y the start argument, N and Z from the new state; X and C kept.
+; State 1: A, C and V from ApplyVelocity, N and Z from the count or the new state; X and Y kept. Other states: A the
+; state less one, N and Z from it; X, Y and C kept.
+SlideSpeedsX = $89E8 ; the X speed's high byte by start argument (0 up, 1 left)
+SlideSpeedsY = $89EA ; the Y speed's high byte by start argument
+SlideForCount:
+    lda a:OBJ_STATE,x
+    bne SlideForCount_at0
+    ldy a:OBJ_START_ARG,x
+    lda a:SlideSpeedsX,y
+    sta a:OBJ_VX_HI,x
+    lda a:SlideSpeedsY,y
+    sta a:OBJ_VY_HI,x
+    inc a:OBJ_STATE,x
+    rts
+SlideForCount_at0:
+    dec a
+    bne SlideForCount_at1
+    jsr VecApplyVelocity
+    dec a:OBJ_WORK_D,x
+    bne SlideForCount_at1
+    inc a:OBJ_STATE,x
+SlideForCount_at1:
     rts
 
 ; @routine 00C2:1EC AnimateAndCueSeven

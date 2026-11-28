@@ -5,6 +5,22 @@
 ; HOW: Adds one to the low byte, and to the high byte when the low byte wrapped to zero.
 ; WAITS: no.
 ; Entry: nothing. Exit: N and Z from the byte last incremented, C and the registers kept.
+MenuBlocked = $7DDB ; menu blocked
+PadRepeat = $7DF2 ; pad repeat
+CursorFirstItems = $9CBE ; cursor first items
+CursorLastItems = $9CC4 ; cursor last items
+CursorFrames = $9D55 ; cursor frames
+GlyphPasses = $A0F2 ; glyph passes
+GlyphNumbers = $A18F ; glyph numbers
+GlyphPlaces = $A500 ; glyph places
+ObjectLists = $A55A ; object lists
+PercentAddresses = $A845 ; percent addresses
+TextColorAddresses = $A901 ; text color addresses
+TextPalettes = $A91B ; text palettes
+FaceTiles = $A9BE ; face tiles
+CursorPlaces = $AD1F ; cursor places
+ClearedTableOffsets = $AFD6 ; cleared table offsets
+ClearedTableMasks = $AFE3 ; cleared table masks
 IncrementTempWord:
     inc z:zTemp00
     bne IncrementTempWord_at0
@@ -55,11 +71,11 @@ WriteGlyphRows_at0:
 ; WAITS: no.
 ; Entry: nothing. Exit: A $18, X $FF, N set, Z clear; Y and C kept.
 PadRepeatReset:
-    stz a:$7DFA
+    stz a:MenuPadRepeatBits
     ldx #$07
     lda #$18
 PadRepeatReset_at0:
-    sta a:$7DF2,x
+    sta a:PadRepeat,x
     dex
     bpl PadRepeatReset_at0
 PadRepeatReset_at1:
@@ -117,7 +133,7 @@ PadRepeatUpdate_at4:
 PadRepeatUpdate_at0:
     lsr z:zTemp01
     bcc PadRepeatUpdate_at2
-    dec a:$7DF2,x
+    dec a:PadRepeat,x
     clc
     bne PadRepeatUpdate_at3
     lda #$0C
@@ -127,9 +143,9 @@ PadRepeatUpdate_at2:
     cla
     clc
 PadRepeatUpdate_at1:
-    sta a:$7DF2,x
+    sta a:PadRepeat,x
 PadRepeatUpdate_at3:
-    ror a:$7DFA
+    ror a:MenuPadRepeatBits
     inx
     cpx #$08
     bne PadRepeatUpdate_at4
@@ -147,7 +163,7 @@ DrawSelectedFileDigit:
     st1 #$CE
     st2 #$00
     jsr VecSelectVramData
-    lda a:$7DF1
+    lda a:MenuSelectedSlot
 DrawSelectedFileDigit_at0:
     clc
     adc #$10
@@ -167,7 +183,7 @@ DrawCursorRowDigit:
     st1 #$2B
     st2 #$01
     jsr VecSelectVramData
-    lda a:$7DFF
+    lda a:MenuChosenItem
     bra DrawSelectedFileDigit_at0
 
 ; @routine 00C4:3F6 ShiftObjectsByScrollChange
@@ -235,17 +251,17 @@ CursorMoveByPad:
     bne CursorMoveByPad_at1
     lda a:OBJ_WORK_D
     dec a
-    cmp a:$9CBE,y
+    cmp a:CursorFirstItems,y
     bne CursorMoveByPad_at2
-    lda a:$9CC4,y
+    lda a:CursorLastItems,y
     dec a
     bra CursorMoveByPad_at2
 CursorMoveByPad_at1:
     lda a:OBJ_WORK_D
     inc a
-    cmp a:$9CC4,y
+    cmp a:CursorLastItems,y
     bne CursorMoveByPad_at2
-    lda a:$9CBE,y
+    lda a:CursorFirstItems,y
     inc a
 CursorMoveByPad_at2:
     jsr SetCursorValue
@@ -254,7 +270,7 @@ CursorMoveByPad_at2:
     bne CursorMoveByPad_at3
     phy
     ldy z:zSaveSlot
-    ldx a:$9252,y
+    ldx a:SlotOffsets,y
     lda a:SaveBuffer,x
     ply
     lsr a
@@ -263,7 +279,7 @@ CursorMoveByPad_at3:
     lda a:OBJ_WORK_D
     cmp #$15
     bne CursorMoveByPad_at0
-    lda a:$7DDB
+    lda a:MenuBlocked
     bne CursorMoveByPad
 CursorMoveByPad_at0:
     rts
@@ -302,9 +318,9 @@ PlaceCursorObject:
     rol a
     asl a
     tay
-    lda a:$AD1F,y
+    lda a:CursorPlaces,y
     sta a:OBJ_X_LO,x
-    lda a:$AD20,y
+    lda a:CursorPlaces+1,y
     sta a:OBJ_Y_LO,x
     rts
 
@@ -360,7 +376,7 @@ GlideCursorObject:
     cpx #$03
     rol a
     tay
-    lda a:$9D55,y
+    lda a:CursorFrames,y
     sta a:OBJ_FRAME,x
     lda a:OBJ_X_LO,x
     cmp a:OBJ_WORK_F,x
@@ -468,9 +484,9 @@ SetCursorTarget:
     rol a
     asl a
     tay
-    lda a:$AD1F,y
+    lda a:CursorPlaces,y
     sta a:OBJ_WORK_F,x
-    lda a:$AD20,y
+    lda a:CursorPlaces+1,y
     sta a:OBJ_WORK_G,x
     lda #$01
     sta a:OBJ_WORK_E,x
@@ -567,9 +583,9 @@ ClearVramBlock:
     asl a
     tay
     jsr VecSelectVramWriteAddress
-    lda a:$A500,y
+    lda a:GlyphPlaces,y
     sta a:VDC_DATA_LO
-    lda a:$A501,y
+    lda a:GlyphPlaces+1,y
     sta a:VDC_DATA_HI
     jsr VecSelectVramData
     phx
@@ -600,9 +616,9 @@ GlyphPassByStep:
     and #$03
     asl a
     tay
-    lda a:$A0F2,y
+    lda a:GlyphPasses,y
     sta z:zTemp00
-    lda a:$A0F3,y
+    lda a:GlyphPasses+1,y
     sta z:zTemp01
     stz z:zTemp08
     jmp (ZeroPage)
@@ -635,11 +651,11 @@ OverlayGlyphPass:
 ; object's kind doubled, V from SetGlyphVramPlace.
 OverlayGlyphRows:
     ldy a:OBJ_WORK_G,x
-    lda a:$A18F,y
+    lda a:GlyphNumbers,y
     jsr SetGlyphVramPlace
     jsr OrBufferIntoVramLow
     ldy a:OBJ_WORK_G,x
-    lda a:$A18F,y
+    lda a:GlyphNumbers,y
     inc a
     jsr SetGlyphVramPlace
     phx
@@ -708,7 +724,7 @@ OverlayGlyphPassBoth:
 ; object's kind doubled, V from SetGlyphVramPlace.
 OverlayGlyphRowsBoth:
     ldy a:OBJ_WORK_G,x
-    lda a:$A18F,y
+    lda a:GlyphNumbers,y
     jsr SetGlyphVramPlace
     phx
     clx
@@ -776,14 +792,14 @@ SetGlyphVramPlace:
     asl a
     tay
     jsr VecSelectVramWriteAddress
-    lda a:$A500,y
+    lda a:GlyphPlaces,y
     clc
     adc z:zBiosAl
     clc
     adc z:zTemp00
     sta z:zTemp02
     sta a:VDC_DATA_LO
-    lda a:$A501,y
+    lda a:GlyphPlaces+1,y
     adc z:zTemp01
     sta z:zTemp03
     sta a:VDC_DATA_HI
@@ -816,6 +832,31 @@ GlideObjectUp_at0:
 GlideObjectUp_at1:
     rts
 
+; @routine 00DD:1F5 WaitThenStartGlide
+; @run 6F:A1F5
+; WHAT IT DOES: Waits out the object's two-byte count, then starts the object's glide (file_select.c).
+; HOW: As the C's header.
+; WAITS: no.
+; Entry: X the object.
+WaitThenStartGlide:
+    dec a:OBJ_WORK_E,x
+    bne WaitThenStartGlide_done
+    dec a:OBJ_WORK_F,x
+    bpl WaitThenStartGlide_done
+    cpx #$2E
+    bne WaitThenStartGlide_set
+    phx
+    lda #$06
+    ldx #$07
+    jsr VecStartScriptSlotKind2
+    plx
+WaitThenStartGlide_set:
+    lda #$10
+    sta a:OBJ_WORK_G,x
+    inc a:OBJ_STATE,x
+WaitThenStartGlide_done:
+    rts
+
 ; @routine 00DD:215 GlideObjectDown
 ; @run 6F:A215
 ; WHAT IT DOES: One frame of a short slide down: on every other frame the object moves down one
@@ -833,7 +874,7 @@ GlideObjectDown:
     inc a:OBJ_Y_LO,x
 GlideObjectDown_at0:
     dec a:OBJ_WORK_G,x
-    bne $A214
+    bne WaitThenStartGlide_done
     jmp VecClearObject
 
 ; @routine 00DD:50A PlaceObjectList
@@ -850,9 +891,9 @@ GlideObjectDown_at0:
 PlaceObjectList:
     asl a
     tay
-    lda a:$A55A,y
+    lda a:ObjectLists,y
     sta z:zTemp00
-    lda a:$A55B,y
+    lda a:ObjectLists+1,y
     sta z:zTemp01
     lda (zTemp00)
     tax
@@ -903,7 +944,7 @@ PlaceObjectList_at1:
 ; clear.
 SlotToWorkArea:
     ldy z:zSaveSlot
-    ldx a:$9252,y
+    ldx a:SlotOffsets,y
     lda a:SaveBuffer,x
     sta a:ProgressCharacter
     lda a:SaveContinues,x
@@ -916,9 +957,9 @@ SlotToWorkArea_at0:
     sta a:StagesReached,y
     lda a:SaveBuffer+6,x
     sta a:StagesReached+5,y
-    lda a:$7D0B,x
+    lda a:SaveBuffer+11,x
     sta a:StagesVisited,y
-    lda a:$7D10,x
+    lda a:SaveBuffer+16,x
     sta a:StagesVisited+5,y
     inx
     iny
@@ -951,15 +992,15 @@ DrawSlotName_at1:
 DrawSlotName_at0:
     tax
     jsr VecSelectVramWriteAddress
-    lda a:$A894,y
+    lda a:TextRowAddresses,y
     sta a:VDC_DATA_LO
-    lda a:$A895,y
+    lda a:TextRowAddresses+1,y
     sta a:VDC_DATA_HI
     jsr VecSelectVramData
-    ldy a:$9252,x
+    ldy a:SlotOffsets,x
     clx
 DrawSlotName_at2:
-    lda a:$7D15,y
+    lda a:SaveBuffer+21,y
     sta a:VDC_DATA_LO
     st2 #$11
     iny
@@ -995,9 +1036,9 @@ DrawSlotPercent_at1:
 DrawSlotPercent_at0:
     tax
     jsr VecSelectVramWriteAddress
-    lda a:$A845,y
+    lda a:PercentAddresses,y
     sta a:VDC_DATA_LO
-    lda a:$A846,y
+    lda a:PercentAddresses+1,y
     sta a:VDC_DATA_HI
     jsr VecSelectVramData
     sxy
@@ -1036,14 +1077,14 @@ BlankTextRow:
     asl a
     tay
     jsr VecSelectVramWriteAddress
-    lda a:$A894,y
+    lda a:TextRowAddresses,y
     sta a:VDC_DATA_LO
-    lda a:$A895,y
+    lda a:TextRowAddresses+1,y
     sta a:VDC_DATA_HI
     jsr VecSelectVramReadAddress
-    lda a:$A894,y
+    lda a:TextRowAddresses,y
     sta a:VDC_DATA_LO
-    lda a:$A895,y
+    lda a:TextRowAddresses+1,y
     sta a:VDC_DATA_HI
     jsr VecSelectVramData
     clx
@@ -1070,20 +1111,20 @@ BlankTextRow:
 ; clear; X kept. Clobbers zBiosAl and zBiosAh.
 RecolorTextRun:
     pha
-    lda a:$A91B,y
+    lda a:TextPalettes,y
     sta z:zBiosAl
     pla
     asl a
     tay
     jsr VecSelectVramReadAddress
-    lda a:$A901,y
+    lda a:TextColorAddresses,y
     sta a:VDC_DATA_LO
-    lda a:$A902,y
+    lda a:TextColorAddresses+1,y
     sta a:VDC_DATA_HI
     jsr VecSelectVramWriteAddress
-    lda a:$A901,y
+    lda a:TextColorAddresses,y
     sta a:VDC_DATA_LO
-    lda a:$A902,y
+    lda a:TextColorAddresses+1,y
     sta a:VDC_DATA_HI
     jsr VecSelectVramData
     bra RecolorTextRun_at0
@@ -1123,7 +1164,7 @@ DrawSlotDetails:
     st2 #$02
     jsr VecSelectVramData
     ldy z:zSaveSlot
-    ldx a:$9252,y
+    ldx a:SlotOffsets,y
     lda a:SaveScoreTotal+2,x
     bsr WriteHexByteTiles
     lda a:SaveScoreTotal+1,x
@@ -1186,7 +1227,7 @@ DrawSlotContinuesAndFace:
     st2 #$06
     jsr VecSelectVramData
     ldy z:zSaveSlot
-    ldx a:$9252,y
+    ldx a:SlotOffsets,y
     lda a:SaveContinues+1,x
     bsr WriteLowDigitTile
     lda a:SaveContinues,x
@@ -1196,13 +1237,13 @@ DrawSlotContinuesAndFace:
     st2 #$02
     jsr VecSelectVramData
     ldy z:zSaveSlot
-    lda a:$7DE3,y
+    lda a:MenuSlotProgress,y
     asl a
     tay
-    lda a:$A9BE,y
+    lda a:FaceTiles,y
     sta a:VDC_DATA_LO
     st2 #$11
-    lda a:$A9BF,y
+    lda a:FaceTiles+1,y
     sta a:VDC_DATA_LO
     st2 #$11
     rts
@@ -1313,7 +1354,7 @@ EventBitMask_at0:
 ; last count.
 SlotCompletionPercent:
     sed
-    ldx a:$9252,y
+    ldx a:SlotOffsets,y
     lda a:SaveBuffer,x
     jsr CountSetBits
     sta z:zTemp08
@@ -1324,8 +1365,8 @@ SlotCompletionPercent:
     lda #$05
     sta z:zTemp0A
 SlotCompletionPercent_at0:
-    lda a:$7D0B,x
-    ora a:$7D10,x
+    lda a:SaveBuffer+11,x
+    ora a:SaveBuffer+16,x
     jsr CountSetBits
     sta z:zTemp0B
     clc
@@ -1423,13 +1464,13 @@ SlotClearedFlags:
 SlotClearedFlags_at1:
     stz a:StageVramBuffer,x
     ldy z:zSaveSlot
-    lda a:$9252,y
+    lda a:SlotOffsets,y
     clc
-    adc a:$AFD6,x
+    adc a:ClearedTableOffsets,x
     tay
     lda a:SaveBuffer+1,y
     ora a:SaveBuffer+6,y
-    and a:$AFE3,x
+    and a:ClearedTableMasks,x
     beq SlotClearedFlags_at0
     inc a:StageVramBuffer,x
 SlotClearedFlags_at0:

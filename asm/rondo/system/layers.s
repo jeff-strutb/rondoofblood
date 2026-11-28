@@ -108,11 +108,11 @@ ScrollYFromLevelWord:
 ; Names: the two columns ($3CA0, $3CA8) have no name yet, so the enum of this file gives them.
 AddToListWord:
     clc
-    adc a:$3CA0,x
-    sta a:$3CA0,x
+    adc a:ListWordLo,x
+    sta a:ListWordLo,x
     cla
-    adc a:$3CA8,x
-    sta a:$3CA8,x
+    adc a:ListWordHi,x
+    sta a:ListWordHi,x
     rts
 
 ; @routine 0515:6DA ScreenMapOfEntry

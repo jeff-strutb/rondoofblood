@@ -8,6 +8,8 @@
 ; same bytes).
 ; WAITS: no.
 ; Entry: A the kind (not zero), X the channel. Exit: as the path it took leaves them, X the channel.
+ChannelLists = $9800 ; channel lists
+ChannelCopyLists00C5 = $829F ; the table of copy lists a list channel of kind 3 steps
 RunListChannel00C5:
     dec a
     beq TitleSteps
@@ -24,9 +26,9 @@ RunListChannel00C5_at1:
     rts
     lda a:ListChannelHold,x
     bne RunListChannel00C5_at1
-    lda a:$9800
+    lda a:OverlayListChannelSeqs
     sta z:zBiosAl
-    lda a:$9801
+    lda a:ChannelLists+1
     sta z:zBiosAh
     lda a:ListChannelList,x
     asl a
@@ -68,9 +70,9 @@ RunListChannel00C5_at7:
     lda a:ListChannelList,x
     asl a
     tay
-    lda a:$829F,y
+    lda a:ChannelCopyLists00C5,y
     sta a:ListWordLo,x
-    lda a:$82A0,y
+    lda a:ChannelCopyLists00C5+1,y
     sta a:ListWordHi,x
     bra TitleBlink
 RunListChannel00C5_at4:

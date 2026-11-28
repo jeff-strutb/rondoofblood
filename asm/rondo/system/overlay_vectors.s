@@ -72,7 +72,7 @@ StageVec800F_071D:
 ; WAITS: where the routine at $8169 waits; the jump adds nothing to the stack.
 ; Entry, exit: as the routine at $8169.
 SceneVec8006_0111:
-    jmp $8169
+    jmp VramListRun0111
 
 ; @routine 00C1:00C StageLoadVec800C_00C1
 ; @run 6B:800C
@@ -81,7 +81,7 @@ SceneVec8006_0111:
 ; WAITS: where the routine at $91E2 waits; the jump adds nothing to the stack.
 ; Entry, exit: as the routine at $91E2.
 StageLoadVec800C_00C1:
-    jmp $91E2
+    jmp FileMenuFrame
 
 ; @routine 072C:66E JumpToFollowPathAndShow
 ; @run 70:BE6E

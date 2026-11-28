@@ -4,6 +4,7 @@
 ; HOW: A jump to TitleScreenStep.
 ; WAITS: no.
 ; Entry: Y kept. Exit: as TitleScreenStep.
+KindTable = $898A ; kind table
 TitleScreenEntry:
     jmp TitleScreenStep
 
@@ -57,8 +58,8 @@ DispatchSceneObject:
     dec a
     asl a
     tay
-    lda a:$898A,y
+    lda a:KindTable,y
     sta z:zTemp00
-    lda a:$898B,y
+    lda a:KindTable+1,y
     sta z:zTemp01
     jmp (ZeroPage)

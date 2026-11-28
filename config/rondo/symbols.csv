@@ -395,6 +395,15 @@ E018,abs,BiosCdPause,cd_pause
 E01B,abs,BiosCdStat,cd_stat
 E02D,abs,BiosCdFade,cd_fade
 E033,abs,BiosAdTrans,ad_trans
+E006,abs,BiosCdBase,cd_base
+E072,abs,BiosExImode,ex_imode
+E07B,abs,BiosExVsync,ex_vsync
+E0DE,abs,BiosExMemopen,ex_memopen
+E060,abs,BiosExGetfnt,ex_getfnt
+E096,abs,BiosExDspon,ex_dspon
+E09F,abs,BiosExSprdma,ex_sprdma
+E0AE,abs,BiosExSetwrt,ex_setwrt
+E0E4,abs,BiosExColorcmd,ex_colorcmd
 E036,abs,BiosAdRead,ad_read
 E03C,abs,BiosAdPlay,ad_play
 E03F,abs,BiosAdCplay,ad_cplay

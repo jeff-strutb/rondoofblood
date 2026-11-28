@@ -9,9 +9,12 @@
 ; WAITS: no.
 ; Entry: nothing. Exit: name full: A 8, Z and C set, N clear, Y the count before, V from the
 ; grid index add; else as ShowNameCursor.
+NameGrid = $9645 ; name grid
+NameColumnPlaces = $9696 ; name column places
+NameRowPlaces = $969E ; name row places
 NameTypeCharacter:
     jsr VecSelectVramWriteAddress
-    lda a:$7DE8
+    lda a:MenuNameLength
     clc
     adc #$D0
     sta a:VDC_DATA_LO
@@ -24,13 +27,13 @@ NameTypeCharacter_at0:
     asl a
     adc a:OBJ_WORK_D+2
     tay
-    lda a:$9645,y
+    lda a:NameGrid,y
     sta a:VDC_DATA_LO
-    ldy a:$7DE8
-    sta a:$7DE9,y
+    ldy a:MenuNameLength
+    sta a:MenuName,y
     st2 #$11
-    inc a:$7DE8
-    lda a:$7DE8
+    inc a:MenuNameLength
+    lda a:MenuNameLength
     cmp #$08
     beq ShowNameCursor_at1
 
@@ -45,7 +48,7 @@ NameTypeCharacter_at0:
 ; kept.
 ShowNameCursor:
     jsr VecSelectVramWriteAddress
-    lda a:$7DE8
+    lda a:MenuNameLength
     clc
     adc #$D0
     sta a:VDC_DATA_LO
@@ -53,10 +56,10 @@ ShowNameCursor:
     jsr VecSelectVramData
     st1 #$FF
     st2 #$10
-    ldy a:$7DE8
+    ldy a:MenuNameLength
     lda #$20
 ShowNameCursor_at0:
-    sta a:$7DE9,y
+    sta a:MenuName,y
 ShowNameCursor_at1:
     rts
 
@@ -70,7 +73,7 @@ ShowNameCursor_at1:
 ; Entry: the count at least 1. Exit: as ShowNameCursor.
 NameBackspace:
     jsr VecSelectVramWriteAddress
-    lda a:$7DE8
+    lda a:MenuNameLength
     clc
     adc #$D0
     sta a:VDC_DATA_LO
@@ -78,10 +81,10 @@ NameBackspace:
     jsr VecSelectVramData
     st1 #$3D
     st2 #$11
-    dec a:$7DE8
-    ldy a:$7DE8
+    dec a:MenuNameLength
+    ldy a:MenuNameLength
     lda #$20
-    sta a:$7DE9,y
+    sta a:MenuName,y
     bra ShowNameCursor
 
 ; @routine 00C3:665 NameCursorTarget
@@ -96,7 +99,7 @@ NameBackspace:
 ; compare left it.
 NameCursorTarget:
     ldy a:OBJ_WORK_H,x
-    lda a:$969E,y
+    lda a:NameRowPlaces,y
     sta a:OBJ_WORK_G,x
     sta a:OBJ_WORK_G+1,x
     cpy #$04
@@ -108,7 +111,7 @@ NameCursorTarget:
     bra NameCursorTarget_at0
 NameCursorTarget_at1:
     ldy a:OBJ_WORK_D,x
-    lda a:$9696,y
+    lda a:NameColumnPlaces,y
     sta a:OBJ_WORK_F,x
     sta a:OBJ_WORK_F+1,x
 NameCursorTarget_at0:

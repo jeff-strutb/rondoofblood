@@ -1865,6 +1865,57 @@ void abi_GlideObjectUp(void)
 }
 
 /*
+ * @routine 00DD:1F5 WaitThenStartGlide
+ * @run 6F:A1F5
+ * WHAT IT DOES: Waits out the object's two-byte count (OBJ->work_e, then OBJ->work_f), then, for object $2E, starts
+ * script slot 7 as kind 2 with script 6; sets the glide's step count (OBJ->work_g) to 16 and goes on a state. Nothing
+ * found reaches it.
+ * HOW: DEC of work_e and, at zero, of work_f until it goes negative; CPX #$2E; PHX around StartScriptSlotKind2; two
+ * stores and an INC. GlideObjectDown branches to its RTS.
+ * WAITS: no.
+ * Entry: X the object. Exit: counting: N and Z from the count; A, X, Y and C kept. Else A $10, N and Z from the new
+ * state, X kept, C from the compare with $2E, Y the script when it was started.
+ */
+Exit WaitThenStartGlide(uint8_t object)
+{
+    Exit exit = { 0 };
+    uint8_t count;
+
+    exit.a_kept = exit.x_kept = exit.y_kept = exit.c_kept = true;
+    count = DEC8(OBJ->work_e[object]);
+    exit.nz = count;
+    if (count != 0) {
+        return exit;
+    }
+    count = DEC8(OBJ->work_f[object]);
+    exit.nz = count;
+    if ((count & 0x80) == 0) {
+        return exit;
+    }
+    exit.c = object >= 0x2E;
+    exit.c_kept = false;
+    if (object == 0x2E) {
+        push8(object);
+        jsr_push(0xA20B);
+        (void)StartScriptSlotKind2(6, 7);
+        jsr_pop();
+        object = pull8();
+        exit.y = 6;
+        exit.y_kept = false;
+    }
+    WR8(OBJ->work_g[object], 0x10);
+    exit.a = 0x10;
+    exit.a_kept = false;
+    exit.nz = INC8(OBJ->state[object]);
+    return exit;
+}
+
+void abi_WaitThenStartGlide(void)
+{
+    exit_shim(WaitThenStartGlide(cpu.x));
+}
+
+/*
  * @routine 00DD:215 GlideObjectDown
  * @run 6F:A215
  * WHAT IT DOES: One frame of a short slide down: on every other frame the object moves down one

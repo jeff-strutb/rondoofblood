@@ -6,6 +6,10 @@
 ; WAITS: no.
 ; Entry: nothing. Exit: N and Z from the new value, C and the registers kept. No script reaches
 ; it; it is compared with the draft only.
+ScriptLengths = $87F0 ; script lengths
+ScriptCommands = $8827 ; script commands
+DebrisTable = $8BFE ; debris table
+FrameLists = $8EED ; frame lists
 ModeDoneAdd:
     inc z:zModeDone
     rts
@@ -105,7 +109,7 @@ AttractHoldBeforeEnd:
     lda #$40
     sta z:zWaitTimer3
     stz a:OBJ_KIND+8
-    stz a:$2759
+    stz a:OBJ_KIND+9
     lda #$07
     jmp VecStartScriptSlot0Kind2
 
@@ -120,7 +124,7 @@ AttractHoldBeforeEnd:
 ScriptAdvance:
     lda (zScriptPtr)
     tax
-    lda a:$87F0,x
+    lda a:ScriptLengths,x
     clc
     adc z:zScriptPtr
     sta z:zScriptPtr
@@ -141,16 +145,16 @@ ScriptStep:
     ldy #$01
     lda (zScriptPtr),y
     cmp z:zWaitTimer3
-    bne $87DC
+    bne AttractEndCountdown+9
     iny
     lda (zScriptPtr),y
     cmp z:zWaitTimer4
-    bne $87DC
+    bne AttractEndCountdown+9
     lda (zScriptPtr)
     asl a
     tax
     ldy #$03
-    jmp ($8827,x)
+    jmp (ScriptCommands,x)
 
 ; @routine 00C2:047 ScriptSaveReadAndState
 ; @run 6B:8847
@@ -527,7 +531,7 @@ AnimateList1AndCueSeven:
     inc a:OBJ_STATE,x
 AnimateList1AndCueSeven_at0:
     lda #$01
-    bra $89FA
+    bra AnimateAndCueSeven+14
 
 ; @routine 00C2:21F AnimateAndCueNine
 ; @run 6B:8A1F
@@ -582,7 +586,7 @@ AnimateList9AndCueNine_at0:
     ora a:ScrollYLo
     bne AnimateAndCueNine_at1
     lda #$09
-    bra $8A39
+    bra AnimateAndCueNine+26
 
 ; @routine 00C2:26E BlinkScrollFlag
 ; @run 6B:8A6E
@@ -823,7 +827,7 @@ ScatterDebris:
     cly
 ScatterDebris_at1:
     jsr VecClearObject
-    lda a:$8BFE,y
+    lda a:DebrisTable,y
     sta a:OBJ_X_LO,x
     sec
     sbc #$80
@@ -834,15 +838,15 @@ ScatterDebris_at0:
     asl a:OBJ_VX_LO,x
     rol a:OBJ_VX_HI,x
     iny
-    lda a:$8BFE,y
+    lda a:DebrisTable,y
     sta a:OBJ_Y_LO,x
     iny
-    lda a:$8BFE,y
+    lda a:DebrisTable,y
     sta a:OBJ_VY_HI,x
     jsr VecNextRandom
     sta a:OBJ_VY_LO,x
     iny
-    lda a:$8BFE,y
+    lda a:DebrisTable,y
     sta a:OBJ_FRAME,x
     iny
     lda #$03
@@ -1005,7 +1009,7 @@ RiseAndFallObject_at3:
     dec a:OBJ_WORK_D,x
     bne RiseAndFallObject_at2
     lda #$0B
-    sta a:$276E
+    sta a:OBJ_KIND+30
     inc a:OBJ_STATE,x
     rts
 RiseAndFallObject_at5:
@@ -1070,8 +1074,8 @@ SplitScreenObject:
     lda a:OBJ_STATE,x
     bne SplitScreenObject_at0
     inc a:OBJ_STATE,x
-    dec a:$2D90
-    inc a:$2D91
+    dec a:OBJ_VX_HI+16
+    inc a:OBJ_VX_HI+17
     lda #$40
     sta a:OBJ_WORK_D,x
     lda #$12
@@ -1220,7 +1224,7 @@ FlingObjectLeft_at1:
     rts
 FlingObjectLeft_at3:
     dec a
-    bne $8E72
+    bne FlingObjectRight+62
     jsr VecApplyVelocity
     lda #$0C
     jsr ObjectFrameList
@@ -1246,8 +1250,8 @@ FlingObjectLeft_at5:
 ObjectFrameList:
     asl a
     tay
-    lda a:$8EED,y
+    lda a:FrameLists,y
     sta z:zTemp10
-    lda a:$8EEE,y
+    lda a:FrameLists+1,y
     sta z:zTemp11
     jmp VecStepObjectFrames

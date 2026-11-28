@@ -19,6 +19,8 @@
 ; Names: the object fields f2a10, f2a68, f2ac0, f2b18 and f2fe8 hold the sprite set, frame,
 ; mirror flag, palette byte and flip mask (renames requested); the three zero page bytes
 ; and the disc tables are by address until the owner of the records adds them.
+EmitSpriteSetTable = $81A3 ; sprite set table
+ObjectListTable = $81B5 ; object list table
 EmitObjectSprites:
     lda a:OBJ_Y_LO,x
     clc
@@ -45,9 +47,9 @@ EmitObjectSprites:
     lda a:OBJ_SPRITE_SET,x
     asl a
     tay
-    lda a:$81A3,y
+    lda a:SpriteSetTable,y
     sta z:zTemp00
-    lda a:$81A4,y
+    lda a:EmitSpriteSetTable+1,y
     sta z:zTemp01
     lda a:OBJ_FRAME,x
     asl a
@@ -108,7 +110,7 @@ EmitObjectSprites_at6:
     lda z:zTemp00
     eor #$08
     sta z:zTemp00
-    lda a:$819F,x
+    lda a:SpriteMirrorWidth,x
     sec
     sbc (zTemp10),y
     bra EmitObjectSprites_at8
@@ -137,7 +139,7 @@ EmitObjectSprites_at10:
     bra EmitObjectSprites_at12
 EmitObjectSprites_at11:
     lda z:zTemp05
-    cmp a:$81A1,x
+    cmp a:SpriteXMin,x
     bcc EmitObjectSprites_skip
 EmitObjectSprites_at12:
     iny
@@ -177,10 +179,10 @@ EmitObjectSprites_at16:
     iny
     ldy #$07
 EmitObjectSprites_at17:
-    lda a:$2000,y
+    lda a:ZeroPage,y
     sta a:VDC_DATA_LO
     dey
-    lda a:$2000,y
+    lda a:ZeroPage,y
     sta a:VDC_DATA_HI
     dey
     bpl EmitObjectSprites_at17
@@ -229,16 +231,16 @@ WriteObjectSprites:
     lda z:zRasterStage
     asl a
     tay
-    lda a:$81B5,y
+    lda a:ObjectListTable,y
     sta z:zTemp12
-    lda a:$81B6,y
+    lda a:ObjectListTable+1,y
     sta z:zProduct0
     cly
 WriteObjectSprites_at0:
     lda (zTemp12),y
     tax
     iny
-    sty z:$DA
+    sty z:zHitSlot
     lda a:OBJ_FRAME,x
     beq WriteObjectSprites_at2
     lda a:OBJ_SPRITE_ATTR,x
@@ -254,7 +256,7 @@ WriteObjectSprites_at1:
     bmi WriteObjectSprites_at5
     ldx z:zRichterObject
 WriteObjectSprites_at2:
-    ldy z:$DA
+    ldy z:zHitSlot
     inx
     dec z:zProduct2
     bne WriteObjectSprites_at0

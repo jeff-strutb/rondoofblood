@@ -388,6 +388,15 @@
 #define BiosCdStat 0xE01B /* cd_stat */
 #define BiosCdFade 0xE02D /* cd_fade */
 #define BiosAdTrans 0xE033 /* ad_trans */
+#define BiosCdBase 0xE006 /* cd_base */
+#define BiosExImode 0xE072 /* ex_imode */
+#define BiosExVsync 0xE07B /* ex_vsync */
+#define BiosExMemopen 0xE0DE /* ex_memopen */
+#define BiosExGetfnt 0xE060 /* ex_getfnt */
+#define BiosExDspon 0xE096 /* ex_dspon */
+#define BiosExSprdma 0xE09F /* ex_sprdma */
+#define BiosExSetwrt 0xE0AE /* ex_setwrt */
+#define BiosExColorcmd 0xE0E4 /* ex_colorcmd */
 #define BiosAdRead 0xE036 /* ad_read */
 #define BiosAdPlay 0xE03C /* ad_play */
 #define BiosAdCplay 0xE03F /* ad_cplay */

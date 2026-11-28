@@ -6,11 +6,28 @@
 ; WAITS: yes, through EndingBegin, which waits for the vertical blank.
 ; Entry: nothing. Exit: as the handler leaves them.
 ; not checked: one case of 400 jumps to a table word outside this overlay's C.
+EndingCommands = $806A ; ending commands
+SceneDrifters = $8284 ; scene drifters
+SceneSpeedsXl = $82D9 ; scene speeds xl
+EffectTable = $82EA ; effect table
+EndingLists = $8A05 ; ending lists
+ListPointer = $9400 ; list pointer
+FadePointer = $9402 ; fade pointer
+EndingSteps = $8007 ; the ending's sub-mode handlers
+EndingKinds = $81F9 ; the ending's object handlers by kind
+EndingPieceXs = $831C ; each piece's X
+EndingPieceYs = $833B ; each piece's Y low byte
+FlyOffSpeedXLo = $89E2 ; fly-off speeds by next kind
+FlyOffSpeedXHi = $89E7 ; fly-off speeds by next kind
+FlyOffSpeedYLo = $89EC ; fly-off speeds by next kind
+FlyOffSpeedYHi = $89F1 ; fly-off speeds by next kind
+EndingEffectLists = $89D2 ; the ending's lists for a negative list number
+EndingFadeLists = $9442 ; fade lists for a negative list number
 EndingStep:
     lda z:zGameSubMode
     asl a
     tax
-    jmp (FrameOverlay8006+1,x)
+    jmp (EndingSteps,x)
 
 ; @routine 010D:00B EndingBegin
 ; @run 6B:800B
@@ -86,16 +103,16 @@ EndingScriptStep:
     ldy #$01
     lda (zScriptPtr),y
     cmp z:zWaitTimer3
-    bne $8028
+    bne EndingFrame+9
     iny
     lda (zScriptPtr),y
     cmp z:zWaitTimer4
-    bne $8028
+    bne EndingFrame+9
     lda (zScriptPtr)
     asl a
     tax
     ldy #$03
-    jmp ($806A,x)
+    jmp (EndingCommands,x)
 
 ; @routine 010D:067 EndingModeDoneBack
 ; @run 6B:8067
@@ -303,7 +320,7 @@ EndingCommandLoadBanks_at0:
     stz z:zBiosAl
     lda #$40
     sta z:zBiosAh
-    jsr $E036
+    jsr BiosAdRead
     inc z:zTemp00
     lda z:zTemp00
     cmp #$04
@@ -341,9 +358,9 @@ EndingDispatchKind:
     dec a
     asl a
     tay
-    lda a:$81F9,y
+    lda a:EndingKinds,y
     sta z:zTemp00
-    lda a:$81FA,y
+    lda a:EndingKinds+1,y
     sta z:zTemp01
     jmp (ZeroPage)
 
@@ -385,9 +402,9 @@ EndingCreditScrollStart:
     lda a:OBJ_STATE,x
     asl a
     tay
-    lda a:$8284,y
+    lda a:SceneDrifters,y
     sta a:ScrollXHi
-    lda a:$8285,y
+    lda a:SceneDrifters+1,y
     sta a:ScrollYHi
     lda #$06
     sta a:OBJ_WORK_D,x
@@ -406,7 +423,7 @@ EndingCreditScrollStart_at0:
 EndingFallingPiece:
     lda a:OBJ_STATE,x
     bne EndingFallingPiece_at0
-    lda a:$82D5,x
+    lda a:StageSelectTexts,x
     sta a:OBJ_VY_HI,x
     lda #$03
     sta a:OBJ_SPRITE_SET,x
@@ -424,7 +441,7 @@ EndingFallingPiece_at0:
     lsr a
     and #$01
     tay
-    lda a:$82DA,y
+    lda a:SceneSpeedsXl+1,y
     sta a:OBJ_SPRITE_ATTR,x
     jsr VecApplyVelocity
     lda a:OBJ_Y_HI,x
@@ -488,9 +505,9 @@ EndingPieceSpawn_at2:
     clc
     adc #$40
     sta a:OBJ_FRAME,x
-    lda a:$831C,x
+    lda a:EndingPieceXs,x
     sta a:OBJ_X_LO,x
-    lda a:$833B,x
+    lda a:EndingPieceYs,x
     sta a:OBJ_Y_LO,x
     inx
     cpx #$2F
@@ -1231,10 +1248,10 @@ EndingRiseFrame32A:
     dec a:OBJ_VY_HI,x
     lda #$90
     sta a:OBJ_WORK_D,x
-    lda a:$345F,x
+    lda a:OBJ_ANIM_TIMER-1,x
     clc
     adc #$10
-    sta a:$345F,x
+    sta a:OBJ_ANIM_TIMER-1,x
     inc a:OBJ_STATE,x
     rts
 EndingRiseFrame32A_at0:
@@ -1251,7 +1268,7 @@ EndingRiseFrame32A_at1:
     jsr VecApplyVelocity
     lda a:OBJ_Y_LO,x
     cmp #$60
-    bne $8758
+    bne EndingRiseFrame31+56
     inc a:OBJ_STATE,x
 EndingRiseFrame32A_at2:
     rts
@@ -1288,7 +1305,7 @@ EndingRiseWithList_at1:
     jsr VecApplyVelocity
     lda a:OBJ_Y_LO,x
     cmp #$68
-    bne $8758
+    bne EndingRiseFrame31+56
     inc a:OBJ_STATE,x
 EndingRiseWithList_at2:
     rts
@@ -1311,10 +1328,10 @@ EndingRiseFrame32B:
     dec a:OBJ_VY_HI,x
     lda #$A0
     sta a:OBJ_WORK_D,x
-    lda a:$345F,x
+    lda a:OBJ_ANIM_TIMER-1,x
     clc
     adc #$20
-    sta a:$345F,x
+    sta a:OBJ_ANIM_TIMER-1,x
     inc a:OBJ_STATE,x
     rts
 EndingRiseFrame32B_at0:
@@ -1414,7 +1431,7 @@ EndingLinkAnimationB:
     inc a:OBJ_STATE,x
 EndingLinkAnimationB_at0:
     lda #$05
-    bra $8862
+    bra EndingLinkAnimationA+15
 
 ; @routine 010E:087 EndingScrollSqueeze
 ; @run 6B:8887
@@ -1607,13 +1624,13 @@ EndingFlyOff:
     lda a:OBJ_STATE,x
     bne EndingFlyOff_at0
     ldy a:OBJ_START_ARG,x
-    lda a:$89E2,y
+    lda a:FlyOffSpeedXLo,y
     sta a:OBJ_VX_LO,x
-    lda a:$89E7,y
+    lda a:FlyOffSpeedXHi,y
     sta a:OBJ_VX_HI,x
-    lda a:$89EC,y
+    lda a:FlyOffSpeedYLo,y
     sta a:OBJ_VY_LO,x
-    lda a:$89F1,y
+    lda a:FlyOffSpeedYHi,y
     sta a:OBJ_VY_HI,x
 EndingFlyOff_at2:
     inc a:OBJ_STATE,x
@@ -1637,9 +1654,9 @@ EndingFlyOff_at1:
 EndingFrameList:
     asl a
     tay
-    lda a:$8A05,y
+    lda a:EndingLists,y
     sta z:zTemp10
-    lda a:$8A06,y
+    lda a:EndingLists+1,y
     sta z:zTemp11
     jmp VecStepObjectFrames
 
@@ -1702,9 +1719,9 @@ EndingEffectDispatch:
     dec a
     asl a
     tay
-    lda a:$82EA,y
+    lda a:EffectTable,y
     sta z:zTemp00
-    lda a:$82EB,y
+    lda a:EffectTable+1,y
     sta z:zTemp01
     jmp (ZeroPage)
 
@@ -1727,17 +1744,17 @@ EndingEffectList_at0:
     bpl EndingEffectList_at1
     asl a
     tay
-    lda a:$89D2,y
+    lda a:EndingEffectLists,y
     sta z:zTemp00
-    lda a:$89D3,y
+    lda a:EndingEffectLists+1,y
     sta z:zTemp01
     bra EndingEffectList_at2
 EndingEffectList_at1:
     asl a
     tay
-    lda a:$9400
+    lda a:OverlayEffectLists
     sta z:zBiosAl
-    lda a:$9401
+    lda a:ListPointer+1
     sta z:zBiosAh
     lda (zBiosAl),y
     sta z:zTemp00
@@ -1807,15 +1824,15 @@ EndingEffectFade_at1:
     asl a
     tay
     bcc EndingEffectFade_at2
-    lda a:$9442,y
+    lda a:EndingFadeLists,y
     sta z:zTemp00
-    lda a:$9443,y
+    lda a:EndingFadeLists+1,y
     sta z:zTemp01
     bra EndingEffectFade_at3
 EndingEffectFade_at2:
-    lda a:$9402
+    lda a:OverlayEffectFadeLists
     sta z:zBiosAl
-    lda a:$9403
+    lda a:FadePointer+1
     sta z:zBiosAh
     lda (zBiosAl),y
     sta z:zTemp00

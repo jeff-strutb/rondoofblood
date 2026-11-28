@@ -32,6 +32,7 @@ ListByItem = $9964 ; the list a slot page starts, by chosen item (from 1)
 KindByItem = $9A30 ; 0 for the slot items, by chosen item
 PictureByCharacter = $9A38 ; object $34's frame by character
 CursorByItem = $9AFF ; the cursor value a page returns to, by chosen item
+SlotNotFull = $7DDB ; slot not full
 FileMenuReadSave:
     jsr VecResetGameState
     jsr VecBackupRead
@@ -51,9 +52,9 @@ FileMenuReadSave_at0:
     stz a:MenuSlotCharacter
     stz a:MenuSlotCharacter+1
     stz a:MenuSlotCharacter+2
-    stz a:$7DDD
-    stz a:$7DDE
-    stz a:$7DDF
+    stz a:MenuSlotMusic
+    stz a:MenuSlotMusic+1
+    stz a:MenuSlotMusic+2
     stz z:zSaveSlot
     jsr SlotLastClearedFlag
     stx a:MenuSlotProgress
@@ -343,7 +344,7 @@ FileMenuCopyPickTo_at1:
     sbc #$09
     jsr VecStartListChannelKind3
     lda #$80
-    sta a:OBJ_WORK_D+$26
+    sta a:OBJ_WORK_D+38
     jmp MenuStepAdvance
 
 ; @routine 00C3:454 FileMenuCopyCancel
@@ -377,7 +378,7 @@ FileMenuCopyCancel_at0:
 ; WAITS: no.
 ; Entry: from MenuStepDispatch. Exit, waiting: N and Z from the count; A, X, Y and C kept. Copied: as FileMenuCopyCancel.
 FileMenuCopyMake:
-    dec a:OBJ_WORK_D+$26
+    dec a:OBJ_WORK_D+38
     bne FileMenuCopyCancel+20
     ldy a:MenuCopyFrom
     ldx a:SlotOffsets-1,y
@@ -399,8 +400,8 @@ FileMenuCopyMake_at0:
     sta a:MenuSlotProgress-1,y
     lda a:MenuSlotCharacter-1,x
     sta a:MenuSlotCharacter-1,y
-    lda a:$7DDC,x
-    sta a:$7DDC,y
+    lda a:MenuShowRecords,x
+    sta a:MenuShowRecords,y
     ldx #$01
     lda #$18
     jsr VecStartListChannelKind2
@@ -465,20 +466,20 @@ FileMenuCharacterPage_at0:
     lda a:MenuSlotCharacter,x
     eor #$01
     sta a:MenuSlotCharacter,x
-    sta a:OBJ_START_ARG+$33
+    sta a:OBJ_START_ARG+51
     ldx #$02
-    stx a:OBJ_WORK_D+$34
+    stx a:OBJ_WORK_D+52
     rts
 FileMenuCharacterPage_at2:
     lda #$0C
     jmp SetMenuPage
 FileMenuCharacterPage_at3:
     lda #$01
-    sta a:$7DDC
+    sta a:MenuShowRecords
     lda #$09
     jmp SetMenuPage
 FileMenuCharacterPage_at4:
-    stz a:$7DDC
+    stz a:MenuShowRecords
     lda #$09
     jmp SetMenuPage
 FileMenuCharacterPage_at5:
@@ -688,7 +689,7 @@ NameEntryEnd_at2:
     clx
 NameEntryEnd_at4:
     lda a:MenuName,x
-    sta a:SaveBuffer+$15,y
+    sta a:SaveBuffer+21,y
     cmp a:TileStepsC+2,x
     bne NameEntryEnd_at3
     inc z:zBiosAl
@@ -776,7 +777,7 @@ FileMenuListStart:
 FileMenuListStart_at0:
     lda #$1A
     clc
-    adc a:$7DDC
+    adc a:MenuShowRecords
 FileMenuListStart_t9876:
     jsr VecStartListChannel0Kind2
     lda a:ScrollXHi
@@ -805,7 +806,7 @@ FileMenuListDraw:
     lda #$04
     bra FileMenuListDraw_t98BD
 FileMenuListDraw_at0:
-    lda a:$7DDC
+    lda a:MenuShowRecords
     bne FileMenuListDraw_at1
     jsr DrawSlotMark
     lda #$06
@@ -860,11 +861,11 @@ FileMenuListLeave:
     lda #$0B
     jmp SetMenuPage
 FileMenuListLeave_t9914:
-    lda a:$7DDC
+    lda a:MenuShowRecords
     bne FileMenuListLeave_at0
     lda #$1C
     jsr SetCursorValue
-    stz a:$7DDA
+    stz a:MenuMusicPlaying
     lda #$0E
     jmp SetMenuPage
 FileMenuListLeave_at0:
@@ -914,7 +915,7 @@ FileMenuSlideStart_at0:
 ; WAITS: no.
 ; Entry: from MenuStepDispatch. Exit: as MenuStepAdvance.
 FileMenuSlideDraw:
-    stz a:$7DDB
+    stz a:SlotNotFull
     lda a:MenuChosenItem
     cmp #$07
     beq FileMenuSlideDraw_at0
@@ -938,7 +939,7 @@ FileMenuSlideDraw_at1:
     bne FileMenuSlideDraw_at2
     lda #$1C
     jsr VecStartListChannel0Kind2
-    inc a:$7DDB
+    inc a:SlotNotFull
 FileMenuSlideDraw_at2:
     lda a:MenuChosenItem
     cmp #$04
@@ -968,16 +969,16 @@ FileMenuSlideDraw_at3:
     lda #$05
 FileMenuSlideDraw_at4:
     jsr PlaceObjectList
-    lda a:$7DDB
+    lda a:SlotNotFull
     beq FileMenuSlideDraw_at5
-    stz a:OBJ_FRAME+$2B
+    stz a:OBJ_FRAME+43
 FileMenuSlideDraw_at5:
     ldy a:MenuChosenItem
     lda a:KindByItem,y
     bne FileMenuSlideDraw_at6
     lda a:MenuSlotCharacter-1,y
-    sta a:OBJ_START_ARG+$33
-    sta a:OBJ_WORK_D+$33
+    sta a:OBJ_START_ARG+51
+    sta a:OBJ_WORK_D+51
     tax
     phx
     ldx a:SlotOffsets-1,y
@@ -986,25 +987,25 @@ FileMenuSlideDraw_at5:
     lsr a
     bcc FileMenuSlideDraw_at7
     lda a:PictureByCharacter,x
-    sta a:OBJ_FRAME+$34
+    sta a:OBJ_FRAME+52
 FileMenuSlideDraw_at7:
     ldx a:SlotOffsets-1,y
     lda a:SaveBuffer,x
     lsr a
     bcs FileMenuSlideDraw_at8
-    stz a:OBJ_FRAME+$31
+    stz a:OBJ_FRAME+49
 FileMenuSlideDraw_at8:
     lsr a
     bcs FileMenuSlideDraw_at9
-    stz a:OBJ_FRAME+$32
+    stz a:OBJ_FRAME+50
 FileMenuSlideDraw_at9:
     lsr a
     bcs FileMenuSlideDraw_at10
-    stz a:OBJ_FRAME+$2F
+    stz a:OBJ_FRAME+47
 FileMenuSlideDraw_at10:
     lsr a
     bcs FileMenuSlideDraw_at6
-    stz a:OBJ_FRAME+$30
+    stz a:OBJ_FRAME+48
 FileMenuSlideDraw_at6:
     stz a:ScrollStepXLo
     stz a:ScrollStepXHi
@@ -1148,7 +1149,7 @@ FileMenuBackStart:
     lda a:MenuChosenItem
     cmp #$04
     bcs FileMenuBackStart_at0
-    lda a:$7DDC
+    lda a:MenuShowRecords
     bne FileMenuBackStart_at1
     lda #$17
     bra FileMenuBackStart_at2
@@ -1526,7 +1527,7 @@ DrawSlotMark:
     st2 #$02
     jsr VecSelectVramData
     ldy z:zSaveSlot
-    lda a:$7DDD,y
+    lda a:MenuSlotMusic,y
     inc a
     cmp #$0A
     bcc DrawSlotMark_at0
@@ -1534,7 +1535,7 @@ DrawSlotMark:
 DrawSlotMark_at0:
     bsr WriteHexByteTiles
     ldy z:zSaveSlot
-    lda a:$7DDD,y
+    lda a:MenuSlotMusic,y
     asl a
     tax
     lda a:MarkTexts,x
@@ -2083,8 +2084,8 @@ AnimateMenuMarks:
     and #$07
     clc
     adc #$05
-    sta a:OBJ_FRAME+$0C
-    sta a:OBJ_FRAME+$0D
+    sta a:OBJ_FRAME+12
+    sta a:OBJ_FRAME+13
     rts
 
 ; @routine 00DF:68B MusicSelectStep
@@ -2181,16 +2182,16 @@ FileMenuLeaveStep:
     clx
     jsr StartScriptSlotKind6B
     lda #$09
-    sta a:OBJ_WORK_D+$10
+    sta a:OBJ_WORK_D+16
     lda #$01
-    sta a:OBJ_WORK_E+$10
+    sta a:OBJ_WORK_E+16
     lda #$0C
     jsr BiosCdFade
     inc z:zField80
 FileMenuLeaveStep_at0:
     rts
 FileMenuLeaveStep_tBB48:
-    dec a:OBJ_WORK_E+$10
+    dec a:OBJ_WORK_E+16
     bne FileMenuLeaveStep_at0
     lda #$12
     bbr0 zIdleFlag,FileMenuLeaveStep_at1
@@ -2256,8 +2257,8 @@ FileMenuLeaveStep_at4:
     clx
     jsr StartScriptSlotKind7B
     lda #$08
-    sta a:OBJ_WORK_E+$10
-    dec a:OBJ_WORK_D+$10
+    sta a:OBJ_WORK_E+16
+    dec a:OBJ_WORK_D+16
     bne FileMenuLeaveStep_at5
     jsr VecSelectVramWriteAddress
     st1 #$00
@@ -2916,8 +2917,8 @@ FileMenuMapLeaveDraw_at0:
     jsr PlaceObjectList
     ldy z:zSaveSlot
     lda a:MenuSlotCharacter,y
-    sta a:OBJ_START_ARG+$33
-    sta a:OBJ_WORK_D+$33
+    sta a:OBJ_START_ARG+51
+    sta a:OBJ_WORK_D+51
     tax
     phx
     ldx a:SlotOffsets,y
@@ -2926,26 +2927,26 @@ FileMenuMapLeaveDraw_at0:
     lsr a
     bcc FileMenuMapLeaveDraw_at1
     lda a:PieceRecords12DA,x
-    sta a:OBJ_FRAME+$34
+    sta a:OBJ_FRAME+52
 FileMenuMapLeaveDraw_at1:
     ldy z:zSaveSlot
     ldx a:SlotOffsets,y
     lda a:SaveBuffer,x
     lsr a
     bcs FileMenuMapLeaveDraw_at2
-    stz a:OBJ_FRAME+$31
+    stz a:OBJ_FRAME+49
 FileMenuMapLeaveDraw_at2:
     lsr a
     bcs FileMenuMapLeaveDraw_at3
-    stz a:OBJ_FRAME+$32
+    stz a:OBJ_FRAME+50
 FileMenuMapLeaveDraw_at3:
     lsr a
     bcs FileMenuMapLeaveDraw_at4
-    stz a:OBJ_FRAME+$2F
+    stz a:OBJ_FRAME+47
 FileMenuMapLeaveDraw_at4:
     lsr a
     bcs FileMenuMapLeaveDraw_at5
-    stz a:OBJ_FRAME+$30
+    stz a:OBJ_FRAME+48
 FileMenuMapLeaveDraw_at5:
     ldx #$10
 FileMenuMapLeaveDraw_tAECF:
@@ -3049,14 +3050,14 @@ PlaceMapMarks_at1:
     jsr VecClearObject
     lda #$05
     sta a:OBJ_SPRITE_SET,x
-    sta a:OBJ_SPRITE_SET-$10,x
+    sta a:OBJ_SPRITE_SET-16,x
     lda a:MapMarkX,x
     sta a:OBJ_X_LO,x
-    sta a:OBJ_X_LO-$10,x
+    sta a:OBJ_X_LO-16,x
     lda a:MapMarkY,x
     sta a:OBJ_Y_LO,x
-    sta a:OBJ_Y_LO-$10,x
-    lda a:MapFlags-$20,x
+    sta a:OBJ_Y_LO-16,x
+    lda a:MapFlags-32,x
     beq PlaceMapMarks_at0
     lda #$0D
     sta a:OBJ_FRAME,x
@@ -3079,22 +3080,22 @@ LightMapMarks:
     cpy #$01
     bne LightMapMarks_at0
     ldx #$03
-    inc a:OBJ_START_ARG+$10,x
+    inc a:OBJ_START_ARG+16,x
     lda a:StageVramBuffer,x
     bne LightMapMarks_at0
     lda #$0D
-    sta a:OBJ_FRAME+$20,x
+    sta a:OBJ_FRAME+32,x
     lda #$10
-    sta a:OBJ_SPRITE_ATTR+$20,x
+    sta a:OBJ_SPRITE_ATTR+32,x
 LightMapMarks_at0:
     ldx a:MapLinks,y
-    inc a:OBJ_START_ARG+$10,x
+    inc a:OBJ_START_ARG+16,x
     lda a:StageVramBuffer,x
     bne LightMapMarks_at1
     lda #$0D
-    sta a:OBJ_FRAME+$20,x
+    sta a:OBJ_FRAME+32,x
     lda #$10
-    sta a:OBJ_SPRITE_ATTR+$20,x
+    sta a:OBJ_SPRITE_ATTR+32,x
 LightMapMarks_at1:
     rts
 
@@ -3134,16 +3135,16 @@ PutOutMapMarks:
     cpy #$01
     bne PutOutMapMarks_at0
     ldx #$03
-    stz a:OBJ_START_ARG+$10,x
+    stz a:OBJ_START_ARG+16,x
     lda a:StageVramBuffer,x
     bne PutOutMapMarks_at0
-    stz a:OBJ_FRAME+$20,x
+    stz a:OBJ_FRAME+32,x
 PutOutMapMarks_at0:
     ldx a:MapLinks,y
-    stz a:OBJ_START_ARG+$10,x
+    stz a:OBJ_START_ARG+16,x
     lda a:StageVramBuffer,x
     bne PutOutMapMarks_at1
-    stz a:OBJ_FRAME+$20,x
+    stz a:OBJ_FRAME+32,x
 PutOutMapMarks_at1:
     rts
 
@@ -3279,22 +3280,22 @@ FileMenuFrame:
     beq FileMenuFrame_at0
     cmp #$0C
     beq FileMenuFrame_at0
-    lda a:OBJ_FRAME+$26
+    lda a:OBJ_FRAME+38
     beq FileMenuFrame_at0
     lda #$88
-    sta a:OBJ_SPRITE_ATTR+$26
-    sta a:OBJ_SPRITE_ATTR+$27
+    sta a:OBJ_SPRITE_ATTR+38
+    sta a:OBJ_SPRITE_ATTR+39
     ldx #$26
     jsr ObjectFrameFromTick
     inx
     jsr ObjectFrameFromTick
-    lda a:OBJ_FRAME+$3A
+    lda a:OBJ_FRAME+58
     beq FileMenuFrame_at0
     lda #$88
-    sta a:OBJ_SPRITE_ATTR+$3A
-    sta a:OBJ_SPRITE_ATTR+$3B
-    sta a:OBJ_SPRITE_ATTR+$3C
-    sta a:OBJ_SPRITE_ATTR+$3D
+    sta a:OBJ_SPRITE_ATTR+58
+    sta a:OBJ_SPRITE_ATTR+59
+    sta a:OBJ_SPRITE_ATTR+60
+    sta a:OBJ_SPRITE_ATTR+61
     ldx #$3A
     jsr ObjectFrameFromTick
     inx

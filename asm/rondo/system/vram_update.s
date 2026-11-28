@@ -9,6 +9,8 @@
 ; Entry: A the block number, carry the add into the bank (ADC #0 first), zTemp10 the VRAM address.
 ; Exit: A $10, Z set, C set, N clear, Y $20, V from the last high byte add; X kept.
 ; Names: zp $13, $17 (the pointer's high byte and the count) are by address until the records name them.
+VramListTableA00C5 = $8360 ; a table of VRAM list pointers
+VramListTableB0111 = $82AE ; a table of VRAM list pointers
 CopyTileBlockToVram:
     pha
     lda #$0B
@@ -703,10 +705,10 @@ SelectBlockTablesP_at0:
 VramListFromTableA:
     asl a
     tay
-    lda a:$8360,y
-    sta z:$14
-    lda a:$8361,y
-    sta z:$15
+    lda a:VramListTableA00C5,y
+    sta z:zProduct1
+    lda a:VramListTableA00C5+1,y
+    sta z:zProduct2
     cly
     bra VramListRun
 
@@ -721,10 +723,10 @@ VramListFromTableA:
 VramListFromTableB:
     asl a
     tay
-    lda a:$82AE,y
-    sta z:$14
-    lda a:$82AF,y
-    sta z:$15
+    lda a:VramListTableB0111,y
+    sta z:zProduct1
+    lda a:VramListTableB0111+1,y
+    sta z:zProduct2
     cly
     bra VramListRun
 
@@ -1119,15 +1121,15 @@ VramListFromIndex:
     bmi *-15
     asl a
     tay
-    lda a:$9802
-    sta z:$F8
-    lda a:$9803
-    sta z:$F9
-    lda ($F8),y
-    sta z:$14
+    lda a:OverlayListChannelSeqs+2
+    sta z:zBiosAl
+    lda a:OverlayListChannelSeqs+3
+    sta z:zBiosAh
+    lda (zBiosAl),y
+    sta z:zProduct1
     iny
-    lda ($F8),y
-    sta z:$15
+    lda (zBiosAl),y
+    sta z:zProduct2
     cly
 
 ; @routine 00C5:169 VramListRun
@@ -1141,7 +1143,7 @@ VramListFromIndex:
 ; entry leaves them.
 ; Untraced: the bank $31 replacement.
 VramListRun:
-    lda ($14),y
+    lda (zProduct1),y
     cmp #$FF
     bne VramListRun_at0
     rts
@@ -1165,23 +1167,23 @@ VramListRun_at2:
     inc a
     tam #$40
     iny
-    lda ($14),y
+    lda (zProduct1),y
     sta z:zTemp11
     iny
     jsr VecClearVdcControlHigh
     jsr VecSelectVramWriteAddress
-    lda ($14),y
+    lda (zProduct1),y
     iny
     sta z:zMultiplierLo
     sta a:VDC_DATA_LO
-    lda ($14),y
+    lda (zProduct1),y
     iny
     sta z:zMultiplierHi
     sta a:VDC_DATA_HI
-    lda ($14),y
+    lda (zProduct1),y
     sta z:zTemp12
     iny
-    lda ($14),y
+    lda (zProduct1),y
     sta z:zProduct0
     iny
     jsr VecSelectVramData
@@ -1192,7 +1194,7 @@ VramListRun_at2:
     ply
     bra VramListRun
 VramListRun_at3:
-    lda ($14),y
+    lda (zProduct1),y
     iny
     tax
     phy

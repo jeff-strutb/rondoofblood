@@ -10,10 +10,32 @@
 ; program's routines by their frames. The frame loops wait on the card's entry at $E07B.
 ; WAITS: yes, in the card's entries it calls (not read yet); it never returns.
 ; Entry: from the boot program's jump, MPR2 to MPR6 $80 to $84. Exit: never.
+CardArg221f = $221F ; card arg 221f
+CardArg2220 = $2220 ; card arg 2220
+CardArg2221 = $2221 ; card arg 2221
+CardArg2222 = $2222 ; card arg 2222
+CardArg2223 = $2223 ; card arg 2223
+CardArg2224 = $2224 ; card arg 2224
+CardArg2225 = $2225 ; card arg 2225
+MirrorOffsets = $4453 ; mirror offsets
+TitleFrames = $44F0 ; title frames
+TitleX = $44F9 ; title x
+TitleY = $4502 ; title y
+PlayerHandlers = $46F3 ; player handlers
+HurtSpeeds = $478D ; hurt speeds
+Object1Handlers = $4877 ; object1 handlers
+WorldHandlers = $49D0 ; world handlers
+WorldHurtSpeeds = $4A8B ; world hurt speeds
+WorldPieceSpeeds = $4A8D ; world piece speeds
+SpawnerHandlers = $4B25 ; spawner handlers
+OldCardAnimationLists = $52DF ; animation lists
+CardReset = $E000 ; card reset
+OldCardTitleTiles = $7FDF ; the title's tiles
+OldCardPlayerTiles = $5FDF ; the player screen's tiles
 OldCardMain:
     clx
 OldCardMain_at0:
-    jsr $4584
+    jsr OldCardClearObject
     inx
     cpx #$58
     bne OldCardMain_at0
@@ -31,26 +53,26 @@ OldCardMain_at0:
     ldy #$1E
     jsr BiosExScrmod
     stz z:BiosIrqDisable
-    jsr $E099
-    jsr $E07B
+    jsr BiosExDspoff
+    jsr BiosExVsync
     cla
-    jsr $E072
+    jsr BiosExImode
     lda #$DF
-    sta a:$2220
+    sta a:CardArg2220
     lda #$57
-    sta a:$2221
+    sta a:CardArg2221
     lda #$10
-    sta a:$2222
+    sta a:CardArg2222
     lda #$DF
-    sta a:$2223
+    sta a:CardArg2223
     lda #$59
-    sta a:$2224
+    sta a:CardArg2224
     lda #$10
-    sta a:$2225
+    sta a:CardArg2225
     lda #$02
-    sta a:$221F
-    jsr $E0E4
-    lda a:$FFF5
+    sta a:CardArg221f
+    jsr BiosExColorcmd
+    lda a:CardRamBase
     sta z:zRamBaseBank
     tam #$04
     inc a
@@ -82,8 +104,8 @@ OldCardMain_at1:
     jsr PlayCdTrack
     cla
     clx
-    jsr $E0AE
-    tia $7FDF,VDC_DATA_LO,$2000
+    jsr BiosExSetwrt
+    tia OldCardTitleTiles,VDC_DATA_LO,$2000
     sei
     st0 #$07
     st1 #$00
@@ -99,16 +121,16 @@ OldCardMain_at1:
     stz a:BiosScreenLo
     lda #$10
     sta a:BiosScreenHi
-    jsr $E09F
-    jsr $E07B
+    jsr BiosExSprdma
+    jsr BiosExVsync
     jsr SpawnTitleObjects
-    jsr $E096
+    jsr BiosExDspon
     jsr DrawSprites
     stz a:BiosScreenLo
     lda #$10
     sta a:BiosScreenHi
-    jsr $E09F
-    jsr $E07B
+    jsr BiosExSprdma
+    jsr BiosExVsync
     lda #$06
     ldx #$25
     ldy #$42
@@ -116,7 +138,7 @@ OldCardMain_at1:
 OldCardMain_at3:
     jsr BiosExJoysns
     inc z:zFrameTick
-    jsr $E07B
+    jsr BiosExVsync
     lda a:ScrollXFrac
     sta a:ScrollBandFirst
     lda a:ScrollXLo
@@ -134,7 +156,7 @@ OldCardMain_at3:
     inc a
     and #$03
     sta a:ScrollXHi
-    jsr $4692
+    jsr OldCardNextRandom
     jsr StepTitleTimer
     lda a:BiosJoyTrigger
     and #$08
@@ -143,39 +165,39 @@ OldCardMain_at3:
     stz a:BiosScreenLo
     lda #$10
     sta a:BiosScreenHi
-    jsr $E09F
+    jsr BiosExSprdma
     bra OldCardMain_at3
 OldCardMain_at2:
-    jsr $E099
-    jsr $E07B
+    jsr BiosExDspoff
+    jsr BiosExVsync
     stz a:ScrollXHi
     clx
 OldCardMain_at4:
-    jsr $4584
+    jsr OldCardClearObject
     inx
     cpx #$58
     bne OldCardMain_at4
     cla
-    jsr $E072
+    jsr BiosExImode
     lda #$DF
-    sta a:$2220
+    sta a:CardArg2220
     lda #$53
-    sta a:$2221
+    sta a:CardArg2221
     lda #$10
-    sta a:$2222
+    sta a:CardArg2222
     lda #$DF
-    sta a:$2223
+    sta a:CardArg2223
     lda #$55
-    sta a:$2224
+    sta a:CardArg2224
     lda #$10
-    sta a:$2225
+    sta a:CardArg2225
     lda #$02
-    sta a:$221F
-    jsr $E0E4
+    sta a:CardArg221f
+    jsr BiosExColorcmd
     cla
     clx
-    jsr $E0AE
-    tia $5FDF,VDC_DATA_LO,$2000
+    jsr BiosExSetwrt
+    tia OldCardPlayerTiles,VDC_DATA_LO,$2000
     sei
     st0 #$07
     st1 #$00
@@ -191,31 +213,31 @@ OldCardMain_at4:
     stz a:BiosScreenLo
     lda #$10
     sta a:BiosScreenHi
-    jsr $E09F
-    jsr $E07B
+    jsr BiosExSprdma
+    jsr BiosExVsync
     jsr InitPlayerObject
     jsr InitObject1
     jsr InitSpawner
     jsr ClearWorldObjects
     lda #$37
-    sta a:$2A88
+    sta a:OBJ_FRAME+32
     lda #$80
-    sta a:$2BE8
+    sta a:OBJ_X_LO+32
     lda #$58
-    sta a:$2CF0
+    sta a:OBJ_Y_LO+32
     lda #$02
-    sta a:$3530
-    jsr $E096
+    sta a:OBJ_WORK_E+32
+    jsr BiosExDspon
     jsr DrawSprites
     stz a:BiosScreenLo
     lda #$10
     sta a:BiosScreenHi
-    jsr $E09F
-    jsr $E07B
+    jsr BiosExSprdma
+    jsr BiosExVsync
 OldCardMain_at5:
     jsr BiosExJoysns
     inc z:zFrameTick
-    jsr $E07B
+    jsr BiosExVsync
     lda a:ScrollXFrac
     sta a:ScrollBandFirst
     lda a:ScrollXLo
@@ -229,13 +251,13 @@ OldCardMain_at5:
     lda a:ScrollYHi
     sta a:ScrollBgyHi
     jsr SetBackgroundScroll
-    jsr $4692
+    jsr OldCardNextRandom
     bsr StepDemoFrame
     jsr DrawSprites
     stz a:BiosScreenLo
     lda #$10
     sta a:BiosScreenHi
-    jsr $E09F
+    jsr BiosExSprdma
     bra OldCardMain_at5
 
 ; @routine 0023:225 OldCardSoftReset
@@ -245,7 +267,7 @@ OldCardMain_at5:
 ; WAITS: no; it does not return.
 ; Entry: from the card's soft reset. Exit: never.
 OldCardSoftReset:
-    jmp $E000
+    jmp CardReset
 
 ; @routine 0023:228 StepDemoFrame
 ; @run 80:4228
@@ -257,11 +279,11 @@ OldCardSoftReset:
 ; WAITS: no.
 ; Entry: nothing. Exit: as CheckPlayerHits leaves them, with what it keeps from the calls before.
 StepDemoFrame:
-    dec a:$34D8
+    dec a:OBJ_WORK_D+32
     bne StepDemoFrame_at0
-    dec a:$3530
+    dec a:OBJ_WORK_E+32
     bne StepDemoFrame_at0
-    stz a:$2A88
+    stz a:OBJ_FRAME+32
 StepDemoFrame_at0:
     jsr RunPlayerObject
     jsr RunObject1
@@ -318,11 +340,11 @@ SelectVdcRegisterOldCard:
 StartObjectAnimation:
     asl a
     tay
-    lda a:$52DF,y
+    lda a:OldCardAnimationLists,y
     sta z:zTemp10
-    lda a:$52E0,y
+    lda a:OldCardAnimationLists+1,y
     sta z:zTemp11
-    jmp $449E
+    jmp OldCardStepObjectFrames
 
 ; @routine 0023:285 ClampObjectLeft
 ; @run 80:4285
@@ -410,7 +432,7 @@ ScrollWithPlayer_at2:
 DrawSprites:
     cla
     ldx #$10
-    jsr $E0AE
+    jsr BiosExSetwrt
     lda #$3F
     sta z:SpritesLeft
     lda #$58
@@ -541,7 +563,7 @@ DrawObjectSprite_at5:
     lda z:zTemp00
     eor #$08
     sta z:zTemp00
-    lda a:$4453,x
+    lda a:MirrorOffsets,x
     sec
     sbc (zTemp10),y
     bra DrawObjectSprite_at10
@@ -570,7 +592,7 @@ DrawObjectSprite_at13:
     bra DrawObjectSprite_at14
 DrawObjectSprite_at12:
     lda z:zTemp05
-    cmp a:$4455,x
+    cmp a:MirrorOffsets+2,x
     bcc DrawObjectSprite_at7
 DrawObjectSprite_at14:
     iny
@@ -694,12 +716,12 @@ PlayCdTrack_at0:
 SpawnTitleObjects:
     clx
 SpawnTitleObjects_at0:
-    jsr $4584
-    lda a:$44F0,x
+    jsr OldCardClearObject
+    lda a:TitleFrames,x
     sta a:OBJ_FRAME,x
-    lda a:$44F9,x
+    lda a:TitleX,x
     sta a:OBJ_X_LO,x
-    lda a:$4502,x
+    lda a:TitleY,x
     sta a:OBJ_Y_LO,x
     inx
     cpx #$09
@@ -754,31 +776,31 @@ StepTitleTimer_at2:
     stz a:OBJ_FRAME+7
     stz a:OBJ_FRAME+8
     lda #$DF
-    sta a:$2220
+    sta a:CardArg2220
     lda #$57
-    sta a:$2221
+    sta a:CardArg2221
 StepTitleTimer_at6:
     lda #$10
-    sta a:$2222
-    stz a:$2225
+    sta a:CardArg2222
+    stz a:CardArg2225
     lda #$02
-    sta a:$221F
-    jmp $E0E4
+    sta a:CardArg221f
+    jmp BiosExColorcmd
 StepTitleTimer_at4:
     lda #$36
     sta a:OBJ_FRAME+8
     lda #$DF
-    sta a:$2220
+    sta a:CardArg2220
     lda #$5B
-    sta a:$2221
+    sta a:CardArg2221
     bra StepTitleTimer_at6
 StepTitleTimer_at5:
     lda #$36
     sta a:OBJ_FRAME+7
     lda #$DF
-    sta a:$2220
+    sta a:CardArg2220
     lda #$5D
-    sta a:$2221
+    sta a:CardArg2221
     bra StepTitleTimer_at6
 
 ; @routine 0023:6CA InitPlayerObject
@@ -789,7 +811,7 @@ StepTitleTimer_at5:
 ; Entry: nothing. Exit: A $40, X 0, N and Z from A. Y, C and V kept.
 InitPlayerObject:
     ldx #$00
-    jsr $4584
+    jsr OldCardClearObject
     lda #$03
     sta a:OBJ_FRAME,x
     lda #$A0
@@ -810,9 +832,9 @@ RunPlayerObject:
     lda a:OBJ_WORK_D,x
     asl a
     tay
-    lda a:$46F3,y
+    lda a:PlayerHandlers,y
     sta z:zTemp00
-    lda a:$46F4,y
+    lda a:PlayerHandlers+1,y
     sta z:zTemp01
     jmp (ZeroPage)
 
@@ -839,7 +861,7 @@ PlayerStand:
     stz a:OBJ_ANIM_TIMER,x
     lda #$01
     sta a:OBJ_WORK_D,x
-    jmp $47A7
+    jmp PlayerWalk+21
 PlayerStand_at3:
     stz a:OBJ_ANIM_STEP,x
     stz a:OBJ_ANIM_TIMER,x
@@ -882,7 +904,7 @@ PlayerStand_at0:
     lda a:OBJ_HITBOX_ON,x
     lsr a
     tay
-    lda a:$478D,y
+    lda a:HurtSpeeds,y
     sta a:OBJ_VX_HI,x
     stz a:OBJ_VY_LO,x
     lda #$FC
@@ -898,7 +920,7 @@ PlayerStand_at0:
 ; WAITS: no.
 ; Entry: X the object. Exit: as player_exit_shim's animated arm. X kept.
 PlayerRestFromWalk:
-    jmp $4720
+    jmp PlayerStand+35
 
 ; @routine 0023:792 PlayerWalk
 ; @run 80:4792
@@ -957,7 +979,7 @@ PlayerJump:
     cla
     adc a:OBJ_VY_HI,x
     sta a:OBJ_VY_HI,x
-    jsr $4624
+    jsr OldCardApplyVelocity
     lda a:OBJ_Y_LO,x
     cmp #$A0
     bcc PlayerJump_at0
@@ -973,7 +995,7 @@ PlayerJump_at0:
     stz a:OBJ_VX_HI,x
     stz a:OBJ_VX_LO,x
     stz a:OBJ_VY_HI,x
-    jmp $4720
+    jmp PlayerStand+35
 PlayerJump_at1:
     rts
 
@@ -1000,7 +1022,7 @@ PlayerAttack:
     jsr StartObjectAnimation
     tay
     bne PlayerAttack_at0
-    jmp $4720
+    jmp PlayerStand+35
 PlayerAttack_at0:
     rts
 
@@ -1019,11 +1041,11 @@ PlayerKnockedBack:
     cla
     adc a:OBJ_VY_HI,x
     sta a:OBJ_VY_HI,x
-    jsr $4624
+    jsr OldCardApplyVelocity
     lda a:OBJ_Y_LO,x
     cmp #$A0
     bcc PlayerKnockedBack_at0
-    jmp $4720
+    jmp PlayerStand+35
 PlayerKnockedBack_at0:
     lda #$04
     jmp StartObjectAnimation
@@ -1037,7 +1059,7 @@ PlayerKnockedBack_at0:
 ; Entry: nothing. Exit: A $FF, X 1, N and Z from A. Y, C and V kept.
 InitObject1:
     ldx #$01
-    jsr $4584
+    jsr OldCardClearObject
     lda #$A0
     sta a:OBJ_Y_LO,x
     lda #$01
@@ -1061,9 +1083,9 @@ RunObject1:
     lda a:OBJ_WORK_D,x
     asl a
     tay
-    lda a:$4877,y
+    lda a:Object1Handlers,y
     sta z:zTemp00
-    lda a:$4878,y
+    lda a:Object1Handlers+1,y
     sta z:zTemp01
     jmp (ZeroPage)
 
@@ -1091,7 +1113,7 @@ Object1WaitForScroll_at0:
 Object1WalkIn:
     lda #$08
     jsr StartObjectAnimation
-    jsr $4624
+    jsr OldCardApplyVelocity
     lda a:OBJ_X_LO,x
     cmp #$C0
     bne Object1WalkIn_at0
@@ -1099,7 +1121,7 @@ Object1WalkIn_at1:
     lda #$02
     sta a:OBJ_WORK_D,x
     stz a:OBJ_VX_HI,x
-    jsr $4692
+    jsr OldCardNextRandom
     and #$3F
     ora #$40
     sta a:OBJ_WORK_E,x
@@ -1139,7 +1161,7 @@ Object1FacePlayer_at0:
 Object1Wait:
     dec a:OBJ_WORK_E,x
     bne Object1Wait_at0
-    jsr $4692
+    jsr OldCardNextRandom
     and #$03
     bne Object1Wait_at1
     lda a:OBJ_X_LO,x
@@ -1181,7 +1203,7 @@ Object1Jump:
     cla
     adc a:OBJ_VY_HI,x
     sta a:OBJ_VY_HI,x
-    jsr $4624
+    jsr OldCardApplyVelocity
     lda a:OBJ_Y_LO,x
     cmp #$A0
     bcc Object1Jump_at0
@@ -1285,7 +1307,7 @@ WorldToScreen_at0:
 ClearWorldObjects:
     ldx #$04
 ClearWorldObjects_at0:
-    jsr $4584
+    jsr OldCardClearObject
     inx
     cpx #$14
     bne ClearWorldObjects_at0
@@ -1321,9 +1343,9 @@ RunWorldObject:
     lda a:OBJ_WORK_D,x
     asl a
     tay
-    lda a:$49D0,y
+    lda a:WorldHandlers,y
     sta z:zTemp00
-    lda a:$49D1,y
+    lda a:WorldHandlers+1,y
     sta z:zTemp01
     jmp (ZeroPage)
 
@@ -1394,7 +1416,7 @@ WorldObjectWalk_at0:
     lda a:OBJ_HITBOX_ON,x
     lsr a
     tay
-    lda a:$4A8B,y
+    lda a:WorldHurtSpeeds,y
     sta a:OBJ_VX_HI,x
     stz a:OBJ_VY_LO,x
     lda #$FC
@@ -1402,24 +1424,24 @@ WorldObjectWalk_at0:
     lda #$04
     sta a:OBJ_WORK_D,x
     lda a:OBJ_WORK_F,x
-    sta a:$3567,x
+    sta a:OBJ_WORK_F-1,x
     lda a:OBJ_WORK_G,x
-    sta a:$35BF,x
+    sta a:StageSequenceToggle,x
     lda a:OBJ_WORK_I,x
     sec
     sbc #$10
-    sta a:$366F,x
+    sta a:StageBlendOn+1,x
     lda a:OBJ_WORK_J,x
-    sta a:$36C7,x
+    sta a:StageBlendStep+1,x
     lda #$FE
-    sta a:$2E2F,x
+    sta a:OBJ_VY_HI-1,x
     lda a:OBJ_HITBOX_ON,x
     lsr a
     tay
-    lda a:$4A8D,y
-    sta a:$2D7F,x
+    lda a:WorldPieceSpeeds,y
+    sta a:OBJ_VX_HI-1,x
     lda #$1E
-    sta a:$2A67,x
+    sta a:OBJ_FRAME-1,x
     rts
 
 ; @routine 0024:28F WorldObjectStunned
@@ -1465,7 +1487,7 @@ WorldObjectFallAway:
     jsr StartObjectAnimation
     rts
 WorldObjectFallAway_at0:
-    jmp $4584
+    jmp OldCardClearObject
 
 ; @routine 0024:2CD WorldObjectPiece
 ; @run 80:4ACD
@@ -1475,7 +1497,7 @@ WorldObjectFallAway_at0:
 ; WAITS: no.
 ; Entry: X the object. Exit: as world_exit_shim. X kept.
 WorldObjectPiece:
-    lda a:$2A67,x
+    lda a:OBJ_FRAME-1,x
     beq WorldObjectPiece_at0
     dex
     lda #$07
@@ -1493,7 +1515,7 @@ WorldObjectPiece_at0:
     jsr ApplyWorldVelocity
     lda a:OBJ_WORK_J,x
     beq WorldObjectPiece_at1
-    jmp $4584
+    jmp OldCardClearObject
 WorldObjectPiece_at1:
     lda #$06
     jmp StartObjectAnimation
@@ -1506,7 +1528,7 @@ WorldObjectPiece_at1:
 ; Entry: nothing. Exit: A 2, X 3, N and Z from A. Y, C and V kept.
 InitSpawner:
     ldx #$03
-    jsr $4584
+    jsr OldCardClearObject
     lda #$01
     sta a:OBJ_WORK_K,x
     lda #$E0
@@ -1526,9 +1548,9 @@ RunSpawner:
     lda a:OBJ_WORK_D,x
     asl a
     tay
-    lda a:$4B25,y
+    lda a:SpawnerHandlers,y
     sta z:zTemp00
-    lda a:$4B26,y
+    lda a:SpawnerHandlers+1,y
     sta z:zTemp01
     jmp (ZeroPage)
 
@@ -1569,9 +1591,9 @@ SpawnerStep_at0:
     dec a:OBJ_WORK_K,x
     rts
 SpawnerStep_at2:
-    jsr $4584
+    jsr OldCardClearObject
     inx
-    jsr $4584
+    jsr OldCardClearObject
     lda a:OBJ_WORK_F+3
     sta a:OBJ_WORK_F,x
     lda a:OBJ_WORK_G+3

@@ -10,6 +10,7 @@
 ; HOW: ST0, ST1 and ST2 to the VDC; the card's entries with the registers its code is handed, built by shims.
 ; WAITS: yes, in the card's entries (cd_read until it answers zero).
 ; Entry: from the boot block. Exit: never: a jump to $4000.
+ProgramEntry = $4000 ; where either program is entered: the kernel's or the old card's
 BootStart:
     st0 #$00
     st1 #$00
@@ -42,19 +43,19 @@ BootStart_at1:
     sta z:zBiosAl
     lda #$01
     sta z:zBiosCl
-    jsr $E006
+    jsr BiosCdBase
     lda #$82
     sta z:zBiosBh
     lda #$22
     sta z:zBiosAl
     lda #$02
     sta z:zBiosCl
-    jsr $E006
+    jsr BiosCdBase
     jsr BiosExGetver
     cpx #$03
     bcs BootStart_at2
 BootStart_at5:
-    lda a:$FFF5
+    lda a:CardRamBase
     sta z:zRamBaseBank
     tam #$04
     inc a
@@ -83,7 +84,7 @@ BootStart_at3:
     bne BootStart_at3
     jmp BootStart_at4
 BootStart_at2:
-    jsr $E0DE
+    jsr BiosExMemopen
     bcs BootStart_at5
     sta z:zRamBaseBank
     cla
@@ -95,7 +96,7 @@ BootStart_at2:
     inc a
     tam #$08
 BootStart_at4:
-    jmp $4000
+    jmp ProgramEntry
 
 ; @routine 0002:09C LoadBootBlocks
 ; @run F8:309C

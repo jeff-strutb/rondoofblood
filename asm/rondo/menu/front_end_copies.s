@@ -20,9 +20,9 @@ RunListChannel0111_at1:
     rts
     lda a:ListChannelHold,x
     bne RunListChannel0111_at1
-    lda a:$9800
+    lda a:OverlayListChannelSeqs
     sta z:zBiosAl
-    lda a:$9801
+    lda a:ChannelLists+1
     sta z:zBiosAh
     lda a:ListChannelList,x
     asl a
@@ -64,9 +64,9 @@ RunListChannel0111_at7:
     lda a:ListChannelList,x
     asl a
     tay
-    lda a:$829F,y
+    lda a:ChannelCopyLists00C5,y
     sta a:ListWordLo,x
-    lda a:$82A0,y
+    lda a:ChannelCopyLists00C5+1,y
     sta a:ListWordHi,x
     bra TitleBlink
 RunListChannel0111_at4:
@@ -156,11 +156,11 @@ RunListChannel0111_at5:
 ; Entry, exit: as AddToListWord.
 AddToListWord0111:
     clc
-    adc a:$3CA0,x
-    sta a:$3CA0,x
+    adc a:ListWordLo,x
+    sta a:ListWordLo,x
     cla
-    adc a:$3CA8,x
-    sta a:$3CA8,x
+    adc a:ListWordHi,x
+    sta a:ListWordHi,x
     rts
 
 ; @routine 0111:151 VramListFromIndex0111
@@ -173,15 +173,15 @@ VramListFromIndex0111:
     bmi *-15
     asl a
     tay
-    lda a:$9802
-    sta z:$F8
-    lda a:$9803
-    sta z:$F9
-    lda ($F8),y
-    sta z:$14
+    lda a:OverlayListChannelSeqs+2
+    sta z:zBiosAl
+    lda a:OverlayListChannelSeqs+3
+    sta z:zBiosAh
+    lda (zBiosAl),y
+    sta z:zProduct1
     iny
-    lda ($F8),y
-    sta z:$15
+    lda (zBiosAl),y
+    sta z:zProduct2
     cly
 
 ; @routine 0111:169 VramListRun0111
@@ -191,7 +191,7 @@ VramListFromIndex0111:
 ; WAITS: no.
 ; Entry, exit: as VramListRun.
 VramListRun0111:
-    lda ($14),y
+    lda (zProduct1),y
     cmp #$FF
     bne VramListRun0111_at0
     rts
@@ -215,23 +215,23 @@ VramListRun0111_at2:
     inc a
     tam #$40
     iny
-    lda ($14),y
+    lda (zProduct1),y
     sta z:zTemp11
     iny
     jsr VecClearVdcControlHigh
     jsr VecSelectVramWriteAddress
-    lda ($14),y
+    lda (zProduct1),y
     iny
     sta z:zMultiplierLo
     sta a:VDC_DATA_LO
-    lda ($14),y
+    lda (zProduct1),y
     iny
     sta z:zMultiplierHi
     sta a:VDC_DATA_HI
-    lda ($14),y
+    lda (zProduct1),y
     sta z:zTemp12
     iny
-    lda ($14),y
+    lda (zProduct1),y
     sta z:zProduct0
     iny
     jsr VecSelectVramData
@@ -242,7 +242,7 @@ VramListRun0111_at2:
     ply
     bra VramListRun0111
 VramListRun0111_at3:
-    lda ($14),y
+    lda (zProduct1),y
     iny
     tax
     phy

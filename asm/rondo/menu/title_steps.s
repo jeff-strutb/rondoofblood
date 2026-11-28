@@ -5,6 +5,8 @@
 ; WAITS: no.
 ; Entry: Y kept. Exit: as TitleStep.
 ; not checked: as TitleStep.
+SetupSteps = $81FF ; setup steps
+AttractSteps = $870E ; attract steps
 TitleEntry:
     jmp TitleStep
 
@@ -95,7 +97,7 @@ TitleScreenStep:
     lda z:zGameSubMode
     asl a
     tax
-    jmp ($81FF,x)
+    jmp (SetupSteps,x)
 
 ; @routine 00C1:205 TitleScreenBegin
 ; @run 6B:8205
@@ -108,10 +110,10 @@ TitleScreenStep:
 TitleScreenBegin:
     jsr VecClearScreenState
     stz a:OBJ_FRAME
-    stz a:$2A8A
-    stz a:$2A8B
+    stz a:OBJ_FRAME+34
+    stz a:OBJ_FRAME+35
     stz a:OBJ_FRAME+8
-    stz a:$2A71
+    stz a:OBJ_FRAME+9
     lda #$01
     jsr VecStartListChannel0Kind2
     lda #$03
@@ -239,7 +241,7 @@ AttractStep:
     lda z:zGameSubMode
     asl a
     tax
-    jmp ($870E,x)
+    jmp (AttractSteps,x)
 
 ; @routine 00C1:742 AttractWaitStart
 ; @run 6B:8742
@@ -256,10 +258,10 @@ AttractWaitStart:
     jsr AttractFrameTick
     jsr ScriptStep
     lda a:TitleSaveRead
-    beq $8791
+    beq AttractStartCheck+40
     lda a:BiosJoyTrigger
     and #$08
-    beq $8791
+    beq AttractStartCheck+40
     lda #$92
     sta z:zScriptPtr
     lda #$91
@@ -294,8 +296,8 @@ AttractStartCheck:
     stz z:zWaitTimer4
     stz a:OBJ_KIND+8
     stz a:OBJ_FRAME+8
-    stz a:$2759
-    stz a:$2A71
+    stz a:OBJ_KIND+9
+    stz a:OBJ_FRAME+9
     lda #$05
     sta z:zGameSubMode
 AttractStartCheck_at0:
@@ -323,7 +325,7 @@ AttractBlink:
     sta a:OBJ_FRAME
 AttractBlink_at0:
     dec z:zWaitTimer3
-    bne $8791
+    bne AttractStartCheck+40
     inc z:zWaitTimer4
     lda z:zWaitTimer4
     cmp #$01

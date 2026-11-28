@@ -571,4 +571,6 @@ void abi_EndingCommandSkip(void);
 void abi_EndingCommandPlaceTitleObjectA(void);
 void abi_EndingCommandPlaceTitleObjectB(void);
 void abi_EndingScrollByState(void);
+Exit WaitThenStartGlide(uint8_t object);
+void abi_WaitThenStartGlide(void);
 #endif

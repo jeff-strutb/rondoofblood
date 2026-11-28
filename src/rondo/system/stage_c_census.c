@@ -6861,13 +6861,13 @@ static Regs probe_point(Regs r)
 }
 
 /* The probe list of the index in A from the table at $D756, into zTemp0C-0D; zTemp0A, the point's count, 0. */
-static Regs probe_list(Regs r, uint8_t index)
+static Regs probe_list(Regs r, uint8_t index, uint16_t lists)
 {
     r.c = (index & 0x80) != 0;
     r.y = (uint8_t)(index << 1);
-    r = loaded(r, rd8((uint16_t)(PROBE_LISTS_3CD + r.y)));
+    r = loaded(r, rd8((uint16_t)(lists + r.y)));
     WR8(ZP->temp0c, r.a);
-    r = loaded(r, rd8((uint16_t)(PROBE_LISTS_3CD + 1 + r.y)));
+    r = loaded(r, rd8((uint16_t)(lists + 1 + r.y)));
     WR8(ZP->temp0d, r.a);
     r.y = 0;
     WR8(ZP->temp0a, 0);
@@ -6896,9 +6896,15 @@ static Regs probe_list(Regs r, uint8_t index)
  */
 StageRegs StageProbePoints3CD(StageRegs r)
 {
+    return StageProbePoints3CDAt(r, &route_3cd);
+}
+
+/* StageProbePoints3CD's body, for the builds of it with their own tables. */
+StageRegs StageProbePoints3CDAt(StageRegs r, const StageRouteBuild *build)
+{
     uint8_t count;
 
-    r = probe_list(r, r.a);
+    r = probe_list(r, r.a, build->probe_lists);
     do {
         r = probe_point(r);
         push8(r.y);
@@ -6951,7 +6957,7 @@ StageRegs StageProbeAgain3CD(StageRegs r)
     push8(r.a);
     CALL(0x96DF, StageProbePoints3CD(r));
     list = pull8();
-    r = probe_list(r, list);
+    r = probe_list(r, list, PROBE_LISTS_3CD);
     do {
         push8(r.y);
         r.y = RD8(ZP->temp0a);

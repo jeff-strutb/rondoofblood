@@ -3237,13 +3237,19 @@ void abi_StageRouteSetUpA3CD(void)
  */
 StageRegs StageRouteSetUpB3CD(StageRegs r)
 {
+    return StageRouteSetUpB3CDAt(r, &route_3cd);
+}
+
+/* StageRouteSetUpB3CD's body, for the builds of it with their own tables. */
+StageRegs StageRouteSetUpB3CDAt(StageRegs r, const StageRouteBuild *build)
+{
     Sum sum;
     uint8_t route = RD8(ZP->field82);
 
     sum = add_bytes((uint8_t)(route << 1), RD8(ZP->character), false);
     r.v = sum.overflow;
     r.x = sum.value;
-    r = loaded(r, rd8((uint16_t)(0x9D5A + r.x)));
+    r = loaded(r, rd8((uint16_t)(build->route_b + r.x)));
     r.c = sum.carry;
     r.x = 7;
     r.nz = 7;

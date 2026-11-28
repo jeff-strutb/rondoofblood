@@ -1023,3 +1023,7 @@ MariaProbeOffsets = $BADA ; the X and Y offsets of MariaReadAtOffset's point fro
 zClimbStepBefore = $D9 ; MariaClimbMove's use of zRichterObject: her animation's step before the tick
 MariaClimbLowSteps = $AD20 ; six words by OBJ_SUBSTATE: states 5 and 6 (MariaStateClimbLow)
 MariaClimbHighSteps = $AF40 ; six words by OBJ_SUBSTATE: states 7 and 8 (MariaStateClimbHigh)
+PlayerFeetOnMark = $3BE4 ; 1 when one of her three columns 4 rows below her reads bit 2, else 0 (MariaFeetMarked writes it; her slide reads it)
+MariaSlideFriction = $B1AB ; the slide's slowing added to her X speed each frame, by facing: $FFE0, $0020 (MariaSlideSlow)
+MariaSlideAirSpeeds = $B1B1 ; her X speed as a slide goes off a floor, by facing (MariaToSlideAir)
+MariaCrawlSpeeds = $B21E ; her X speed crawling on a mark, right or left: $0080, $FF80 (MariaStateSlide)

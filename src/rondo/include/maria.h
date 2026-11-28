@@ -838,6 +838,14 @@ MExit MariaClimbUp(void);
 MExit MariaStateClimbLow(uint8_t x, uint8_t y);
 MExit MariaStateClimbHigh(uint8_t x, uint8_t y);
 
+/* object/maria_slide.c */
+Regs MariaSlideEnd(void);
+Regs MariaToSlideAir(void);
+Regs MariaSlideSlow(void);
+MExit MariaStateSlideHeld(uint8_t x, uint8_t y);
+MExit MariaStateSlide(uint8_t x, uint8_t y);
+MExit MariaStateSlideAir(uint8_t x, uint8_t y);
+
 void abi_MariaObjectApplyVelocity(void);                           /* object/richter_objects.c */
 void abi_MariaApplyMoveAndPush(void);                              /* object/richter_state.c */
 

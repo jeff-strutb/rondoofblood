@@ -1143,7 +1143,8 @@ typedef struct {
     union { uint8_t f3be1; uint8_t whip_struck; }; /* PlayerByte3BE1 */
     union { uint8_t f3be2; uint8_t held; }; /* PlayerByte3BE2 */
     union { uint8_t f3be3; uint8_t held_count; }; /* PlayerByte3BE3 */
-    uint8_t _gap_0024[4]; /* no name yet: $3BE4-$3BE7 */
+    uint8_t feet_on_mark; /* PlayerFeetOnMark */
+    uint8_t _gap_0025[3]; /* no name yet: $3BE5-$3BE7 */
     union { uint8_t f3be8; uint8_t slow_timer_lo; }; /* PlayerByte3BE8 */
     union { uint8_t f3be9; uint8_t slow_timer_hi; }; /* PlayerByte3BE9 */
     uint8_t kept_raster_stage; /* PlayerKeptRasterStage */
@@ -1172,6 +1173,7 @@ _Static_assert(PlayerVars_BASE + offsetof(PlayerVars, f3be2) + 0 == PlayerByte3B
 _Static_assert(PlayerVars_BASE + offsetof(PlayerVars, held) == PlayerHeld, "PlayerVars.held is not at PlayerHeld");
 _Static_assert(PlayerVars_BASE + offsetof(PlayerVars, f3be3) + 0 == PlayerByte3BE3, "PlayerVars.f3be3 is not at PlayerByte3BE3");
 _Static_assert(PlayerVars_BASE + offsetof(PlayerVars, held_count) == PlayerHeldCount, "PlayerVars.held_count is not at PlayerHeldCount");
+_Static_assert(PlayerVars_BASE + offsetof(PlayerVars, feet_on_mark) + 0 == PlayerFeetOnMark, "PlayerVars.feet_on_mark is not at PlayerFeetOnMark");
 _Static_assert(PlayerVars_BASE + offsetof(PlayerVars, f3be8) + 0 == PlayerByte3BE8, "PlayerVars.f3be8 is not at PlayerByte3BE8");
 _Static_assert(PlayerVars_BASE + offsetof(PlayerVars, slow_timer_lo) == PlayerSlowTimerLo, "PlayerVars.slow_timer_lo is not at PlayerSlowTimerLo");
 _Static_assert(PlayerVars_BASE + offsetof(PlayerVars, f3be9) + 0 == PlayerByte3BE9, "PlayerVars.f3be9 is not at PlayerByte3BE9");

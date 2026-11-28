@@ -1026,5 +1026,9 @@
 #define zClimbStepBefore 0x20D9 /* MariaClimbMove's use of zRichterObject: her animation's step before the tick */
 #define MariaClimbLowSteps 0xAD20 /* six words by OBJ_SUBSTATE: states 5 and 6 (MariaStateClimbLow) */
 #define MariaClimbHighSteps 0xAF40 /* six words by OBJ_SUBSTATE: states 7 and 8 (MariaStateClimbHigh) */
+#define PlayerFeetOnMark 0x3BE4 /* 1 when one of her three columns 4 rows below her reads bit 2, else 0 (MariaFeetMarked writes it; her slide reads it) */
+#define MariaSlideFriction 0xB1AB /* the slide's slowing added to her X speed each frame, by facing: $FFE0, $0020 (MariaSlideSlow) */
+#define MariaSlideAirSpeeds 0xB1B1 /* her X speed as a slide goes off a floor, by facing (MariaToSlideAir) */
+#define MariaCrawlSpeeds 0xB21E /* her X speed crawling on a mark, right or left: $0080, $FF80 (MariaStateSlide) */
 
 #endif

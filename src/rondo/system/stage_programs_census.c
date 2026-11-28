@@ -4677,3 +4677,122 @@ void abi_StageSubStepPlay026D(void)
 {
     stage_regs_load_shim(StageSubStepPlay026D(stage_regs_entry_shim()));
 }
+
+void abi_VecStopSound(void);   /* system/vectors.c */
+void abi_VecResetGameState(void);
+void abi_VecCdPlayAgain(void);
+
+/*
+ * @routine 026D:066 StageStartMusic026D
+ * @run 6B:8066
+ * WHAT IT DOES: A stage's start music: unless A is $80, the sound stopped, zFadeSound set to $4F and sound $4F sent. When A is $80 the branch goes to the RTS at $8088.
+ * HOW: A compare; the stop; a tail jump into the sound command.
+ * WAITS: where the routines it calls wait.
+ * Entry: A the stage.
+ * Nothing the game does loads this program (codemap.unloaded_programs), so nothing is known to reach it.
+ */
+StageRegs StageStartMusic026D(StageRegs r)
+{
+    r = regs_compared(r, r.a, 0x80);
+    if (r.nz == 0) {
+        return r;
+    }
+    stage_regs_load_shim(r);
+    jsr_push(0x806D);
+    abi_VecStopSound();
+    jsr_pop();
+    r = stage_regs_from_cpu_shim(r);
+    r = regs_loaded(r, 0x4F);
+    WR8(ZP->fade_sound, 0x4F);
+    stage_regs_load_shim(r);
+    abi_VecSoundCommand();
+    return stage_regs_from_cpu_shim(r);
+}
+
+void abi_StageStartMusic026D(void)
+{
+    stage_regs_load_shim(StageStartMusic026D(stage_regs_entry_shim()));
+}
+
+/*
+ * @routine 026D:074 StageStartPlain026D
+ * @run 6B:8074
+ * WHAT IT DOES: The end of a stage's start with zField8E's bit 0 clear: stage $0C its music first; then sub-mode 5, the player's forced pad count one less and the start pose set.
+ * HOW: A compare; StageStartMusic026D by BSR; stores.
+ * WAITS: where the routines it calls wait.
+ * Entry: nothing.
+ * Nothing the game does loads this program (codemap.unloaded_programs), so nothing is known to reach it.
+ */
+StageRegs StageStartPlain026D(StageRegs r)
+{
+    r = regs_loaded(r, RD8(ZP->stage));
+    r = regs_compared(r, r.a, 0x0C);
+    if (r.a == 0x0C) {
+        jsr_push(0x807C);
+        r = StageStartMusic026D(r);
+        jsr_pop();
+    }
+    r = regs_loaded(r, 0x05);
+    WR8(ZP->game_sub_mode, 0x05);
+    r.nz = DEC8(OBJ->pad_force_frames[0]);
+    r = regs_loaded(r, 0x01);
+    WR8(PVARS2->start_pose, 0x01);
+    return r;
+}
+
+void abi_StageStartPlain026D(void)
+{
+    stage_regs_load_shim(StageStartPlain026D(stage_regs_entry_shim()));
+}
+
+/*
+ * @routine 026D:02D StageStart026D
+ * @run 6B:802D
+ * WHAT IT DOES: A stage's start in the program at 026D: the game state wiped, its lists, VRAM runs, set-up, objects and player; the section by the route from the table at $9C42; then the music by stage.
+ * HOW: The calls in turn; zField82 indexes the section table; BBR0 and compares of zStage.
+ * WAITS: where the routines it calls wait.
+ * Entry: nothing.
+ * Nothing the game does loads this program (codemap.unloaded_programs), so nothing is known to reach it.
+ */
+StageRegs StageStart026D(StageRegs r)
+{
+    stage_regs_load_shim(r);
+    jsr_push(0x8030);
+    abi_VecResetGameState();
+    jsr_pop();
+    r = stage_regs_from_cpu_shim(r);
+    r = call_at(r, 0x8033, 0x886C);
+    r = call_at(r, 0x8036, 0x883D);
+    r = call_at(r, 0x8039, 0x88A2);
+    r = call_at(r, 0x803C, 0x8089);
+    r = call_at(r, 0x803F, 0xA003);
+    r = call_at(r, 0x8042, 0x8B09);
+    r = call_at(r, 0x8045, 0x8F5A);
+    r = call_at(r, 0x8048, 0x8A15);
+    WR8(ZP->paused, 0);
+    WR8(ZP->fade_active, 0);
+    r.nz = INC8(ZP->game_sub_mode);
+    r.y = RD8(ZP->field82);
+    r = regs_loaded(r, rd8((uint16_t)(0x9C42 + r.y)));
+    WR8(ZP->field86, r.a);
+    r = call_at(r, 0x8058, 0x80B4);
+    if ((RD8(ZP->field8e) & 0x01) == 0) {
+        return StageStartPlain026D(r);
+    }
+    r = regs_loaded(r, RD8(ZP->stage));
+    if ((r.a & 0x80) != 0) {
+        return StageStartMusic026D(r);
+    }
+    r = regs_compared(r, r.a, 0x0C);
+    if (r.a == 0x0C) {
+        return StageStartMusic026D(r);
+    }
+    stage_regs_load_shim(r);
+    abi_VecCdPlayAgain();
+    return stage_regs_from_cpu_shim(r);
+}
+
+void abi_StageStart026D(void)
+{
+    stage_regs_load_shim(StageStart026D(stage_regs_entry_shim()));
+}

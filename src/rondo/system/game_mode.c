@@ -70,21 +70,12 @@ static Cpu overlay_shim(uint16_t entry, uint16_t ret)
     return cpu;
 }
 
-/* An overlay's entry, with A just loaded: N and Z from it. */
-static Cpu overlay_loaded_shim(uint16_t entry, uint8_t a)
-{
-    cpu.a = a;
-    abi_nz(a);
-    call_original(entry);
-    return cpu;
-}
-
 /* An overlay called with a frame, A just loaded: N and Z from it. */
 static Cpu overlay_loaded_frame_shim(uint16_t entry, uint8_t a, uint16_t ret)
 {
     cpu.a = a;
     abi_nz(a);
-    call_orig(ret, entry);
+    call_routine(ret, entry);
     return cpu;
 }
 
@@ -95,7 +86,7 @@ static Cpu overlay_added_shim(uint16_t entry, Sum bank, uint16_t ret)
     abi_nz(bank.value);
     abi_flag(P_C, bank.carry);
     abi_flag(P_V, bank.overflow);
-    call_orig(ret, entry);
+    call_routine(ret, entry);
     return cpu;
 }
 
@@ -290,7 +281,7 @@ static void mode_handler_shim(uint16_t handler)
             handlers[i].abi();
             return;
         }
-    call_original(handler);
+    run_routine(handler);   /* a mode past the table's eleven: the JMP goes where the bytes after it point */
 }
 
 void abi_FrameModeDispatch(void)
@@ -504,7 +495,7 @@ static bool attract_exit_shim(AttractRun run)
 static void attract_handler_shim(void)
 {
     if (attract_exit_shim(ModeAttract()))
-        call_original_at(0x5167, FrameOverlay8009);
+        run_routine_from(0x5167, FrameOverlay8009);
 }
 
 void abi_ModeAttract(void)

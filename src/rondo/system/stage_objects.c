@@ -97,7 +97,7 @@ void abi_SetUpStageObjects(void)
     cpu.x = end.x;
     lines_exit_shim(end.count);
     cpu.x = end.x;
-    call_original_at(WALK_JUMP, STEP_OBJECTS_ENTRY);   /* the tail JMP */
+    run_routine_from(WALK_JUMP, STEP_OBJECTS_ENTRY);   /* the tail JMP */
 }
 
 /*
@@ -153,7 +153,7 @@ void abi_SetUpStageObjectsC(void)
     cpu.x = end.x;
     lines_exit_shim(end.count);
     cpu.x = end.x;
-    call_original_at(WALK_JUMP, STEP_OBJECTS_ENTRY);   /* the tail JMP */
+    run_routine_from(WALK_JUMP, STEP_OBJECTS_ENTRY);   /* the tail JMP */
 }
 
 /*
@@ -181,7 +181,7 @@ void abi_SetUpStageObjectsD(void)
     cpu.x = end.x;
     lines_exit_shim(end.count);
     cpu.x = end.x;
-    call_original_at(WALK_JUMP, STEP_OBJECTS_ENTRY);   /* the tail JMP */
+    run_routine_from(WALK_JUMP, STEP_OBJECTS_ENTRY);   /* the tail JMP */
 }
 
 /*
@@ -209,7 +209,7 @@ void abi_SetUpStageObjectsE(void)
     cpu.x = end.x;
     lines_exit_shim(end.count);
     cpu.x = end.x;
-    call_original_at(WALK_JUMP, STEP_OBJECTS_ENTRY);   /* the tail JMP */
+    run_routine_from(WALK_JUMP, STEP_OBJECTS_ENTRY);   /* the tail JMP */
 }
 
 /*
@@ -237,7 +237,7 @@ void abi_SetUpStageObjectsF(void)
     cpu.x = end.x;
     lines_exit_shim(end.count);
     cpu.x = end.x;
-    call_original_at(WALK_JUMP, STEP_OBJECTS_ENTRY);   /* the tail JMP */
+    run_routine_from(WALK_JUMP, STEP_OBJECTS_ENTRY);   /* the tail JMP */
 }
 
 /*
@@ -293,7 +293,7 @@ void abi_SetUpStageObjectsH(void)
     cpu.x = end.x;
     lines_exit_shim(end.count);
     cpu.x = end.x;
-    call_original_at(WALK_JUMP, STEP_OBJECTS_ENTRY);   /* the tail JMP */
+    run_routine_from(WALK_JUMP, STEP_OBJECTS_ENTRY);   /* the tail JMP */
 }
 
 /*
@@ -321,7 +321,7 @@ void abi_SetUpStageObjectsI(void)
     cpu.x = end.x;
     lines_exit_shim(end.count);
     cpu.x = end.x;
-    call_original_at(WALK_JUMP, STEP_OBJECTS_ENTRY);   /* the tail JMP */
+    run_routine_from(WALK_JUMP, STEP_OBJECTS_ENTRY);   /* the tail JMP */
 }
 
 /*
@@ -349,7 +349,7 @@ void abi_SetUpStageObjectsJ(void)
     cpu.x = end.x;
     lines_exit_shim(end.count);
     cpu.x = end.x;
-    call_original_at(WALK_JUMP, STEP_OBJECTS_ENTRY);   /* the tail JMP */
+    run_routine_from(WALK_JUMP, STEP_OBJECTS_ENTRY);   /* the tail JMP */
 }
 
 /*
@@ -377,7 +377,7 @@ void abi_SetUpStageObjectsK(void)
     cpu.x = end.x;
     lines_exit_shim(end.count);
     cpu.x = end.x;
-    call_original_at(WALK_JUMP, STEP_OBJECTS_ENTRY);   /* the tail JMP */
+    run_routine_from(WALK_JUMP, STEP_OBJECTS_ENTRY);   /* the tail JMP */
 }
 
 /*
@@ -405,7 +405,7 @@ void abi_SetUpStageObjectsL(void)
     cpu.x = end.x;
     lines_exit_shim(end.count);
     cpu.x = end.x;
-    call_original_at(WALK_JUMP, STEP_OBJECTS_ENTRY);   /* the tail JMP */
+    run_routine_from(WALK_JUMP, STEP_OBJECTS_ENTRY);   /* the tail JMP */
 }
 
 /*
@@ -433,7 +433,7 @@ void abi_SetUpStageObjectsM(void)
     cpu.x = end.x;
     lines_exit_shim(end.count);
     cpu.x = end.x;
-    call_original_at(WALK_JUMP, STEP_OBJECTS_ENTRY);   /* the tail JMP */
+    run_routine_from(WALK_JUMP, STEP_OBJECTS_ENTRY);   /* the tail JMP */
 }
 
 /*
@@ -461,7 +461,7 @@ void abi_SetUpStageObjectsN(void)
     cpu.x = end.x;
     lines_exit_shim(end.count);
     cpu.x = end.x;
-    call_original_at(WALK_JUMP, STEP_OBJECTS_ENTRY);   /* the tail JMP */
+    run_routine_from(WALK_JUMP, STEP_OBJECTS_ENTRY);   /* the tail JMP */
 }
 
 /*
@@ -489,7 +489,7 @@ void abi_SetUpStageObjectsO(void)
     cpu.x = end.x;
     lines_exit_shim(end.count);
     cpu.x = end.x;
-    call_original_at(WALK_JUMP, STEP_OBJECTS_ENTRY);   /* the tail JMP */
+    run_routine_from(WALK_JUMP, STEP_OBJECTS_ENTRY);   /* the tail JMP */
 }
 
 /*
@@ -517,7 +517,7 @@ void abi_SetUpStageObjectsP(void)
     cpu.x = end.x;
     lines_exit_shim(end.count);
     cpu.x = end.x;
-    call_original_at(WALK_JUMP, STEP_OBJECTS_ENTRY);   /* the tail JMP */
+    run_routine_from(WALK_JUMP, STEP_OBJECTS_ENTRY);   /* the tail JMP */
 }
 
 /*
@@ -545,7 +545,7 @@ void abi_SetUpStageObjectsQ(void)
     cpu.x = end.x;
     lines_exit_shim(end.count);
     cpu.x = end.x;
-    call_original_at(WALK_JUMP, STEP_OBJECTS_ENTRY);   /* the tail JMP */
+    run_routine_from(WALK_JUMP, STEP_OBJECTS_ENTRY);   /* the tail JMP */
 }
 
 /*
@@ -573,7 +573,7 @@ void abi_SetUpStageObjectsR(void)
     cpu.x = end.x;
     lines_exit_shim(end.count);
     cpu.x = end.x;
-    call_original_at(WALK_JUMP, STEP_OBJECTS_ENTRY);   /* the tail JMP */
+    run_routine_from(WALK_JUMP, STEP_OBJECTS_ENTRY);   /* the tail JMP */
 }
 
 /*
@@ -601,7 +601,7 @@ void abi_SetUpStageObjectsS(void)
     cpu.x = end.x;
     lines_exit_shim(end.count);
     cpu.x = end.x;
-    call_original_at(WALK_JUMP, STEP_OBJECTS_ENTRY);   /* the tail JMP */
+    run_routine_from(WALK_JUMP, STEP_OBJECTS_ENTRY);   /* the tail JMP */
 }
 
 /*
@@ -629,7 +629,7 @@ void abi_SetUpStageObjectsT(void)
     cpu.x = end.x;
     lines_exit_shim(end.count);
     cpu.x = end.x;
-    call_original_at(WALK_JUMP, STEP_OBJECTS_ENTRY);   /* the tail JMP */
+    run_routine_from(WALK_JUMP, STEP_OBJECTS_ENTRY);   /* the tail JMP */
 }
 
 /*
@@ -657,7 +657,7 @@ void abi_SetUpStageObjectsU(void)
     cpu.x = end.x;
     lines_exit_shim(end.count);
     cpu.x = end.x;
-    call_original_at(WALK_JUMP, STEP_OBJECTS_ENTRY);   /* the tail JMP */
+    run_routine_from(WALK_JUMP, STEP_OBJECTS_ENTRY);   /* the tail JMP */
 }
 
 /*
@@ -685,7 +685,7 @@ void abi_SetUpStageObjectsV(void)
     cpu.x = end.x;
     lines_exit_shim(end.count);
     cpu.x = end.x;
-    call_original_at(WALK_JUMP, STEP_OBJECTS_ENTRY);   /* the tail JMP */
+    run_routine_from(WALK_JUMP, STEP_OBJECTS_ENTRY);   /* the tail JMP */
 }
 
 /*
@@ -713,5 +713,5 @@ void abi_SetUpStageObjectsW(void)
     cpu.x = end.x;
     lines_exit_shim(end.count);
     cpu.x = end.x;
-    call_original_at(WALK_JUMP, STEP_OBJECTS_ENTRY);   /* the tail JMP */
+    run_routine_from(WALK_JUMP, STEP_OBJECTS_ENTRY);   /* the tail JMP */
 }

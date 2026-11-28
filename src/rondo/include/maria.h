@@ -195,13 +195,56 @@ static inline Regs r_plp(Regs r, uint8_t p)
     return r;
 }
 
+/* object/maria_frame.c's results. */
+/* What the spike check read: the column it stopped at, the last read and the row's add before it. */
+typedef struct {
+    bool found;
+    uint8_t column;
+    uint8_t state;      /* OBJ_STATE, which Y holds from the LDY until a read sets it */
+    bool on_the_map;    /* the row add's carry, given to the read */
+    TileRead read;
+} MariaSpike;
+typedef enum { PUSH_HIT_CAMERA, PUSH_HIT_NOT_PUSHED, PUSH_HIT_HELD, PUSH_HIT_NO_SPIKE, PUSH_HIT_SPIKE } PushHitHow;
+
+typedef struct {
+    PushHitHow how;
+    uint8_t camera, push, held, state;
+    MariaSpike spike;
+    bool state10;           /* the spike ended state $10: MariaClearSlot5AsKind9 ran */
+    CommandCall sound;
+} MariaPushHit;
+typedef struct {
+    DyingHow how;       /* routines.h */
+    uint8_t timer;      /* PlayerDyingTimer after its DEC */
+    uint8_t object;     /* the slot the loop stopped at */
+} MariaDying;
+
+/*
+ * MariaInvincibleTick's result (object/richter_state.c). The type is that file's; it is declared here member for member,
+ * kept in step with it, until it moves to a shared header.
+ */
+typedef enum {
+    INVINCIBLE_OFF, INVINCIBLE_OFF_FRAME, INVINCIBLE_ENDED, INVINCIBLE_RUNNING, INVINCIBLE_MARK
+} InvincibleHow;
+typedef struct {
+    InvincibleHow how; uint8_t value; uint8_t compared; bool first_sound; bool second_sound;
+    CommandCall first; CommandCall second; uint8_t mark; uint16_t scripts;
+} InvincibleTick;
+InvincibleTick MariaInvincibleTick(uint8_t x, uint8_t y);          /* object/richter_state.c */
+void invincible_exit_shim(InvincibleTick tick);                    /* object/richter_state.c */
+EndedX richter_check_item_hearts_exit_shim(ObjArm r);              /* object/player_input.c */
+ObjArm MariaCheckItemHearts(void);                                 /* object/player_input.c */
+TurnWindow MariaPadSequence(void);                                 /* object/player_input.c */
+TurnWindow MariaCheckTurnWindow(void);                             /* object/player_input.c */
+uint8_t MariaReadPad(void);                                        /* object/player_input.c */
+
 /*
  * MExit: a routine's exit when it passes through calls whose exits have their own shims: the registers set before
  * each such call, the call's exit, and the registers set after the last. The wrapper gives them in that order.
  */
 typedef enum { MX_ANIMATION, MX_SOUND, MX_SCRIPT, MX_COLUMNS, MX_FOOTING, MX_LANDING, MX_LEDGE, MX_CRASH, MX_TURN, MX_FLOOR, MX_UP_MARKED, MX_READ_BELOW,
     MX_SOLID, MX_LIFT, MX_MARKED, MX_WALL, MX_TST, MX_GRAVITY, MX_UNDER_FEET, MX_ON_MARKED,
-    MX_OFFSET_READ, MX_JUMP_OR_CLIMB, MX_LADDER, MX_LOW } MxKind;
+    MX_OFFSET_READ, MX_JUMP_OR_CLIMB, MX_LADDER, MX_LOW, MX_INVINCIBLE, MX_HEARTS, MX_PUSH_HIT, MX_DYING } MxKind;
 
 typedef struct {
     MxKind kind;
@@ -231,6 +274,10 @@ typedef struct {
         JumpOrClimb jump_or_climb;
         LadderCheck ladder;
         LowColumns low;
+        InvincibleTick invincible;
+        ObjArm hearts;
+        MariaPushHit push_hit;
+        MariaDying dying;
     } u;
     bool carry;             /* MX_READ_BELOW: the row's carry, which says no read was made */
 } MxStep;
@@ -483,6 +530,45 @@ static inline void mx_low(MExit *e, LowColumns value)
     mx_push(e, s);
 }
 
+static inline void mx_invincible(MExit *e, InvincibleTick value)
+{
+    MxStep s = { 0 };
+
+    s.kind = MX_INVINCIBLE;
+    s.u.invincible = value;
+    mx_push(e, s);
+}
+
+static inline void mx_hearts(MExit *e, ObjArm value)
+{
+    MxStep s = { 0 };
+
+    s.kind = MX_HEARTS;
+    s.u.hearts = value;
+    mx_push(e, s);
+}
+
+void maria_push_hit_exit_shim(MariaPushHit hit);
+void maria_dying_exit_shim(MariaDying step);
+
+static inline void mx_push_hit(MExit *e, MariaPushHit value)
+{
+    MxStep s = { 0 };
+
+    s.kind = MX_PUSH_HIT;
+    s.u.push_hit = value;
+    mx_push(e, s);
+}
+
+static inline void mx_dying(MExit *e, MariaDying value)
+{
+    MxStep s = { 0 };
+
+    s.kind = MX_DYING;
+    s.u.dying = value;
+    mx_push(e, s);
+}
+
 static inline void mx_script(MExit *e, uint8_t script)
 {
     MxStep s = { 0 };
@@ -590,6 +676,22 @@ static inline void mx_exit(MExit e)
             break;
         case MX_LOW:
             maria_low_columns_exit_shim(e.step[i].u.low);
+            break;
+        case MX_INVINCIBLE:
+            invincible_exit_shim(e.step[i].u.invincible);
+            break;
+        case MX_HEARTS: {
+            EndedX r = richter_check_item_hearts_exit_shim(e.step[i].u.hearts);
+
+            abi_ended(r.end);
+            cpu.x = r.x;
+            break;
+        }
+        case MX_PUSH_HIT:
+            maria_push_hit_exit_shim(e.step[i].u.push_hit);
+            break;
+        case MX_DYING:
+            maria_dying_exit_shim(e.step[i].u.dying);
             break;
         case MX_TURN:
             abi_ended(e.step[i].u.turn.end);
@@ -757,6 +859,11 @@ LowColumns MariaLowColumnsBlocked(void);                           /* object/pla
 void MariaClearPadOverrides(void);                                 /* object/player_input.c */
 
 /* object/maria_frame.c */
+MariaSpike MariaSpikeBelow(void);
+MariaPushHit MariaHitWhilePushed(void);
+void maria_push_hit_exit_shim(MariaPushHit hit);
+MariaDying MariaDyingStep(void);
+void maria_dying_exit_shim(MariaDying step);
 /* What an animation set left, then the registers set after it (its wrapper gives the animation's exit first). */
 typedef struct { AnimationStep animation; Regs regs; } AnimThen;
 Regs MariaAnimationSound(void);
@@ -926,6 +1033,15 @@ MExit MariaItem4Walk(uint8_t y);
 MExit MariaItem4Air(uint8_t y);
 MExit MariaStateItem4(uint8_t y);
 MExit MariaStateSequence(void);
+
+/* object/maria_state.c */
+MExit MariaStateDispatch(uint8_t x, uint8_t y);
+MExit MariaHeldFrame(uint8_t x, uint8_t y);
+MExit MariaHitTaken(uint8_t x, uint8_t y);
+MExit MariaOutOfHealth(uint8_t x, uint8_t y);
+MExit MariaStateFrame(uint8_t x, uint8_t y);
+MExit MariaFrame(uint8_t x, uint8_t y);
+MExit MariaVecFrame(uint8_t x, uint8_t y);
 
 void abi_MariaObjectApplyVelocity(void);                           /* object/richter_objects.c */
 void abi_MariaApplyMoveAndPush(void);                              /* object/richter_state.c */

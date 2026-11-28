@@ -1071,5 +1071,6 @@
 #define MariaCrash0PiecePlaces 0xD580 /* sixteen places of four bytes for crash kind 0's pieces: Y word, X word (MariaCrash0Drop) */
 #define OBJ_PIECE_NEXT 0x34B8 /* crash kind 0's use of OBJ_WORK_D: its next piece's slot less 6, 0 to 8 (MariaCrash0Drop) */
 #define OBJ_PIECE_PLACE 0x3510 /* crash kind 0's use of OBJ_WORK_E: its next piece's place in MariaCrash0PiecePlaces, 0 to 15 (MariaCrash0Drop) */
+#define MariaStateHandlers 0xA2E3 /* eighteen words by OBJ_STATE: her states' handlers (MariaStateDispatch) */
 
 #endif

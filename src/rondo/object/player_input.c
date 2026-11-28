@@ -711,7 +711,7 @@ static ObjArm check_item_hearts(uint16_t costs)
     return r;
 }
 
-static EndedX richter_check_item_hearts_exit_shim(ObjArm r)
+EndedX richter_check_item_hearts_exit_shim(ObjArm r)
 {
     EndedX x;
 

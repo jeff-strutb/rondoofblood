@@ -456,4 +456,4 @@ MariaItemOrAttack_to1:
     bbr1 zPadHeld,MariaUseItem+8
     tst #$10,z:zPadPressed
     beq MariaUseItem+8
-    bra MariaUseItem+$1C
+    bra MariaUseItem+28

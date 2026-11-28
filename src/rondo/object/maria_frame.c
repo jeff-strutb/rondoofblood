@@ -448,14 +448,6 @@ void abi_MariaToFall(void)
 
 /* ------------------------------------------------------------------------------------------------ the spike check */
 
-/* What the spike check read: the column it stopped at, the last read and the row's add before it. */
-typedef struct {
-    bool found;
-    uint8_t column;
-    uint8_t state;      /* OBJ_STATE, which Y holds from the LDY until a read sets it */
-    bool on_the_map;    /* the row add's carry, given to the read */
-    TileRead read;
-} MariaSpike;
 
 /*
  * The registers the spike check leaves. The read leaves Y, C and V (and, when the stage's original code answered,
@@ -570,15 +562,6 @@ void abi_MariaClearSlot5AsKind9(void)
     sound_command_exit_shim(SOUND_SLOT5, sound);
 }
 
-typedef enum { PUSH_HIT_CAMERA, PUSH_HIT_NOT_PUSHED, PUSH_HIT_HELD, PUSH_HIT_NO_SPIKE, PUSH_HIT_SPIKE } PushHitHow;
-
-typedef struct {
-    PushHitHow how;
-    uint8_t camera, push, held, state;
-    MariaSpike spike;
-    bool state10;           /* the spike ended state $10: MariaClearSlot5AsKind9 ran */
-    CommandCall sound;
-} MariaPushHit;
 
 /*
  * @routine 01DD:0BE MariaHitWhilePushed
@@ -635,9 +618,8 @@ MariaPushHit MariaHitWhilePushed(void)
     return hit;
 }
 
-void abi_MariaHitWhilePushed(void)
+void maria_push_hit_exit_shim(MariaPushHit hit)
 {
-    MariaPushHit hit = MariaHitWhilePushed();
 
     switch (hit.how) {
     case PUSH_HIT_CAMERA:
@@ -676,15 +658,15 @@ void abi_MariaHitWhilePushed(void)
     }
 }
 
+void abi_MariaHitWhilePushed(void)
+{
+    maria_push_hit_exit_shim(MariaHitWhilePushed());
+}
+
 /* ------------------------------------------------------------------------------------------------ her death */
 
 
 
-typedef struct {
-    DyingHow how;       /* routines.h */
-    uint8_t timer;      /* PlayerDyingTimer after its DEC */
-    uint8_t object;     /* the slot the loop stopped at */
-} MariaDying;
 
 /*
  * @routine 01DD:197 MariaDyingStep
@@ -731,9 +713,8 @@ MariaDying MariaDyingStep(void)
     return step;
 }
 
-void abi_MariaDyingStep(void)
+void maria_dying_exit_shim(MariaDying step)
 {
-    MariaDying step = MariaDyingStep();
 
     switch (step.how) {
     case DYING_WAITING:
@@ -755,6 +736,11 @@ void abi_MariaDyingStep(void)
         abi_flag(P_C, true);
         break;
     }
+}
+
+void abi_MariaDyingStep(void)
+{
+    maria_dying_exit_shim(MariaDyingStep());
 }
 
 /*

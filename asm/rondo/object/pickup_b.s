@@ -3165,7 +3165,8 @@ SubStepPickupFirstScripts13FA78B_at0:
 ; @routine 13FA:7BB SubStepPickupSecondScripts13FA7BB
 ; @run 70:AFBB
 ; WHAT IT DOES: The pickup's second round (Secret stage 0C): every fourth frame script $98 plus its count; after 8,
-; the pieces are spawned, the object made hittable and the next state.
+; the pieces are spawned, the raster effect turned off,
+; the object made hittable and the next state.
 ; HOW: zWaveCounter's bits, StartScriptSlotKind1, SubStepPickupSpawn13FA7E8.
 ; WAITS: no.
 ; Entry: X object. Exit: as the last call or compare; X kept.

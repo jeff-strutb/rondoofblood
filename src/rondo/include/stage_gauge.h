@@ -17,5 +17,10 @@ StageExit SetGaugeAddressAt(const GaugeVram *vram);
 StageExit GaugeStepUpAt(const GaugeVram *vram);
 StageExit GaugeStepAt(const GaugeVram *vram);
 void GaugeTimerCheckAt(uint16_t moved_by);
+/* The 024E program's gauge frame, and its entry at the frame test ($8C74). */
+StageExit RunStageGaugeB(void);
+void abi_RunStageGaugeB(void);
+StageExit RunStageGaugeFromFrameB(void);
+void abi_RunStageGaugeFromFrameB(void);
 
 #endif

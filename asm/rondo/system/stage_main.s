@@ -11,9 +11,9 @@
 RunStageFrame:
     inc z:zWaveCounter
     jsr StepStageFrame
-    jsr $80AB
+    jsr StagePlayerFrame
     jsr VecPlayerAndCameraFrame
-    jsr $80BF
+    jsr StageCameraStep
     jsr StepScrollAndRunObjects
     jsr StepStageEnding
     bbr0 zField8E,RunStageFrame_at0

@@ -233,3 +233,30 @@ SetGaugeAddressB_at0:
 SetGaugeAddressB_ret:
     rts
 
+; @routine 024E:46C RunStageGaugeB
+; @run 6B:8C6C
+; @stop 8C74
+; WHAT IT DOES: The gauge object's frame, as RunStageGauge in the build whose spawn is SpawnStageObject.
+; HOW: SpawnStageObject for row 2, the gauge value cleared, running into RunStageGaugeFromFrameB.
+; WAITS: no.
+; Entry: nothing. Exit: as the step the timer check took.
+RunStageGaugeB:
+    ldx #$02
+    jsr SpawnStageObject
+    stz a:BossGaugeShown
+
+; @routine 024E:474 RunStageGaugeFromFrameB
+; @run 6B:8C74
+; @stop 8C83
+; WHAT IT DOES: The gauge's frame where StepStageFrame enters it: without the object's frame, RunStageGaugeB; else
+; its X low byte one down unless it is $D8, and the timer check (GaugeTimerCheckB).
+; HOW: A test of the frame, a compare and a DEC, running into GaugeTimerCheckB.
+; WAITS: no.
+; Entry: nothing. Exit: as the step the timer check took.
+RunStageGaugeFromFrameB:
+    lda a:OBJ_FRAME+85
+    beq RunStageGaugeB
+    lda a:OBJ_X_LO+85
+    cmp #$D8
+    beq GaugeTimerCheckB
+    dec a:OBJ_X_LO+85

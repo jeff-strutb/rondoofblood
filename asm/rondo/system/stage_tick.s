@@ -99,7 +99,7 @@ StepStageFrame_at9:
     bbs2 zField8E,StepStageFrame_at10
     rts
 StepStageFrame_at10:
-    jmp $8C74
+    jmp RunStageGaugeFromFrameB
 
 ; @routine 024E:422 StageScriptByWave
 ; @run 6B:8C22
@@ -261,7 +261,7 @@ StepStageFrameLong_at9:
     bbs2 zField8E,StepStageFrameLong_at10
     rts
 StepStageFrameLong_at10:
-    jmp $8C74
+    jmp RunStageGaugeFromFrameB
 
 ; @routine 09DE:443 SetHealthBarAddressLong
 ; @run 6B:8C43

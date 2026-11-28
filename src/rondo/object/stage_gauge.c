@@ -424,3 +424,73 @@ StageExit GaugeStepAt(const GaugeVram *vram)
 {
     return gauge_step(vram);
 }
+
+/* From the gauge object's frame on: while it has none, the whole placing again (RunStageGaugeB); then its X low
+ * byte one down unless it is $D8, and the timer check. */
+static StageExit gauge_count_then_check(StageExit end)
+{
+    uint8_t x = RD8(OBJ->x_lo[OBJECT_SLOT]);
+
+    end.c = x >= FRAME_LIMIT;
+    end.set |= EXIT_C;
+    if (x != FRAME_LIMIT) {
+        DEC8(OBJ->x_lo[OBJECT_SLOT]);
+    }
+    return merge_exit(end, gauge_timer_check(end, &VRAM_AT_937D));
+}
+
+/*
+ * @routine 024E:46C RunStageGaugeB
+ * @run 6B:8C6C
+ * @stop 8C74
+ * WHAT IT DOES: The gauge object's frame, as RunStageGauge in the build whose spawn is SpawnStageObject: spawns
+ * row 2 until the object's frame (slot 85) is set, clears the gauge value, and goes on into
+ * RunStageGaugeFromFrameB.
+ * HOW: SpawnStageObject for row 2, the gauge value cleared, the frame tested, in a loop.
+ * WAITS: no.
+ * Entry: nothing. Exit: as the step the timer check took.
+ */
+StageExit RunStageGaugeB(void)
+{
+    StageExit end = { 0, ROW_SLOT, 0, false, false, 0, EXIT_X | EXIT_Y };
+    SpawnedObject spawned;
+
+    do {
+        jsr_push(SPAWN_RETURN);
+        spawned = SpawnStageObject(ROW_SLOT);
+        jsr_pop();
+        WR8(LEVEL->field2742, 0);
+    } while (RD8(OBJ->frame[OBJECT_SLOT]) == 0);
+    end.y = spawned.slot;
+    return gauge_count_then_check(end);
+}
+
+void abi_RunStageGaugeB(void)
+{
+    stage_exit_shim(RunStageGaugeB());
+}
+
+/*
+ * @routine 024E:474 RunStageGaugeFromFrameB
+ * @run 6B:8C74
+ * @stop 8C83
+ * WHAT IT DOES: The gauge's frame where StepStageFrame enters it: without the object's frame, RunStageGaugeB; else
+ * its X low byte one down unless it is $D8, and the timer check (GaugeTimerCheckB).
+ * HOW: A test of the frame, a compare and a DEC, running into GaugeTimerCheckB.
+ * WAITS: no.
+ * Entry: nothing. Exit: as the step the timer check took.
+ */
+StageExit RunStageGaugeFromFrameB(void)
+{
+    StageExit end = { 0, 0, 0, false, false, 0, 0 };
+
+    if (RD8(OBJ->frame[OBJECT_SLOT]) == 0) {
+        return RunStageGaugeB();
+    }
+    return gauge_count_then_check(end);
+}
+
+void abi_RunStageGaugeFromFrameB(void)
+{
+    stage_exit_shim(RunStageGaugeFromFrameB());
+}

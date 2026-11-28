@@ -15,8 +15,23 @@
 
 typedef StageRegs Regs;
 
+/* Entries that run into one another, declared ahead of their callers. */
+StageRegs StageStartPlain(StageRegs r);
+StageRegs StageStartMusicByStage(StageRegs r);
+StageRegs StageStartMusicKeep(StageRegs r);
+StageRegs StageStartMusicBoss(StageRegs r);
+StageRegs StageStartDone(StageRegs r);
+StageRegs StageStartSound(StageRegs r);
+StageRegs StageStartBossMusic(StageRegs r);
+StageRegs StageFallRightLand(StageRegs r);
+StageRegs StageFallRightDone(StageRegs r);
+StageRegs StageFallLeftLand(StageRegs r);
+StageRegs StageFallLeftDone(StageRegs r);
+StageRegs StageFallPose(StageRegs r);
+
 /* Defined elsewhere, typed, and not declared in a header. */
 ObjArm MapOverlayBank7(void);                       /* object/player_leaves.c */
+Ended MapOverlayBanks5And6(void);                   /* object/player_leaves.c */
 
 enum {
     PAD_RUN = 0x08, FIELD8E_SOUND = 0x08, FIELD8E_KEEP_CD = 0x10, FIELD8E_NO_FADE = 0x18,
@@ -467,4 +482,625 @@ StageRegs StageCameraStep(StageRegs r)
 void abi_StageCameraStep(void)
 {
     stage_regs_load_shim(StageCameraStep(entry_shim()));
+}
+
+/* JSR MapOverlayBanks5And6 at ret: A the second bank, N and Z from it, C and V from the add. */
+static Regs map_banks_5_6(Regs r, uint16_t ret)
+{
+    Ended e;
+
+    jsr_push(ret);
+    e = MapOverlayBanks5And6();
+    jsr_pop();
+    if (e.a_set) {
+        r.a = e.a;
+    }
+    if (e.nz_set) {
+        r.nz = e.nz;
+    }
+    if (e.c_set) {
+        r.c = e.c;
+    }
+    if (e.v_set) {
+        r.v = e.v;
+    }
+    return r;
+}
+
+/* The body of StageForcedWalk and StageForcedWalkB, whose bytes are the same (both read the table at $833E). */
+static Regs forced_walk(Regs r, uint16_t init_ret)
+{
+    uint8_t side;
+
+    r = call_to(r, init_ret, 0x88EC);
+    r = loaded(r, 0x01);
+    WR8(ZP->game_sub_mode, 0x01);
+    r = loaded(r, RD8(ZP->field8c));
+    if (r.a != 0) {
+        WR8(ZP->field8c, 0);
+        r = loaded(r, 0x18);
+        WR8(OBJ->work_e[0], 0x18);
+    }
+    side = (uint8_t)((RD8(OBJ->f2ac0[0]) ^ 0x01) & 0x01);
+    r.x = side;
+    r = loaded(r, rd8((uint16_t)(ForcedWalkPads + side)));
+    WR8(OBJ->work_f[0], r.a);
+    return r;
+}
+
+/*
+ * @routine 024D:31D StageForcedWalk
+ * @run 6B:831D
+ * WHAT IT DOES: A sub-mode 3 start (zField87 0): the stage set up (InitStage), sub-mode 1, and the player walked by a
+ * forced pad away from the side he faces: $18 frames when zField8C is set (it is cleared).
+ * HOW: JSR InitStage; zGameSubMode 1; OBJ_PAD_FORCE_FRAMES; facing XOR 1 picks the pad from ForcedWalkPads.
+ * WAITS: where InitStage waits.
+ * Entry: nothing. Exit: A the pad, N and Z from it, X the table index; Y, C and V as InitStage left them.
+ */
+StageRegs StageForcedWalk(StageRegs r)
+{
+    return forced_walk(r, 0x8320);
+}
+
+void abi_StageForcedWalk(void)
+{
+    stage_regs_load_shim(StageForcedWalk(entry_shim()));
+}
+
+/*
+ * @routine 024D:340 StageForcedWalkB
+ * @run 6B:8340
+ * WHAT IT DOES: A sub-mode 3 start (zField87 1): as StageForcedWalk, the same bytes at their own address.
+ * HOW: As StageForcedWalk.
+ * WAITS: where InitStage waits.
+ * Entry, exit: as StageForcedWalk.
+ */
+StageRegs StageForcedWalkB(StageRegs r)
+{
+    return forced_walk(r, 0x8343);
+}
+
+void abi_StageForcedWalkB(void)
+{
+    stage_regs_load_shim(StageForcedWalkB(entry_shim()));
+}
+
+/* The forced-pad ends of the fall starts: InitStage, sub-mode 1, zField8C cleared, $20 frames of the pad `pad`. */
+static Regs fall_start_done(Regs r, uint16_t init_ret, uint8_t pad)
+{
+    r = call_to(r, init_ret, 0x88EC);
+    r = loaded(r, 0x01);
+    WR8(ZP->game_sub_mode, 0x01);
+    WR8(ZP->field8c, 0);
+    r = loaded(r, 0x20);
+    WR8(OBJ->work_e[0], 0x20);
+    r = loaded(r, pad);
+    WR8(OBJ->work_f[0], pad);
+    return r;
+}
+
+/*
+ * @routine 024D:39C StageFallRightDone
+ * @run 6B:839C
+ * WHAT IT DOES: The last step of the fall to the right: the stage set up again and the player walked on by pad $20.
+ * HOW: JSR InitStage; sub-mode 1, zField8C cleared; $20 frames of pad $20.
+ * WAITS: where InitStage waits.
+ * Entry: nothing. Exit: A $20, N and Z from it; X, Y, C and V as InitStage left them.
+ */
+StageRegs StageFallRightDone(StageRegs r)
+{
+    return fall_start_done(r, 0x839F, 0x20);
+}
+
+void abi_StageFallRightDone(void)
+{
+    stage_regs_load_shim(StageFallRightDone(entry_shim()));
+}
+
+/*
+ * @routine 024D:3EC StageFallLeftDone
+ * @run 6B:83EC
+ * WHAT IT DOES: The last step of the fall to the left: as StageFallRightDone with pad $80.
+ * HOW: As StageFallRightDone.
+ * WAITS: where InitStage waits.
+ * Entry: nothing. Exit: A $80, N and Z from it; X, Y, C and V as InitStage left them.
+ */
+StageRegs StageFallLeftDone(StageRegs r)
+{
+    return fall_start_done(r, 0x83EF, 0x80);
+}
+
+void abi_StageFallLeftDone(void)
+{
+    stage_regs_load_shim(StageFallLeftDone(entry_shim()));
+}
+
+/* The player's X against `limit` past which the fall goes on to its landing ($A01E, X 0); else zFallStep counts on. */
+static Regs fall_until(Regs r, bool right, uint8_t limit)
+{
+    r = loaded(r, RD8(OBJ->x_hi[0]));
+    if (r.a != 0) {
+        r = loaded(r, RD8(OBJ->x_lo[0]));
+        r = regs_compared(r, r.a, limit);
+        if (right ? r.c : !r.c) {
+            return StageFallStepNext(r);
+        }
+    }
+    r.x = 0;
+    return tail_to(r, 0x8396, 0xA01E);
+}
+
+/*
+ * @routine 024D:380 StageFallRightLand
+ * @run 6B:8380
+ * WHAT IT DOES: The fall to the right's middle step: the player idle, his animation sound, and until his X passes $10
+ * on a screen past the first the step counts on; else his landing.
+ * HOW: MapOverlayBanks5And6, $A01B, $A012; OBJ_X_HI and OBJ_X_LO; the tail JMP to $A01E with X 0, or INC zFallStep.
+ * WAITS: no.
+ * Entry: nothing. Exit: counting: N and Z from the new step; else as $A01E.
+ */
+StageRegs StageFallRightLand(StageRegs r)
+{
+    r = map_banks_5_6(r, 0x8383);
+    r = call_to(r, 0x8386, 0xA01B);
+    r = call_to(r, 0x8389, 0xA012);
+    return fall_until(r, true, 0x10);
+}
+
+void abi_StageFallRightLand(void)
+{
+    stage_regs_load_shim(StageFallRightLand(entry_shim()));
+}
+
+/*
+ * @routine 024D:3D0 StageFallLeftLand
+ * @run 6B:83D0
+ * WHAT IT DOES: The fall to the left's middle step: as StageFallRightLand, counting on while his X is below $F0.
+ * HOW: As StageFallRightLand.
+ * WAITS: no.
+ * Entry, exit: as StageFallRightLand.
+ */
+StageRegs StageFallLeftLand(StageRegs r)
+{
+    r = map_banks_5_6(r, 0x83D3);
+    r = call_to(r, 0x83D6, 0xA01B);
+    r = call_to(r, 0x83D9, 0xA012);
+    return fall_until(r, false, 0xF0);
+}
+
+void abi_StageFallLeftLand(void)
+{
+    stage_regs_load_shim(StageFallLeftLand(entry_shim()));
+}
+
+/*
+ * @routine 024D:373 StageFallPose
+ * @run 6B:8373
+ * WHAT IT DOES: The fall's first step: the player's animation 0 set and its sound, then the step counted on.
+ * HOW: MapOverlayBanks5And6, $A018 with A 0, $A012, BRA to the INC of zFallStep.
+ * WAITS: no.
+ * Entry: nothing. Exit: N and Z from the new step; the rest as $A012 left them.
+ */
+StageRegs StageFallPose(StageRegs r)
+{
+    r = map_banks_5_6(r, 0x8376);
+    r = loaded(r, 0x00);
+    r = call_to(r, 0x837B, 0xA018);
+    r = call_to(r, 0x837E, 0xA012);
+    r.nz = INC8(ZP->fall_step);
+    return r;
+}
+
+void abi_StageFallPose(void)
+{
+    stage_regs_load_shim(StageFallPose(entry_shim()));
+}
+
+/*
+ * @routine 024D:361 StageFallRight
+ * @run 6B:8361
+ * @stop 8373
+ * WHAT IT DOES: The fall to the right (zField87 2), a step a frame: the first sets the player's speed $0140 and runs
+ * into StageFallPose; the second StageFallRightLand; the third StageFallRightDone.
+ * HOW: zFallStep decremented twice with BEQs.
+ * WAITS: as the step taken.
+ * Entry: nothing. Exit: as the step taken.
+ */
+StageRegs StageFallRight(StageRegs r)
+{
+    r = loaded(r, RD8(ZP->fall_step));
+    r = loaded(r, (uint8_t)(r.a - 1));
+    if (r.a == 0) {
+        return StageFallRightLand(r);
+    }
+    r = loaded(r, (uint8_t)(r.a - 1));
+    if (r.a == 0) {
+        return StageFallRightDone(r);
+    }
+    r = loaded(r, 0x40);
+    WR8(OBJ->vx_lo[0], 0x40);
+    r = loaded(r, 0x01);
+    WR8(OBJ->vx_hi[0], 0x01);
+    return StageFallPose(r);
+}
+
+void abi_StageFallRight(void)
+{
+    stage_regs_load_shim(StageFallRight(entry_shim()));
+}
+
+/*
+ * @routine 024D:3B0 StageFallLeft
+ * @run 6B:83B0
+ * @stop 83D0
+ * WHAT IT DOES: The fall to the left (zField87 3): the second step StageFallLeftLand, the third StageFallLeftDone; the
+ * first, with the object in slot $50 of kind $30, counts the step on twice, else sets the player's speed -$0140, poses
+ * him (StageFallPose) and runs into StageFallLeftLand.
+ * HOW: zFallStep decremented twice; OBJ_KIND of slot $50; BSR and BRA to StageFallStepNext; JSR StageFallPose.
+ * WAITS: as the step taken.
+ * Entry: nothing. Exit: as the step taken.
+ */
+StageRegs StageFallLeft(StageRegs r)
+{
+    r = loaded(r, RD8(ZP->fall_step));
+    r = loaded(r, (uint8_t)(r.a - 1));
+    if (r.a == 0) {
+        return StageFallLeftLand(r);
+    }
+    r = loaded(r, (uint8_t)(r.a - 1));
+    if (r.a == 0) {
+        return StageFallLeftDone(r);
+    }
+    r = loaded(r, RD8(OBJ->kind[0x50]));
+    r = regs_compared(r, r.a, 0x30);
+    if (r.a == 0x30) {
+        jsr_push(0x83C1);
+        r = StageFallStepNext(r);
+        jsr_pop();
+        return StageFallStepNext(r);
+    }
+    r = loaded(r, 0xC0);
+    WR8(OBJ->vx_lo[0], 0xC0);
+    r = loaded(r, 0xFE);
+    WR8(OBJ->vx_hi[0], 0xFE);
+    jsr_push(0x83D0);
+    r = StageFallPose(r);
+    jsr_pop();
+    return StageFallLeftLand(r);
+}
+
+void abi_StageFallLeft(void)
+{
+    stage_regs_load_shim(StageFallLeft(entry_shim()));
+}
+
+/*
+ * @routine 024D:413 StageRestartInPlace
+ * @run 6B:8413
+ * WHAT IT DOES: Sets the stage up anew in place: the screen cleared, its lists, VRAM runs, set-up, objects and the
+ * player's start, then sub-mode 1 with zField86 from zField83.
+ * HOW: ClearScreenState, StartStageLists, ExpandStageVramRuns, InitStage, SpawnStageObjectsRows01, zField8A 2,
+ * MapOverlayBanks5And6, $A003, SetUpStageObjects.
+ * WAITS: where its calls wait.
+ * Entry: nothing. Exit: A zField83, N and Z from it; X, Y, C and V as SetUpStageObjects left them.
+ */
+StageRegs StageRestartInPlace(StageRegs r)
+{
+    r = call_to(r, 0x8416, 0x4009);
+    r = call_to(r, 0x8419, 0x88B1);
+    r = call_to(r, 0x841C, 0x8882);
+    r = call_to(r, 0x841F, 0x88EC);
+    r = call_to(r, 0x8422, 0x8B53);
+    r = loaded(r, 0x02);
+    WR8(ZP->field8a, 0x02);
+    r = map_banks_5_6(r, 0x8429);
+    r = call_to(r, 0x842C, 0xA003);
+    r = call_to(r, 0x842F, 0x8A5F);
+    WR8(ZP->fade_active, 0);
+    WR8(ZP->paused, 0);
+    r = loaded(r, 0x01);
+    WR8(ZP->game_sub_mode, 0x01);
+    r = loaded(r, RD8(ZP->field83));
+    WR8(ZP->field86, r.a);
+    return r;
+}
+
+void abi_StageRestartInPlace(void)
+{
+    stage_regs_load_shim(StageRestartInPlace(entry_shim()));
+}
+
+/*
+ * @routine 024D:448 StageShowStartFrame
+ * @run 6B:8448
+ * WHAT IT DOES: The player's frame by character set, then his animation sound.
+ * HOW: MapOverlayBanks5And6; OBJ_FRAME of slot 0 from StartFrameByCharacter; the tail JMP to $A012.
+ * WAITS: no.
+ * Entry: nothing. Exit: as $A012, entered with X zCharacter, A the frame, N and Z from it.
+ */
+StageRegs StageShowStartFrame(StageRegs r)
+{
+    r = map_banks_5_6(r, 0x844B);
+    r.x = RD8(ZP->character);
+    r = loaded(r, rd8((uint16_t)(StartFrameByCharacter + r.x)));
+    WR8(OBJ->frame[0], r.a);
+    return tail_to(r, 0x8453, 0xA012);
+}
+
+void abi_StageShowStartFrame(void)
+{
+    stage_regs_load_shim(StageShowStartFrame(entry_shim()));
+}
+
+/*
+ * @routine 024D:260 StageChooseClearKind
+ * @run 6B:8260
+ * WHAT IT DOES: Chooses how the cleared stage plays out (zClearKind) from zField8C: 0 gives 2, negative 4, else 1 for
+ * 1, 2, $0D, $0E and 7 up to $0A but $0B and $0C, and 3 otherwise; then sub-mode 3 with the scroll stopped and the
+ * forced presses and time-slowing cleared.
+ * HOW: CMP chain on zField8C read once; StageScrollSpeedsOff by the C at $80C5.
+ * WAITS: no.
+ * Entry: nothing. Exit: as the call at $80C5 and the stores leave them; A, N and Z as that left them.
+ */
+StageRegs StageChooseClearKind(StageRegs r)
+{
+    uint8_t kind;
+
+    r = loaded(r, RD8(ZP->field8c));
+    if (r.a == 0) {
+        kind = 0x02;
+    } else if (r.a & 0x80) {
+        kind = 0x04;
+    } else {
+        r.x = 1;
+        wr8(HitAttackFlags, 0x01);
+        r = regs_compared(r, r.a, 0x03);
+        if (!r.c) {
+            kind = 0x01;
+        } else {
+            r = regs_compared(r, r.a, 0x07);
+            if (!r.c) {
+                kind = 0x03;
+            } else {
+                r = regs_compared(r, r.a, 0x0B);
+                if (r.a == 0x0B) {
+                    kind = 0x03;
+                } else {
+                    r = regs_compared(r, r.a, 0x0C);
+                    if (r.a == 0x0C) {
+                        kind = 0x03;
+                    } else {
+                        r = regs_compared(r, r.a, 0x0F);
+                        kind = r.c ? 0x03 : 0x01;
+                    }
+                }
+            }
+        }
+    }
+    r = loaded(r, kind);
+    WR8(ZP->clear_kind, kind);
+    r = loaded(r, 0x03);
+    WR8(ZP->game_sub_mode, 0x03);
+    WR8(ZP->field85, 0);
+    r = call_to(r, 0x8298, SCROLL_SPEEDS_OFF_RUN);
+    wr8(PadForcedPress, 0);
+    wr8(PadForcedPressB, 0);
+    wr8(TimeSlowMode, 0);
+    return r;
+}
+
+void abi_StageChooseClearKind(void)
+{
+    stage_regs_load_shim(StageChooseClearKind(entry_shim()));
+}
+
+/*
+ * @routine 024D:082 StageStartSound
+ * @run 6B:8082
+ * WHAT IT DOES: Keeps the stage's start sound as zFadeSound and sends it.
+ * HOW: STA zFadeSound, the tail JMP to the sound hook.
+ * WAITS: no.
+ * Entry: A the sound, X and Y the caller's. Exit: as SoundCommand.
+ */
+StageRegs StageStartSound(StageRegs r)
+{
+    WR8(ZP->fade_sound, r.a);
+    return sound_tail(r, r.a);
+}
+
+void abi_StageStartSound(void)
+{
+    stage_regs_load_shim(StageStartSound(entry_shim()));
+}
+
+/*
+ * @routine 024D:079 StageStartMusicByStage
+ * @run 6B:8079
+ * WHAT IT DOES: For a stage of $80 or more: stage $80 itself nothing; else the music stopped and the sound $5A.
+ * HOW: CMP #$80; JSR the stop vector; running into StageStartSound.
+ * WAITS: no.
+ * Entry: A zStage. Exit: stage $80: N and Z from the compare, C 1; else as StageStartSound.
+ */
+StageRegs StageStartMusicByStage(StageRegs r)
+{
+    r = regs_compared(r, r.a, 0x80);
+    if (r.a == 0x80) {
+        return r;
+    }
+    r = call_to(r, 0x8080, 0x4087);
+    r = loaded(r, 0x5A);
+    return StageStartSound(r);
+}
+
+void abi_StageStartMusicByStage(void)
+{
+    stage_regs_load_shim(StageStartMusicByStage(entry_shim()));
+}
+
+/*
+ * @routine 024D:077 StageStartMusicKeep
+ * @run 6B:8077
+ * @stop 8079
+ * WHAT IT DOES: StageStartMusicByStage with zField8E's bit 3 set, so the fade's end sends the sound.
+ * HOW: SMB3, running into StageStartMusicByStage.
+ * WAITS: no.
+ * Entry: A zStage. Exit: as StageStartMusicByStage.
+ */
+StageRegs StageStartMusicKeep(StageRegs r)
+{
+    RMW8(ZP->field8e, old, old | 0x08);
+    return StageStartMusicByStage(r);
+}
+
+void abi_StageStartMusicKeep(void)
+{
+    stage_regs_load_shim(StageStartMusicKeep(entry_shim()));
+}
+
+/*
+ * @routine 024D:06E StageStartMusicBoss
+ * @run 6B:806E
+ * WHAT IT DOES: The music stopped and the sound $5B kept and sent, with zField8E's bit 3 set.
+ * HOW: SMB3, the stop vector, BRA to StageStartSound.
+ * WAITS: no.
+ * Entry: X and Y the caller's. Exit: as StageStartSound.
+ */
+StageRegs StageStartMusicBoss(StageRegs r)
+{
+    RMW8(ZP->field8e, old, old | 0x08);
+    r = call_to(r, 0x8073, 0x4087);
+    r = loaded(r, 0x5B);
+    return StageStartSound(r);
+}
+
+void abi_StageStartMusicBoss(void)
+{
+    stage_regs_load_shim(StageStartMusicBoss(entry_shim()));
+}
+
+/*
+ * @routine 024D:093 StageStartDone
+ * @run 6B:8093
+ * WHAT IT DOES: The stage start's end: sub-mode 5, the forced pad's frames counted down, the player's start pose set.
+ * HOW: Stores and a DEC.
+ * WAITS: no.
+ * Entry: nothing. Exit: A 1, N and Z from it; X, Y, C and V kept.
+ */
+StageRegs StageStartDone(StageRegs r)
+{
+    r = loaded(r, 0x05);
+    WR8(ZP->game_sub_mode, 0x05);
+    r.nz = DEC8(OBJ->work_e[0]);
+    r = loaded(r, 0x01);
+    wr8(PlayerStartPose, 0x01);
+    return r;
+}
+
+void abi_StageStartDone(void)
+{
+    stage_regs_load_shim(StageStartDone(entry_shim()));
+}
+
+/*
+ * @routine 024D:06A StageStartBossMusic
+ * @run 6B:806A
+ * WHAT IT DOES: The boss music, then the start's end.
+ * HOW: BSR StageStartMusicBoss, BRA to StageStartDone.
+ * WAITS: no.
+ * Entry: X and Y the caller's. Exit: as StageStartDone, the rest as the music left them.
+ */
+StageRegs StageStartBossMusic(StageRegs r)
+{
+    jsr_push(0x806C);
+    r = StageStartMusicBoss(r);
+    jsr_pop();
+    return StageStartDone(r);
+}
+
+void abi_StageStartBossMusic(void)
+{
+    stage_regs_load_shim(StageStartBossMusic(entry_shim()));
+}
+
+/*
+ * @routine 024D:087 StageStartPlain
+ * @run 6B:8087
+ * @stop 8093
+ * WHAT IT DOES: The start with zField8E's bit 0 clear: stage $10 the boss music, stage $0C the by-stage music, others
+ * none; then the start's end.
+ * HOW: CPs of zStage read once; the BSR to StageStartMusicKeep.
+ * WAITS: no.
+ * Entry: nothing. Exit: as StageStartDone, the rest as the music left them.
+ */
+StageRegs StageStartPlain(StageRegs r)
+{
+    r = loaded(r, RD8(ZP->stage));
+    r = regs_compared(r, r.a, 0x10);
+    if (r.a == 0x10) {
+        return StageStartBossMusic(r);
+    }
+    r = regs_compared(r, r.a, 0x0C);
+    if (r.a == 0x0C) {
+        jsr_push(0x8093);
+        r = StageStartMusicKeep(r);
+        jsr_pop();
+    }
+    return StageStartDone(r);
+}
+
+void abi_StageStartPlain(void)
+{
+    stage_regs_load_shim(StageStartPlain(entry_shim()));
+}
+
+/*
+ * @routine 024D:02D StageStart
+ * @run 6B:802D
+ * @stop 806A
+ * WHAT IT DOES: A stage's start: the game state wiped, its lists, VRAM runs, set-up, objects and player, then the
+ * music by stage: with zField8E's bit 0 clear StageStartPlain; else the secret stages StageStartMusicByStage, stage $0C
+ * StageStartMusicKeep, stage $10 the boss music, others the card's play-again.
+ * HOW: The calls in turn; zField82 indexes SectionOrder for zField86; BBR0 and compares of zStage.
+ * WAITS: where its calls wait.
+ * Entry: nothing. Exit: as the music routine, or as the play-again.
+ */
+StageRegs StageStart(StageRegs r)
+{
+    r = call_to(r, 0x8030, 0x4006);
+    r = call_to(r, 0x8033, 0x88B1);
+    r = call_to(r, 0x8036, 0x8882);
+    r = call_to(r, 0x8039, 0x88EC);
+    r = map_banks_5_6(r, 0x803C);
+    r = call_to(r, 0x803F, 0xA003);
+    r = call_to(r, 0x8042, 0x8B53);
+    r = call_to(r, 0x8045, 0x8F98);
+    r = call_to(r, 0x8048, 0x8A5F);
+    WR8(ZP->paused, 0);
+    WR8(ZP->fade_active, 0);
+    r.nz = INC8(ZP->game_sub_mode);
+    r.y = RD8(ZP->field82);
+    r = loaded(r, rd8((uint16_t)(SectionOrder + r.y)));
+    WR8(ZP->field86, r.a);
+    r = call_to(r, 0x8058, 0x80CB);
+    if (!(RD8(ZP->field8e) & 0x01)) {
+        return StageStartPlain(r);
+    }
+    r = loaded(r, RD8(ZP->stage));
+    if (r.a & 0x80) {
+        return StageStartMusicByStage(r);
+    }
+    r = regs_compared(r, r.a, 0x0C);
+    if (r.a == 0x0C) {
+        return StageStartMusicKeep(r);
+    }
+    r = regs_compared(r, r.a, 0x10);
+    if (r.a == 0x10) {
+        return StageStartMusicBoss(r);
+    }
+    return tail_to(r, 0x8067, 0x407B);
+}
+
+void abi_StageStart(void)
+{
+    stage_regs_load_shim(StageStart(entry_shim()));
 }

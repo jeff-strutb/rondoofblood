@@ -97,7 +97,7 @@ typedef struct {
     uint8_t stage; /* zStage */
     uint8_t field82; /* zField82 */
     uint8_t field83; /* zField83 */
-    uint8_t _gap_0084[1]; /* no name yet: $2084-$2084 */
+    uint8_t clear_kind; /* zClearKind */
     uint8_t field85; /* zField85 */
     uint8_t field86; /* zField86 */
     uint8_t field87; /* zField87 */
@@ -251,6 +251,7 @@ _Static_assert(ZeroPageRec_BASE + offsetof(ZeroPageRec, field80) + 0 == zField80
 _Static_assert(ZeroPageRec_BASE + offsetof(ZeroPageRec, stage) + 0 == zStage, "ZeroPageRec.stage is not at zStage");
 _Static_assert(ZeroPageRec_BASE + offsetof(ZeroPageRec, field82) + 0 == zField82, "ZeroPageRec.field82 is not at zField82");
 _Static_assert(ZeroPageRec_BASE + offsetof(ZeroPageRec, field83) + 0 == zField83, "ZeroPageRec.field83 is not at zField83");
+_Static_assert(ZeroPageRec_BASE + offsetof(ZeroPageRec, clear_kind) + 0 == zClearKind, "ZeroPageRec.clear_kind is not at zClearKind");
 _Static_assert(ZeroPageRec_BASE + offsetof(ZeroPageRec, field85) + 0 == zField85, "ZeroPageRec.field85 is not at zField85");
 _Static_assert(ZeroPageRec_BASE + offsetof(ZeroPageRec, field86) + 0 == zField86, "ZeroPageRec.field86 is not at zField86");
 _Static_assert(ZeroPageRec_BASE + offsetof(ZeroPageRec, field87) + 0 == zField87, "ZeroPageRec.field87 is not at zField87");

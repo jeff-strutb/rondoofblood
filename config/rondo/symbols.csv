@@ -911,3 +911,7 @@ C63D,abs,MariaCompanionYOffsets,a companion's Y offset from her by OBJ_WORK_E (i
 C641,abs,MariaCompanionXOffsets,a companion's X offset from her by OBJ_WORK_E (MariaObjectKind1)
 C6F7,abs,MariaCompanionHandlers,the handlers of her companions in slots 1 and 2 by OBJ_KIND, six words (MariaRunCompanionKind)
 C73B,abs,MariaObjectHandlers,the handlers of her objects in slots 3 to 15 by OBJ_KIND (MariaRunObjectSlot)
+833E,abs,ForcedWalkPads,the forced pad of a sub-mode 3 start by the side the player faces (StageForcedWalk): $80 then $20
+8456,abs,StartFrameByCharacter,the player's frame at a start by zCharacter (StageShowStartFrame)
+84,zp,zClearKind,how a cleared stage plays out (StageChooseClearKind): 1 to 4
+2741,abs,StageFlashActive,1 while the screen flash object runs (StageFlashStart); a second one is cleared

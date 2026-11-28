@@ -897,5 +897,9 @@
 #define MariaCompanionXOffsets 0xC641 /* a companion's X offset from her by OBJ_WORK_E (MariaObjectKind1) */
 #define MariaCompanionHandlers 0xC6F7 /* the handlers of her companions in slots 1 and 2 by OBJ_KIND, six words (MariaRunCompanionKind) */
 #define MariaObjectHandlers 0xC73B /* the handlers of her objects in slots 3 to 15 by OBJ_KIND (MariaRunObjectSlot) */
+#define ForcedWalkPads 0x833E /* the forced pad of a sub-mode 3 start by the side the player faces (StageForcedWalk): $80 then $20 */
+#define StartFrameByCharacter 0x8456 /* the player's frame at a start by zCharacter (StageShowStartFrame) */
+#define zClearKind 0x2084 /* how a cleared stage plays out (StageChooseClearKind): 1 to 4 */
+#define StageFlashActive 0x2741 /* 1 while the screen flash object runs (StageFlashStart); a second one is cleared */
 
 #endif

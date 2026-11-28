@@ -157,7 +157,7 @@ StageCameraModeDispatch10C5_at0:
 ScrollYFromLevelWord10C5:
     lda a:RasterWaterWanted
     sta a:ScrollYLo
-    lda a:$3EB9
+    lda a:LevelYHi
     sta a:ScrollYHi
     rts
 
@@ -1661,7 +1661,7 @@ StageCameraModeDispatch12D5_at0:
 ScrollYFromLevelWord12D5:
     lda a:RasterWaterWanted
     sta a:ScrollYLo
-    lda a:$3EB9
+    lda a:LevelYHi
     sta a:ScrollYHi
     rts
 
@@ -2670,6 +2670,7 @@ ScreenMapAt12D5:
 ; HOW: AdvanceScrollY's body with the sign table moved ($AAB0).
 ; WAITS: no.
 ; Entry, exit: as AdvanceScrollY.
+AdvanceScrollSigns12D5 = $AAB0 ; AdvanceScrollY's sign extension by the step's sign
 AdvanceScrollY12D5:
     lda a:ScrollStepYHi,x
     rol a
@@ -2684,7 +2685,7 @@ AdvanceScrollY12D5:
     adc a:ScrollYLo,x
     sta a:ScrollYLo,x
     lda #$00
-    adc a:$AAB0,y
+    adc a:AdvanceScrollSigns12D5,y
     pha
     clc
     adc a:ScrollYHi,x

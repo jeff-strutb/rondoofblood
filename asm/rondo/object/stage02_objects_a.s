@@ -1,5 +1,6 @@
 ; @routine 051B:195 BounceSpeeds051B
 ; @run 70:B195
+; @stop B1C3
 ; WHAT IT DOES: In state 0 loads the record, sets sprite set 4 and picks one of eight speed pairs at random; else goes on at $B203.
 ; HOW: A table row of four bytes by NextRandom's low three bits.
 ; WAITS: no.

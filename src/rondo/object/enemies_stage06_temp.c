@@ -10,6 +10,7 @@
 #include "common_objects.h"
 #include "enemy_objects.h"
 #include "stage_enemies_l7.h"
+#include "tile_piece_b.h"
 
 /* An accumulated exit: the later effect over the earlier. */
 static Ended then(Ended e, Ended next)
@@ -3207,6 +3208,17 @@ static Jump tile_piece_object072a_exit_shim(PieceObjArm p)
 void abi_TilePieceObject072A(void)
 {
     abi_jump_exit(tile_piece_object072a_exit_shim(TilePieceObject072A(cpu.x)));
+}
+
+/* TilePieceObject072A's body and its exit, for the copies filed in object/tile_piece_b.c. */
+PieceObjArm TilePieceObjectAt(uint8_t slot, uint16_t records)
+{
+    return tile_piece_object_at(slot, records);
+}
+
+void tile_piece_object_at_exit_shim(PieceObjArm p)
+{
+    abi_jump_exit(tile_piece_object072a_exit_shim(p));
 }
 
 /* DrawTilePiece in the other 23 overlays that hold it at $A882: the same code, its own three tables. */

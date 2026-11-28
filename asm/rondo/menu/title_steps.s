@@ -130,28 +130,96 @@ TitleScreenBegin:
 ; Entry: X and Y as the caller's (passed to the sound command). Exit: as SoundCommand left A, X and Y,
 ; N and Z from zModeDone's new value, C and V as the command left them.
 TitleSoundBegin:
-    stz a:$3B80
-    stz a:$3B81
+    stz a:StageSelectEntry
+    stz a:StageSelectCharacter
     lda #$FD
     jsr VecSoundCommand
     inc z:zGameSubMode
     stz z:zStage
     bra ModeDoneAdd
+
+; @routine 00C1:240 StageSelectStep
+; @run 6B:8240
+; WHAT IT DOES: A frame of the stage select (title_steps.c).
+; WAITS: no.
+StageSelectEntry = $3B80 ; the stage select's entry, 0 to 22
+StageSelectCharacter = $3B81 ; its character
+StageSelectVoices = $8268 ; a sound for each character
+StageSelectStages = $82BE ; the stage of each entry
+StageSelectTexts = $82D5 ; a glyph string pointer for each entry
+StageSelectStep:
     lda a:BiosJoyTrigger
     and #$09
-    beq $826A
-    lda a:$3B81
+    beq StageSelectMove
+    lda a:StageSelectCharacter
     eor #$01
-    ora a:$3B80
-    beq $826A
-    ldx a:$3B80
-    lda a:$82BE,x
+    ora a:StageSelectEntry
+    beq StageSelectMove
+    ldx a:StageSelectEntry
+    lda a:StageSelectStages,x
     sta z:zStage
-    lda a:$3B81
+    lda a:StageSelectCharacter
     sta z:zCharacter
     tax
-    lda a:$8268,x
+    lda a:StageSelectVoices,x
     jsr VecSoundCommand
+
+; @routine 00C1:26A StageSelectMove
+; @run 6B:826A
+; WHAT IT DOES: The stage select's pad (title_steps.c).
+; WAITS: no.
+StageSelectMove:
+    lda a:BiosJoyTrigger
+    and #$50
+    bne StageSelectStage
+    lda a:BiosJoyTrigger
+    and #$A0
+    bra ModeDoneAdd+2
+
+; @routine 00C1:278 StageSelectToggleCharacter
+; @run 6B:8278
+; WHAT IT DOES: Changes the stage select's character (title_steps.c).
+; WAITS: no.
+StageSelectToggleCharacter:
+    lda a:StageSelectCharacter
+    eor #$01
+    sta a:StageSelectCharacter
+    lda #$01
+    jsr VecSoundCommand
+    bra StageSelectStage_draw
+
+; @routine 00C1:287 StageSelectStage
+; @run 6B:8287
+; WHAT IT DOES: Moves the stage select's entry and draws it (title_steps.c).
+; WAITS: no.
+StageSelectStage:
+    pha
+    lda #$01
+    jsr VecSoundCommand
+    pla
+    and #$40
+    beq StageSelectStage_down
+    inc a:StageSelectEntry
+    lda a:StageSelectEntry
+    cmp #$17
+    bne StageSelectStage_draw
+    stz a:StageSelectEntry
+    bra StageSelectStage_draw
+StageSelectStage_down:
+    dec a:StageSelectEntry
+    bpl StageSelectStage_draw
+    lda #$16
+    sta a:StageSelectEntry
+StageSelectStage_draw:
+    lda a:StageSelectEntry
+    asl a
+    tax
+    lda a:StageSelectTexts,x
+    sta z:zTemp00
+    lda a:StageSelectTexts+1,x
+    sta z:zTemp01
+    jsr DrawGlyphText
+    rts
 
 ; @routine 00C1:700 AttractStep
 ; @run 6B:8700

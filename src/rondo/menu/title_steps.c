@@ -238,6 +238,193 @@ void abi_TitleSoundBegin(void)
     title_sound_exit_shim(TitleSoundBegin(cpu.x, cpu.y));
 }
 
+/* The stage select (the screen's third sub-mode): the entry and character chosen, and its tables. */
+#define STAGE_SELECT_ENTRY 0x3B80           /* 0 to 22 */
+#define STAGE_SELECT_CHARACTER 0x3B81       /* 0 or 1 */
+#define STAGE_SELECT_VOICES 0x8268          /* a sound for each character */
+#define STAGE_SELECT_STAGES 0x82BE          /* the stage of each entry */
+#define STAGE_SELECT_TEXTS 0x82D5           /* a glyph string pointer for each entry */
+enum { STAGE_SELECT_ENTRIES = 23, STAGE_SELECT_SOUND = 0x01, JOY_I_OR_RUN = 0x09, JOY_UP_OR_DOWN = 0x50,
+       JOY_LEFT_OR_RIGHT = 0xA0, JOY_DOWN_BIT = 0x40 };
+
+/*
+ * @routine 00C1:240 StageSelectStep
+ * @run 6B:8240
+ * WHAT IT DOES: A frame of the stage select: button I or RUN starts the entry chosen (its stage to zStage, the
+ * character to zCharacter, the character's sound, and the mode is done); entry 0 with character 1 cannot be picked.
+ * Otherwise the pad moves the choice (StageSelectMove).
+ * HOW: The trigger's bits 0 and 3; the character EOR 1 ORed with the entry; the tables at $82BE and $8268; SoundCommand;
+ * runs into ModeDoneAdd.
+ * WAITS: no.
+ * Entry: X and Y as the caller's (passed to the sound command). Exit: picked: as SoundCommand leaves A, X, Y, C and V,
+ * N and Z from zModeDone; else as StageSelectMove.
+ */
+StageSelect StageSelectStep(uint8_t kept_x, uint8_t kept_y)
+{
+    StageSelect r = { 0 };
+    uint8_t trigger, value, entry, character, sound;
+
+    trigger = rd8(BiosJoyTrigger);
+    if ((trigger & JOY_I_OR_RUN) == 0) {
+        r.exit = StageSelectMove(kept_x, kept_y);
+        return r;
+    }
+    value = (uint8_t)(rd8(STAGE_SELECT_CHARACTER) ^ 1);
+    value = (uint8_t)(value | rd8(STAGE_SELECT_ENTRY));
+    if (value == 0) {
+        r.exit = StageSelectMove(kept_x, kept_y);
+        return r;
+    }
+    entry = rd8(STAGE_SELECT_ENTRY);
+    value = rd8((uint16_t)(STAGE_SELECT_STAGES + entry));
+    WR8(ZP->stage, value);
+    character = rd8(STAGE_SELECT_CHARACTER);
+    WR8(ZP->character, character);
+    sound = rd8((uint16_t)(STAGE_SELECT_VOICES + character));
+    jsr_push(0x8265);
+    r.picked.call = SoundCommand(sound, character, kept_y);
+    jsr_pop();
+    r.sound = sound;
+    r.x = character;
+    r.y = kept_y;
+    r.picked.done = ModeDoneAdd();
+    r.started = true;
+    return r;
+}
+
+void stage_select_exit_shim(StageSelect r)
+{
+    if (!r.started) {
+        exit_shim(r.exit);
+        return;
+    }
+    cpu.a = r.sound;
+    cpu.x = r.x;
+    cpu.y = r.y;
+    sound_command_exit_shim(r.sound, r.picked.call);
+    abi_nz(r.picked.done);
+}
+
+void abi_StageSelectStep(void)
+{
+    stage_select_exit_shim(StageSelectStep(cpu.x, cpu.y));
+}
+
+/*
+ * @routine 00C1:26A StageSelectMove
+ * @run 6B:826A
+ * WHAT IT DOES: The stage select's pad: up or down changes the entry (StageSelectStage); anything else does nothing.
+ * The instructions after the left-or-right test branch past StageSelectToggleCharacter, which nothing reaches.
+ * HOW: The trigger ANDed with $50 and, when zero, with $A0; the BRA to the RTS at $8267.
+ * WAITS: no.
+ * Entry: X and Y as the caller's. Exit: no up or down: A the trigger ANDed with $A0, N and Z from it; the rest kept.
+ * Else as StageSelectStage.
+ */
+Exit StageSelectMove(uint8_t kept_x, uint8_t kept_y)
+{
+    Exit exit = { 0 };
+    uint8_t trigger;
+
+    trigger = (uint8_t)(rd8(BiosJoyTrigger) & JOY_UP_OR_DOWN);
+    if (trigger != 0) {
+        return StageSelectStage(trigger, kept_x, kept_y);
+    }
+    exit.a = (uint8_t)(rd8(BiosJoyTrigger) & JOY_LEFT_OR_RIGHT);
+    exit.nz = exit.a;
+    exit.x_kept = exit.y_kept = exit.c_kept = true;
+    return exit;
+}
+
+void abi_StageSelectMove(void)
+{
+    exit_shim(StageSelectMove(cpu.x, cpu.y));
+}
+
+/* The entry's string drawn ($82AB). */
+static Exit stage_select_draw(void)
+{
+    uint8_t entry, index, value;
+    Exit exit;
+
+    entry = rd8(STAGE_SELECT_ENTRY);
+    index = (uint8_t)(entry << 1);
+    value = rd8((uint16_t)(STAGE_SELECT_TEXTS + index));
+    WR8(ZP->temp00, value);
+    value = rd8((uint16_t)(STAGE_SELECT_TEXTS + 1 + index));
+    WR8(ZP->temp01, value);
+    jsr_push(0x82BD);
+    exit = DrawGlyphText();
+    jsr_pop();
+    return exit;
+}
+
+/*
+ * @routine 00C1:278 StageSelectToggleCharacter
+ * @run 6B:8278
+ * WHAT IT DOES: Changes the stage select's character, plays sound 1 and draws the entry. Nothing found reaches it: the
+ * instruction before it is a BRA.
+ * HOW: STAGE_SELECT_CHARACTER EOR 1; SoundCommand; on into the drawing at $82AB.
+ * WAITS: no.
+ * Entry: X and Y as the caller's. Exit: as DrawGlyphText.
+ */
+Exit StageSelectToggleCharacter(uint8_t kept_x, uint8_t kept_y)
+{
+    uint8_t character;
+
+    character = (uint8_t)(rd8(STAGE_SELECT_CHARACTER) ^ 1);
+    wr8(STAGE_SELECT_CHARACTER, character);
+    jsr_push(0x8285);
+    (void)SoundCommand(STAGE_SELECT_SOUND, kept_x, kept_y);
+    jsr_pop();
+    return stage_select_draw();
+}
+
+void abi_StageSelectToggleCharacter(void)
+{
+    exit_shim(StageSelectToggleCharacter(cpu.x, cpu.y));
+}
+
+/*
+ * @routine 00C1:287 StageSelectStage
+ * @run 6B:8287
+ * WHAT IT DOES: Moves the stage select's entry by the pad (down one up, up one down, wrapping over the 23 entries),
+ * plays sound 1 and draws the entry's string.
+ * HOW: PHA of the pad bits, SoundCommand, PLA, bit 6; INC or DEC of the entry with the wrap; the string pointer from
+ * $82D5 into zTemp00 and zTemp01; DrawGlyphText.
+ * WAITS: no.
+ * Entry: A the pad bits (up or down), X and Y as the caller's. Exit: as DrawGlyphText.
+ */
+Exit StageSelectStage(uint8_t pad, uint8_t kept_x, uint8_t kept_y)
+{
+    uint8_t entry;
+
+    push8(pad);
+    jsr_push(0x828D);
+    (void)SoundCommand(STAGE_SELECT_SOUND, kept_x, kept_y);
+    jsr_pop();
+    pad = pull8();
+    if (pad & JOY_DOWN_BIT) {
+        entry = (uint8_t)(rd8(STAGE_SELECT_ENTRY) + 1);
+        wr8(STAGE_SELECT_ENTRY, entry);
+        entry = rd8(STAGE_SELECT_ENTRY);
+        if (entry == STAGE_SELECT_ENTRIES) {
+            wr8(STAGE_SELECT_ENTRY, 0);
+        }
+    } else {
+        entry = (uint8_t)(rd8(STAGE_SELECT_ENTRY) - 1);
+        wr8(STAGE_SELECT_ENTRY, entry);
+        if (entry & 0x80) {
+            wr8(STAGE_SELECT_ENTRY, STAGE_SELECT_ENTRIES - 1);
+        }
+    }
+    return stage_select_draw();
+}
+
+void abi_StageSelectStage(void)
+{
+    exit_shim(StageSelectStage(cpu.a, cpu.x, cpu.y));
+}
+
 /* The handlers that leave something other than an Exit, as one: the registers they keep are the table's. */
 static Exit kept_exit(uint8_t nz)
 {
@@ -363,7 +550,7 @@ void abi_TitleEntry(void)
  * @routine 00C1:1F8 TitleScreenStep
  * @run 6B:81F8
  * WHAT IT DOES: One frame of the screen's setup: the handler zGameSubMode's word names in the table
- * at $81FF (sub-mode 0 is TitleScreenBegin, 1 is TitleSoundBegin).
+ * at $81FF (sub-mode 0 is TitleScreenBegin, 1 is TitleSoundBegin, 2 is StageSelectStep).
  * HOW: Reads zGameSubMode, doubles it and jumps through the table. A word this overlay does not
  * hold runs as the original code.
  * WAITS: no.
@@ -387,6 +574,11 @@ Exit TitleScreenStep(uint8_t kept_y)
     case 0x822F:
         table_entry_shim(index, state, kept_y, v_in);
         title_sound_exit_shim(TitleSoundBegin(index, kept_y));
+        exit.from_cpu = true;
+        return exit;
+    case 0x8240:
+        table_entry_shim(index, state, kept_y, v_in);
+        stage_select_exit_shim(StageSelectStep(index, kept_y));
         exit.from_cpu = true;
         return exit;
     default:

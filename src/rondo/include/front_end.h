@@ -432,6 +432,17 @@ typedef struct { Exit exit; CommandCall call; bool sounded; uint8_t x, y; } Attr
 Exit TitleSetUp(uint8_t kept_x, uint8_t kept_y);
 Exit TitleScreenBegin(uint8_t kept_x, uint8_t kept_y);
 TitleSound TitleSoundBegin(uint8_t kept_x, uint8_t kept_y);
+/* The stage select: a pick (the sound given and the mode done) or the pad's move. */
+typedef struct { Exit exit; TitleSound picked; bool started; uint8_t sound, x, y; } StageSelect;
+StageSelect StageSelectStep(uint8_t kept_x, uint8_t kept_y);
+void stage_select_exit_shim(StageSelect r);
+Exit StageSelectMove(uint8_t kept_x, uint8_t kept_y);
+Exit StageSelectToggleCharacter(uint8_t kept_x, uint8_t kept_y);
+Exit StageSelectStage(uint8_t pad, uint8_t kept_x, uint8_t kept_y);
+void abi_StageSelectStep(void);
+void abi_StageSelectMove(void);
+void abi_StageSelectToggleCharacter(void);
+void abi_StageSelectStage(void);
 void title_sound_exit_shim(TitleSound sound);
 Exit TitleStep(uint8_t kept_y);
 Exit TitleEntry(uint8_t kept_y);

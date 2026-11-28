@@ -61,7 +61,6 @@ DA,zp,zSpreadCount,StartSixAt0EBF's use of zHitSlot: which of its six pieces it 
 4C,zp,zVideoMode,index of the screen timing
 4F,zp,zVdcReg,VDC register last selected
 8B,zp,zWaveCounter,a counter the water effects move with
-8B,zp,zTallyFrames,in the 031D program (031F): a frame counter of the tally screen; 031F:2F1 counts it once per call of the tally dispatcher and 031F:4DA sounds the count every fourth frame
 9E,zp,zRasterStage,stage value one raster effect tests
 A2,zp,zMusicWanted,set to $FF at start
 DB,zp,zRamBaseBank,first Super RAM bank from the card

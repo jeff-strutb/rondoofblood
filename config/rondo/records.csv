@@ -594,5 +594,4 @@ alias,ObjectTable,swoop_speed_hi,work_g,OBJ_SWOOP_SPEED_HI
 alias,ObjectTable,rain_count,work_i,OBJ_RAIN_COUNT
 alias,ObjectTable,attack_side,work_p,OBJ_ATTACK_SIDE
 alias,ObjectTable,attack_power,work_n,OBJ_ATTACK_POWER
-alias,ZeroPageRec,tally_frames,wave_counter,zTallyFrames
 alias,StageVars,shown_stock,state_3616,StageShownStock

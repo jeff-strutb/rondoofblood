@@ -63,7 +63,6 @@
 #define zVideoMode 0x204C /* index of the screen timing */
 #define zVdcReg 0x204F /* VDC register last selected */
 #define zWaveCounter 0x208B /* a counter the water effects move with */
-#define zTallyFrames 0x208B /* in the 031D program (031F): a frame counter of the tally screen; 031F:2F1 counts it once per call of the tally dispatcher and 031F:4DA sounds the count every fourth frame */
 #define zRasterStage 0x209E /* stage value one raster effect tests */
 #define zMusicWanted 0x20A2 /* set to $FF at start */
 #define zRamBaseBank 0x20DB /* first Super RAM bank from the card */

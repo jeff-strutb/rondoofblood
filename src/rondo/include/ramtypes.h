@@ -105,7 +105,7 @@ typedef struct {
     uint8_t fall_step; /* zFallStep */
     uint8_t field89; /* zField89 */
     union { uint8_t field8a; uint8_t field8_a; }; /* zField8A */
-    union { uint8_t wave_counter; uint8_t tally_frames; }; /* zWaveCounter */
+    uint8_t wave_counter; /* zWaveCounter */
     union { uint8_t field8c; uint8_t field8_c; }; /* zField8C */
     uint8_t stock; /* zStock */
     union { uint8_t field8e; uint8_t field8_e; }; /* zField8E */
@@ -263,7 +263,6 @@ _Static_assert(ZeroPageRec_BASE + offsetof(ZeroPageRec, field89) + 0 == zField89
 _Static_assert(ZeroPageRec_BASE + offsetof(ZeroPageRec, field8a) + 0 == zField8A, "ZeroPageRec.field8a is not at zField8A");
 _Static_assert(ZeroPageRec_BASE + offsetof(ZeroPageRec, field8_a) + 0 == zField8A, "ZeroPageRec.field8_a is not at zField8A");
 _Static_assert(ZeroPageRec_BASE + offsetof(ZeroPageRec, wave_counter) + 0 == zWaveCounter, "ZeroPageRec.wave_counter is not at zWaveCounter");
-_Static_assert(ZeroPageRec_BASE + offsetof(ZeroPageRec, tally_frames) == zTallyFrames, "ZeroPageRec.tally_frames is not at zTallyFrames");
 _Static_assert(ZeroPageRec_BASE + offsetof(ZeroPageRec, field8c) + 0 == zField8C, "ZeroPageRec.field8c is not at zField8C");
 _Static_assert(ZeroPageRec_BASE + offsetof(ZeroPageRec, field8_c) + 0 == zField8C, "ZeroPageRec.field8_c is not at zField8C");
 _Static_assert(ZeroPageRec_BASE + offsetof(ZeroPageRec, stock) + 0 == zStock, "ZeroPageRec.stock is not at zStock");

@@ -60,7 +60,6 @@ zVdcCrHi = $4B ; VDC control high as the game wants it
 zVideoMode = $4C ; index of the screen timing
 zVdcReg = $4F ; VDC register last selected
 zWaveCounter = $8B ; a counter the water effects move with
-zTallyFrames = $8B ; in the 031D program (031F): a frame counter of the tally screen; 031F:2F1 counts it once per call of the tally dispatcher and 031F:4DA sounds the count every fourth frame
 zRasterStage = $9E ; stage value one raster effect tests
 zMusicWanted = $A2 ; set to $FF at start
 zRamBaseBank = $DB ; first Super RAM bank from the card

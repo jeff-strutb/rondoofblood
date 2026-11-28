@@ -5481,17 +5481,29 @@ void abi_StageSubModeTally3CD(void)
     regs_exit_shim(StageSubModeTally3CD(regs_entry_shim()));
 }
 
+/* 03CD's tally screen. */
+static const TallyBuild tally_3cd = {
+    TALLY_CELLS, 0x93A9, ADDR_OF8(OBJ->work_b[16]), ADDR_OF8(OBJ->work_b[13]), ADDR_OF8(OBJ->frame[51]), 0x46, true,
+    StageDrawPiece3CD, StageClearWords3CD, SetVramWriteAddress3CD, SetVramAddresses3CD
+};
+
 /* JSR $934B: the frame pushed; popped only when TallyWait152D did not drop it. */
-static TallyWaitEnd tally_wait(Regs r, uint16_t ret)
+static TallyWaitEnd tally_wait_at(Regs r, uint16_t ret, uint16_t wait)
 {
     TallyWaitEnd end;
 
     jsr_push(ret);
-    end = TallyWait152D(r);
+    end = TallyWait152DAt(r, wait);
     if (!end.dropped) {
         jsr_pop();
     }
     return end;
+}
+
+/* The wait on 03CD's own byte. */
+static TallyWaitEnd tally_wait(Regs r, uint16_t ret)
+{
+    return tally_wait_at(r, ret, ADDR_OF8(OBJ->work_b[16]));
 }
 
 /*

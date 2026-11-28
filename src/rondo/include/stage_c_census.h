@@ -319,4 +319,37 @@ StageRegs StageClearedWalkOn3CDAt(StageRegs r, const StageRouteBuild *build);
 StageRegs StageProbePoints3CDAt(StageRegs r, const StageRouteBuild *build);
 StageRegs StageProbeAgain3CDAt(StageRegs r, const StageRouteBuild *build);
 
+/* What a build of 03CD's tally screen uses: its cells and their source table, the byte its steps wait on, where it
+ * keeps the health taken in, the frame it sets for full health, its first sound, whether the reveal's end pauses, and
+ * its own routines. */
+typedef struct {
+    uint16_t cells, cell_source, wait, health_kept, full_frame;
+    uint8_t start_sound;
+    bool reveal_pauses;
+    StageRegs (*draw_piece)(StageRegs r);
+    StageRegs (*clear_words)(StageRegs r);
+    StageRegs (*write_address)(StageRegs r);
+    StageRegs (*set_addresses)(StageRegs r);
+} TallyBuild;
+
+StageRegs TallyCell3CDAt(StageRegs r, uint16_t at, const TallyBuild *build);
+
+StageRegs TallyDigitCell3CDAt(StageRegs r, uint16_t at, const TallyBuild *build);
+
+StageRegs TallyDigits3CDAt(StageRegs r, uint16_t at, const TallyBuild *build);
+
+StageRegs TallyHealth3CDAt(StageRegs r, uint16_t at, const TallyBuild *build);
+
+StageRegs TallyHearts3CDAt(StageRegs r, uint16_t at, const TallyBuild *build);
+
+StageRegs TallyReveal3CDAt(StageRegs r, uint16_t at, const TallyBuild *build);
+
+StageRegs TallyBoard3CDAt(StageRegs r, uint16_t at, const TallyBuild *build);
+
+StageRegs TallyStart3CDAt(StageRegs r, uint16_t at, const TallyBuild *build);
+
+StageRegs TallyPause3CDAt(StageRegs r, uint16_t at, const TallyBuild *build);
+
+StageRegs TallyEnd3CDAt(StageRegs r, uint16_t at, const TallyBuild *build);
+
 #endif

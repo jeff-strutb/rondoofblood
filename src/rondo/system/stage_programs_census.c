@@ -13,6 +13,67 @@
 #include "front_end.h"
 #include "stage_programs_census.h"
 
+/* The routines below serve the same bytes in several programs, so a call or jump into the overlay's own window goes
+ * to the C of the routine loaded there (routine_at), not to one program's function. */
+
+/* The VRAM address setter loaded at run, with A as the caller holds it (N and Z from it), X the low byte and Y the
+ * high; the frame, if any, is the caller's. */
+static void resident_set_vram_shim(uint16_t run, uint8_t a, uint8_t lo, uint8_t hi)
+{
+    cpu.a = a;
+    abi_nz(a);
+    cpu.x = lo;
+    cpu.y = hi;
+    routine_at(run)();
+}
+
+/* For SetHealthBarAddress's JSR: A the high byte (TAY after the ADC). */
+static void resident_bar_vram_933b(uint8_t lo, uint8_t hi)
+{
+    resident_set_vram_shim(0x933B, hi, lo, hi);
+}
+
+/* For SetStageTileVramAddress's JMP: A the low byte (TAX from it). */
+static void resident_tile_vram_933b(uint8_t lo, uint8_t hi)
+{
+    resident_set_vram_shim(0x933B, lo, lo, hi);
+}
+
+/* For SetHealthBarAddress's JSR: A the high byte (TAY after the ADC). */
+static void resident_bar_vram_961c(uint8_t lo, uint8_t hi)
+{
+    resident_set_vram_shim(0x961C, hi, lo, hi);
+}
+
+/* For SetStageTileVramAddress's JMP: A the low byte (TAX from it). */
+static void resident_tile_vram_961c(uint8_t lo, uint8_t hi)
+{
+    resident_set_vram_shim(0x961C, lo, lo, hi);
+}
+
+/* The row spawn loaded at run, as a SpawnRow: X the row; the slot comes back in Y and the Y low byte in A. */
+static SpawnedObject resident_spawn_shim(uint16_t run, uint8_t row)
+{
+    SpawnedObject out;
+
+    cpu.x = row;
+    abi_nz(row);
+    routine_at(run)();
+    out.slot = cpu.y;
+    out.y_lo = cpu.a;
+    return out;
+}
+
+static SpawnedObject resident_spawn_936e(uint8_t row)
+{
+    return resident_spawn_shim(0x936E, row);
+}
+
+static SpawnedObject resident_spawn_964f(uint8_t row)
+{
+    return resident_spawn_shim(0x964F, row);
+}
+
 /* StartStageLists with a program's own tables, list expansion, script slot 7 and return addresses. */
 static void list_channel_registers_shim(uint8_t a, uint8_t x);
 
@@ -980,7 +1041,7 @@ void abi_MaskStageRow031F(void)
  * @routine 026E:63D SetStageTileVramAddress026E
  * @run 6B:8E3D
  * WHAT IT DOES: Sets the VRAM address of the tile pair zTemp04 names, from this program's table of addresses.
- * HOW: As SetStageTileVramAddress (024E:687): zTemp04 less bit 0 indexes the table; a tail JMP to SetVramAddresses026F.
+ * HOW: As SetStageTileVramAddress (024E:687): zTemp04 less bit 0 indexes the table; a tail JMP to the setter loaded at that address (several programs hold these bytes).
  * WAITS: no.
  * Entry: zTemp04. Exit: A 2, N and Z from it, X the address low, Y the high.
  * Nothing the game does loads this program (codemap.unloaded_programs), so nothing is known to reach it.
@@ -991,32 +1052,27 @@ uint16_t SetStageTileVramAddress026E(void)
     uint8_t lo = rd8((uint16_t)(0x8E4C + index));
     uint8_t hi = rd8((uint16_t)(0x8E4D + index));
 
-    SetVramAddresses026F(lo, hi);
+    resident_tile_vram_933b(lo, hi);    /* JMP */
     return (uint16_t)(lo | hi << 8);
 }
 
 void abi_SetStageTileVramAddress026E(void)
 {
-    uint16_t address = SetStageTileVramAddress026E();
-
-    cpu.x = (uint8_t)address;
-    cpu.y = (uint8_t)(address >> 8);
-    cpu.a = 2;
-    abi_nz(2);
+    (void)SetStageTileVramAddress026E();
 }
 
 /*
  * @routine 026E:3F9 SetHealthBarAddress026E
  * @run 6B:8BF9
  * WHAT IT DOES: While zField99 is not 0, sets the VRAM address of the bar at the cell $5E less it counts.
- * HOW: As SetHealthBarAddress (024E:443), calling SetVramAddresses026F.
+ * HOW: As SetHealthBarAddress (024E:443), calling the setter loaded at its JSR's address (several programs hold these bytes).
  * WAITS: no.
  * Entry: nothing. Exit, zField99 0: A 0, Z set. Else: A 2, X and Y the address, C and V from the last add.
  * Nothing the game does loads this program (codemap.unloaded_programs), so nothing is known to reach it.
  */
 StageExit SetHealthBarAddress026E(void)
 {
-    return health_bar_address(SetVramAddresses026F, 0x8C21);
+    return health_bar_address(resident_bar_vram_933b, 0x8C21);
 }
 
 void abi_SetHealthBarAddress026E(void)
@@ -1028,7 +1084,7 @@ void abi_SetHealthBarAddress026E(void)
  * @routine 031E:63D SetStageTileVramAddress031E
  * @run 6B:8E3D
  * WHAT IT DOES: Sets the VRAM address of the tile pair zTemp04 names, from this program's table of addresses.
- * HOW: As SetStageTileVramAddress (024E:687): zTemp04 less bit 0 indexes the table; a tail JMP to SetVramAddresses031F.
+ * HOW: As SetStageTileVramAddress (024E:687): zTemp04 less bit 0 indexes the table; a tail JMP to the setter loaded at that address (several programs hold these bytes).
  * WAITS: no.
  * Entry: zTemp04. Exit: A 2, N and Z from it, X the address low, Y the high.
  * Nothing the game does loads this program (codemap.unloaded_programs), so nothing is known to reach it.
@@ -1039,32 +1095,27 @@ uint16_t SetStageTileVramAddress031E(void)
     uint8_t lo = rd8((uint16_t)(0x8E4C + index));
     uint8_t hi = rd8((uint16_t)(0x8E4D + index));
 
-    SetVramAddresses031F(lo, hi);
+    resident_tile_vram_961c(lo, hi);    /* JMP */
     return (uint16_t)(lo | hi << 8);
 }
 
 void abi_SetStageTileVramAddress031E(void)
 {
-    uint16_t address = SetStageTileVramAddress031E();
-
-    cpu.x = (uint8_t)address;
-    cpu.y = (uint8_t)(address >> 8);
-    cpu.a = 2;
-    abi_nz(2);
+    (void)SetStageTileVramAddress031E();
 }
 
 /*
  * @routine 031E:3F9 SetHealthBarAddress031E
  * @run 6B:8BF9
  * WHAT IT DOES: While zField99 is not 0, sets the VRAM address of the bar at the cell $5E less it counts.
- * HOW: As SetHealthBarAddress (024E:443), calling SetVramAddresses031F.
+ * HOW: As SetHealthBarAddress (024E:443), calling the setter loaded at its JSR's address (several programs hold these bytes).
  * WAITS: no.
  * Entry: nothing. Exit, zField99 0: A 0, Z set. Else: A 2, X and Y the address, C and V from the last add.
  * Nothing the game does loads this program (codemap.unloaded_programs), so nothing is known to reach it.
  */
 StageExit SetHealthBarAddress031E(void)
 {
-    return health_bar_address(SetVramAddresses031F, 0x8C21);
+    return health_bar_address(resident_bar_vram_961c, 0x8C21);
 }
 
 void abi_SetHealthBarAddress031E(void)
@@ -1297,7 +1348,7 @@ void abi_SpawnStageObject031F(void)
  * @routine 026E:75A SpawnStageObjectsRows34026E
  * @run 6B:8F5A
  * WHAT IT DOES: Unless zField8E bit 0 is set, spawns rows 3 and 4 and sets up the two anchor objects and the player byte.
- * HOW: SpawnSecondPairBody (stage_spawn.c), the body of 024E:798, spawning with SpawnStageObject026F, with this copy's return addresses.
+ * HOW: SpawnSecondPairBody (stage_spawn.c), the body of 024E:798, spawning with the row spawn loaded at its JSR's address (several programs hold these bytes), with this copy's return addresses.
  * WAITS: no.
  * Entry: nothing. Exit when it spawned: A 2, X 4, Y the second slot, N and Z from A; else as entered.
  * Nothing the game does loads this program (codemap.unloaded_programs), so nothing is known to reach it.
@@ -1306,7 +1357,7 @@ StageSpawnEnd SpawnStageObjectsRows34026E(void)
 {
     static const SpawnPairLayout layout = { 0, 0, 0x8F63, 0x8F67, 0 };
 
-    return SpawnSecondPairBody(SpawnStageObject026F, &layout);
+    return SpawnSecondPairBody(resident_spawn_936e, &layout);
 }
 
 void abi_SpawnStageObjectsRows34026E(void)
@@ -1325,7 +1376,7 @@ void abi_SpawnStageObjectsRows34026E(void)
  * @routine 031E:74E SpawnStageObjectsRows34031E
  * @run 6B:8F4E
  * WHAT IT DOES: Unless zField8E bit 0 is set, spawns rows 3 and 4 and sets up the two anchor objects and the player byte.
- * HOW: SpawnSecondPairBody (stage_spawn.c), the body of 024E:798, spawning with SpawnStageObject031F, with this copy's return addresses.
+ * HOW: SpawnSecondPairBody (stage_spawn.c), the body of 024E:798, spawning with the row spawn loaded at its JSR's address (several programs hold these bytes), with this copy's return addresses.
  * WAITS: no.
  * Entry: nothing. Exit when it spawned: A 2, X 4, Y the second slot, N and Z from A; else as entered.
  * Nothing the game does loads this program (codemap.unloaded_programs), so nothing is known to reach it.
@@ -1334,7 +1385,7 @@ StageSpawnEnd SpawnStageObjectsRows34031E(void)
 {
     static const SpawnPairLayout layout = { 0, 0, 0x8F57, 0x8F5B, 0 };
 
-    return SpawnSecondPairBody(SpawnStageObject031F, &layout);
+    return SpawnSecondPairBody(resident_spawn_964f, &layout);
 }
 
 void abi_SpawnStageObjectsRows34031E(void)

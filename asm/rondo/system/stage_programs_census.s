@@ -1462,7 +1462,7 @@ MaskStageRow031F_at0:
 ; @routine 026E:63D SetStageTileVramAddress026E
 ; @run 6B:8E3D
 ; WHAT IT DOES: Sets the VRAM address of the tile pair zTemp04 names, from this program's table of addresses.
-; HOW: As SetStageTileVramAddress (024E:687): zTemp04 less bit 0 indexes the table; a tail JMP to SetVramAddresses026F.
+; HOW: As SetStageTileVramAddress (024E:687): zTemp04 less bit 0 indexes the table; a tail JMP to the setter loaded at that address (several programs hold these bytes).
 ; WAITS: no.
 ; Entry: zTemp04. Exit: A 2, N and Z from it, X the address low, Y the high.
 ; Nothing the game does loads this program (codemap.unloaded_programs), so nothing is known to reach it.
@@ -1479,7 +1479,7 @@ SetStageTileVramAddress026E:
 ; @routine 026E:3F9 SetHealthBarAddress026E
 ; @run 6B:8BF9
 ; WHAT IT DOES: While zField99 is not 0, sets the VRAM address of the bar at the cell $5E less it counts.
-; HOW: As SetHealthBarAddress (024E:443), calling SetVramAddresses026F.
+; HOW: As SetHealthBarAddress (024E:443), calling the setter loaded at its JSR's address (several programs hold these bytes).
 ; WAITS: no.
 ; Entry: nothing. Exit, zField99 0: A 0, Z set. Else: A 2, X and Y the address, C and V from the last add.
 ; Nothing the game does loads this program (codemap.unloaded_programs), so nothing is known to reach it.
@@ -1514,7 +1514,7 @@ SetHealthBarAddress026E_at0:
 ; @routine 031E:63D SetStageTileVramAddress031E
 ; @run 6B:8E3D
 ; WHAT IT DOES: Sets the VRAM address of the tile pair zTemp04 names, from this program's table of addresses.
-; HOW: As SetStageTileVramAddress (024E:687): zTemp04 less bit 0 indexes the table; a tail JMP to SetVramAddresses031F.
+; HOW: As SetStageTileVramAddress (024E:687): zTemp04 less bit 0 indexes the table; a tail JMP to the setter loaded at that address (several programs hold these bytes).
 ; WAITS: no.
 ; Entry: zTemp04. Exit: A 2, N and Z from it, X the address low, Y the high.
 ; Nothing the game does loads this program (codemap.unloaded_programs), so nothing is known to reach it.
@@ -1531,7 +1531,7 @@ SetStageTileVramAddress031E:
 ; @routine 031E:3F9 SetHealthBarAddress031E
 ; @run 6B:8BF9
 ; WHAT IT DOES: While zField99 is not 0, sets the VRAM address of the bar at the cell $5E less it counts.
-; HOW: As SetHealthBarAddress (024E:443), calling SetVramAddresses031F.
+; HOW: As SetHealthBarAddress (024E:443), calling the setter loaded at its JSR's address (several programs hold these bytes).
 ; WAITS: no.
 ; Entry: nothing. Exit, zField99 0: A 0, Z set. Else: A 2, X and Y the address, C and V from the last add.
 ; Nothing the game does loads this program (codemap.unloaded_programs), so nothing is known to reach it.
@@ -1834,7 +1834,7 @@ SpawnStageObject031F:
 ; @routine 026E:75A SpawnStageObjectsRows34026E
 ; @run 6B:8F5A
 ; WHAT IT DOES: Unless zField8E bit 0 is set, spawns rows 3 and 4 and sets up the two anchor objects and the player byte.
-; HOW: SpawnSecondPairBody (stage_spawn.c), the body of 024E:798, spawning with SpawnStageObject026F, with this copy's return addresses.
+; HOW: SpawnSecondPairBody (stage_spawn.c), the body of 024E:798, spawning with the row spawn loaded at its JSR's address (several programs hold these bytes), with this copy's return addresses.
 ; WAITS: no.
 ; Entry: nothing. Exit when it spawned: A 2, X 4, Y the second slot, N and Z from A; else as entered.
 ; Nothing the game does loads this program (codemap.unloaded_programs), so nothing is known to reach it.
@@ -1862,7 +1862,7 @@ SpawnStageObjectsRows34026E_at0:
 ; @routine 031E:74E SpawnStageObjectsRows34031E
 ; @run 6B:8F4E
 ; WHAT IT DOES: Unless zField8E bit 0 is set, spawns rows 3 and 4 and sets up the two anchor objects and the player byte.
-; HOW: SpawnSecondPairBody (stage_spawn.c), the body of 024E:798, spawning with SpawnStageObject031F, with this copy's return addresses.
+; HOW: SpawnSecondPairBody (stage_spawn.c), the body of 024E:798, spawning with the row spawn loaded at its JSR's address (several programs hold these bytes), with this copy's return addresses.
 ; WAITS: no.
 ; Entry: nothing. Exit when it spawned: A 2, X 4, Y the second slot, N and Z from A; else as entered.
 ; Nothing the game does loads this program (codemap.unloaded_programs), so nothing is known to reach it.

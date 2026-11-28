@@ -151,4 +151,7 @@ void abi_StageScrollSpeedsOff026D(void);
 StageRegs StageChooseClearKind026D(StageRegs r);
 void abi_StageChooseClearKind026D(void);
 
+StageRegs StageSubStepDeath026D(StageRegs r);
+void abi_StageSubStepDeath026D(void);
+
 #endif

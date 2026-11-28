@@ -47,4 +47,9 @@ StageRegs StageCameraStepAt(StageRegs r, uint16_t ret);
  * and scroll_off the address that JSR goes to. */
 StageRegs StageChooseClearKindAt(StageRegs r, uint16_t ret, uint16_t scroll_off);
 
+
+/* system/stage_flow.c: StageSubStepDeath (024D:23D) with ret the address after its JSR to StageScrollSpeedsOff and
+ * scroll_off the address that JSR goes to. */
+StageRegs StageSubStepDeathAt(StageRegs r, uint16_t ret, uint16_t scroll_off);
+
 #endif

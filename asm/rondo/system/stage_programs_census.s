@@ -2113,3 +2113,33 @@ StageChooseClearKind026D_at4:
     stz a:PadForcedPressB
     stz a:TimeSlowMode
     rts
+
+; @routine 026D:226 StageSubStepDeath026D
+; @run 6B:8226
+; WHAT IT DOES: Sub-step for the player's death: sub-mode 2 with zField80 and zField89 cleared, the scroll stopped, the forced
+; presses and the fall's step cleared; when the time-slowing mode is set it is cleared and the fade starts again from
+; 2 (as StageSubStepDeath, 024D:23D). Programs 031D, 043D, 064D,
+; 10DD, 122D, 1A2D, 1B8D and 1CED hold the same bytes.
+; HOW: Stores; StageScrollSpeedsOff026D; TimeSlowMode; the tail JMP to StageFadeTimer's bytes at $8161.
+; WAITS: no.
+; Entry: X and Y the caller's. Exit: A TimeSlowMode (0), N and Z from it, the rest as StageScrollSpeedsOff026D left
+; them; else as StageFadeTimer.
+; Nothing the game does loads this program (codemap.unloaded_programs), so nothing is known to reach it.
+StageFadeTimer_026D = $8161 ; StageFadeTimer's bytes (024D:178) in the 026D programs
+StageSubStepDeath026D:
+    lda #$02
+    sta z:zGameSubMode
+    stz z:zField80
+    stz z:zField89
+    jsr StageScrollSpeedsOff026D
+    stz a:PadForcedPress
+    stz a:PadForcedPressB
+    stz z:zFallStep
+    lda a:TimeSlowMode
+    bne StageSubStepDeath026D_at0
+    rts
+StageSubStepDeath026D_at0:
+    stz a:TimeSlowMode
+    lda #$02
+    sta z:zFadeCount
+    jmp StageFadeTimer_026D

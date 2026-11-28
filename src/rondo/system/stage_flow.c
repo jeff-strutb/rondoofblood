@@ -248,14 +248,15 @@ void abi_StagePauseToggle(void)
     stage_regs_load_shim(StagePauseToggle(entry_shim()));
 }
 
-/* The sub-steps' start: zGameSubMode and zField80 set, zField89 cleared, StageScrollSpeedsOff by JSR at ret. */
-static Regs sub_step_start(Regs r, uint8_t sub_mode, uint16_t ret)
+/* The sub-steps' start: zGameSubMode and zField80 set, zField89 cleared, StageScrollSpeedsOff (at scroll_off) by JSR
+ * at ret. */
+static Regs sub_step_start(Regs r, uint8_t sub_mode, uint16_t ret, uint16_t scroll_off)
 {
     r = loaded(r, sub_mode);
     WR8(ZP->game_sub_mode, sub_mode);
     WR8(ZP->field80, 0);
     WR8(ZP->field89, 0);
-    return call_to(r, ret, SCROLL_SPEEDS_OFF_RUN);
+    return call_to(r, ret, scroll_off);
 }
 
 /* With the time-slowing mode set it is cleared and the fade runs again from 2, by the tail JMP to StageFadeTimer. */
@@ -284,7 +285,14 @@ static Regs restart_fade_if_slowed(Regs r)
  */
 StageRegs StageSubStepDeath(StageRegs r)
 {
-    r = sub_step_start(r, SUB_MODE_PLAY, 0x8248);
+    return StageSubStepDeathAt(r, 0x8248, SCROLL_SPEEDS_OFF_RUN);
+}
+
+/* StageSubStepDeath's body, ret the address after its JSR to StageScrollSpeedsOff and scroll_off where that JSR goes:
+ * the builds of the overlay that hold these instructions at other addresses (stage_programs_census.c) pass their own. */
+StageRegs StageSubStepDeathAt(StageRegs r, uint16_t ret, uint16_t scroll_off)
+{
+    r = sub_step_start(r, SUB_MODE_PLAY, ret, scroll_off);
     wr8(PadForcedPress, 0);
     wr8(PadForcedPressB, 0);
     WR8(ZP->fall_step, 0);
@@ -354,7 +362,7 @@ void abi_StageSubStepFadeOutLate(void)
  */
 StageRegs StageSubStepTally(StageRegs r)
 {
-    r = sub_step_start(r, SUB_MODE_TALLY, 0x82C5);
+    r = sub_step_start(r, SUB_MODE_TALLY, 0x82C5, SCROLL_SPEEDS_OFF_RUN);
     wr8(PadForcedPress, 0);
     wr8(PadForcedPressB, 0);
     WR8(ZP->fall_step, 0);

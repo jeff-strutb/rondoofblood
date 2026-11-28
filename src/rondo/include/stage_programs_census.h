@@ -126,4 +126,9 @@ void abi_SpawnStageObjectsRows34026E(void);
 StageSpawnEnd SpawnStageObjectsRows34031E(void);
 void abi_SpawnStageObjectsRows34031E(void);
 
+/* What FillMarkedTiles026F leaves: A, and whether it filled any tile (then X 0, C 0). */
+typedef struct { uint8_t a; bool filled; } TileFillEnd;
+TileFillEnd FillMarkedTiles026F(uint8_t page, uint8_t high, uint8_t y);
+void abi_FillMarkedTiles026F(void);
+
 #endif

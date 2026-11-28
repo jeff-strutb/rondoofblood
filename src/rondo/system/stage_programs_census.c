@@ -1347,3 +1347,71 @@ void abi_SpawnStageObjectsRows34031E(void)
         abi_nz(end.a);
     }
 }
+
+/*
+ * @routine 026F:3DF FillMarkedTiles026F
+ * @run 6B:93DF
+ * WHAT IT DOES: For each non-zero byte of a 256-byte table from index Y on, fills one 16-word VRAM tile with $55AA: the
+ * tile at address X*$100 + index*16.
+ * HOW: The table's address (A its high byte) in zTemp00-01. For a marked index: the write address selected, the address
+ * set (the index shifted four times through zTemp03, X ORed into the high byte), the data register selected, sixteen
+ * words by ST1 and ST2.
+ * WAITS: no.
+ * Entry: A the table's page, X the VRAM address high bits, Y the first index. Exit: Y 0, N 0, Z 1. If any tile was
+ * filled: X 0, C 0; else X and C kept. A 2 if index $FF was filled, else 0. V kept. Clobbers zTemp00-03.
+ * Nothing the game does loads this program (codemap.unloaded_programs), so nothing is known to reach it.
+ */
+TileFillEnd FillMarkedTiles026F(uint8_t page, uint8_t high, uint8_t y)
+{
+    TileFillEnd end = { 0, false };
+
+    WR8(ZP->temp00, 0);
+    WR8(ZP->temp01, page);
+    WR8(ZP->temp02, high);
+    do {
+        end.a = RD8_PTR_Y(ZP->temp00, y);
+        if (end.a != 0) {
+            uint8_t value = y;
+            uint8_t other;
+
+            jsr_push(0x93EC);
+            SelectVramWriteAddress();
+            jsr_pop();
+            WR8(ZP->temp03, 0);
+            for (int bit = 0; bit < 4; bit++) {
+                bool carry = (value & 0x80) != 0;
+
+                value = (uint8_t)(value << 1);
+                ROL8(ZP->temp03, carry);
+            }
+            WR8(VDC->data_lo, value);
+            value = RD8(ZP->temp03);
+            other = RD8(ZP->temp02);
+            WR8(VDC->data_hi, (uint8_t)(value | other));
+            jsr_push(0x9408);
+            SelectVramData();
+            jsr_pop();
+            for (int word = 0; word < 16; word++) {
+                st1(0xAA);
+                st2(0x55);
+            }
+            end.a = 2;
+            end.filled = true;
+        }
+        y++;
+    } while (y != 0);
+    return end;
+}
+
+void abi_FillMarkedTiles026F(void)
+{
+    TileFillEnd end = FillMarkedTiles026F(cpu.a, cpu.x, cpu.y);
+
+    cpu.a = end.a;
+    cpu.y = 0;
+    if (end.filled) {
+        cpu.x = 0;
+        abi_flag(P_C, false);
+    }
+    abi_nz(0);
+}

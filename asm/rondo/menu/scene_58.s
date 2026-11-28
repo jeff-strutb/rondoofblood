@@ -614,3 +614,258 @@ Scene58FrameList:
     lda a:Scene58FrameLists+1,y
     sta z:zTemp11
     jmp VecStepObjectFrames
+; @routine 267B:28B Scene58SpawnCycleA
+; @run 6B:828B
+; @stop 82E8
+; WHAT IT DOES: An object handler: spawns objects in a cycle of six slots (the table at $82E8), each as kind 1 at Y
+; $170, their work_d and the waits between them from the step table at $82EE; at the table's end it clears itself.
+; HOW: SceneBSpawnCycle: work_e the wait, work_f the slot, work_d the step; ClearObjectInY.
+; WAITS: no.
+; Entry: X the object. Exit: as the last test or store left them.
+Scene58SpawnSlotsA = $82E8 ; the six slots Scene58SpawnCycleA spawns into
+Scene58SpawnStepsA = $82EE ; its steps: the wait, then the spawned work_d
+Scene58SpawnSlotsB = $84D3 ; the six slots Scene58SpawnCycleB spawns into
+Scene58SpawnStepsB = $84D9 ; its steps: the wait, then the spawned work_d
+Scene58PatternRow0 = $B980 ; pattern rows in the bank Scene58Step maps at $A000
+Scene58PatternRow1 = $B380
+Scene58PatternRow2 = $B200
+Scene58PatternRow3 = $B680
+Scene58PatternRow4 = $B180
+Scene58SpawnCycleA:
+    lda a:OBJ_STATE,x
+    bne Scene58SpawnCycleA_at0
+    inc a:OBJ_WORK_E,x
+    inc a:OBJ_STATE,x
+Scene58SpawnCycleA_at8296:
+    rts
+Scene58SpawnCycleA_at0:
+    dec a:OBJ_WORK_E,x
+    bne Scene58SpawnCycleA_at8296
+    inc a:OBJ_WORK_F,x
+    lda a:OBJ_WORK_F,x
+    cmp #$06
+    bne Scene58SpawnCycleA_at1
+    cla
+    sta a:OBJ_WORK_F,x
+Scene58SpawnCycleA_at1:
+    tay
+    lda a:Scene58SpawnSlotsA,y
+    tay
+    jsr VecClearObjectInY
+    phx
+    lda a:OBJ_WORK_D,x
+    asl a
+    tax
+    lda a:Scene58SpawnStepsA+1,x
+    sta a:OBJ_WORK_D,y
+    plx
+    phx
+    lda a:OBJ_WORK_F,x
+    sta a:OBJ_START_ARG,y
+    lda #$01
+    sta a:OBJ_KIND,y
+    sta a:OBJ_Y_HI,y
+    lda #$70
+    sta a:OBJ_Y_LO,y
+    plx
+    inc a:OBJ_WORK_D,x
+    lda a:OBJ_WORK_D,x
+    asl a
+    tay
+    lda a:Scene58SpawnStepsA,y
+    beq Scene58SpawnCycleA_at82E5
+    sta a:OBJ_WORK_E,x
+    rts
+Scene58SpawnCycleA_at82E5:
+    jmp VecClearObject
+
+; @routine 267B:389 Scene58LoadPatterns
+; @run 6B:8389
+; WHAT IT DOES: An object handler: copies five rows of $80 bytes from $B980, $B380, $B200, $B680 and $B180 (the bank
+; Scene58Step maps at $A000) to VRAM from $7000, then clears itself.
+; HOW: SelectVramWriteAddress, ST1 and ST2, SelectVramData, five TIA to the VDC's data port; ClearObject.
+; WAITS: no.
+; Entry: X the object, Y the dispatch's index ($18: the handler of kind 13). Exit: A 2, N and Z from it; X, Y and C
+; kept.
+Scene58LoadPatterns:
+    jsr VecSelectVramWriteAddress
+    st1 #$00
+    st2 #$70
+    jsr VecSelectVramData
+    tia Scene58PatternRow0,VDC_DATA_LO,$0080
+    tia Scene58PatternRow1,VDC_DATA_LO,$0080
+    tia Scene58PatternRow2,VDC_DATA_LO,$0080
+    tia Scene58PatternRow3,VDC_DATA_LO,$0080
+    tia Scene58PatternRow4,VDC_DATA_LO,$0080
+    jmp VecClearObject
+
+; @routine 267B:3B9 Scene58Swing
+; @run 6B:83B9
+; WHAT IT DOES: An object handler: swings object $10 left, right, left, right and left (X speed -$10 and +$10, turning
+; below X low $40 and at $80), then sends it off left at -$60.
+; HOW: SceneBSwing; ApplyVelocityX.
+; WAITS: no.
+; Entry: X the object. Exit: as the last compare left them, V from the move; from state 5 on, A and C from the move.
+Scene58Swing:
+    lda a:OBJ_STATE,x
+    bne Scene58Swing_at0
+    phx
+    ldx #$10
+    lda #$F0
+    sta a:OBJ_VX_LO,x
+    lda #$FF
+    sta a:OBJ_VX_HI,x
+    jsr VecApplyVelocityX
+    lda a:OBJ_X_LO,x
+    plx
+    cmp #$40
+    bcs Scene58Swing_at1
+    inc a:OBJ_STATE,x
+Scene58Swing_at1:
+    rts
+Scene58Swing_at0:
+    dec a
+    bne Scene58Swing_at2
+    phx
+    ldx #$10
+    lda #$10
+    sta a:OBJ_VX_LO,x
+    lda #$00
+    sta a:OBJ_VX_HI,x
+    jsr VecApplyVelocityX
+    lda a:OBJ_X_LO,x
+    plx
+    cmp #$80
+    bcc Scene58Swing_at3
+    inc a:OBJ_STATE,x
+Scene58Swing_at3:
+    rts
+Scene58Swing_at2:
+    dec a
+    bne Scene58Swing_at8418
+    phx
+    ldx #$10
+    lda #$F0
+    sta a:OBJ_VX_LO,x
+    lda #$FF
+    sta a:OBJ_VX_HI,x
+    jsr VecApplyVelocityX
+    lda a:OBJ_X_LO,x
+    plx
+    cmp #$40
+    bcs Scene58Swing_at4
+    inc a:OBJ_STATE,x
+Scene58Swing_at4:
+    rts
+Scene58Swing_at8418:
+    dec a
+    bne Scene58Swing_at5
+    phx
+    ldx #$10
+    lda #$10
+    sta a:OBJ_VX_LO,x
+    lda #$00
+    sta a:OBJ_VX_HI,x
+    jsr VecApplyVelocityX
+    lda a:OBJ_X_LO,x
+    plx
+    cmp #$80
+    bcc Scene58Swing_at8436
+    inc a:OBJ_STATE,x
+Scene58Swing_at8436:
+    rts
+Scene58Swing_at5:
+    dec a
+    bne Scene58Swing_at8456
+    phx
+    ldx #$10
+    lda #$F0
+    sta a:OBJ_VX_LO,x
+    lda #$FF
+    sta a:OBJ_VX_HI,x
+    jsr VecApplyVelocityX
+    lda a:OBJ_X_LO,x
+    plx
+    cmp #$40
+    bcs Scene58Swing_at8455
+    inc a:OBJ_STATE,x
+Scene58Swing_at8455:
+    rts
+Scene58Swing_at8456:
+    phx
+    ldx #$10
+    lda #$A0
+    sta a:OBJ_VX_LO,x
+    lda #$FF
+    sta a:OBJ_VX_HI,x
+    jsr VecApplyVelocityX
+    plx
+    rts
+
+; @routine 267B:468 Scene58ShowObjectsAndClear
+; @run 6B:8468
+; WHAT IT DOES: An object handler: gives objects $13, $11 and $0F sprite attribute $10, then clears itself.
+; HOW: Three stores; ClearObject.
+; WAITS: no.
+; Entry: X the object. Exit: A $10, N and Z from it; X, Y and C kept.
+Scene58ShowObjectsAndClear:
+    lda #$10
+    sta a:OBJ_SPRITE_ATTR+19
+    sta a:OBJ_SPRITE_ATTR+17
+    sta a:OBJ_SPRITE_ATTR+15
+    jmp VecClearObject
+
+; @routine 267B:476 Scene58SpawnCycleB
+; @run 6B:8476
+; @stop 84D3
+; WHAT IT DOES: An object handler: as Scene58SpawnCycleA with the slots at $84D3 and the steps at $84D9.
+; HOW: SceneBSpawnCycle.
+; WAITS: no.
+; Entry: X the object. Exit: as the last test or store left them.
+Scene58SpawnCycleB:
+    lda a:OBJ_STATE,x
+    bne Scene58SpawnCycleB_at0
+    inc a:OBJ_WORK_E,x
+    inc a:OBJ_STATE,x
+Scene58SpawnCycleB_at1:
+    rts
+Scene58SpawnCycleB_at0:
+    dec a:OBJ_WORK_E,x
+    bne Scene58SpawnCycleB_at1
+    inc a:OBJ_WORK_F,x
+    lda a:OBJ_WORK_F,x
+    cmp #$06
+    bne Scene58SpawnCycleB_at2
+    cla
+    sta a:OBJ_WORK_F,x
+Scene58SpawnCycleB_at2:
+    tay
+    lda a:Scene58SpawnSlotsB,y
+    tay
+    jsr VecClearObjectInY
+    phx
+    lda a:OBJ_WORK_D,x
+    asl a
+    tax
+    lda a:Scene58SpawnStepsB+1,x
+    sta a:OBJ_WORK_D,y
+    plx
+    phx
+    lda a:OBJ_WORK_F,x
+    sta a:OBJ_START_ARG,y
+    lda #$01
+    sta a:OBJ_KIND,y
+    sta a:OBJ_Y_HI,y
+    lda #$70
+    sta a:OBJ_Y_LO,y
+    plx
+    inc a:OBJ_WORK_D,x
+    lda a:OBJ_WORK_D,x
+    asl a
+    tay
+    lda a:Scene58SpawnStepsB,y
+    beq Scene58SpawnCycleB_at3
+    sta a:OBJ_WORK_E,x
+    rts
+Scene58SpawnCycleB_at3:
+    jmp VecClearObject

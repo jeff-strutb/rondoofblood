@@ -71,6 +71,16 @@ void abi_Scene58SlideThenList(void);
 void abi_Scene58PlayListOnce(void);
 void abi_Scene58Slide(void);
 void abi_Scene58FrameList(void);
+ObjExit Scene58SpawnCycleA(uint8_t object);
+ObjExit Scene58LoadPatterns(uint8_t object, uint8_t y);
+ObjExit Scene58Swing(uint8_t object);
+ObjExit Scene58ShowObjectsAndClear(uint8_t object);
+ObjExit Scene58SpawnCycleB(uint8_t object);
+void abi_Scene58SpawnCycleA(void);
+void abi_Scene58LoadPatterns(void);
+void abi_Scene58Swing(void);
+void abi_Scene58ShowObjectsAndClear(void);
+void abi_Scene58SpawnCycleB(void);
 bool scene_58_handler(uint16_t target, uint8_t object, ObjExit *out);
 
 #endif

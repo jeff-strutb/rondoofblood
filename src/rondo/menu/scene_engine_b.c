@@ -83,6 +83,15 @@ static Exit scene_objects(const SceneLayoutB *ov, Exit prior)
         }
         via_cpu = false;
         a = result.exit.a;
+        if (result.moved) {
+            if (result.exit.a_kept) {
+                a = scene_move_high(result.move);
+            }
+            if (!result.exit.v_set) {
+                result.exit.v = scene_move_v(result.move);
+                result.exit.v_set = true;
+            }
+        }
         if (!result.exit.x_kept) {
             slot = result.exit.x;
         }
@@ -623,7 +632,7 @@ ObjExit SceneBDispatchKind(const SceneLayoutB *ov, uint8_t kind, uint8_t object)
         result.exit.from_cpu = true;
         return result;
     }
-    if (result.exit.a_kept) {
+    if (result.exit.a_kept && !result.moved) {
         result.exit.a = high;
         result.exit.a_kept = false;
     }
@@ -717,4 +726,134 @@ ObjExit SceneBShake(uint16_t xs, uint16_t ys, uint8_t object)
     result.exit.c = false;
     result.exit.c_kept = false;
     return result;
+}
+
+/* The handler that spawns objects in a cycle: state 0 starts the count (work_e); each time the count runs out, the
+ * next slot of six (slots, by work_f 1 to 5 then 0) is cleared and started as kind 1 at Y $170 with start argument
+ * work_f and work_d from the step table's second byte for this object's step (work_d); the step goes on, and the
+ * table's first byte for it is the next count, or 0 to clear this object. ret: the return of its JSR to
+ * ClearObjectInY. */
+ObjExit SceneBSpawnCycle(uint16_t slots, uint16_t steps, uint16_t ret, uint8_t object)
+{
+    ObjExit result;
+    uint8_t state, left, phase, slot, step, index, value;
+
+    state = RD8(OBJ->state[object]);
+    if (state == 0) {
+        INC8(OBJ->work_e[object]);
+        return scene_kept(0, INC8(OBJ->state[object]));
+    }
+    left = DEC8(OBJ->work_e[object]);
+    if (left != 0) {
+        return scene_kept(state, left);
+    }
+    INC8(OBJ->work_f[object]);
+    phase = RD8(OBJ->work_f[object]);
+    if (phase == 6) {
+        phase = 0;
+        WR8(OBJ->work_f[object], phase);
+    }
+    slot = rd8((uint16_t)(slots + phase));
+    jsr_push(ret);
+    ClearObjectInY(slot);
+    jsr_pop();
+    push8(object);
+    step = RD8(OBJ->work_d[object]);
+    index = (uint8_t)(step << 1);
+    value = rd8((uint16_t)(steps + 1 + index));
+    WR8(OBJ->work_d[slot], value);
+    object = pull8();
+    push8(object);
+    value = RD8(OBJ->work_f[object]);
+    WR8(OBJ->start_arg[slot], value);
+    WR8(OBJ->kind[slot], 1);
+    WR8(OBJ->y_hi[slot], 1);
+    WR8(OBJ->y_lo[slot], 0x70);
+    object = pull8();
+    INC8(OBJ->work_d[object]);
+    step = RD8(OBJ->work_d[object]);
+    index = (uint8_t)(step << 1);
+    value = rd8((uint16_t)(steps + index));
+    result = scene_kept(value, value);
+    result.exit.x = object;
+    result.exit.x_kept = false;
+    result.exit.y = index;
+    result.exit.y_kept = false;
+    result.exit.c = (step & 0x80) != 0;
+    result.exit.c_kept = false;
+    if (value == 0) {
+        ClearObject(object);            /* the tail JMP: A, X, Y and the flags kept */
+        return result;
+    }
+    WR8(OBJ->work_e[object], value);
+    return result;
+}
+
+/* The handler that swings object $10 along X: in states 0 to 4 it gives it the state's X speed (lo, hi), moves it,
+ * and moves on a state once its X low is past the turn (below $40 in states 0, 2 and 4, $80 or more in 1 and 3);
+ * from state 5 on it moves it at the sixth speed. at: its address (its JSRs to ApplyVelocityX return to at + $15 +
+ * $1F per state, and at + $AD from state 5). */
+ObjExit SceneBSwing(uint16_t at, const uint8_t lo[6], const uint8_t hi[6], uint8_t object)
+{
+    ObjExit result;
+    AxisMove move;
+    uint8_t state, x, turn;
+    bool carry, on;
+
+    state = RD8(OBJ->state[object]);
+    push8(object);
+    if (state >= 5) {
+        WR8(OBJ->vx_lo[0x10], lo[5]);
+        WR8(OBJ->vx_hi[0x10], hi[5]);
+        jsr_push((uint16_t)(at + 0xAD));
+        move = ApplyVelocityX(0x10);
+        jsr_pop();
+        object = pull8();
+        result = scene_kept(0, object);
+        result.exit.a_kept = true;
+        result.move = move;
+        result.moved = true;
+        return result;
+    }
+    WR8(OBJ->vx_lo[0x10], lo[state]);
+    WR8(OBJ->vx_hi[0x10], hi[state]);
+    jsr_push((uint16_t)(at + 0x15 + 0x1F * state));
+    move = ApplyVelocityX(0x10);
+    jsr_pop();
+    x = RD8(OBJ->x_lo[0x10]);
+    object = pull8();
+    turn = (state & 1) ? 0x80 : 0x40;
+    carry = x >= turn;
+    result = scene_kept(x, (uint8_t)(x - turn));
+    result.exit.c = carry;
+    result.exit.c_kept = false;
+    result.move = move;
+    result.moved = true;
+    on = (state & 1) ? carry : !carry;
+    if (on) {
+        result.exit.nz = INC8(OBJ->state[object]);
+    }
+    return result;
+}
+
+/* The handler that loads five rows of $80 bytes from $B980, $B380, $B200, $B680 and $B180 (bank zRamBaseBank + $0A at
+ * $A000) to VRAM from $7000, then clears itself. at: its address; y: Y at entry (the block moves push it). */
+ObjExit SceneBLoadPatterns(uint16_t at, uint8_t y, uint8_t object)
+{
+    static const uint16_t rows[5] = { 0xB980, 0xB380, 0xB200, 0xB680, 0xB180 };
+    int i;
+
+    jsr_push((uint16_t)(at + 3));
+    SelectVramWriteAddress();
+    jsr_pop();
+    st1(0x00);
+    st2(0x70);
+    jsr_push((uint16_t)(at + 10));
+    SelectVramData();
+    jsr_pop();
+    for (i = 0; i < 5; i++) {
+        block_move_tia(rows[i], ADDR_OF8(VDC->data_lo), 0x0080, 0x02, object, y);
+    }
+    ClearObject(object);                /* the tail JMP: A, X, Y and the flags kept */
+    return scene_kept(0x02, 0x02);
 }

@@ -57,6 +57,10 @@ void abi_Scene5ASlideThenList(void);
 void abi_Scene5APlayListOnce(void);
 void abi_Scene5ASlide(void);
 void abi_Scene5AFrameList(void);
+ObjExit Scene5ASwing(uint8_t object);
+ObjExit Scene5ASpawnCycle(uint8_t object);
+void abi_Scene5ASwing(void);
+void abi_Scene5ASpawnCycle(void);
 bool scene_5a_handler(uint16_t target, uint8_t object, ObjExit *out);
 
 #endif

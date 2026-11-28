@@ -113,6 +113,15 @@ static Exit scene_objects(const SceneOverlay *ov, Exit prior)
         }
         via_cpu = false;
         a = result.exit.a;
+        if (result.moved) {
+            if (result.exit.a_kept) {
+                a = scene_move_high(result.move);
+            }
+            if (!result.exit.v_set) {
+                result.exit.v = scene_move_v(result.move);
+                result.exit.v_set = true;
+            }
+        }
         if (!result.exit.x_kept) {
             slot = result.exit.x;
         }
@@ -566,7 +575,7 @@ ObjExit SceneDispatchKind(const SceneOverlay *ov, uint8_t kind, uint8_t object)
         result.exit.from_cpu = true;
         return result;
     }
-    if (result.exit.a_kept) {
+    if (result.exit.a_kept && !result.moved) {
         result.exit.a = high;
         result.exit.a_kept = false;
     }

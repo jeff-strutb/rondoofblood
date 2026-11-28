@@ -489,3 +489,162 @@ Scene5AFrameList:
     lda a:Scene5AFrameLists+1,y
     sta z:zTemp11
     jmp VecStepObjectFrames
+; @routine 2703:2D4 Scene5ASwing
+; @run 6B:82D4
+; WHAT IT DOES: An object handler: swings object $10 along X with the X speeds -6, -$10, -8, +8 and -8 (turning below
+; X low $40 in states 0, 2 and 4 and at $80 or more in 1 and 3), then sends it off left at -$60.
+; HOW: SceneBSwing; ApplyVelocityX.
+; WAITS: no.
+; Entry: X the object. Exit: as the last compare left them, V from the move; from state 5 on, A and C from the move.
+Scene5ASpawnSlots = $83EE ; the six slots Scene5ASpawnCycle spawns into
+Scene5ASpawnSteps = $83F4 ; its steps: the wait, then the spawned work_d
+Scene5ASwing:
+    lda a:OBJ_STATE,x
+    bne Scene5ASwing_at82F5
+    phx
+    ldx #$10
+    lda #$FA
+    sta a:OBJ_VX_LO,x
+    lda #$FF
+    sta a:OBJ_VX_HI,x
+    jsr VecApplyVelocityX
+    lda a:OBJ_X_LO,x
+    plx
+    cmp #$40
+    bcs Scene5ASwing_at82F4
+    inc a:OBJ_STATE,x
+Scene5ASwing_at82F4:
+    rts
+Scene5ASwing_at82F5:
+    dec a
+    bne Scene5ASwing_at0
+    phx
+    ldx #$10
+    lda #$F0
+    sta a:OBJ_VX_LO,x
+    lda #$FF
+    sta a:OBJ_VX_HI,x
+    jsr VecApplyVelocityX
+    lda a:OBJ_X_LO,x
+    plx
+    cmp #$80
+    bcc Scene5ASwing_at1
+    inc a:OBJ_STATE,x
+Scene5ASwing_at1:
+    rts
+Scene5ASwing_at0:
+    dec a
+    bne Scene5ASwing_at2
+    phx
+    ldx #$10
+    lda #$F8
+    sta a:OBJ_VX_LO,x
+    lda #$FF
+    sta a:OBJ_VX_HI,x
+    jsr VecApplyVelocityX
+    lda a:OBJ_X_LO,x
+    plx
+    cmp #$40
+    bcs Scene5ASwing_at3
+    inc a:OBJ_STATE,x
+Scene5ASwing_at3:
+    rts
+Scene5ASwing_at2:
+    dec a
+    bne Scene5ASwing_at4
+    phx
+    ldx #$10
+    lda #$08
+    sta a:OBJ_VX_LO,x
+    lda #$00
+    sta a:OBJ_VX_HI,x
+    jsr VecApplyVelocityX
+    lda a:OBJ_X_LO,x
+    plx
+    cmp #$80
+    bcc Scene5ASwing_at5
+    inc a:OBJ_STATE,x
+Scene5ASwing_at5:
+    rts
+Scene5ASwing_at4:
+    dec a
+    bne Scene5ASwing_at8371
+    phx
+    ldx #$10
+    lda #$F8
+    sta a:OBJ_VX_LO,x
+    lda #$FF
+    sta a:OBJ_VX_HI,x
+    jsr VecApplyVelocityX
+    lda a:OBJ_X_LO,x
+    plx
+    cmp #$40
+    bcs Scene5ASwing_at6
+    inc a:OBJ_STATE,x
+Scene5ASwing_at6:
+    rts
+Scene5ASwing_at8371:
+    phx
+    ldx #$10
+    lda #$A0
+    sta a:OBJ_VX_LO,x
+    lda #$FF
+    sta a:OBJ_VX_HI,x
+    jsr VecApplyVelocityX
+    plx
+    rts
+
+; @routine 2703:391 Scene5ASpawnCycle
+; @run 6B:8391
+; @stop 83EE
+; WHAT IT DOES: An object handler: as Scene58SpawnCycleA with the slots at $83EE and the steps at $83F4.
+; HOW: SceneBSpawnCycle.
+; WAITS: no.
+; Entry: X the object. Exit: as the last test or store left them.
+Scene5ASpawnCycle:
+    lda a:OBJ_STATE,x
+    bne Scene5ASpawnCycle_at0
+    inc a:OBJ_WORK_E,x
+    inc a:OBJ_STATE,x
+Scene5ASpawnCycle_at839C:
+    rts
+Scene5ASpawnCycle_at0:
+    dec a:OBJ_WORK_E,x
+    bne Scene5ASpawnCycle_at839C
+    inc a:OBJ_WORK_F,x
+    lda a:OBJ_WORK_F,x
+    cmp #$06
+    bne Scene5ASpawnCycle_at83B0
+    cla
+    sta a:OBJ_WORK_F,x
+Scene5ASpawnCycle_at83B0:
+    tay
+    lda a:Scene5ASpawnSlots,y
+    tay
+    jsr VecClearObjectInY
+    phx
+    lda a:OBJ_WORK_D,x
+    asl a
+    tax
+    lda a:Scene5ASpawnSteps+1,x
+    sta a:OBJ_WORK_D,y
+    plx
+    phx
+    lda a:OBJ_WORK_F,x
+    sta a:OBJ_START_ARG,y
+    lda #$01
+    sta a:OBJ_KIND,y
+    sta a:OBJ_Y_HI,y
+    lda #$70
+    sta a:OBJ_Y_LO,y
+    plx
+    inc a:OBJ_WORK_D,x
+    lda a:OBJ_WORK_D,x
+    asl a
+    tay
+    lda a:Scene5ASpawnSteps,y
+    beq Scene5ASpawnCycle_at83EB
+    sta a:OBJ_WORK_E,x
+    rts
+Scene5ASpawnCycle_at83EB:
+    jmp VecClearObject

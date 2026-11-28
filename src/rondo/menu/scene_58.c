@@ -94,6 +94,11 @@ static bool scene_58_command(uint16_t target, uint8_t index, bool carry, Exit *o
 bool scene_58_handler(uint16_t target, uint8_t object, ObjExit *out)
 {
     switch (target) {
+    case 0x8389: *out = Scene58LoadPatterns(object, 0x18); return true;   /* kind 13: Y the dispatch's index $18 */
+    case 0x828B: *out = Scene58SpawnCycleA(object); return true;
+    case 0x83B9: *out = Scene58Swing(object); return true;
+    case 0x8468: *out = Scene58ShowObjectsAndClear(object); return true;
+    case 0x8476: *out = Scene58SpawnCycleB(object); return true;
     case 0x863D: *out = Scene58CycleLists(object); return true;
     case 0x866B: *out = Scene58Shake(object); return true;
     case 0x8698: *out = Scene58SlideThenList(object); return true;
@@ -696,4 +701,107 @@ ObjExit Scene58FrameList(uint8_t list, uint8_t object)
 void abi_Scene58FrameList(void)
 {
     scene_obj_shim(Scene58FrameList(cpu.a, cpu.x));
+}
+
+/*
+ * @routine 267B:28B Scene58SpawnCycleA
+ * @run 6B:828B
+ * @stop 82E8
+ * WHAT IT DOES: An object handler: spawns objects in a cycle of six slots (the table at $82E8), each as kind 1 at Y
+ * $170, their work_d and the waits between them from the step table at $82EE; at the table's end it clears itself.
+ * HOW: SceneBSpawnCycle: work_e the wait, work_f the slot, work_d the step; ClearObjectInY.
+ * WAITS: no.
+ * Entry: X the object. Exit: as the last test or store left them.
+ */
+ObjExit Scene58SpawnCycleA(uint8_t object)
+{
+    return SceneBSpawnCycle(0x82E8, 0x82EE, 0x82B2, object);
+}
+
+void abi_Scene58SpawnCycleA(void)
+{
+    scene_obj_shim(Scene58SpawnCycleA(cpu.x));
+}
+
+/*
+ * @routine 267B:389 Scene58LoadPatterns
+ * @run 6B:8389
+ * WHAT IT DOES: An object handler: copies five rows of $80 bytes from $B980, $B380, $B200, $B680 and $B180 (the bank
+ * Scene58Step maps at $A000) to VRAM from $7000, then clears itself.
+ * HOW: SelectVramWriteAddress, ST1 and ST2, SelectVramData, five TIA to the VDC's data port; ClearObject.
+ * WAITS: no.
+ * Entry: X the object, Y the dispatch's index ($18: the handler of kind 13). Exit: A 2, N and Z from it; X, Y and C
+ * kept.
+ */
+ObjExit Scene58LoadPatterns(uint8_t object, uint8_t y)
+{
+    return SceneBLoadPatterns(0x8389, y, object);
+}
+
+void abi_Scene58LoadPatterns(void)
+{
+    scene_obj_shim(Scene58LoadPatterns(cpu.x, cpu.y));
+}
+
+/*
+ * @routine 267B:3B9 Scene58Swing
+ * @run 6B:83B9
+ * WHAT IT DOES: An object handler: swings object $10 left, right, left, right and left (X speed -$10 and +$10, turning
+ * below X low $40 and at $80), then sends it off left at -$60.
+ * HOW: SceneBSwing; ApplyVelocityX.
+ * WAITS: no.
+ * Entry: X the object. Exit: as the last compare left them, V from the move; from state 5 on, A and C from the move.
+ */
+ObjExit Scene58Swing(uint8_t object)
+{
+    static const uint8_t lo[6] = { 0xF0, 0x10, 0xF0, 0x10, 0xF0, 0xA0 };
+    static const uint8_t hi[6] = { 0xFF, 0x00, 0xFF, 0x00, 0xFF, 0xFF };
+
+    return SceneBSwing(0x83B9, lo, hi, object);
+}
+
+void abi_Scene58Swing(void)
+{
+    scene_obj_shim(Scene58Swing(cpu.x));
+}
+
+/*
+ * @routine 267B:468 Scene58ShowObjectsAndClear
+ * @run 6B:8468
+ * WHAT IT DOES: An object handler: gives objects $13, $11 and $0F sprite attribute $10, then clears itself.
+ * HOW: Three stores; ClearObject.
+ * WAITS: no.
+ * Entry: X the object. Exit: A $10, N and Z from it; X, Y and C kept.
+ */
+ObjExit Scene58ShowObjectsAndClear(uint8_t object)
+{
+    WR8(OBJ->sprite_attr[0x13], 0x10);
+    WR8(OBJ->sprite_attr[0x11], 0x10);
+    WR8(OBJ->sprite_attr[0x0F], 0x10);
+    ClearObject(object);                /* the tail JMP: A, X, Y and the flags kept */
+    return scene_kept(0x10, 0x10);
+}
+
+void abi_Scene58ShowObjectsAndClear(void)
+{
+    scene_obj_shim(Scene58ShowObjectsAndClear(cpu.x));
+}
+
+/*
+ * @routine 267B:476 Scene58SpawnCycleB
+ * @run 6B:8476
+ * @stop 84D3
+ * WHAT IT DOES: An object handler: as Scene58SpawnCycleA with the slots at $84D3 and the steps at $84D9.
+ * HOW: SceneBSpawnCycle.
+ * WAITS: no.
+ * Entry: X the object. Exit: as the last test or store left them.
+ */
+ObjExit Scene58SpawnCycleB(uint8_t object)
+{
+    return SceneBSpawnCycle(0x84D3, 0x84D9, 0x849D, object);
+}
+
+void abi_Scene58SpawnCycleB(void)
+{
+    scene_obj_shim(Scene58SpawnCycleB(cpu.x));
 }

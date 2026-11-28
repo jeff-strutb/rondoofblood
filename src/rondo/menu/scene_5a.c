@@ -52,6 +52,10 @@ static bool scene_5a_command(uint16_t target, uint8_t index, bool carry, Exit *o
 bool scene_5a_handler(uint16_t target, uint8_t object, ObjExit *out)
 {
     switch (target) {
+    case 0x82A4: *out = SceneBLoadPatterns(0x82A4, 0x18, object); return true;   /* Scene58LoadPatterns's bytes; kind 13, Y $18 */
+    case 0x82D4: *out = Scene5ASwing(object); return true;
+    case 0x8391: *out = Scene5ASpawnCycle(object); return true;
+    case 0x8383: *out = Scene58ShowObjectsAndClear(object); return true;
     case 0x8558: *out = Scene5ACycleLists(object); return true;
     case 0x8586: *out = Scene5AShake(object); return true;
     case 0x85B3: *out = Scene5ASlideThenList(object); return true;
@@ -545,4 +549,45 @@ ObjExit Scene5AFrameList(uint8_t list, uint8_t object)
 void abi_Scene5AFrameList(void)
 {
     scene_obj_shim(Scene5AFrameList(cpu.a, cpu.x));
+}
+
+/*
+ * @routine 2703:2D4 Scene5ASwing
+ * @run 6B:82D4
+ * WHAT IT DOES: An object handler: swings object $10 along X with the X speeds -6, -$10, -8, +8 and -8 (turning below
+ * X low $40 in states 0, 2 and 4 and at $80 or more in 1 and 3), then sends it off left at -$60.
+ * HOW: SceneBSwing; ApplyVelocityX.
+ * WAITS: no.
+ * Entry: X the object. Exit: as the last compare left them, V from the move; from state 5 on, A and C from the move.
+ */
+ObjExit Scene5ASwing(uint8_t object)
+{
+    static const uint8_t lo[6] = { 0xFA, 0xF0, 0xF8, 0x08, 0xF8, 0xA0 };
+    static const uint8_t hi[6] = { 0xFF, 0xFF, 0xFF, 0x00, 0xFF, 0xFF };
+
+    return SceneBSwing(0x82D4, lo, hi, object);
+}
+
+void abi_Scene5ASwing(void)
+{
+    scene_obj_shim(Scene5ASwing(cpu.x));
+}
+
+/*
+ * @routine 2703:391 Scene5ASpawnCycle
+ * @run 6B:8391
+ * @stop 83EE
+ * WHAT IT DOES: An object handler: as Scene58SpawnCycleA with the slots at $83EE and the steps at $83F4.
+ * HOW: SceneBSpawnCycle.
+ * WAITS: no.
+ * Entry: X the object. Exit: as the last test or store left them.
+ */
+ObjExit Scene5ASpawnCycle(uint8_t object)
+{
+    return SceneBSpawnCycle(0x83EE, 0x83F4, 0x83B8, object);
+}
+
+void abi_Scene5ASpawnCycle(void)
+{
+    scene_obj_shim(Scene5ASpawnCycle(cpu.x));
 }

@@ -53,5 +53,8 @@ ObjExit SceneBDispatchKind(const SceneLayoutB *ov, uint8_t kind, uint8_t object)
 ObjExit SceneBAfter(ObjExit second, ObjExit first);
 ObjExit SceneBCycleLists(uint16_t ret, uint8_t delay, uint8_t limit, uint8_t object);
 ObjExit SceneBShake(uint16_t xs, uint16_t ys, uint8_t object);
+ObjExit SceneBSpawnCycle(uint16_t slots, uint16_t steps, uint16_t ret, uint8_t object);
+ObjExit SceneBSwing(uint16_t at, const uint8_t lo[6], const uint8_t hi[6], uint8_t object);
+ObjExit SceneBLoadPatterns(uint16_t at, uint8_t y, uint8_t object);
 
 #endif

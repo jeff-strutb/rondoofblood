@@ -4596,3 +4596,62 @@ void abi_StageClearedEnding026D(void)
 {
     stage_regs_load_shim(StageClearedEnding026D(stage_regs_entry_shim()));
 }
+
+/*
+ * @routine 026D:3D8 StageSubModeCleared026D
+ * @run 6B:83D8
+ * WHAT IT DOES: The cleared sub-mode: zWaveCounter counted, then the way zClearKind names through this program's table at $83E1.
+ * HOW: INC; the kind doubled indexes the table.
+ * WAITS: where the routines it jumps to wait.
+ * Entry: nothing.
+ * Nothing the game does loads this program (codemap.unloaded_programs), so nothing is known to reach it.
+ */
+StageRegs StageSubModeCleared026D(StageRegs r)
+{
+    uint8_t kind;
+
+    r.nz = INC8(ZP->wave_counter);
+    kind = RD8(ZP->clear_kind);
+    r.c = (kind & 0x80) != 0;
+    return dispatch_026d(r, (uint8_t)(kind << 1), 0x83E1);
+}
+
+void abi_StageSubModeCleared026D(void)
+{
+    stage_regs_load_shim(StageSubModeCleared026D(stage_regs_entry_shim()));
+}
+
+/*
+ * @routine 026D:76B StageSubModeFade026D
+ * @run 6B:876B
+ * WHAT IT DOES: The fade sub-mode: zWaveCounter counted, the stage frame; until step 3 the camera and scroll run with TimeSlowMode 3; then banks 5 and 6 and the step zField80 names through this program's table at $878E.
+ * HOW: The calls to the routines loaded there; the step doubled indexes the table.
+ * WAITS: where the routines it calls wait.
+ * Entry: nothing.
+ * Nothing the game does loads this program (codemap.unloaded_programs), so nothing is known to reach it.
+ */
+StageRegs StageSubModeFade026D(StageRegs r)
+{
+    uint8_t step;
+
+    r.nz = INC8(ZP->wave_counter);
+    r = call_at(r, 0x8770, 0x8B23);
+    r = regs_loaded(r, RD8(ZP->field80));
+    r = regs_compared(r, r.a, 0x03);
+    if (r.nz != 0) {
+        r = regs_loaded(r, 0x03);
+        WR8(PVARS->time_slow_mode, 0x03);
+        r = call_at(r, 0x877E, 0x80A8);
+        r = call_at(r, 0x8781, 0x8A05);
+        WR8(PVARS->time_slow_mode, 0);
+    }
+    r = call_at(r, 0x8787, 0x8089);
+    step = RD8(ZP->field80);
+    r.c = (step & 0x80) != 0;
+    return dispatch_026d(r, (uint8_t)(step << 1), 0x878E);
+}
+
+void abi_StageSubModeFade026D(void)
+{
+    stage_regs_load_shim(StageSubModeFade026D(stage_regs_entry_shim()));
+}

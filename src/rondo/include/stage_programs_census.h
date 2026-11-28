@@ -503,4 +503,10 @@ void abi_StageBossWalkOut026D(void);
 StageRegs StageClearedEnding026D(StageRegs r);
 void abi_StageClearedEnding026D(void);
 
+StageRegs StageSubModeCleared026D(StageRegs r);
+void abi_StageSubModeCleared026D(void);
+
+StageRegs StageSubModeFade026D(StageRegs r);
+void abi_StageSubModeFade026D(void);
+
 #endif

@@ -7029,3 +7029,44 @@ StageClearedEnding026D_at0:
     sta z:zDisplayDelay
     stz a:OBJ_FRAME
     rts
+
+; @routine 026D:3D8 StageSubModeCleared026D
+; @run 6B:83D8
+; WHAT IT DOES: The cleared sub-mode: zWaveCounter counted, then the way zClearKind names through this program's table at $83E1.
+; HOW: INC, LDA, ASL, TAX, a jump through the table.
+; WAITS: where the routines it jumps to wait.
+; Entry: nothing.
+; Nothing the game does loads this program (codemap.unloaded_programs), so nothing is known to reach it.
+StageClearKinds026D = $83E1 ; this program's table of the cleared ways
+StageSubModeCleared026D:
+    inc z:zWaveCounter
+    lda z:zClearKind
+    asl a
+    tax
+    jmp (StageClearKinds026D,x)
+
+; @routine 026D:76B StageSubModeFade026D
+; @run 6B:876B
+; WHAT IT DOES: The fade sub-mode: zWaveCounter counted, the stage frame; until step 3 the camera and scroll run with TimeSlowMode 3; then banks 5 and 6 and the step zField80 names through this program's table at $878E.
+; HOW: As the C.
+; WAITS: where the routines it calls wait.
+; Entry: nothing.
+; Nothing the game does loads this program (codemap.unloaded_programs), so nothing is known to reach it.
+StageFadeSteps026D = $878E ; this program's table of the fade's steps
+StageSubModeFade026D:
+    inc z:zWaveCounter
+    jsr StepStageFrameAt026D
+    lda z:zField80
+    cmp #$03
+    beq StageSubModeFade026D_at0
+    lda #$03
+    sta a:TimeSlowMode
+    jsr StageCameraStep026D
+    jsr StepScrollAndRunObjects026E
+    stz a:TimeSlowMode
+StageSubModeFade026D_at0:
+    jsr MapOverlayBanks5And6At026D
+    lda z:zField80
+    asl a
+    tax
+    jmp (StageFadeSteps026D,x)

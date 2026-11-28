@@ -623,15 +623,17 @@ class Map:
                 if one is not None:
                     break
                 continue                            # an address in a window not known here: not a table's end
-            if not self.clean(td, w):
+            if not self.clean(td, w, mpr):
                 break
             out.append(w)
             if one is not None:
                 break
         return out
 
-    def clean(self, d, pc):
-        """The bytes at d decode, straight on from pc, to a return or jump with no undefined opcode or BRK."""
+    def clean(self, d, pc, mpr):
+        """The bytes at d decode, straight on from pc, to a return or jump with no undefined opcode or BRK, or to a
+        JSR into a routine already known to jump through the words after its call (what follows is a table, not
+        code)."""
         buf = self.disc.buf
         for _ in range(ENTRY_LOOK):
             if d + 7 > len(buf):
@@ -641,6 +643,10 @@ class Map:
                 return False
             if name in huc.ENDS:
                 return True
+            if name == "jsr" and self.inline:
+                td, _ = self.place(target, mpr)
+                if td is not None and any(k[0] == td and k[1] == target for k in self.inline):
+                    return True
             d, pc = d + n, (pc + n) & 0xFFFF
         return False
 

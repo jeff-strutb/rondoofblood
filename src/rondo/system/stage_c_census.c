@@ -5825,6 +5825,12 @@ void abi_TallyReveal3CD(void)
  */
 StageRegs TallyCell3CD(StageRegs r)
 {
+    return TallyCell3CDAt(r, 0x922A, &tally_3cd);
+}
+
+/* TallyCell3CD's body, for the builds of it elsewhere: where the build runs and what it uses. */
+StageRegs TallyCell3CDAt(StageRegs r, uint16_t at, const TallyBuild *build)
+{
     Sum sum;
     uint8_t cell, value, old, place;
 
@@ -5877,7 +5883,7 @@ StageRegs TallyCell3CD(StageRegs r)
     r.c = sum.carry;
     r.v = sum.overflow;
     WR8(ZP->temp11, sum.value);
-    r = set_vram_addresses_call(r, 0x9283);
+    CALL(at + 0x59, build->set_addresses(r));
     r.y = 0;
     if ((RD8(ZP->temp01) & 0x01) == 0) {
         do {

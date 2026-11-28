@@ -472,21 +472,21 @@ SplashBesideBody051B_at1:
 SplashBesideBody051B_at2:
     rts
 
-; @routine 0520:01B ClearWhenGateClosed051B
+; @routine 0520:01B ClearWhenSlotBelowGone051B
 ; @run 71:D81B
-; WHAT IT DOES: State 0 loads the record; later clears the object once the byte at $274F for its slot is zero.
-; HOW: A test of RAM before the object table.
+; WHAT IT DOES: State 0 loads the record; later clears the object once the slot below holds no object.
+; HOW: The kind of slot X-1.
 ; WAITS: no.
 ; Entry: X object. Exit: as the last instruction, call or jump left them.
-ClearWhenGateClosed051B:
+ClearWhenSlotBelowGone051B:
     lda a:OBJ_STATE,x
-    bne ClearWhenGateClosed051B_at0
+    bne ClearWhenSlotBelowGone051B_at0
     jmp VecLoadObjectRecord
-ClearWhenGateClosed051B_at0:
-    lda a:HitStoreGateB+7,x
-    bne ClearWhenGateClosed051B_at1
+ClearWhenSlotBelowGone051B_at0:
+    lda a:OBJ_KIND-1,x
+    bne ClearWhenSlotBelowGone051B_at1
     jmp VecClearObject
-ClearWhenGateClosed051B_at1:
+ClearWhenSlotBelowGone051B_at1:
     rts
 
 ; @routine 0520:02C RisingBubblePicture051B

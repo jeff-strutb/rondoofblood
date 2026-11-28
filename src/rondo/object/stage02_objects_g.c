@@ -651,14 +651,14 @@ void abi_SplashBesideBody051B(void)
 }
 
 /*
- * @routine 0520:01B ClearWhenGateClosed051B
+ * @routine 0520:01B ClearWhenSlotBelowGone051B
  * @run 71:D81B
- * WHAT IT DOES: State 0 loads the record; later clears the object once the byte at $274F for its slot is zero.
- * HOW: A test of RAM before the object table.
+ * WHAT IT DOES: State 0 loads the record; later clears the object once the slot below holds no object.
+ * HOW: The kind of slot X-1.
  * WAITS: no.
  * Entry: X object. Exit: as the last instruction, call or jump left them.
  */
-void ClearWhenGateClosed051B(uint8_t slot)
+void ClearWhenSlotBelowGone051B(uint8_t slot)
 {
     lda(RD8(OBJ->state[slot]));
     if (EQ) {
@@ -671,9 +671,9 @@ void ClearWhenGateClosed051B(uint8_t slot)
     }
 }
 
-void abi_ClearWhenGateClosed051B(void)
+void abi_ClearWhenSlotBelowGone051B(void)
 {
-    ClearWhenGateClosed051B(cpu.x);
+    ClearWhenSlotBelowGone051B(cpu.x);
 }
 
 /*

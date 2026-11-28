@@ -111,6 +111,14 @@ static inline void plx(void) { ldx(pull8()); }
 static inline void ply(void) { ldy(pull8()); }
 static inline void pla(void) { lda(pull8()); }
 
+/* ROR of a byte in memory: the carry in at the top, the carry out from bit 0, N and Z from the result. */
+#define ROR_MEM(field) do { \
+    bool in_ = CS, out_; \
+    uint8_t v_ = RMW8(field, old_, (out_ = (old_ & 0x01) != 0, (old_ >> 1) | (in_ ? 0x80 : 0))); \
+    abi_nz(v_); \
+    abi_flag(P_C, out_); \
+} while (0)
+
 /* The two bytes of a list or script address into zTemp10-11, low byte first (LDA, STA, LDA, STA). */
 static inline void list_to_temp10(uint16_t list)
 {
